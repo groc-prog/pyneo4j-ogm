@@ -184,6 +184,7 @@ class Neo4jClient:
         """
         if entity_type == "NODE":
             for label in labels_or_type:
+                logging.debug("Creating constraint %s with label %s", name, label)
                 await self.cypher(
                     query="""
                         CREATE CONSTRAINT $name IF NOT EXISTS
@@ -197,6 +198,7 @@ class Neo4jClient:
                     },
                 )
         elif entity_type == "RELATIONSHIP":
+            logging.debug("Creating constraint %s", name)
             await self.cypher(
                 query="""
                         CREATE CONSTRAINT $name IF NOT EXISTS
