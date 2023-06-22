@@ -8,6 +8,8 @@ packages = [{include = "neo4j_ogm"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
+pydantic = "^1.10.9"
+neo4j = "^5.9.0"
 
 
 [build-system]
