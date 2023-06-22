@@ -27,3 +27,12 @@ class MissingDatabaseURI(Neo4jOGMException):
 
     def __init__(self, *args: object) -> None:
         super().__init__("Trying to initialize client without providing connection URI.", *args)
+
+
+class InvalidConstraintEntity(Neo4jOGMException):
+    """
+    Exception which gets raised if the client provides a invalid entity type when creating a new constraint
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Invalid constraint entity type.", *args)

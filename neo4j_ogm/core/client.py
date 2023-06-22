@@ -7,7 +7,7 @@ from typing import Any, Callable, LiteralString, TypedDict
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
-from neo4j_ogm.core.exceptions import MissingDatabaseURI, NotConnectedToDatabase
+from neo4j_ogm.core.exceptions import InvalidConstraintEntity, MissingDatabaseURI, NotConnectedToDatabase
 
 
 class BatchTransaction(TypedDict):
@@ -50,18 +50,7 @@ class Neo4jClient:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, uri: str | None = None, auth: tuple[str, str] | None = None) -> None:
-        db_uri = uri if uri is not None else environ.get("NEO4J_URI", None)
-
-        if db_uri is None:
-            raise MissingDatabaseURI()
-
-        self.uri = db_uri
-        self.auth = auth
-
-        self.connect()
-
-    def connect(self):
+    async def connect(self, uri: str | None = None, auth: tuple[str, str] | None = None):
         """
         Establish a connection to a database.
 
@@ -75,6 +64,14 @@ class Neo4jClient:
             MissingDatabaseURI: Raised if no uri is provided and the NEO4J_URI env variable is
                 not set
         """
+        db_uri = uri if uri is not None else environ.get("NEO4J_URI", None)
+
+        if db_uri is None:
+            raise MissingDatabaseURI()
+
+        self.uri = db_uri
+        self.auth = auth
+
         logging.debug("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth)
         logging.debug("Connected to database")
@@ -119,9 +116,7 @@ class Neo4jClient:
         return results, meta
 
     @ensure_connection
-    async def batch(
-        self, transactions: list[BatchTransaction]
-    ) -> list[tuple[list[list[Any]], list[str]]]:
+    async def batch(self, transactions: list[BatchTransaction]) -> list[tuple[list[list[Any]], list[str]]]:
         """
         Run a batch query.
 
@@ -149,9 +144,7 @@ class Neo4jClient:
                         else {}
                     )
 
-                    logging.debug(
-                        "Running query %s with parameters %s", transaction["query"], parameters
-                    )
+                    logging.debug("Running query %s with parameters %s", transaction["query"], parameters)
                     result_data = await tx.run(transaction["query"], parameters=parameters)
 
                     results = [list(r.values()) async for r in result_data]
@@ -171,6 +164,54 @@ class Neo4jClient:
         logging.debug("Batch query completed")
         return query_results
 
+        # Sets a `UNIQUENESS` constraint on a node or relationship with the defined labels/type and properties
+
+    @ensure_connection
+    async def set_constraint(self, name: str, entity_type: str, properties: list[str], labels_or_type: list[str]):
+        """
+        Sets a constraint on nodes or relationships in the Neo4j database.
+
+        Args:
+            name (str): The name of the constraint.
+            entity_type (str): The type of entity the constraint is applied to. Must be either "NODE" or "RELATIONSHIP".
+            properties (list[str]): A list of properties that should be unique for nodes/relationships satisfying
+                the constraint.
+            labels_or_type (list[str]): For nodes, a list of labels to which the constraint should be applied.
+                For relationships, a list with a single element representing the relationship type.
+
+        Raises:
+            InvalidConstraintEntity: If an invalid entity_type is provided.
+        """
+        if entity_type == "NODE":
+            for label in labels_or_type:
+                await self.cypher(
+                    query="""
+                        CREATE CONSTRAINT $name IF NOT EXISTS
+                        FOR (node:$label)
+                        REQUIRE ($properties) IS UNIQUE
+                    """,
+                    parameters={
+                        "name": name,
+                        "label": label,
+                        "properties": ", ".join([f"node.{property}" for property in properties]),
+                    },
+                )
+        elif entity_type == "RELATIONSHIP":
+            await self.cypher(
+                query="""
+                        CREATE CONSTRAINT $name IF NOT EXISTS
+                        FOR ()-[relationship:$type]-()
+                        REQUIRE ($properties) IS UNIQUE
+                    """,
+                parameters={
+                    "name": name,
+                    "type": labels_or_type[0],
+                    "properties": ", ".join([f"relationship.{property}" for property in properties]),
+                },
+            )
+        else:
+            raise InvalidConstraintEntity()
+
     @ensure_connection
     async def drop_nodes(self):
         """
@@ -178,3 +219,16 @@ class Neo4jClient:
         """
         logging.debug("Deleting all nodes in database")
         await self.cypher("MATCH (node) DETACH DELETE node")
+
+    @ensure_connection
+    async def drop_constraints(self):
+        """
+        Drops all constraints
+        """
+        logging.debug("Discovering constraints")
+        results, _ = await self.cypher(query="SHOW CONSTRAINTS")
+
+        logging.debug("Dropping constraints")
+        for constraint in results:
+            logging.debug("Dropping constraint %s", constraint[1])
+            await self.cypher("DROP CONSTRAINT $name", {"name": constraint[1]})
