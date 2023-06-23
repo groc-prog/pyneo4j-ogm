@@ -1,29 +1,26 @@
 """
-This module holds the base relationship class `Neo4jRelationship` which is used to define database models for
-relationships between nodes.
+This module holds the base node class `Neo4jNode` which is used to define database models for nodes.
 """
 import json
 from typing import Any, TypeVar
 
-from neo4j.graph import Node, Relationship
+from neo4j.graph import Node
 from pydantic import BaseModel
 
 from neo4j_ogm.core.exceptions import InflationFailure
 
-T = TypeVar("T", bound="Neo4jRelationship")
+T = TypeVar("T", bound="Neo4jNode")
 
 
-class Neo4jRelationship(BaseModel):
+class Neo4jNode(BaseModel):
     """
-    Base model for all relationship models. Every relationship model should inherit from this class to have needed base
+    Base model for all node models. Every node model should inherit from this class to have needed base
     functionality like de-/inflation and validation.
     """
 
     __dict_fields = set()
     __model_fields = set()
     _element_id: str | None
-    _start_node: Node | None
-    _end_node: Node | None
 
     def __init_subclass__(cls) -> None:
         """
@@ -58,22 +55,22 @@ class Neo4jRelationship(BaseModel):
         return deflated
 
     @classmethod
-    def inflate(cls, relationship: Relationship) -> T:
+    def inflate(cls, node: Node) -> T:
         """
-        Inflates a relationship instance into a instance of the current model.
+        Inflates a node instance into a instance of the current model.
 
         Args:
-            relationship (Relationship): Relationship to inflate
+            node (Node): Node to inflate
 
         Raises:
-            InflationFailure: Raised if inflating the relationship fails
+            InflationFailure: Raised if inflating the node fails
 
         Returns:
-            T: A new instance of the current model with the properties from the relationship instance
+            T: A new instance of the current model with the properties from the node instance
         """
         inflated: dict[str, Any] = {}
 
-        for relationship_property in relationship.items():
+        for relationship_property in node.items():
             property_name, property_value = relationship_property
 
             if property_name in cls.__dict_fields or property_name in cls.__model_fields:
@@ -84,9 +81,4 @@ class Neo4jRelationship(BaseModel):
             else:
                 inflated[property_name] = property_value
 
-        return cls(
-            _element_id=relationship.element_id,
-            _start_node=relationship.start_node,
-            _end_node=relationship.end_node,
-            **inflated
-        )
+        return cls(_element_id=node.element_id, **inflated)

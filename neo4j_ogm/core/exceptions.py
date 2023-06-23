@@ -44,4 +44,4 @@ class InflationFailure(Neo4jOGMException):
     """
 
     def __init__(self, model: str, *args: object) -> None:
-        super().__init__(f"Failed to inflate node to {model} instance.", *args)
+        super().__init__(f"Failed to inflate object to {model} instance.", *args)
