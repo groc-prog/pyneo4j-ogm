@@ -45,3 +45,30 @@ class InflationFailure(Neo4jOGMException):
 
     def __init__(self, model: str, *args: object) -> None:
         super().__init__(f"Failed to inflate object to {model} instance.", *args)
+
+
+class InstanceNotHydrated(Neo4jOGMException):
+    """
+    Exception which gets raised when a query is run with a instance which has not been hydrated yet.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Queries can not be run on instances which have not been hydrated.", *args)
+
+
+class InstanceDestroyed(Neo4jOGMException):
+    """
+    Exception which gets raised when a query is run with a instance which has been destroyed.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Queries can not be run on instances which have been destroyed.", *args)
+
+
+class UnexpectedEmptyResult(Neo4jOGMException):
+    """
+    Exception which gets raised when a query returns no result.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("The query was expected to return a result, but did not.", *args)
