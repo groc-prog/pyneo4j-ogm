@@ -23,9 +23,12 @@ def ensure_connection(func: Callable):
     """
     Decorator which ensures that a connection to a database has been established before running
     any operations on it.
+
+    Raises:
+        NotConnectedToDatabase: Raised if the client is not connected to a database
     """
 
-    async def decorator(self: "Neo4jClient", *args, **kwargs):
+    async def decorator(self, *args, **kwargs):
         if getattr(self, "_driver", None) is None:
             raise NotConnectedToDatabase()
 
@@ -50,7 +53,7 @@ class Neo4jClient:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    async def connect(self, uri: str | None = None, auth: tuple[str, str] | None = None):
+    async def connect(self, uri: str | None = None, auth: tuple[str, str] | None = None) -> None:
         """
         Establish a connection to a database.
 
@@ -78,7 +81,7 @@ class Neo4jClient:
         logging.debug("Connected to database")
 
     @ensure_connection
-    async def close(self):
+    async def close(self) -> None:
         """
         Closes the current connection to the client
         """
@@ -168,7 +171,9 @@ class Neo4jClient:
         # Sets a `UNIQUENESS` constraint on a node or relationship with the defined labels/type and properties
 
     @ensure_connection
-    async def set_constraint(self, name: str, entity_type: str, properties: list[str], labels_or_type: list[str]):
+    async def set_constraint(
+        self, name: str, entity_type: str, properties: list[str], labels_or_type: list[str]
+    ) -> None:
         """
         Sets a constraint on nodes or relationships in the Neo4j database. Currently only `UNIQUENESS` constraints are
         supported.
@@ -217,7 +222,7 @@ class Neo4jClient:
             raise InvalidConstraintEntity()
 
     @ensure_connection
-    async def drop_nodes(self):
+    async def drop_nodes(self) -> None:
         """
         Deletes all nodes in the database
         """
@@ -225,7 +230,7 @@ class Neo4jClient:
         await self.cypher("MATCH (node) DETACH DELETE node")
 
     @ensure_connection
-    async def drop_constraints(self):
+    async def drop_constraints(self) -> None:
         """
         Drops all constraints
         """
@@ -235,4 +240,4 @@ class Neo4jClient:
         logging.debug("Dropping constraints")
         for constraint in results:
             logging.debug("Dropping constraint %s", constraint[1])
-            await self.cypher("DROP CONSTRAINT $name", {"name": constraint[1]})
+            await self.cypher(f"DROP CONSTRAINT {constraint[1]}")
