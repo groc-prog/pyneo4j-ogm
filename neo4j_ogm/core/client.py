@@ -65,12 +65,13 @@ class Neo4jClient:
                 not set
         """
         db_uri = uri if uri is not None else environ.get("NEO4J_URI", None)
+        db_auth = auth if auth is not None else environ.get("NEO4J_AUTH", None)
 
         if db_uri is None:
             raise MissingDatabaseURI()
 
         self.uri = db_uri
-        self.auth = auth
+        self.auth = db_auth
 
         logging.debug("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth)
