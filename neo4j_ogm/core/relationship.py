@@ -4,10 +4,15 @@ relationships between nodes.
 """
 import json
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeVar
 from uuid import UUID, uuid4
 
+from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, Field
+
+from neo4j_ogm.core.exceptions import InflationFailure
+
+T = TypeVar("T", bound="Neo4jRelationship")
 
 
 class Neo4jRelationship(BaseModel):
@@ -16,9 +21,25 @@ class Neo4jRelationship(BaseModel):
     functionality like de-/inflation and validation.
     """
 
+    __dict_fields = set()
+    __model_fields = set()
     _element_id: str | None
-    _start_node_element_id: str | None
-    _end_node_element_id: str | None
+    _start_node: Node | None
+    _end_node: Node | None
+
+    def __init_subclass__(cls) -> None:
+        """
+        Filters BaseModel and dict instances in the models fields for serialization
+        """
+        for field, value in cls.__fields__.items():
+            # Check if value is None here to prevent breaking logic if field is of type None
+            if value.type_ is not None:
+                if issubclass(value.type_, dict):
+                    cls.__dict_fields.add(field)
+                elif issubclass(value.type_, BaseModel):
+                    cls.__model_fields.add(field)
+
+        return super().__init_subclass__()
 
     def deflate(self) -> dict[str, Any]:
         """
@@ -27,53 +48,47 @@ class Neo4jRelationship(BaseModel):
         Returns:
             dict[str, Any]: The deflated model instance
         """
-        dicts: set[str] = set()
-        models: set[str] = set()
-
-        # Filter out other BaseModel or dict instances for serializing to JSON strings later
-        for field, value in self.__fields__.items():
-            # Check if value is None here to prevent breaking logic if field is of type None
-            if value.type_ is not None:
-                if issubclass(value.type_, dict):
-                    dicts.add(field)
-                elif issubclass(value.type_, BaseModel):
-                    models.add(field)
-
-        serialized_properties: dict[str, Any] = json.loads(self.json())
+        deflated: dict[str, Any] = json.loads(self.json())
 
         # Serialize nested BaseModel or dict instances to JSON strings
-        for field in dicts:
-            serialized_properties[field] = json.dumps(serialized_properties[field])
+        for field in self.__dict_fields:
+            deflated[field] = json.dumps(deflated[field])
 
-        for field in models:
-            serialized_properties[field] = self.__dict__[field].json()
+        for field in self.__model_fields:
+            deflated[field] = self.__dict__[field].json()
 
-        return serialized_properties
+        return deflated
 
     @classmethod
-    def inflate(cls, node):
-        # Inflate from node to model
-        pass
+    def inflate(cls, relationship: Relationship) -> T:
+        """
+        Inflates a relationship instance into a instance of the current model.
 
+        Args:
+            relationship (Relationship): Relationship to inflate
 
-class Nested(BaseModel):
-    a: str = "a"
-    b: int = 1
-    c: UUID = Field(default_factory=uuid4)
-    h: list[str] = ["1", "2", "3"]
-    j: datetime = Field(default_factory=datetime.now)
+        Raises:
+            InflationFailure: Raised if inflating the relationship fails
 
+        Returns:
+            T: A new instance of the current model with the properties from the relationship instance
+        """
+        inflated: dict[str, Any] = {}
 
-class Foo(Neo4jRelationship):
-    d: dict = ({"foo": "foo", "bar": uuid4(), "foz": 1},)
-    e: Nested = Nested()
-    f: UUID = Field(default_factory=uuid4)
-    g: list[str] = ["1", "2", "3"]
-    i: datetime = Field(default_factory=datetime.now)
-    k: None = None
+        for relationship_property in relationship.items():
+            property_name, property_value = relationship_property
 
+            if property_name in cls.__dict_fields or property_name in cls.__model_fields:
+                try:
+                    inflated[property_name] = json.loads(property_value)
+                except Exception as exc:
+                    raise InflationFailure(cls.__name__) from exc
+            else:
+                inflated[property_name] = property_value
 
-foo = Foo()
-a = foo.deflate()
-print(a)
-print("DONE")
+        return cls(
+            _element_id=relationship.element_id,
+            _start_node=relationship.start_node,
+            _end_node=relationship.end_node,
+            **inflated
+        )

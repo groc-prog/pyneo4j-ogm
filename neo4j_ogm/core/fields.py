@@ -5,7 +5,7 @@ like indexing or a unique constraint.
 from typing import Any
 
 
-def WithPropertyDefaults(property_type: Any, indexed: bool = False, unique: bool = False):
+def WithOptions(property_type: Any, indexed: bool = False, unique: bool = False):
     """
     Returns a subclass of `property_type` which includes extra attributes like `_indexed` and `_unique`
     which can be used to define indexes and constraints on the property. Does not have an effect when called

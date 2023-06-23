@@ -38,10 +38,10 @@ class InvalidConstraintEntity(Neo4jOGMException):
         super().__init__("Invalid constraint entity type.", *args)
 
 
-class DeflationFailure(Neo4jOGMException):
+class InflationFailure(Neo4jOGMException):
     """
-    Exception which gets raised when the deflation from a model instance to a Neo4j-compatible dictionary fails
+    Exception which gets raised when the inflation from a Neo4j node to a model instance fails
     """
 
-    def __init__(self, *args: object) -> None:
-        super().__init__("Failed to deflate model instance to dictionary.", *args)
+    def __init__(self, model: str, *args: object) -> None:
+        super().__init__(f"Failed to inflate node to {model} instance.", *args)
