@@ -15,3 +15,11 @@ neo4j = "^5.9.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.pylint.'MESSAGES CONTROL']
+extension-pkg-whitelist = "pydantic"
+
+
+[tool.pyright]
+reportGeneralTypeIssues = false

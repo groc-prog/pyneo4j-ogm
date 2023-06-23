@@ -169,7 +169,8 @@ class Neo4jClient:
     @ensure_connection
     async def set_constraint(self, name: str, entity_type: str, properties: list[str], labels_or_type: list[str]):
         """
-        Sets a constraint on nodes or relationships in the Neo4j database.
+        Sets a constraint on nodes or relationships in the Neo4j database. Currently only `UNIQUENESS` constraints are
+        supported.
 
         Args:
             name (str): The name of the constraint.
