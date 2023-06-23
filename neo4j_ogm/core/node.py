@@ -2,12 +2,15 @@
 This module holds the base node class `Neo4jNode` which is used to define database models for nodes.
 """
 import json
+import logging
 from typing import Any, TypeVar
 
 from neo4j.graph import Node
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.exceptions import InflationFailure
+from neo4j_ogm.core.client import Neo4jClient
+from neo4j_ogm.core.exceptions import InflationFailure, UnexpectedEmptyResult
+from neo4j_ogm.core.utils import ensure_alive, ensure_hydration, validate_instance
 
 T = TypeVar("T", bound="Neo4jNode")
 
@@ -21,7 +24,9 @@ class Neo4jNode(BaseModel):
     __labels__: tuple[str]
     __dict_fields = set()
     __model_fields = set()
-    _element_id: str | None
+    _destroyed: bool = False
+    _client: Neo4jClient
+    _element_id: str | None = PrivateAttr(default=None)
 
     def __init_subclass__(cls) -> None:
         """
@@ -30,6 +35,9 @@ class Neo4jNode(BaseModel):
         # Check if relationship type is set, if not fall back to model name
         if not hasattr(cls, "__labels__"):
             cls.__labels__ = tuple(cls.__name__)
+
+        logging.debug("Initializing client for model %s", cls.__name__)
+        cls._client = Neo4jClient()
 
         for field, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if field is of type None
@@ -48,12 +56,15 @@ class Neo4jNode(BaseModel):
         Returns:
             dict[str, Any]: The deflated model instance
         """
+        logging.debug("Deflating model to storable dictionary")
         deflated: dict[str, Any] = json.loads(self.json())
 
         # Serialize nested BaseModel or dict instances to JSON strings
+        logging.debug("Serializing nested dictionaries to JSON strings")
         for field in self.__dict_fields:
             deflated[field] = json.dumps(deflated[field])
 
+        logging.debug("Serializing nested models to JSON strings")
         for field in self.__model_fields:
             deflated[field] = self.__dict__[field].json()
 
@@ -75,6 +86,7 @@ class Neo4jNode(BaseModel):
         """
         inflated: dict[str, Any] = {}
 
+        logging.debug("Inflating node to model instance")
         for relationship_property in node.items():
             property_name, property_value = relationship_property
 
@@ -87,3 +99,30 @@ class Neo4jNode(BaseModel):
                 inflated[property_name] = property_value
 
         return cls(_element_id=node.element_id, **inflated)
+
+    @validate_instance
+    async def create(self) -> None:
+        """
+        Creates a new node from the current instance. After the method is finished, a newly created
+        instance is seen as `hydrated`.
+
+        Raises:
+            UnexpectedEmptyResult: Raised if the query did not return the created node
+        """
+        logging.debug("Creating new node from model instance %s", self.__class__.__name__)
+        results, _ = await self._client.cypher(
+            query=f"""
+                CREATE (node:{":".join(self.__labels__)} $properties)
+                RETURN node
+            """,
+            parameters={
+                "properties": self.deflate(),
+            },
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0:
+            raise UnexpectedEmptyResult()
+
+        logging.debug("Hydrating instance values")
+        setattr(self, "_element_id", results[0][0]["element_id"])
