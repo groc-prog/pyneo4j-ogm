@@ -40,6 +40,8 @@ async def main():
     user.name = "123"
     await user.update()
 
+    await user.delete()
+
     print("DONE")
 
 

@@ -24,9 +24,9 @@ class Neo4jNode(BaseModel):
     __labels__: tuple[str]
     __dict_fields = set()
     __model_fields = set()
-    _modified_fields: set[str] = set()
-    _destroyed: bool = False
     _client: Neo4jClient
+    _modified_fields: set[str] = PrivateAttr(default=set())
+    _destroyed: bool = PrivateAttr(default=False)
     _element_id: str | None = PrivateAttr(default=None)
 
     def __init_subclass__(cls) -> None:
@@ -163,3 +163,23 @@ class Neo4jNode(BaseModel):
 
         # Reset _modified_fields
         self._modified_fields.clear()
+
+    @ensure_alive
+    @validate_instance
+    async def delete(self) -> None:
+        """
+        Deletes the corresponding node in the database and marks this instance as destroyed. If another
+        method is called on this instance, an `InstanceDestroyed` will be raised
+        """
+        logging.debug("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
+        await self._client.cypher(
+            query=f"""
+                MATCH (n:{":".join(self.__labels__)})
+                WHERE elementId(n) = $element_id
+                DETACH DELETE n
+            """,
+            parameters={"element_id": self._element_id},
+        )
+
+        logging.debug("marking instance as destroyed")
+        setattr(self, "_destroyed", True)
