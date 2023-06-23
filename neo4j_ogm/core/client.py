@@ -237,7 +237,7 @@ class Neo4jClient:
         logging.debug("Discovering constraints")
         results, _ = await self.cypher(query="SHOW CONSTRAINTS")
 
-        logging.debug("Dropping constraints")
+        logging.debug("Dropping %s constraints", len(results))
         for constraint in results:
             logging.debug("Dropping constraint %s", constraint[1])
             await self.cypher(f"DROP CONSTRAINT {constraint[1]}")

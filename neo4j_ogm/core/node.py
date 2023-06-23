@@ -3,14 +3,14 @@ This module holds the base node class `Neo4jNode` which is used to define databa
 """
 import json
 import logging
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.exceptions import InflationFailure, UnexpectedEmptyResult
-from neo4j_ogm.core.utils import ensure_alive, ensure_hydration, validate_instance
+from neo4j_ogm.core.utils import ensure_alive, validate_instance
 
 T = TypeVar("T", bound="Neo4jNode")
 
@@ -24,6 +24,7 @@ class Neo4jNode(BaseModel):
     __labels__: tuple[str]
     __dict_fields = set()
     __model_fields = set()
+    _modified_fields: set[str] = set()
     _destroyed: bool = False
     _client: Neo4jClient
     _element_id: str | None = PrivateAttr(default=None)
@@ -48,6 +49,11 @@ class Neo4jNode(BaseModel):
                     cls.__model_fields.add(field)
 
         return super().__init_subclass__()
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in self.__fields__ and not name.startswith("_"):
+            self._modified_fields.add(name)
+        return super().__setattr__(name, value)
 
     def deflate(self) -> dict[str, Any]:
         """
@@ -104,7 +110,7 @@ class Neo4jNode(BaseModel):
     async def create(self) -> None:
         """
         Creates a new node from the current instance. After the method is finished, a newly created
-        instance is seen as `hydrated`.
+        instance is seen as `alive`.
 
         Raises:
             UnexpectedEmptyResult: Raised if the query did not return the created node
@@ -112,8 +118,8 @@ class Neo4jNode(BaseModel):
         logging.debug("Creating new node from model instance %s", self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                CREATE (node:{":".join(self.__labels__)} $properties)
-                RETURN node
+                CREATE (n:{":".join(self.__labels__)} $properties)
+                RETURN n
             """,
             parameters={
                 "properties": self.deflate(),
@@ -125,4 +131,35 @@ class Neo4jNode(BaseModel):
             raise UnexpectedEmptyResult()
 
         logging.debug("Hydrating instance values")
-        setattr(self, "_element_id", results[0][0]["element_id"])
+        setattr(self, "_element_id", cast(Node, results[0][0]).element_id)
+
+    @ensure_alive
+    @validate_instance
+    async def update(self) -> None:
+        """
+        Updates the corresponding node in the database with the current instance values
+        """
+        deflated = self.deflate()
+
+        logging.debug(
+            "Updating node %s of model %s with current properties %s",
+            self._element_id,
+            self.__class__.__name__,
+            deflated,
+        )
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH (n:{":".join(self.__labels__)})
+                WHERE elementId(n) = $element_id
+                SET {", ".join([f"n.{field} = ${field}" for field in self._modified_fields])}
+                RETURN n
+            """,
+            parameters={"element_id": self._element_id, **deflated},
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0:
+            raise UnexpectedEmptyResult()
+
+        # Reset _modified_fields
+        self._modified_fields.clear()

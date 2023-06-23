@@ -11,7 +11,7 @@ from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.exceptions import InflationFailure
-from neo4j_ogm.core.utils import ensure_alive, ensure_hydration, validate_instance
+from neo4j_ogm.core.utils import ensure_alive, validate_instance
 
 T = TypeVar("T", bound="Neo4jRelationship")
 
