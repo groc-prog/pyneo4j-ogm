@@ -18,6 +18,7 @@ class Neo4jNode(BaseModel):
     functionality like de-/inflation and validation.
     """
 
+    __labels__: tuple[str]
     __dict_fields = set()
     __model_fields = set()
     _element_id: str | None
@@ -26,6 +27,10 @@ class Neo4jNode(BaseModel):
         """
         Filters BaseModel and dict instances in the models fields for serialization
         """
+        # Check if relationship type is set, if not fall back to model name
+        if not hasattr(cls, "__labels__"):
+            cls.__labels__ = tuple(cls.__name__)
+
         for field, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if field is of type None
             if value.type_ is not None:
