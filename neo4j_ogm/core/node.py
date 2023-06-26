@@ -138,6 +138,9 @@ class Neo4jNode(BaseModel):
     async def update(self) -> None:
         """
         Updates the corresponding node in the database with the current instance values
+
+        Raises:
+            UnexpectedEmptyResult: Raised if the query did not return the updated node
         """
         deflated = self.deflate()
 
@@ -165,7 +168,6 @@ class Neo4jNode(BaseModel):
         self._modified_fields.clear()
 
     @ensure_alive
-    @validate_instance
     async def delete(self) -> None:
         """
         Deletes the corresponding node in the database and marks this instance as destroyed. If another
@@ -181,5 +183,5 @@ class Neo4jNode(BaseModel):
             parameters={"element_id": self._element_id},
         )
 
-        logging.debug("marking instance as destroyed")
+        logging.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)

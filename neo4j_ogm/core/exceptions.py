@@ -72,3 +72,12 @@ class UnexpectedEmptyResult(Neo4jOGMException):
 
     def __init__(self, *args: object) -> None:
         super().__init__("The query was expected to return a result, but did not.", *args)
+
+
+class UnknownRelationshipDirection(Neo4jOGMException):
+    """
+    Exception which gets raised when a invalid relationship direction is provided.
+    """
+
+    def __init__(self, expected_directions: list[str], actual_direction: str, *args: object) -> None:
+        super().__init__(f"Expected one of {expected_directions}, got {actual_direction}", *args)

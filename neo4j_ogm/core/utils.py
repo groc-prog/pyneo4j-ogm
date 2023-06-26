@@ -13,6 +13,7 @@ def ensure_alive(func: Callable):
 
     Raises:
         InstanceDestroyed: Raised if the method is called on a instance which has been destroyed
+        InstanceNotHydrated: Raised if the method is called on a instance which has been saved to the database
     """
 
     async def decorator(self, *args, **kwargs):
