@@ -4,31 +4,16 @@ relationships between nodes.
 """
 import json
 import logging
-from enum import Enum
 from typing import Any, Callable, TypeVar, cast
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.exceptions import (
-    InflationFailure,
-    InstanceNotHydrated,
-    UnexpectedEmptyResult,
-    UnknownRelationshipDirection,
-)
-from neo4j_ogm.core.utils import ensure_alive, validate_instance
+from neo4j_ogm.core.client import Neo4jClient
+from neo4j_ogm.core.exceptions import InflationFailure, InstanceNotHydrated, UnexpectedEmptyResult
+from neo4j_ogm.core.utils import RelationshipDirection, build_relationship_match_clause, ensure_alive, validate_instance
 
 T = TypeVar("T", bound="Neo4jRelationship")
-
-
-class RelationshipDirection(str, Enum):
-    """
-    Definition for all possible relationship directions.
-    """
-
-    INCOMING = "INCOMING"
-    OUTGOING = "OUTGOING"
-    BOTH = "BOTH"
 
 
 def ensure_connections(func: Callable):
@@ -59,7 +44,7 @@ class Neo4jRelationship(BaseModel):
     __dict_fields = set()
     __model_fields = set()
     _destroyed: bool = False
-    _client = PrivateAttr()
+    _client: Neo4jClient = PrivateAttr()
     _modified_fields: set[str] = PrivateAttr(default=set())
     _start_node: Node | None = PrivateAttr(default=None)
     _end_node: Node | None = PrivateAttr(default=None)
@@ -70,8 +55,6 @@ class Neo4jRelationship(BaseModel):
         """
         Filters BaseModel and dict instances in the models fields for serialization.
         """
-        from neo4j_ogm.core.client import Neo4jClient
-
         # Check if relationship type is set, if not fall back to model name
         if not hasattr(cls, "__type__"):
             cls.__type__ = cls.__name__
@@ -165,7 +148,12 @@ class Neo4jRelationship(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                {self._build_match_clause}
+                {build_relationship_match_clause(
+                    self._direction,
+                    cast(Node, self._start_node),
+                    cast(Node, self._end_node),
+                    relationship_type=self.__type__
+                )}
                 WHERE
                     elementId(start) = $start_element_id
                     AND elementId(end) = $end_element_id
@@ -199,7 +187,12 @@ class Neo4jRelationship(BaseModel):
         logging.debug("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
         await self._client.cypher(
             query=f"""
-                {self._build_match_clause}
+                {build_relationship_match_clause(
+                    self._direction,
+                    cast(Node, self._start_node),
+                    cast(Node, self._end_node),
+                    relationship_type=self.__type__
+                )}
                 WHERE
                     elementId(start) = $start_element_id
                     AND elementId(end) = $end_element_id
@@ -215,35 +208,3 @@ class Neo4jRelationship(BaseModel):
 
         logging.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
-
-    def _build_match_clause(self, start_ref: str = "start", end_ref: str = "end", rel_ref: str = "rel") -> str:
-        """
-        Build a relationship MATCH query depending on the provided relationship direction.
-
-        Args:
-            start_ref (str, optional): Variable to use for the start node in the MATCH clause. Defaults to "start".
-            end_ref (str, optional): Variable to use for the end node in the MATCH clause. Defaults to "end".
-            rel_ref (str, optional): Variable to use for the relationship in the MATCH clause. Defaults to "rel".
-
-        Raises:
-            UnknownRelationshipDirection: Raised if a invalid relationship was provided.
-
-        Returns:
-            str: The created MATCH clause
-        """
-        start_match = f"({start_ref}:{':'.join(cast(Node, self._start_node).labels)})"
-        end_match = f"({end_ref}:{':'.join(cast(Node, self._end_node).labels)})"
-        rel_match = f"[{rel_ref}:{self.__type__}]"
-
-        match self._direction:
-            case RelationshipDirection.INCOMING:
-                return f"MATCH {start_match}, {end_match}, {start_match}<-{rel_match}-{end_match}"
-            case RelationshipDirection.OUTGOING:
-                return f"MATCH {start_match}, {end_match}, {start_match}-{rel_match}->{end_match}"
-            case RelationshipDirection.BOTH:
-                return f"MATCH {start_match}, {end_match}, {start_match}-{rel_match}-{end_match}"
-            case _:
-                raise UnknownRelationshipDirection(
-                    expected_directions=[direction.value for direction in RelationshipDirection],
-                    actual_direction=self._direction,
-                )

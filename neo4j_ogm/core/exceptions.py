@@ -114,3 +114,12 @@ class InvalidRelationshipModelOrType(Neo4jOGMException):
             """,
             *args,
         )
+
+
+class TargetModelMismatch(Neo4jOGMException):
+    """
+    Exception which gets raised when a relationship property defines a invalid model or type.
+    """
+
+    def __init__(self, expected: str, actual: str, *args: object) -> None:
+        super().__init__(f"Expected node model type {expected}, got {actual}.", *args)
