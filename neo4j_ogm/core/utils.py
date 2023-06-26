@@ -31,7 +31,7 @@ def ensure_alive(func: Callable):
 
 def validate_instance(func: Callable):
     """
-    Decorator which validates the model fields before calling the method
+    Decorator which validates the model fields before calling the method.
 
     Raises:
         ValidationError: Raised if the model validation fails

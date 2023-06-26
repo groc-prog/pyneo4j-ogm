@@ -11,7 +11,7 @@ class Neo4jOGMException(Exception):
 
 class NotConnectedToDatabase(Neo4jOGMException):
     """
-    Exception which gets raised if the client tries to operate on a database without a valid
+    Exception which gets raised if the client tries to operate on a database without a valid.
     connection.
     """
 
@@ -21,7 +21,7 @@ class NotConnectedToDatabase(Neo4jOGMException):
 
 class MissingDatabaseURI(Neo4jOGMException):
     """
-    Exception which gets raised if the client is initialized without providing a connection
+    Exception which gets raised if the client is initialized without providing a connection.
     URI
     """
 
@@ -31,7 +31,7 @@ class MissingDatabaseURI(Neo4jOGMException):
 
 class InvalidConstraintEntity(Neo4jOGMException):
     """
-    Exception which gets raised if the client provides a invalid entity type when creating a new constraint
+    Exception which gets raised if the client provides a invalid entity type when creating a new constraint.
     """
 
     def __init__(self, *args: object) -> None:
@@ -40,7 +40,7 @@ class InvalidConstraintEntity(Neo4jOGMException):
 
 class InflationFailure(Neo4jOGMException):
     """
-    Exception which gets raised when the inflation from a Neo4j node to a model instance fails
+    Exception which gets raised when the inflation from a Neo4j node to a model instance fails.
     """
 
     def __init__(self, model: str, *args: object) -> None:

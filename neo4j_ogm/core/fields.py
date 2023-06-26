@@ -4,6 +4,9 @@ like indexing or a unique constraint.
 """
 from typing import Type, TypeVar
 
+from neo4j_ogm.core.node import Neo4jNode
+from neo4j_ogm.core.relationship import Neo4jRelationship, RelationshipDirection
+
 T = TypeVar("T")
 
 
@@ -35,3 +38,9 @@ def WithOptions(property_type: T, indexed: bool = False, unique: bool = False) -
             return property_type.__new__(property_type, *args, **kwargs)
 
     return PropertyWithOptions
+
+
+def Relationship(
+    target_model: str | Neo4jNode, model_or_type: str | Neo4jRelationship, direction: RelationshipDirection
+):
+    pass

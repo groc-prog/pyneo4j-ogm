@@ -24,7 +24,7 @@ T = TypeVar("T", bound="Neo4jRelationship")
 
 class RelationshipDirection(str, Enum):
     """
-    Definition for all possible relationship directions
+    Definition for all possible relationship directions.
     """
 
     INCOMING = "INCOMING"
@@ -60,7 +60,7 @@ class Neo4jRelationship(BaseModel):
     __dict_fields = set()
     __model_fields = set()
     _destroyed: bool = False
-    _client: Neo4jClient
+    _client: Neo4jClient = PrivateAttr()
     _modified_fields: set[str] = PrivateAttr(default=set())
     _start_node: Node | None = PrivateAttr(default=None)
     _end_node: Node | None = PrivateAttr(default=None)
@@ -69,7 +69,7 @@ class Neo4jRelationship(BaseModel):
 
     def __init_subclass__(cls) -> None:
         """
-        Filters BaseModel and dict instances in the models fields for serialization
+        Filters BaseModel and dict instances in the models fields for serialization.
         """
         # Check if relationship type is set, if not fall back to model name
         if not hasattr(cls, "__type__"):
@@ -149,7 +149,7 @@ class Neo4jRelationship(BaseModel):
     @validate_instance
     async def update(self) -> None:
         """
-        Updates the corresponding relationship in the database with the current instance values
+        Updates the corresponding relationship in the database with the current instance values.
 
         Raises:
             UnexpectedEmptyResult: Raised if the query did not return the updated node

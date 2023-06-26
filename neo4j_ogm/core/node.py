@@ -24,14 +24,14 @@ class Neo4jNode(BaseModel):
     __labels__: tuple[str]
     __dict_fields = set()
     __model_fields = set()
-    _client: Neo4jClient
+    _client: Neo4jClient = PrivateAttr()
     _modified_fields: set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: str | None = PrivateAttr(default=None)
 
     def __init_subclass__(cls) -> None:
         """
-        Filters BaseModel and dict instances in the models fields for serialization
+        Filters BaseModel and dict instances in the models fields for serialization.
         """
         # Check if relationship type is set, if not fall back to model name
         if not hasattr(cls, "__labels__"):
@@ -137,7 +137,7 @@ class Neo4jNode(BaseModel):
     @validate_instance
     async def update(self) -> None:
         """
-        Updates the corresponding node in the database with the current instance values
+        Updates the corresponding node in the database with the current instance values.
 
         Raises:
             UnexpectedEmptyResult: Raised if the query did not return the updated node
@@ -171,7 +171,7 @@ class Neo4jNode(BaseModel):
     async def delete(self) -> None:
         """
         Deletes the corresponding node in the database and marks this instance as destroyed. If another
-        method is called on this instance, an `InstanceDestroyed` will be raised
+        method is called on this instance, an `InstanceDestroyed` will be raised.
         """
         logging.debug("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
         await self._client.cypher(

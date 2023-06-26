@@ -12,7 +12,7 @@ from neo4j_ogm.core.exceptions import InvalidConstraintEntity, MissingDatabaseUR
 
 class BatchTransaction(TypedDict):
     """
-    Dictionary type definition for a batched transaction
+    Dictionary type definition for a batched transaction.
     """
 
     query: LiteralString
@@ -40,7 +40,7 @@ def ensure_connection(func: Callable):
 
 class Neo4jClient:
     """
-    Singleton database client class used to run different operations on the database
+    Singleton database client class used to run different operations on the database.
     """
 
     _instance: "Neo4jClient"
@@ -83,7 +83,7 @@ class Neo4jClient:
     @ensure_connection
     async def close(self) -> None:
         """
-        Closes the current connection to the client
+        Closes the current connection to the client.
         """
         logging.debug("Closing connection to database")
         await self._driver.close()
@@ -224,7 +224,7 @@ class Neo4jClient:
     @ensure_connection
     async def drop_nodes(self) -> None:
         """
-        Deletes all nodes in the database
+        Deletes all nodes in the database.
         """
         logging.debug("Deleting all nodes in database")
         await self.cypher("MATCH (node) DETACH DELETE node")
@@ -232,7 +232,7 @@ class Neo4jClient:
     @ensure_connection
     async def drop_constraints(self) -> None:
         """
-        Drops all constraints
+        Drops all constraints.
         """
         logging.debug("Discovering constraints")
         results, _ = await self.cypher(query="SHOW CONSTRAINTS")
