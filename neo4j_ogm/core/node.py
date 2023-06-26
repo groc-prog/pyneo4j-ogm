@@ -29,6 +29,13 @@ class Neo4jNode(BaseModel):
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: str | None = PrivateAttr(default=None)
 
+    def __init__(self) -> None:
+        super().__init__()
+
+        for key, _ in self.__dict__.items():
+            if hasattr(self.__dict__[key], "build_source"):
+                self.__dict__[key].build_source(self.__class__)
+
     def __init_subclass__(cls) -> None:
         """
         Filters BaseModel and dict instances in the models fields for serialization.
