@@ -81,3 +81,36 @@ class UnknownRelationshipDirection(Neo4jOGMException):
 
     def __init__(self, expected_directions: list[str], actual_direction: str, *args: object) -> None:
         super().__init__(f"Expected one of {expected_directions}, got {actual_direction}", *args)
+
+
+class UnregisteredModel(Neo4jOGMException):
+    """
+    Exception which gets raised when a model, which has not been registered, gets used.
+    """
+
+    def __init__(self, unregistered_model: str, *args: object) -> None:
+        super().__init__(f"Model {unregistered_model} was not registered, but another model is using it.", *args)
+
+
+class InvalidTargetModel(Neo4jOGMException):
+    """
+    Exception which gets raised when a relationship property defines a invalid target model.
+    """
+
+    def __init__(self, target_model: str, *args: object) -> None:
+        super().__init__(f"Expected target model to be string or Neo4jNode, but got {type(target_model)}.", *args)
+
+
+class InvalidRelationshipModelOrType(Neo4jOGMException):
+    """
+    Exception which gets raised when a relationship property defines a invalid model or type.
+    """
+
+    def __init__(self, relationship_or_type: str, *args: object) -> None:
+        super().__init__(
+            f"""
+                Expected relationship model or type to be string or Neo4jRelationship, but got
+                {type(relationship_or_type)}.
+            """,
+            *args,
+        )

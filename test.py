@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.fields import WithOptions
 from neo4j_ogm.core.node import Neo4jNode
+from neo4j_ogm.core.relationship_property import RelationshipProperty
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -29,7 +30,7 @@ class MaleUserModel(Neo4jNode):
 
 
 async def main():
-    client = Neo4jClient()
+    client = Neo4jClient(models=[MaleUserModel])
     await client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
     await client.drop_constraints()
     await client.drop_nodes()

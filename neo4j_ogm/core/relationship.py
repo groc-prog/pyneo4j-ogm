@@ -10,7 +10,6 @@ from typing import Any, Callable, TypeVar, cast
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.exceptions import (
     InflationFailure,
     InstanceNotHydrated,
@@ -60,7 +59,7 @@ class Neo4jRelationship(BaseModel):
     __dict_fields = set()
     __model_fields = set()
     _destroyed: bool = False
-    _client: Neo4jClient = PrivateAttr()
+    _client = PrivateAttr()
     _modified_fields: set[str] = PrivateAttr(default=set())
     _start_node: Node | None = PrivateAttr(default=None)
     _end_node: Node | None = PrivateAttr(default=None)
@@ -71,6 +70,8 @@ class Neo4jRelationship(BaseModel):
         """
         Filters BaseModel and dict instances in the models fields for serialization.
         """
+        from neo4j_ogm.core.client import Neo4jClient
+
         # Check if relationship type is set, if not fall back to model name
         if not hasattr(cls, "__type__"):
             cls.__type__ = cls.__name__

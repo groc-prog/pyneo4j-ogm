@@ -8,6 +8,8 @@ from typing import Any, Callable, LiteralString, TypedDict
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from neo4j_ogm.core.exceptions import InvalidConstraintEntity, MissingDatabaseURI, NotConnectedToDatabase
+from neo4j_ogm.core.node import Neo4jNode
+from neo4j_ogm.core.relationship import Neo4jRelationship
 
 
 class BatchTransaction(TypedDict):
@@ -45,13 +47,29 @@ class Neo4jClient:
 
     _instance: "Neo4jClient"
     _driver: AsyncDriver
+    models: list[Neo4jNode | Neo4jRelationship] = []
     uri: str
     auth: tuple[str, str] | None
 
-    def __new__(cls):
+    def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
-            cls._instance = super().__new__(cls)
+            cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
+
+    def __init__(self, models: list[Neo4jRelationship | Neo4jNode] | None = None):
+        """
+        Registers models to be used by the client.
+
+        Args:
+            models (list[Neo4jRelationship  |  Neo4jNode] | None, optional): Models available to the
+            client. Defaults to None.
+        """
+        if models is None:
+            return
+
+        for model in models:
+            if issubclass(Neo4jRelationship, model) or issubclass(Neo4jNode, model):
+                self.models.append(model)
 
     async def connect(self, uri: str | None = None, auth: tuple[str, str] | None = None) -> None:
         """
