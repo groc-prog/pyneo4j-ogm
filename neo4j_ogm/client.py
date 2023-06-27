@@ -10,7 +10,7 @@ from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j_ogm.exceptions import InvalidConstraintEntity, MissingDatabaseURI, NotConnectedToDatabase
 
 
-class BatchTransaction(TypedDict):
+class TBatchTransaction(TypedDict):
     """
     Dictionary type definition for a batched transaction.
     """
@@ -139,12 +139,12 @@ class Neo4jClient:
         return results, meta
 
     @ensure_connection
-    async def batch(self, transactions: list[BatchTransaction]) -> list[tuple[list[list[Any]], list[str]]]:
+    async def batch(self, transactions: list[TBatchTransaction]) -> list[tuple[list[list[Any]], list[str]]]:
         """
         Run a batch query.
 
         Args:
-            transactions (list[BatchTransaction]): A list of queries with their parameters
+            transactions (list[TBatchTransaction]): A list of queries with their parameters
 
         Raises:
             exc: A exception if the batch query fails

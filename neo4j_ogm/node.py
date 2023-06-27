@@ -32,9 +32,9 @@ class Neo4jNode(BaseModel):
     def __init__(self) -> None:
         super().__init__()
 
-        for key, _ in self.__dict__.items():
-            if hasattr(self.__dict__[key], "build_source"):
-                self.__dict__[key].build_source(self.__class__)
+        for _, field in self.__dict__.items():
+            if hasattr(field, "build_source"):
+                field.build_source(self.__class__)
 
     def __init_subclass__(cls) -> None:
         """
