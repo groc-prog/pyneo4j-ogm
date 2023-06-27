@@ -193,4 +193,7 @@ class Neo4jNode(BaseModel):
         setattr(self, "_destroyed", True)
 
     @classmethod
-    async def update_one(filters:)
+    async def update_one(
+        cls, filters: dict[str, Any], properties: dict[str, Any], return_updated: bool = False
+    ) -> T | None:
+        logging.debug("Updating first node matched with filters %s with properties %s", filters, properties)

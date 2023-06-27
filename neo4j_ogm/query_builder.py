@@ -1,5 +1,5 @@
 """
-This module provides a helper class for converting property filters used in methods like `update_one` or
+This module provides a helper class for converting filter expressions used in methods like `update_one` or
 `find_many` into their corresponding cypher queries.
 """
 from copy import deepcopy
@@ -27,7 +27,7 @@ COMBINED_OPERANTS: dict[str, Any] = {
 
 class QueryBuilder:
     """
-    Helper class for building `WHERE` clauses based in the provided filter operants.
+    Helper class for building `WHERE` clauses based in the provided filter expressions.
     """
 
     parameters: dict[str, Any] = {}
@@ -41,7 +41,7 @@ class QueryBuilder:
 
         Args:
             ref (str): The ref to use for the entity the filters are applied on
-            filters (dict[str, Any]): The filters containing the operants
+            filters (dict[str, Any]): The filters containing expressions
 
         Returns:
             tuple[str, dict[str, Any]]: The complete query string and the query parameters
@@ -51,30 +51,32 @@ class QueryBuilder:
         self.queries = []
         self.ref = ref
 
-        # Replace $eq shorthand with operant so all top-level operants can be treated the same
-        for property_name, operants_or_value in parsed_filters.items():
-            if not isinstance(operants_or_value, dict):
-                parsed_filters[property_name] = {"$eq": operants_or_value}
+        # Replace $eq shorthand with operant so all top-level expressions can be treated the same
+        for property_name, expression_or_value in parsed_filters.items():
+            if not isinstance(expression_or_value, dict):
+                parsed_filters[property_name] = {"$eq": expression_or_value}
 
-        for property_name, operants in parsed_filters.items():
+        for property_name, expression in parsed_filters.items():
             self.property_name = property_name
 
-            for operant_name, operant_value in operants.items():
+            for operant, expression_or_value in expression.items():
                 query = ""
                 parameter = {}
 
-                # Build partial query string based on the operant type
-                if operant_name in BASIC_OPERANTS:
-                    query, parameter = self._build_basic_operant(operant_name, operant_value)
-                elif operant_name in COMBINED_OPERANTS:
-                    query, parameter = self._build_combined_operant(operant_name, operant_value)
-                elif operant_name == "$exists":
-                    query = self._build_exists_operant(operant_value)
-                elif operant_name == "$not":
-                    query, parameter = self._build_not_operant(operant_value)
+                # Build partial query string based on the operant
+                if operant in BASIC_OPERANTS:
+                    query, parameter = self._build_basic_operant(operant, expression_or_value)
+                elif operant in COMBINED_OPERANTS:
+                    query, parameter = self._build_combined_operant(operant, expression_or_value)
+                elif operant == "$element_id":
+                    query = self._build_element_id_operant(expression_or_value)
+                elif operant == "$exists":
+                    query = self._build_exists_operant(expression_or_value)
+                elif operant == "$not":
+                    query, parameter = self._build_not_operant(expression_or_value)
                 else:
-                    # If not operant is defined, treat it as `$eq` operant
-                    query, parameter = self._build_basic_operant("$eq", operant_value)
+                    # If no operant is defined, treat it as `$eq` expression
+                    query, parameter = self._build_basic_operant("$eq", expression_or_value)
 
                 self.queries.append(query)
                 self.parameters = {**self.parameters, **parameter}
@@ -84,16 +86,16 @@ class QueryBuilder:
         return query, self.parameters
 
     def _build_basic_operant(
-        self, operant_type: str, operant_value: Any, param_prefix: str | None = None
+        self, operant: str, value: Any, parameter_prefix: str | None = None
     ) -> tuple[str, dict[str, Any]]:
         """
         Builds partial query strings with basic operants.
 
         Args:
-            operant_type (str): The type of operant to use for the query
-            operant_value (Any): The value applied used with the operant
-            param_prefix (str | None, optional): A optional prefix to use for the parameter. Needed
-                for combined operants to prevent duplicate parameters. Defaults to None.
+            operant (str): The operant to use for the query
+            value (Any): The value used with the operant
+            parameter_prefix (str | None, optional): A optional prefix to use for the parameter. Needed
+                for combined expressions to prevent duplicate parameters. Defaults to None.
 
         Returns:
             tuple[str, dict[str, Any]]: The query and parameters for the basic operant
@@ -101,13 +103,40 @@ class QueryBuilder:
         parameter: dict[str, Any] = {}
 
         parameter_name = (
-            f"{self.property_name}__{operant_type[1:]}"
-            if param_prefix is None
-            else f"{self.property_name}__{param_prefix}_{operant_type[1:]}"
+            f"{self.property_name}__{operant[1:]}"
+            if parameter_prefix is None
+            else f"{self.property_name}__{parameter_prefix}_{operant[1:]}"
         )
 
-        query = f"{self.ref}.{self.property_name} {BASIC_OPERANTS[operant_type]} ${parameter_name}"
-        parameter[parameter_name] = operant_value
+        query = f"{self.ref}.{self.property_name} {BASIC_OPERANTS[operant]} ${parameter_name}"
+        parameter[parameter_name] = value
+
+        return query, parameter
+
+    def _build_element_id_operant(
+        self, element_id: str, parameter_prefix: str | None = None
+    ) -> tuple[str, dict[str, Any]]:
+        """
+        Builds a element id query.
+
+        Args:
+            element_id (str): The element id to filter by
+            parameter_prefix (str | None, optional): A optional prefix to use for the parameter. Needed
+                for combined expressions to prevent duplicate parameters. Defaults to None.
+
+        Returns:
+            tuple[str, dict[str, Any]]: The query and parameters for the `$element_id` operant
+        """
+        parameter: dict[str, Any] = {}
+
+        parameter_name = (
+            f"{self.property_name}__element_id"
+            if parameter_prefix is None
+            else f"{self.property_name}__{parameter_prefix}_element_id"
+        )
+
+        query = f"elementId({self.ref}) = ${parameter_name}"
+        parameter[parameter_name] = element_id
 
         return query, parameter
 
@@ -123,57 +152,59 @@ class QueryBuilder:
         """
         return f"{self.ref}.{self.property_name} IS NOT NULL" if exists else f"{self.ref}.{self.property_name} IS NULL"
 
-    def _build_not_operant(self, operant_value: Any, param_prefix: str | None = None) -> tuple[str, dict[str, Any]]:
+    def _build_not_operant(self, value: Any, parameter_prefix: str | None = None) -> tuple[str, dict[str, Any]]:
         """
         Builds a `$not` query.
 
         Args:
-            operant_value (Any): The query operator dictionary
-            param_prefix (str | None, optional): A optional prefix to use for the parameter. Needed
-                for combined operants to prevent duplicate parameters. Defaults to None.
+            value (Any): The query operator dictionary
+            parameter_prefix (str | None, optional): A optional prefix to use for the parameter. Needed
+                for combined expressions to prevent duplicate parameters. Defaults to None.
 
         Returns:
             tuple[str, dict[str, Any]]: The query and parameters for the `$not` operant
         """
         # Only first key-value pair is used
-        not_operant_type, not_operator_value = next(iter(cast(dict, operant_value).items()))  #
+        operant, operant_value = next(iter(cast(dict, value).items()))  #
 
-        prefix = f"{param_prefix}_not" if param_prefix is not None else "not"
+        prefix = f"{parameter_prefix}_not" if parameter_prefix is not None else "not"
         # Build basic operant
         basic_operant_query, basic_operant_parameter = self._build_basic_operant(
-            not_operant_type, not_operator_value, param_prefix=prefix
+            operant, operant_value, parameter_prefix=prefix
         )
 
         query = f"NOT ({basic_operant_query})"
         return query, basic_operant_parameter
 
     def _build_combined_operant(
-        self, operant_type: str, operants: list[dict[str, Any]], param_prefix: str | None = None
+        self, operant: str, expressions: list[dict[str, Any]], parameter_prefix: str | None = None
     ) -> tuple[str, dict[str, Any]]:
         """
         Builds a combined operant.
 
         Args:
-            operant_type (str): Operant type to build
-            operants (list[dict[str, Any]]): The operants nested inside the combined operant
-            param_prefix (str | None, optional): A optional prefix to use for the parameter. Needed
-                for combined operants to prevent duplicate parameters. Defaults to None.
+            operant (str): Operant type to build
+            expressions (list[dict[str, Any]]): The expressions nested inside the combined operant
+            parameter_prefix (str | None, optional): A optional prefix to use for the parameter. Needed
+                for combined expressions to prevent duplicate parameters. Defaults to None.
 
         Returns:
             tuple[str, dict[str, Any]]: The query and parameters for the combined operant
         """
-        prefix = f"{param_prefix}_{operant_type[1:]}" if param_prefix is not None else operant_type[1:]
+        prefix = f"{parameter_prefix}_{operant[1:]}" if parameter_prefix is not None else operant[1:]
         queries = []
         parameters = {}
 
-        for operant in operants:
-            for operant_name, operant_value in operant.items():
+        for operant_type in expressions:
+            for operant_name, operant_value in operant_type.items():
                 query = ""
                 parameter = {}
 
                 # Check all possible options again because combined operants can include all other operants
                 if operant_name in BASIC_OPERANTS:
                     query, parameter = self._build_basic_operant(operant_name, operant_value, prefix)
+                elif operant_name == "$element_id":
+                    query = self._build_element_id_operant(operant_value, prefix)
                 elif operant_name == "$exists":
                     query = self._build_exists_operant(operant_value)
                 elif operant_name == "$not":
@@ -186,5 +217,5 @@ class QueryBuilder:
                 queries.append(query)
                 parameters = {**parameters, **parameter}
 
-        query = f"({f' {COMBINED_OPERANTS[operant_type]} '.join(queries)})"
+        query = f"({f' {COMBINED_OPERANTS[operant]} '.join(queries)})"
         return query, parameters
