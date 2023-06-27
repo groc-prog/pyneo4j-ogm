@@ -35,7 +35,7 @@ class QueryBuilder:
     queries: list[str] = []
     ref: str = ""
 
-    def build_operant_queries(self, ref: str, filters: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    def build_operant_query(self, ref: str, filters: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """
         Builds a `WHERE` clauses with the given operants in the filters.
 
@@ -80,7 +80,7 @@ class QueryBuilder:
                 self.parameters = {**self.parameters, **parameter}
 
         # Build final query string
-        query = f"WHERE {' AND '.join(self.queries)}"
+        query = f"{' AND '.join(self.queries)}"
         return query, self.parameters
 
     def _build_basic_operant(
@@ -101,9 +101,9 @@ class QueryBuilder:
         parameter: dict[str, Any] = {}
 
         parameter_name = (
-            f"{self.property_name}_{operant_type[1:]}"
+            f"{self.property_name}__{operant_type[1:]}"
             if param_prefix is None
-            else f"{self.property_name}_{param_prefix}_{operant_type[1:]}"
+            else f"{self.property_name}__{param_prefix}_{operant_type[1:]}"
         )
 
         query = f"{self.ref}.{self.property_name} {BASIC_OPERANTS[operant_type]} ${parameter_name}"

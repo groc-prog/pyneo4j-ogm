@@ -10,6 +10,7 @@ from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.client import Neo4jClient
 from neo4j_ogm.exceptions import InflationFailure, UnexpectedEmptyResult
+from neo4j_ogm.query_builder import QueryBuilder
 from neo4j_ogm.utils import ensure_alive, validate_instance
 
 T = TypeVar("T", bound="Neo4jNode")
@@ -24,7 +25,8 @@ class Neo4jNode(BaseModel):
     __labels__: tuple[str]
     __dict_fields = set()
     __model_fields = set()
-    _client: Neo4jClient = PrivateAttr()
+    _client: Neo4jClient = PrivateAttr(default=Neo4jClient())
+    _query_builder: QueryBuilder = PrivateAttr(default=QueryBuilder())
     _modified_fields: set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: str | None = PrivateAttr(default=None)
@@ -43,9 +45,6 @@ class Neo4jNode(BaseModel):
         # Check if relationship type is set, if not fall back to model name
         if not hasattr(cls, "__labels__"):
             cls.__labels__ = tuple(cls.__name__)
-
-        logging.debug("Initializing client for model %s", cls.__name__)
-        cls._client = Neo4jClient()
 
         for field, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if field is of type None
