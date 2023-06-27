@@ -191,3 +191,6 @@ class Neo4jNode(BaseModel):
 
         logging.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
+
+    @classmethod
+    async def update_one(filters:)
