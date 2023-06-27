@@ -6,7 +6,7 @@ from typing import Callable
 
 from neo4j.graph import Node
 
-from neo4j_ogm.core.exceptions import InstanceDestroyed, InstanceNotHydrated, UnknownRelationshipDirection
+from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, UnknownRelationshipDirection
 
 
 class RelationshipDirection(str, Enum):

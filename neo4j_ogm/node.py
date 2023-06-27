@@ -8,9 +8,9 @@ from typing import Any, TypeVar, cast
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.core.exceptions import InflationFailure, UnexpectedEmptyResult
-from neo4j_ogm.core.utils import ensure_alive, validate_instance
+from neo4j_ogm.client import Neo4jClient
+from neo4j_ogm.exceptions import InflationFailure, UnexpectedEmptyResult
+from neo4j_ogm.utils import ensure_alive, validate_instance
 
 T = TypeVar("T", bound="Neo4jNode")
 

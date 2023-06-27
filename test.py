@@ -5,10 +5,10 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
-from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.core.fields import WithOptions
-from neo4j_ogm.core.node import Neo4jNode
-from neo4j_ogm.core.relationship_property import RelationshipProperty
+from neo4j_ogm.client import Neo4jClient
+from neo4j_ogm.fields import WithOptions
+from neo4j_ogm.node import Neo4jNode
+from neo4j_ogm.relationship_property import RelationshipProperty
 
 logging.basicConfig(level=logging.DEBUG)
 

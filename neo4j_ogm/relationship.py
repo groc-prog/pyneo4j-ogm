@@ -9,9 +9,9 @@ from typing import Any, Callable, TypeVar, cast
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.core.exceptions import InflationFailure, InstanceNotHydrated, UnexpectedEmptyResult
-from neo4j_ogm.core.utils import RelationshipDirection, build_relationship_match_clause, ensure_alive, validate_instance
+from neo4j_ogm.client import Neo4jClient
+from neo4j_ogm.exceptions import InflationFailure, InstanceNotHydrated, UnexpectedEmptyResult
+from neo4j_ogm.utils import RelationshipDirection, build_relationship_match_clause, ensure_alive, validate_instance
 
 T = TypeVar("T", bound="Neo4jRelationship")
 

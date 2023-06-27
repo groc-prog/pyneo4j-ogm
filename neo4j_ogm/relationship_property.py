@@ -7,11 +7,11 @@ from typing import TypeVar
 
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.core.exceptions import InvalidRelationshipModelOrType, InvalidTargetModel, UnregisteredModel
-from neo4j_ogm.core.node import Neo4jNode
-from neo4j_ogm.core.relationship import Neo4jRelationship
-from neo4j_ogm.core.utils import RelationshipDirection
+from neo4j_ogm.client import Neo4jClient
+from neo4j_ogm.exceptions import InvalidRelationshipModelOrType, InvalidTargetModel, UnregisteredModel
+from neo4j_ogm.node import Neo4jNode
+from neo4j_ogm.relationship import Neo4jRelationship
+from neo4j_ogm.utils import RelationshipDirection
 
 T = TypeVar("T")
 

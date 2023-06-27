@@ -7,7 +7,7 @@ from typing import Any, Callable, LiteralString, TypedDict
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
-from neo4j_ogm.core.exceptions import InvalidConstraintEntity, MissingDatabaseURI, NotConnectedToDatabase
+from neo4j_ogm.exceptions import InvalidConstraintEntity, MissingDatabaseURI, NotConnectedToDatabase
 
 
 class BatchTransaction(TypedDict):
@@ -62,8 +62,8 @@ class Neo4jClient:
             models (list[Neo4jRelationship  |  Neo4jNode] | None, optional): Models available to the
             client. Defaults to None.
         """
-        from neo4j_ogm.core.node import Neo4jNode
-        from neo4j_ogm.core.relationship import Neo4jRelationship
+        from neo4j_ogm.node import Neo4jNode
+        from neo4j_ogm.relationship import Neo4jRelationship
 
         if models is None:
             return
