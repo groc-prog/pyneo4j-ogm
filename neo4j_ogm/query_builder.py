@@ -1,40 +1,14 @@
-"""
-COMPARISON OPERATORS
-$eq
-$ne
-$gt
-$gte
-$lt
-$lte
-$in
-$nin
-$contains
-$startsWith
-$endsWith
-$regex
-
-LOGICAL OPERATORS
-$and
-$or
-$xor
-$not
-$all
-
-ELEMENT OPERATORS
-$exists
-
-ARRAY OPERATORS
-$size
-"""
-
-
 from copy import deepcopy
 from typing import Any
 
-from neo4j_ogm.exceptions import InvalidOperant
+from neo4j_ogm.exceptions import InvalidOperator
 
 
 class QueryBuilder:
+    """
+    Builder class for generating queries from expressions.
+    """
+
     __comparison_operator: dict[str, str] = {
         "$eq": "{property_name} = {value}",
         "$ne": "NOT({property_name} = {value})",
@@ -56,18 +30,42 @@ class QueryBuilder:
     property_name: str
     ref: str
 
-    def build(self, query: dict[str, Any], ref: str = "n") -> tuple[str, dict[str, Any]]:
-        normalized_expressions = self._normalize_expressions(query=query)
+    def build_node_query(self, expressions: dict[str, Any], ref: str = "n") -> tuple[str, dict[str, Any]]:
+        """
+        Builds a query for filtering node properties with the given operators.
+
+        Args:
+            expressions (dict[str, Any]): The expressions defining the operators.
+            ref (str, optional): The variable to use inside the generated query. Defaults to "n".
+
+        Returns:
+            tuple[str, dict[str, Any]]: The generated query and parameters.
+        """
+        normalized_expressions = self._normalize_expressions(expressions=expressions)
         self.ref = ref
 
         return self._build_nested_expressions(normalized_expressions)
 
     def _build_nested_expressions(self, expressions: dict[str, Any], level: int = 0) -> tuple[str, dict[str, Any]]:
+        """
+        Builds nested operators defined in provided expressions.
+
+        Args:
+            expressions (dict[str, Any]): The expressions to build the query from.
+            level (int, optional): The recursion depth level. Should not be modified outside the function itself.
+                Defaults to 0.
+
+        Raises:
+            InvalidOperator: If the `expressions` parameter is not a valid dict.
+
+        Returns:
+            tuple[str, dict[str, Any]]: The generated query and parameters.
+        """
         complete_parameters: dict[str, Any] = {}
         partial_queries: list[str] = []
 
         if not isinstance(expressions, dict):
-            raise InvalidOperant(f"Expressions must be instance of dict, got {type(expressions)}")
+            raise InvalidOperator(f"Expressions must be instance of dict, got {type(expressions)}")
 
         for property_or_operator, expression_or_value in expressions.items():
             parameters = {}
@@ -132,14 +130,49 @@ class QueryBuilder:
         Args:
             exists (bool): Whether the query should check if the property exists or not.
 
+        Raises:
+            InvalidOperator: If the operator value is not a bool.
+
         Returns:
             str: The generated query.
         """
         if not isinstance(exists, bool):
-            raise InvalidOperant(f"$exists operator value must be a instance of bool, got {type(exists)}")
+            raise InvalidOperator(f"$exists operator value must be a instance of bool, got {type(exists)}")
 
         query = "IS NULL" if exists is False else "IS NOT NULL"
         return query
+
+    def _build_where_operator(self, expression: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        """
+        Applies a raw value as a query. The operator must contain a `$query` key with the query and a `$parameters`
+        key with the required parameters for the query.
+
+        Args:
+            expression (dict[str, Any]): The expressions defined for the `$where` operator.
+
+        Raises:
+            InvalidOperator: If the operator value is not a dict, required keys are missing or the $parameters key
+                is not a valid dict.
+
+        Returns:
+            tuple[str, dict[str, Any]]: The generated query and parameters.
+        """
+        if not isinstance(expression, dict) or "$query" not in expression or "$parameters" not in expression:
+            raise InvalidOperator("$where operator value must be a dict with a $query and $parameters key")
+
+        if not isinstance(expression["$parameters"], dict):
+            raise InvalidOperator(f"$parameters operator must a dict, got {type(expression['$parameters'])}")
+
+        complete_query: str = expression["$query"]
+        complete_parameters = {}
+
+        for parameter, value in expression["$parameters"].items():
+            parameter_name = self._get_parameter_name()
+
+            complete_query = complete_query.replace(f"${parameter}", f"${parameter_name}")
+            complete_parameters[parameter_name] = value
+
+        return complete_query, complete_parameters
 
     def _build_not_operator(self, expression: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """
@@ -178,12 +211,24 @@ class QueryBuilder:
         return query, parameters
 
     def _build_all_operator(self, expressions: list[dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+        """
+        Builds a `ALL()` clause with the defined expressions.
+
+        Args:
+            expressions (list[dict[str, Any]]): Expressions to apply inside the `$all` operator.
+
+        Raises:
+            InvalidOperator: If the operator value is not a list.
+
+        Returns:
+            tuple[str, dict[str, Any]]: The generated query and parameters.
+        """
         self._variable_name_overwrite = "i"
         complete_parameters: dict[str, Any] = {}
         partial_queries: list[str] = []
 
         if not isinstance(expressions, list):
-            raise InvalidOperant(f"Value of $all operator must be list, got {type(expressions)}")
+            raise InvalidOperator(f"Value of $all operator must be list, got {type(expressions)}")
 
         for expression in expressions:
             query, parameters = self._build_nested_expressions(expressions=expression, level=1)
@@ -207,6 +252,9 @@ class QueryBuilder:
             operator (str): The logical operator.
             expressions (list[dict[str, Any]]): The expressions chained together by the operator.
 
+        Raises:
+            InvalidOperator: If the operator value is not a list.
+
         Returns:
             tuple[str, dict[str, Any]]: The query and parameters.
         """
@@ -214,7 +262,7 @@ class QueryBuilder:
         partial_queries: list[str] = []
 
         if not isinstance(expressions, list):
-            raise InvalidOperant(f"Value of {operator} operator must be list, got {type(expressions)}")
+            raise InvalidOperator(f"Value of {operator} operator must be list, got {type(expressions)}")
 
         for expression in expressions:
             nested_query, parameters = self._build_nested_expressions(expressions=expression, level=1)
@@ -267,19 +315,19 @@ class QueryBuilder:
 
         return f"{self.ref}.{self.property_name}"
 
-    def _normalize_expressions(self, query: dict[str, Any], level: int = 0) -> dict[str, Any]:
+    def _normalize_expressions(self, expressions: dict[str, Any], level: int = 0) -> dict[str, Any]:
         """
-        Normalizes and formats the provided query into a usable expressions for the builder.
+        Normalizes and formats the provided expressions into usable expressions for the builder.
 
         Args:
-            query (dict[str, Any]): The query to normalize
+            expressions (dict[str, Any]): The expressions to normalize
             level (int, optional): The recursion depth level. Should not be modified outside the function itself.
                 Defaults to 0.
 
         Returns:
             dict[str, Any]: The normalized expressions.
         """
-        normalized: dict[str, Any] = deepcopy(query)
+        normalized: dict[str, Any] = deepcopy(expressions)
 
         if isinstance(normalized, dict):
             # Transform values without a operator to a `$eq` operator

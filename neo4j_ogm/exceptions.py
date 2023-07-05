@@ -125,7 +125,7 @@ class TargetModelMismatch(Neo4jOGMException):
         super().__init__(f"Expected node model type {expected}, got {actual}", *args)
 
 
-class InvalidOperant(Neo4jOGMException):
+class InvalidOperator(Neo4jOGMException):
     """
     Exception which gets raised when a operant is invalid.
     """
