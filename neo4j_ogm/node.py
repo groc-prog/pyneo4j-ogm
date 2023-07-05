@@ -8,10 +8,9 @@ from typing import Any, TypeVar, cast
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.client import Neo4jClient
 from neo4j_ogm.exceptions import InflationFailure, UnexpectedEmptyResult
 from neo4j_ogm.query_builder import QueryBuilder
-from neo4j_ogm.utils import ensure_alive, validate_instance
+from neo4j_ogm.utils import ensure_alive
 
 T = TypeVar("T", bound="Neo4jNode")
 
@@ -23,42 +22,51 @@ class Neo4jNode(BaseModel):
     """
 
     __labels__: tuple[str]
-    __dict_fields = set()
-    __model_fields = set()
-    _client: Neo4jClient = PrivateAttr(default=Neo4jClient())
-    _query_builder: QueryBuilder = PrivateAttr(default=QueryBuilder())
-    _modified_fields: set[str] = PrivateAttr(default=set())
+    __dict_properties = set()
+    __model_properties = set()
+    _client = PrivateAttr()
+    _query_builder = PrivateAttr()
+    _modified_properties: set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: str | None = PrivateAttr(default=None)
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
-        for _, field in self.__dict__.items():
-            if hasattr(field, "build_source"):
-                field.build_source(self.__class__)
+        for _, property_name in self.__dict__.items():
+            if hasattr(property_name, "build_source"):
+                property_name.build_source(self.__class__)
 
     def __init_subclass__(cls) -> None:
         """
-        Filters BaseModel and dict instances in the models fields for serialization.
+        Filters BaseModel and dict instances in the models properties for serialization.
         """
         # Check if relationship type is set, if not fall back to model name
+        from neo4j_ogm.client import Neo4jClient
+
+        cls._client = Neo4jClient()
+        cls._query_builder = QueryBuilder()
+
         if not hasattr(cls, "__labels__"):
+            logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
             cls.__labels__ = tuple(cls.__name__)
 
-        for field, value in cls.__fields__.items():
-            # Check if value is None here to prevent breaking logic if field is of type None
+        logging.debug("Collecting dict and model fields")
+        for property_name, value in cls.__fields__.items():
+            # Check if value is None here to prevent breaking logic if property_name is of type None
             if value.type_ is not None:
                 if issubclass(value.type_, dict):
-                    cls.__dict_fields.add(field)
+                    cls.__dict_properties.add(property_name)
                 elif issubclass(value.type_, BaseModel):
-                    cls.__model_fields.add(field)
+                    cls.__model_properties.add(property_name)
 
         return super().__init_subclass__()
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name in self.__fields__ and not name.startswith("_"):
-            self._modified_fields.add(name)
+            logging.debug("Adding %s to modified properties", name)
+            self._modified_properties.add(name)
+
         return super().__setattr__(name, value)
 
     def deflate(self) -> dict[str, Any]:
@@ -73,12 +81,12 @@ class Neo4jNode(BaseModel):
 
         # Serialize nested BaseModel or dict instances to JSON strings
         logging.debug("Serializing nested dictionaries to JSON strings")
-        for field in self.__dict_fields:
-            deflated[field] = json.dumps(deflated[field])
+        for property_name in self.__dict_properties:
+            deflated[property_name] = json.dumps(deflated[property_name])
 
         logging.debug("Serializing nested models to JSON strings")
-        for field in self.__model_fields:
-            deflated[field] = self.__dict__[field].json()
+        for property_name in self.__model_properties:
+            deflated[property_name] = self.__dict__[property_name].json()
 
         return deflated
 
@@ -99,20 +107,21 @@ class Neo4jNode(BaseModel):
         inflated: dict[str, Any] = {}
 
         logging.debug("Inflating node to model instance")
-        for relationship_property in node.items():
-            property_name, property_value = relationship_property
+        for node_property in node.items():
+            property_name, property_value = node_property
 
-            if property_name in cls.__dict_fields or property_name in cls.__model_fields:
+            if property_name in cls.__dict_properties or property_name in cls.__model_properties:
+                logging.debug("Inflating models and dict properties")
                 try:
                     inflated[property_name] = json.loads(property_value)
                 except Exception as exc:
+                    logging.error("Failed to inflate property %s of model %s", property_name, cls.__name__)
                     raise InflationFailure(cls.__name__) from exc
             else:
                 inflated[property_name] = property_value
 
         return cls(_element_id=node.element_id, **inflated)
 
-    @validate_instance
     async def create(self) -> None:
         """
         Creates a new node from the current instance. After the method is finished, a newly created
@@ -121,7 +130,7 @@ class Neo4jNode(BaseModel):
         Raises:
             UnexpectedEmptyResult: Raised if the query did not return the created node
         """
-        logging.debug("Creating new node from model instance %s", self.__class__.__name__)
+        logging.info("Creating new node from model instance %s", self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
                 CREATE (n:{":".join(self.__labels__)} $properties)
@@ -138,9 +147,9 @@ class Neo4jNode(BaseModel):
 
         logging.debug("Hydrating instance values")
         setattr(self, "_element_id", cast(Node, results[0][0]).element_id)
+        logging.info("Created new node %s", self._element_id)
 
     @ensure_alive
-    @validate_instance
     async def update(self) -> None:
         """
         Updates the corresponding node in the database with the current instance values.
@@ -150,7 +159,7 @@ class Neo4jNode(BaseModel):
         """
         deflated = self.deflate()
 
-        logging.debug(
+        logging.info(
             "Updating node %s of model %s with current properties %s",
             self._element_id,
             self.__class__.__name__,
@@ -160,7 +169,7 @@ class Neo4jNode(BaseModel):
             query=f"""
                 MATCH (n:{":".join(self.__labels__)})
                 WHERE elementId(n) = $element_id
-                SET {", ".join([f"n.{field} = ${field}" for field in self._modified_fields])}
+                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in self._modified_properties])}
                 RETURN n
             """,
             parameters={"element_id": self._element_id, **deflated},
@@ -170,8 +179,10 @@ class Neo4jNode(BaseModel):
         if len(results) == 0 or len(results[0]) == 0:
             raise UnexpectedEmptyResult()
 
-        # Reset _modified_fields
-        self._modified_fields.clear()
+        # Reset _modified_properties
+        logging.debug("Resetting modified properties")
+        self._modified_properties.clear()
+        logging.info("Updated node %s", self._element_id)
 
     @ensure_alive
     async def delete(self) -> None:
@@ -179,7 +190,7 @@ class Neo4jNode(BaseModel):
         Deletes the corresponding node in the database and marks this instance as destroyed. If another
         method is called on this instance, an `InstanceDestroyed` will be raised.
         """
-        logging.debug("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
+        logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
         await self._client.cypher(
             query=f"""
                 MATCH (n:{":".join(self.__labels__)})
@@ -191,9 +202,42 @@ class Neo4jNode(BaseModel):
 
         logging.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
+        logging.info("Deleted node %s", self._element_id)
 
     @classmethod
-    async def update_one(
-        cls, filters: dict[str, Any], properties: dict[str, Any], return_updated: bool = False
-    ) -> T | None:
-        logging.debug("Updating first node matched with filters %s with properties %s", filters, properties)
+    async def find_one(cls, expressions: dict[str, Any] | None = None) -> T | None:
+        """
+        Finds the first node that matches the `expressions` and returns it. If no matching node is found, `None`
+        is returned instead.
+
+        Args:
+            expressions (dict[str, Any], optional): Expressions applied to the query. Defaults to {}.
+
+        Returns:
+            T | None: A instance of the model or None if no match is found.
+        """
+        logging.info("Getting first node model %s matching expressions %s", cls.__name__, expressions)
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions if expressions is not None else {}
+        )
+
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH (n:{":".join(cls.__labels__)})
+                {f'WHERE {expression_query}' if expressions is not None else ''}
+                RETURN n
+                LIMIT 1
+            """,
+            parameters=expression_parameters,
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0:
+            return None
+
+        return cls.inflate(results[0][0])
+
+    class Config:
+        validate_all = True
+        validate_assignment = True
+        revalidate_instances = "always"
