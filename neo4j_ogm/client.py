@@ -95,18 +95,18 @@ class Neo4jClient:
         self.uri = db_uri
         self.auth = db_auth
 
-        logging.debug("Connecting to database %s", self.uri)
+        logging.info("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth)
-        logging.debug("Connected to database")
+        logging.info("Connected to database")
 
     @ensure_connection
     async def close(self) -> None:
         """
         Closes the current connection to the client.
         """
-        logging.debug("Closing connection to database")
+        logging.info("Closing connection to database")
         await self._driver.close()
-        logging.debug("Connection to database closed")
+        logging.info("Connection to database closed")
 
     @ensure_connection
     async def cypher(
@@ -129,13 +129,13 @@ class Neo4jClient:
         async with self._driver.session() as session:
             parameters = parameters if parameters is not None else {}
 
-            logging.debug("Running query %s with parameters %s", query, parameters)
+            logging.info("Running query %s with parameters %s", query, parameters)
             result_data = await session.run(query=query, parameters=parameters)
 
             results = [list(r.values()) async for r in result_data]
             meta = list(result_data.keys())
 
-        logging.debug("Query completed")
+        logging.info("Query completed")
         return results, meta
 
     @ensure_connection
@@ -157,7 +157,7 @@ class Neo4jClient:
             tx = await session.begin_transaction()
 
             try:
-                logging.debug("Starting batch query")
+                logging.info("Starting batch query")
                 query_results: list[tuple[list[list[Any]], list[str]]] = []
 
                 for transaction in transactions:
@@ -178,16 +178,15 @@ class Neo4jClient:
                 logging.debug("Committing transactions")
                 await tx.commit()
             except Exception as exc:
+                logging.error("Exception during query: %s, cancelling transaction", str(exc))
                 tx.cancel()
                 raise exc
             finally:
                 logging.debug("Closing transaction")
                 await tx.close()
 
-        logging.debug("Batch query completed")
+        logging.info("Batch query completed")
         return query_results
-
-        # Sets a `UNIQUENESS` constraint on a node or relationship with the defined labels/type and properties
 
     @ensure_connection
     async def set_constraint(
@@ -210,7 +209,7 @@ class Neo4jClient:
         """
         if entity_type == "NODE":
             for label in labels_or_type:
-                logging.debug("Creating constraint %s with label %s", name, label)
+                logging.info("Creating constraint %s with label %s", name, label)
                 await self.cypher(
                     query="""
                         CREATE CONSTRAINT $name IF NOT EXISTS
@@ -224,7 +223,7 @@ class Neo4jClient:
                     },
                 )
         elif entity_type == "RELATIONSHIP":
-            logging.debug("Creating constraint %s", name)
+            logging.info("Creating constraint %s", name)
             await self.cypher(
                 query="""
                         CREATE CONSTRAINT $name IF NOT EXISTS
@@ -245,7 +244,7 @@ class Neo4jClient:
         """
         Deletes all nodes in the database.
         """
-        logging.debug("Deleting all nodes in database")
+        logging.warning("Deleting all nodes in database")
         await self.cypher("MATCH (node) DETACH DELETE node")
 
     @ensure_connection
@@ -256,7 +255,7 @@ class Neo4jClient:
         logging.debug("Discovering constraints")
         results, _ = await self.cypher(query="SHOW CONSTRAINTS")
 
-        logging.debug("Dropping %s constraints", len(results))
+        logging.warning("Dropping %s constraints", len(results))
         for constraint in results:
             logging.debug("Dropping constraint %s", constraint[1])
             await self.cypher(f"DROP CONSTRAINT {constraint[1]}")
