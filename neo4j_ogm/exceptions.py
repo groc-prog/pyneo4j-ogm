@@ -16,7 +16,7 @@ class NotConnectedToDatabase(Neo4jOGMException):
     """
 
     def __init__(self, *args: object) -> None:
-        super().__init__("Client is not connected to a database.", *args)
+        super().__init__("Client is not connected to a database", *args)
 
 
 class MissingDatabaseURI(Neo4jOGMException):
@@ -26,7 +26,7 @@ class MissingDatabaseURI(Neo4jOGMException):
     """
 
     def __init__(self, *args: object) -> None:
-        super().__init__("Trying to initialize client without providing connection URI.", *args)
+        super().__init__("Trying to initialize client without providing connection URI", *args)
 
 
 class InvalidConstraintEntity(Neo4jOGMException):
@@ -35,7 +35,7 @@ class InvalidConstraintEntity(Neo4jOGMException):
     """
 
     def __init__(self, *args: object) -> None:
-        super().__init__("Invalid constraint entity type.", *args)
+        super().__init__("Invalid constraint entity type", *args)
 
 
 class InflationFailure(Neo4jOGMException):
@@ -44,7 +44,7 @@ class InflationFailure(Neo4jOGMException):
     """
 
     def __init__(self, model: str, *args: object) -> None:
-        super().__init__(f"Failed to inflate object to {model} instance.", *args)
+        super().__init__(f"Failed to inflate object to {model} instance", *args)
 
 
 class InstanceNotHydrated(Neo4jOGMException):
@@ -53,7 +53,7 @@ class InstanceNotHydrated(Neo4jOGMException):
     """
 
     def __init__(self, *args: object) -> None:
-        super().__init__("Queries can not be run on instances which have not been hydrated.", *args)
+        super().__init__("Queries can not be run on instances which have not been hydrated", *args)
 
 
 class InstanceDestroyed(Neo4jOGMException):
@@ -62,7 +62,7 @@ class InstanceDestroyed(Neo4jOGMException):
     """
 
     def __init__(self, *args: object) -> None:
-        super().__init__("Queries can not be run on instances which have been destroyed.", *args)
+        super().__init__("Queries can not be run on instances which have been destroyed", *args)
 
 
 class UnexpectedEmptyResult(Neo4jOGMException):
@@ -71,7 +71,7 @@ class UnexpectedEmptyResult(Neo4jOGMException):
     """
 
     def __init__(self, *args: object) -> None:
-        super().__init__("The query was expected to return a result, but did not.", *args)
+        super().__init__("The query was expected to return a result, but did not", *args)
 
 
 class UnknownRelationshipDirection(Neo4jOGMException):
@@ -89,7 +89,7 @@ class UnregisteredModel(Neo4jOGMException):
     """
 
     def __init__(self, unregistered_model: str, *args: object) -> None:
-        super().__init__(f"Model {unregistered_model} was not registered, but another model is using it.", *args)
+        super().__init__(f"Model {unregistered_model} was not registered, but another model is using it", *args)
 
 
 class InvalidTargetModel(Neo4jOGMException):
@@ -98,7 +98,7 @@ class InvalidTargetModel(Neo4jOGMException):
     """
 
     def __init__(self, target_model: str, *args: object) -> None:
-        super().__init__(f"Expected target model to be string or Neo4jNode, but got {type(target_model)}.", *args)
+        super().__init__(f"Expected target model to be string or Neo4jNode, but got {type(target_model)}", *args)
 
 
 class InvalidRelationshipModelOrType(Neo4jOGMException):
@@ -110,7 +110,7 @@ class InvalidRelationshipModelOrType(Neo4jOGMException):
         super().__init__(
             f"""
                 Expected relationship model or type to be string or Neo4jRelationship, but got
-                {type(relationship_or_type)}.
+                {type(relationship_or_type)}
             """,
             *args,
         )
@@ -122,4 +122,13 @@ class TargetModelMismatch(Neo4jOGMException):
     """
 
     def __init__(self, expected: str, actual: str, *args: object) -> None:
-        super().__init__(f"Expected node model type {expected}, got {actual}.", *args)
+        super().__init__(f"Expected node model type {expected}, got {actual}", *args)
+
+
+class InvalidOperant(Neo4jOGMException):
+    """
+    Exception which gets raised when a operant is invalid.
+    """
+
+    def __init__(self, message: str, *args: object) -> None:
+        super().__init__(f"Invalid operant: {message}", *args)
