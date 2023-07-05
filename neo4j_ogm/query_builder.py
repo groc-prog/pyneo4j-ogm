@@ -72,6 +72,7 @@ class QueryBuilder:
             query = ""
 
             if not property_or_operator.startswith("$"):
+                # Update current property name if the key is not a operator
                 self.property_name = property_or_operator
 
             if level == 0 and property_or_operator.startswith("$"):
@@ -80,6 +81,8 @@ class QueryBuilder:
                 query, parameters = self._build_not_operator(expression=expression_or_value)
             elif property_or_operator == "$size":
                 query, parameters = self._build_size_operator(expression=expression_or_value)
+            elif property_or_operator == "$where":
+                query, parameters = self._build_where_operator(expression=expression_or_value)
             elif property_or_operator == "$all":
                 query, parameters = self._build_all_operator(expressions=expression_or_value)
             elif property_or_operator == "$exists":
@@ -337,7 +340,11 @@ class QueryBuilder:
                     if operator in ["$not", "$size"] or not operator.startswith("$"):
                         normalized[operator] = {"$eq": value}
 
-            if len(normalized.keys()) > 1 and level > 0:
+            if (
+                len(normalized.keys()) > 1
+                and level > 0
+                and ("$query" not in normalized and "$parameters" not in normalized)
+            ):
                 # If more than one operator is defined in a dict, transform operators to `$and` operator
                 normalized = {"$and": [{operator: expression} for operator, expression in normalized.items()]}
 
@@ -345,7 +352,7 @@ class QueryBuilder:
         if isinstance(normalized, list):
             for index, expression in enumerate(normalized):
                 normalized[index] = self._normalize_expressions(expression, level + 1)
-        elif isinstance(normalized, dict):
+        elif isinstance(normalized, dict) and ("$query" not in normalized and "$parameters" not in normalized):
             for operator, expression in normalized.items():
                 normalized[operator] = self._normalize_expressions(expression, level + 1)
 
