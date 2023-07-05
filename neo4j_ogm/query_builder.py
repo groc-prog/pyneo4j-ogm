@@ -30,9 +30,9 @@ class QueryBuilder:
     property_name: str
     ref: str
 
-    def build_node_query(self, expressions: dict[str, Any], ref: str = "n") -> tuple[str, dict[str, Any]]:
+    def build_property_expression(self, expressions: dict[str, Any], ref: str = "n") -> tuple[str, dict[str, Any]]:
         """
-        Builds a query for filtering node properties with the given operators.
+        Builds a query for filtering properties with the given operators.
 
         Args:
             expressions (dict[str, Any]): The expressions defining the operators.

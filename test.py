@@ -1,22 +1,26 @@
-from neo4j_ogm.query_builder import QueryBuilder
+import asyncio
+import random
+from uuid import uuid4
 
-builder = QueryBuilder()
+from neo4j_ogm.client import Neo4jClient
+from neo4j_ogm.node import Neo4jNode
 
-test_query = {
-    # "field1": 1,
-    # "field2": {"$eq": 2},
-    # "field3": {"$contains": 3},
-    # "$elementId": 4,
-    # "$id": 5,
-    # "field7": {"$not": {"$gt": 12}},
-    # "field8": {"$or": [{"$eq": 8, "$gt": 9, "$lte": 30}, {"$ne": 20}]},
-    # "field9": {"$not": {"$exists": True}},
-    # "field10": {"$size": 1},
-    # "field11": {"$size": {"$gte": 12}},
-    # "field12": {"$all": [{"$gte": 12}, {"$lt": 13}, {"$eq": 14}]},
-    "field13": {"$where": {"$query": "n.abc <> $foo", "$parameters": {"foo": 2}}},
-    # "field14": {"$regex": "REGEX"},
-}
 
-build_query, build_parameters = builder.build_node_query(test_query)
-print("DONE")
+class TestModel(Neo4jNode):
+    __labels__ = ["Test", "Node"]
+
+    id: str
+    name: str
+    age: int
+
+
+async def main():
+    client = Neo4jClient()
+    await client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
+
+    result = await TestModel.find_one({"age": 99})
+
+    print("DONE")
+
+
+asyncio.run(main())
