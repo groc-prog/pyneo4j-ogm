@@ -9,10 +9,9 @@ from typing import Any, Callable, TypeVar, cast
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.client import Neo4jClient
 from neo4j_ogm.exceptions import InflationFailure, InstanceNotHydrated, UnexpectedEmptyResult
 from neo4j_ogm.query_builder import QueryBuilder
-from neo4j_ogm.utils import RelationshipDirection, build_relationship_match_clause, ensure_alive, validate_instance
+from neo4j_ogm.utils import RelationshipDirection, build_relationship_match_clause, ensure_alive
 
 T = TypeVar("T", bound="Neo4jRelationship")
 
@@ -45,7 +44,7 @@ class Neo4jRelationship(BaseModel):
     __dict_fields = set()
     __model_fields = set()
     _destroyed: bool = False
-    _client: Neo4jClient = PrivateAttr(default=Neo4jClient())
+    _client = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr(default=QueryBuilder())
     _modified_fields: set[str] = PrivateAttr(default=set())
     _start_node: Node | None = PrivateAttr(default=None)
@@ -58,6 +57,10 @@ class Neo4jRelationship(BaseModel):
         Filters BaseModel and dict instances in the models fields for serialization.
         """
         # Check if relationship type is set, if not fall back to model name
+        from neo4j_ogm.client import Neo4jClient
+
+        cls._client = Neo4jClient()
+
         if not hasattr(cls, "__type__"):
             cls.__type__ = cls.__name__
 
@@ -129,7 +132,6 @@ class Neo4jRelationship(BaseModel):
 
     @ensure_alive
     @ensure_connections
-    @validate_instance
     async def update(self) -> None:
         """
         Updates the corresponding relationship in the database with the current instance values.
@@ -177,7 +179,6 @@ class Neo4jRelationship(BaseModel):
 
     @ensure_alive
     @ensure_connections
-    @validate_instance
     async def delete(self) -> None:
         """
         Deletes the corresponding relationship in the database marks this instance as destroyed. If another

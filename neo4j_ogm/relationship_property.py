@@ -7,7 +7,6 @@ from typing import TypeVar
 
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.client import Neo4jClient
 from neo4j_ogm.exceptions import InvalidRelationshipModelOrType, InvalidTargetModel, UnregisteredModel
 from neo4j_ogm.node import Neo4jNode
 from neo4j_ogm.relationship import Neo4jRelationship
@@ -21,7 +20,7 @@ class RelationshipProperty(BaseModel):
     Property for defining relationships on node models.
     """
 
-    _client: Neo4jClient = PrivateAttr()
+    _client = PrivateAttr()
     _target_model: Neo4jNode = PrivateAttr()
     _relationship_model: Neo4jRelationship | None = PrivateAttr(default=None)
     _type: str = PrivateAttr()
@@ -31,7 +30,8 @@ class RelationshipProperty(BaseModel):
         """
         Initializes the client for this relationship property
         """
-        logging.debug("Initializing client for model %s", cls.__name__)
+        from neo4j_ogm.client import Neo4jClient
+
         cls._client = Neo4jClient()
 
         return super().__init_subclass__()

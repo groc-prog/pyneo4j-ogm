@@ -41,25 +41,6 @@ def ensure_alive(func: Callable):
     return decorator
 
 
-def validate_instance(func: Callable):
-    """
-    Decorator which validates the model fields before calling the method.
-
-    Raises:
-        ValidationError: Raised if the model validation fails
-    """
-
-    async def decorator(self, *args, **kwargs):
-        # Validate model and update current instance with validated fields
-        validated_instance = self.validate(self.dict())
-        self.__dict__.update(validated_instance)
-
-        result = await func(self, *args, **kwargs)
-        return result
-
-    return decorator
-
-
 def build_relationship_match_clause(
     direction: RelationshipDirection,
     start_node: Node,
