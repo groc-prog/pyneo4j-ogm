@@ -3,7 +3,7 @@ Database client for running queries against the connected database.
 """
 import logging
 from os import environ
-from typing import Any, Callable, LiteralString, Type, TypedDict
+from typing import Any, Callable, Type, TypedDict
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j.graph import Node, Relationship
@@ -16,7 +16,7 @@ class TBatchTransaction(TypedDict):
     Dictionary type definition for a batched transaction.
     """
 
-    query: LiteralString
+    query: str
     parameters: dict[str, Any] | None
 
 
@@ -107,13 +107,13 @@ class Neo4jClient:
 
     @ensure_connection
     async def cypher(
-        self, query: LiteralString, parameters: dict[str, Any] | None = None, resolve_models: bool = True
+        self, query: str, parameters: dict[str, Any] | None = None, resolve_models: bool = True
     ) -> tuple[list[list[Any]], list[str]]:
         """
         Runs the provided cypher query with given parameters against the database.
 
         Args:
-            query (LiteralString): Query to run.
+            query (str): Query to run.
             parameters (dict[str, Any]): Parameters passed to the transaction.
             resolve_models (bool, optional): Whether to try and resolve query results to their corresponding database
                 models or not. Defaults to True.

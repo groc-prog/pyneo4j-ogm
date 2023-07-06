@@ -3,7 +3,7 @@ This module holds the base node class `Neo4jNode` which is used to define databa
 """
 import json
 import logging
-from typing import Any, TypeVar, cast
+from typing import Any, Type, TypeVar, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
@@ -90,7 +90,7 @@ class Neo4jNode(BaseModel):
         return deflated
 
     @classmethod
-    def inflate(cls, node: Node) -> T:
+    def inflate(cls: Type[T], node: Node) -> T:
         """
         Inflates a node instance into a instance of the current model.
 
@@ -204,7 +204,7 @@ class Neo4jNode(BaseModel):
         logging.info("Deleted node %s", self._element_id)
 
     @classmethod
-    async def find_one(cls, expressions: dict[str, Any] | None = None) -> T | None:
+    async def find_one(cls: Type[T], expressions: dict[str, Any] | None = None) -> T | dict[str, Any] | None:
         """
         Finds the first node that matches `expressions` and returns it. If no matching node is found, `None`
         is returned instead.
@@ -213,7 +213,8 @@ class Neo4jNode(BaseModel):
             expressions (dict[str, Any], optional): Expressions applied to the query. Defaults to {}.
 
         Returns:
-            T | None: A instance of the model or None if no match is found.
+            T | dict[str, Any] | None: A instance of the model or a dictionary if the model has not been registered or
+                None if no match is found.
         """
         logging.info("Getting first node model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(
@@ -237,7 +238,7 @@ class Neo4jNode(BaseModel):
         return results[0][0]
 
     @classmethod
-    async def find_many(cls, expressions: dict[str, Any] | None = None) -> list[T]:
+    async def find_many(cls: Type[T], expressions: dict[str, Any] | None = None) -> list[T | dict[str, Any]]:
         """
         Finds the all nodes that matches `expressions` and returns them. If no matching nodes are found.
 
@@ -245,7 +246,8 @@ class Neo4jNode(BaseModel):
             expressions (dict[str, Any], optional): Expressions applied to the query. Defaults to {}.
 
         Returns:
-            list[T]: A list of instances of the model.
+            list[T | dict[str, Any]]: A list of instances of the model or a list of dictionaries if the model
+                has not been registered.
         """
         logging.info("Getting nodes of model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(
@@ -261,11 +263,7 @@ class Neo4jNode(BaseModel):
             parameters=expression_parameters,
         )
 
-        logging.debug("Checking if query returned a result")
-        if len(results) == 0 or len(results[0]) == 0:
-            return None
-
-        instances: list[T] = []
+        instances: list[T | dict[str, Any]] = []
 
         for result_list in results:
             for result in result_list:
@@ -274,6 +272,10 @@ class Neo4jNode(BaseModel):
         return instances
 
     class Config:
+        """
+        Pydantic configuration options.
+        """
+
         validate_all = True
         validate_assignment = True
         revalidate_instances = "always"
