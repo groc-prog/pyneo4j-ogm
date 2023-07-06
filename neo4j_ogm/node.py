@@ -10,7 +10,7 @@ from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm import client
 from neo4j_ogm.exceptions import InflationFailure, UnexpectedEmptyResult
-from neo4j_ogm.query_builder import QueryBuilder
+from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.utils import ensure_alive
 
 T = TypeVar("T", bound="Neo4jNode")

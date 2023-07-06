@@ -2,6 +2,12 @@ from copy import deepcopy
 from typing import Any
 
 from neo4j_ogm.exceptions import InvalidOperator
+from neo4j_ogm.queries.validators import (
+    ComparisonExpressionValidator,
+    ExpressionsValidator,
+    LogicalExpressionValidator,
+    Neo4jExpressionValidator,
+)
 
 
 class QueryBuilder:
@@ -9,26 +15,24 @@ class QueryBuilder:
     Builder class for generating queries from expressions.
     """
 
-    __comparison_operator: dict[str, str] = {
-        "$eq": "{property_name} = {value}",
-        "$ne": "NOT({property_name} = {value})",
-        "$gt": "{property_name} > {value}",
-        "$gte": "{property_name} >= {value}",
-        "$lt": "{property_name} < {value}",
-        "$lte": "{property_name} <= {value}",
-        "$in": "{value} IN {property_name}",
-        "$nin": "NOT({value} IN {property_name})",
-        "$contains": "{property_name} CONTAINS {value}",
-        "$startsWith": "{property_name} STARTS WITH {value}",
-        "$endsWith": "{property_name} ENDS WITH {value}",
-        "$regex": "{property_name} =~ {value}",
-    }
-    __logical_operator: dict[str, str] = {"$and": "AND", "$or": "OR", "$xor": "XOR"}
-    __neo4j_operator: dict[str, str] = {"$elementId": "elementId({ref}) = {value}", "$id": "ID({ref}) = {value}"}
+    __comparison_operators: dict[str, str] = {}
+    __logical_operators: dict[str, str] = {}
+    __neo4j_operators: dict[str, str] = {}
     _variable_name_overwrite: str | None = None
     _parameter_count: int = 0
     property_name: str
     ref: str
+
+    def __init__(self) -> None:
+        # Get operators and parsing format
+        for _, field in ComparisonExpressionValidator.__fields__.items():
+            self.__comparison_operators[field.alias] = field.field_info.extra["extra"]["parser"]
+
+        for _, field in LogicalExpressionValidator.__fields__.items():
+            self.__logical_operators[field.alias] = field.field_info.extra["extra"]["parser"]
+
+        for _, field in Neo4jExpressionValidator.__fields__.items():
+            self.__neo4j_operators[field.alias] = field.field_info.extra["extra"]["parser"]
 
     def build_property_expression(self, expressions: dict[str, Any], ref: str = "n") -> tuple[str, dict[str, Any]]:
         """
@@ -41,7 +45,7 @@ class QueryBuilder:
         Returns:
             tuple[str, dict[str, Any]]: The generated query and parameters.
         """
-        normalized_expressions = self._normalize_expressions(expressions=expressions)
+        normalized_expressions = self._validate_expressions(expressions=expressions)
         self.ref = ref
 
         return self._build_nested_expressions(normalized_expressions)
@@ -81,17 +85,15 @@ class QueryBuilder:
                 query, parameters = self._build_not_operator(expression=expression_or_value)
             elif property_or_operator == "$size":
                 query, parameters = self._build_size_operator(expression=expression_or_value)
-            elif property_or_operator == "$where":
-                query, parameters = self._build_where_operator(expression=expression_or_value)
             elif property_or_operator == "$all":
                 query, parameters = self._build_all_operator(expressions=expression_or_value)
             elif property_or_operator == "$exists":
                 query = self._build_exists_operator(exists=expression_or_value)
-            elif property_or_operator in self.__comparison_operator:
+            elif property_or_operator in self.__comparison_operators:
                 query, parameters = self._build_comparison_operator(
                     operator=property_or_operator, value=expression_or_value
                 )
-            elif property_or_operator in self.__logical_operator:
+            elif property_or_operator in self.__logical_operators:
                 query, parameters = self._build_logical_operator(
                     operator=property_or_operator, expressions=expression_or_value
                 )
@@ -118,7 +120,7 @@ class QueryBuilder:
         parameter_name = self._get_parameter_name()
         parameters = {}
 
-        query = self.__comparison_operator[operator].format(
+        query = self.__comparison_operators[operator].format(
             property_name=self._get_variable_name(),
             value=f"${parameter_name}",
         )
@@ -144,38 +146,6 @@ class QueryBuilder:
 
         query = "IS NULL" if exists is False else "IS NOT NULL"
         return query
-
-    def _build_where_operator(self, expression: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        """
-        Applies a raw value as a query. The operator must contain a `$query` key with the query and a `$parameters`
-        key with the required parameters for the query.
-
-        Args:
-            expression (dict[str, Any]): The expressions defined for the `$where` operator.
-
-        Raises:
-            InvalidOperator: If the operator value is not a dict, required keys are missing or the $parameters key
-                is not a valid dict.
-
-        Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
-        """
-        if not isinstance(expression, dict) or "$query" not in expression or "$parameters" not in expression:
-            raise InvalidOperator("$where operator value must be a dict with a $query and $parameters key")
-
-        if not isinstance(expression["$parameters"], dict):
-            raise InvalidOperator(f"$parameters operator must a dict, got {type(expression['$parameters'])}")
-
-        complete_query: str = expression["$query"]
-        complete_parameters = {}
-
-        for parameter, value in expression["$parameters"].items():
-            parameter_name = self._get_parameter_name()
-
-            complete_query = complete_query.replace(f"${parameter}", f"${parameter_name}")
-            complete_parameters[parameter_name] = value
-
-        return complete_query, complete_parameters
 
     def _build_not_operator(self, expression: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """
@@ -273,7 +243,7 @@ class QueryBuilder:
             partial_queries.append(nested_query)
             complete_parameters = {**complete_parameters, **parameters}
 
-        complete_query = f"({f' {self.__logical_operator[operator]} '.join(partial_queries)})"
+        complete_query = f"({f' {self.__logical_operators[operator]} '.join(partial_queries)})"
         return complete_query, complete_parameters
 
     def _build_neo4j_operator(self, operator: str, value: Any) -> tuple[str, dict[str, Any]]:
@@ -289,8 +259,8 @@ class QueryBuilder:
         """
         variable_name = self._get_parameter_name()
 
-        query = self.__neo4j_operator[operator].format(ref=self.ref, value=variable_name)
-        parameters = {f"{variable_name}": value}
+        query = self.__neo4j_operators[operator].format(ref=self.ref, value=variable_name)
+        parameters = {variable_name: value}
 
         return query, parameters
 
@@ -340,11 +310,7 @@ class QueryBuilder:
                     if operator in ["$not", "$size"] or not operator.startswith("$"):
                         normalized[operator] = {"$eq": value}
 
-            if (
-                len(normalized.keys()) > 1
-                and level > 0
-                and ("$query" not in normalized and "$parameters" not in normalized)
-            ):
+            if len(normalized.keys()) > 1 and level > 0:
                 # If more than one operator is defined in a dict, transform operators to `$and` operator
                 normalized = {"$and": [{operator: expression} for operator, expression in normalized.items()]}
 
@@ -357,3 +323,70 @@ class QueryBuilder:
                 normalized[operator] = self._normalize_expressions(expression, level + 1)
 
         return normalized
+
+    def _validate_expressions(self, expressions: dict[str, Any]) -> dict[str, Any]:
+        """
+        Validates given expressions.
+
+        Args:
+            expressions (dict[str, Any]): The expressions to validate.
+
+        Returns:
+            dict[str, Any]: The validated expressions.
+        """
+        validated_expressions: dict[str, Any] = {}
+
+        for operator_or_property, value_or_expression in self._normalize_expressions(expressions=expressions):
+            if operator_or_property.startswith("$") and operator_or_property in self.__neo4j_operators.items():
+                # Handle neo4j operators
+                validated = ExpressionsValidator.parse_obj({operator_or_property: value_or_expression})
+                validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)[
+                    operator_or_property
+                ]
+            else:
+                validated = ExpressionsValidator.parse_obj(value_or_expression)
+                validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)
+
+        # Remove empty objects which remained from pydantic validation
+        self._remove_invalid_expressions(validated_expressions)
+
+        return validated_expressions
+
+    def _remove_invalid_expressions(self, expressions: dict[str, Any], level: int = 0) -> None:
+        """
+        Recursively removes empty objects and nested fields which do not start with a `$` and are not top level keys
+        from nested dictionaries and lists.
+
+        Args:
+            expressions (dict[str, Any]): The expression to check.
+            level (int, optional): The recursion depth level. Should not be modified outside the function itself.
+                Defaults to 0.
+        """
+        operators_to_remove: list[str] = []
+
+        for operator, expression in expressions.items():
+            if isinstance(expression, dict):
+                # Search through all operators nested within
+                self._remove_invalid_expressions(expressions=expression, level=level + 1)
+
+                if not expression:
+                    operators_to_remove.append(operator)
+            elif isinstance(expression, list):
+                # Handle logical operators
+                indexes_to_remove: list[str] = []
+
+                for index, nested_expression in enumerate(expression):
+                    # Search through all operators nested within
+                    self._remove_invalid_expressions(expressions=expression, level=level + 1)
+
+                    if not nested_expression:
+                        indexes_to_remove.append(index)
+
+                # Remove all invalid indexes
+                for index in indexes_to_remove:
+                    expression.pop(index)
+            elif not operator.startswith("$") and level != 0:
+                operators_to_remove.append(operator)
+
+        for operator in operators_to_remove:
+            expressions.pop(operator)
