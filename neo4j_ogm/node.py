@@ -206,7 +206,7 @@ class Neo4jNode(BaseModel):
     @classmethod
     async def find_one(cls, expressions: dict[str, Any] | None = None) -> T | None:
         """
-        Finds the first node that matches the `expressions` and returns it. If no matching node is found, `None`
+        Finds the first node that matches `expressions` and returns it. If no matching node is found, `None`
         is returned instead.
 
         Args:
@@ -234,10 +234,19 @@ class Neo4jNode(BaseModel):
         if len(results) == 0 or len(results[0]) == 0:
             return None
 
-        return cls.inflate(results[0][0])
+        return results[0][0]
 
     @classmethod
     async def find_many(cls, expressions: dict[str, Any] | None = None) -> list[T]:
+        """
+        Finds the all nodes that matches `expressions` and returns them. If no matching nodes are found.
+
+        Args:
+            expressions (dict[str, Any], optional): Expressions applied to the query. Defaults to {}.
+
+        Returns:
+            list[T]: A list of instances of the model.
+        """
         logging.info("Getting nodes of model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(
             expressions=expressions if expressions is not None else {}
@@ -248,7 +257,6 @@ class Neo4jNode(BaseModel):
                 MATCH (n:{":".join(cls.__labels__)})
                 {f'WHERE {expression_query}' if expressions is not None else ''}
                 RETURN n
-                LIMIT 1
             """,
             parameters=expression_parameters,
         )
@@ -257,7 +265,13 @@ class Neo4jNode(BaseModel):
         if len(results) == 0 or len(results[0]) == 0:
             return None
 
-        return cls.inflate(results[0][0])
+        instances: list[T] = []
+
+        for result_list in results:
+            for result in result_list:
+                instances.append(result)
+
+        return instances
 
     class Config:
         validate_all = True

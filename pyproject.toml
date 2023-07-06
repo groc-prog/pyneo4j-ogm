@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "neo4j_ogm"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 pydantic = "^1.10.9"
 neo4j = "^5.9.0"
 

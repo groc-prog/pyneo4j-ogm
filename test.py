@@ -18,7 +18,7 @@ async def main():
     client = Neo4jClient(node_models=[TestModel])
     client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
 
-    a = await client.cypher("MATCH (n) RETURN n LIMIT 1")
+    a = await TestModel.find_many({"age": {"$gt": 30, "$lt": 35}})
 
     print("DONE")
 
