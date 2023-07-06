@@ -336,7 +336,7 @@ class QueryBuilder:
         """
         validated_expressions: dict[str, Any] = {}
 
-        for operator_or_property, value_or_expression in self._normalize_expressions(expressions=expressions):
+        for operator_or_property, value_or_expression in self._normalize_expressions(expressions=expressions).items():
             if operator_or_property.startswith("$") and operator_or_property in self.__neo4j_operators.items():
                 # Handle neo4j operators
                 validated = ExpressionsValidator.parse_obj({operator_or_property: value_or_expression})
@@ -364,6 +364,9 @@ class QueryBuilder:
         """
         operators_to_remove: list[str] = []
 
+        if not isinstance(expressions, dict):
+            return
+
         for operator, expression in expressions.items():
             if isinstance(expression, dict):
                 # Search through all operators nested within
@@ -377,7 +380,7 @@ class QueryBuilder:
 
                 for index, nested_expression in enumerate(expression):
                     # Search through all operators nested within
-                    self._remove_invalid_expressions(expressions=expression, level=level + 1)
+                    self._remove_invalid_expressions(expressions=nested_expression, level=level + 1)
 
                     if not nested_expression:
                         indexes_to_remove.append(index)
