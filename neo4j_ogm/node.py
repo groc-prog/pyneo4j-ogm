@@ -8,6 +8,7 @@ from typing import Any, TypeVar, cast
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
+from neo4j_ogm import client
 from neo4j_ogm.exceptions import InflationFailure, UnexpectedEmptyResult
 from neo4j_ogm.query_builder import QueryBuilder
 from neo4j_ogm.utils import ensure_alive
@@ -24,8 +25,8 @@ class Neo4jNode(BaseModel):
     __labels__: tuple[str]
     __dict_properties = set()
     __model_properties = set()
-    _client = PrivateAttr()
-    _query_builder = PrivateAttr()
+    _client: client.Neo4jClient = PrivateAttr()
+    _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: str | None = PrivateAttr(default=None)
@@ -41,10 +42,8 @@ class Neo4jNode(BaseModel):
         """
         Filters BaseModel and dict instances in the models properties for serialization.
         """
-        # Check if relationship type is set, if not fall back to model name
-        from neo4j_ogm.client import Neo4jClient
-
-        cls._client = Neo4jClient()
+        # Check if node labels is set, if not fall back to model name
+        cls._client = client.Neo4jClient()
         cls._query_builder = QueryBuilder()
 
         if not hasattr(cls, "__labels__"):

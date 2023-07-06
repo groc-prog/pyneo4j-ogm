@@ -3,7 +3,7 @@ Database client for running queries against the connected database.
 """
 import logging
 from os import environ
-from typing import Any, Callable, LiteralString, TypedDict
+from typing import Any, Callable, LiteralString, Type, TypedDict
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j.graph import Node, Relationship
@@ -26,7 +26,7 @@ def ensure_connection(func: Callable):
     any operations on it.
 
     Raises:
-        NotConnectedToDatabase: Raised if the client is not connected to a database
+        NotConnectedToDatabase: Raised if the client is not connected to a database.
     """
 
     async def decorator(self, *args, **kwargs):
@@ -46,7 +46,7 @@ class Neo4jClient:
 
     _instance: "Neo4jClient"
     _driver: AsyncDriver
-    database_models: list = []
+    node_models: list[Type] = []
     uri: str
     auth: tuple[str, str] | None
 
@@ -55,23 +55,19 @@ class Neo4jClient:
             cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def __init__(self, database_models: list | None = None):
+    def __init__(self, node_models: list | None = None):
         """
         Registers models to be used by the client.
 
         Args:
             models (list[Neo4jRelationship  |  Neo4jNode] | None, optional): Models available to the
-            client. Defaults to None.
+                client. Defaults to None.
         """
-        from neo4j_ogm.node import Neo4jNode
-        from neo4j_ogm.relationship import Neo4jRelationship
-
-        if database_models is None:
+        if node_models is None:
             return
 
-        for model in database_models:
-            if issubclass(model, (Neo4jRelationship, Neo4jNode)):
-                self.database_models.append(model)
+        for model in node_models:
+            self.node_models.append(model)
 
     def connect(self, uri: str | None = None, auth: tuple[str, str] | None = None) -> None:
         """
@@ -111,18 +107,20 @@ class Neo4jClient:
 
     @ensure_connection
     async def cypher(
-        self, query: LiteralString, parameters: dict[str, Any] | None = None, resolve_database_models: bool = True
+        self, query: LiteralString, parameters: dict[str, Any] | None = None, resolve_models: bool = True
     ) -> tuple[list[list[Any]], list[str]]:
         """
         Runs the provided cypher query with given parameters against the database.
 
         Args:
-            query (LiteralString): Query to run
-            parameters (dict[str, Any]): Parameters passed to the transaction
+            query (LiteralString): Query to run.
+            parameters (dict[str, Any]): Parameters passed to the transaction.
+            resolve_models (bool, optional): Whether to try and resolve query results to their corresponding database
+                models or not. Defaults to True.
 
         Returns:
             tuple[list[list[Any]], list[str]]: A tuple containing the query result and the names
-            of the returned variables
+                of the returned variables.
         """
         if parameters is None:
             parameters = {}
@@ -136,30 +134,35 @@ class Neo4jClient:
             results = [list(r.values()) async for r in result_data]
             meta = list(result_data.keys())
 
-            if resolve_database_models:
-                for result_list in results:
-                    for result in result_list:
-                        if isinstance(result, (Node, Relationship)):
-                            a = self._resolve_database_model(result)
-                            print("RESOLVED")
+        if resolve_models:
+            for list_index, result_list in enumerate(results):
+                for result_index, result in enumerate(result_list):
+                    model = self._resolve_database_model(result)
+
+                    if model is not None:
+                        results[list_index][result_index] = model.inflate(result)
 
         logging.info("Query completed")
         return results, meta
 
     @ensure_connection
-    async def batch(self, transactions: list[TBatchTransaction]) -> list[tuple[list[list[Any]], list[str]]]:
+    async def batch(
+        self, transactions: list[TBatchTransaction], resolve_models: bool = True
+    ) -> list[tuple[list[list[Any]], list[str]]]:
         """
         Run a batch query.
 
         Args:
-            transactions (list[TBatchTransaction]): A list of queries with their parameters
+            transactions (list[TBatchTransaction]): A list of queries with their parameters.
+            resolve_models (bool, optional): Whether to try and resolve query results to their corresponding database
+                models or not. Defaults to True.
 
         Raises:
-            exc: A exception if the batch query fails
+            exc: A exception if the batch query fails.
 
         Returns:
             list[tuple[list[list[Any]], list[str]]]: A list of results. The results are in the same
-            order as the queries where defined in
+                order as the queries where defined in.
         """
         async with self._driver.session() as session:
             tx = await session.begin_transaction()
@@ -180,6 +183,14 @@ class Neo4jClient:
 
                     results = [list(r.values()) async for r in result_data]
                     meta = list(result_data.keys())
+
+                    if resolve_models:
+                        for list_index, result_list in enumerate(results):
+                            for result_index, result in enumerate(result_list):
+                                model = self._resolve_database_model(result)
+
+                                if model is not None:
+                                    results[list_index][result_index] = model.inflate(result)
 
                     query_results.append((results, meta))
 
@@ -268,18 +279,24 @@ class Neo4jClient:
             logging.debug("Dropping constraint %s", constraint[1])
             await self.cypher(f"DROP CONSTRAINT {constraint[1]}")
 
-    def _resolve_database_model(self, query_result: Node | Relationship):
-        from neo4j_ogm.node import Neo4jNode
-        from neo4j_ogm.relationship import Neo4jRelationship
+    def _resolve_database_model(self, query_result: Node | Relationship) -> Type:
+        """
+        Resolves a query result to the corresponding database model, if one is registered.
 
+        Args:
+            query_result (Node | Relationship): The query result to try to resolve.
+
+        Returns:
+            Type: The type of the resolved database model.
+        """
         labels = set(query_result.labels) if isinstance(query_result, Node) else set(query_result.type)
 
-        for model in self.database_models:
+        for model in self.node_models:
             model_labels: set[str] = {}
 
-            if issubclass(model, Neo4jNode):
+            if hasattr(model, "__labels__"):
                 model_labels = set(model.__labels__)
-            elif issubclass(model, Neo4jRelationship):
+            elif hasattr(model, "__type__"):
                 model_labels = set(model.__type__)
 
             if labels == model_labels:

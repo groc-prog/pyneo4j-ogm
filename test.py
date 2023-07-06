@@ -15,10 +15,10 @@ class TestModel(Neo4jNode):
 
 
 async def main():
-    client = Neo4jClient(database_models=[TestModel])
+    client = Neo4jClient(node_models=[TestModel])
     client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
 
-    await client.cypher("MATCH (n) RETURN n LIMIT 1")
+    a = await client.cypher("MATCH (n) RETURN n LIMIT 1")
 
     print("DONE")
 
