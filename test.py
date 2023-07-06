@@ -4,8 +4,8 @@ from copy import deepcopy
 from typing import Generic, Type, TypeVar
 from uuid import uuid4
 
-from neo4j_ogm.client import Neo4jClient
-from neo4j_ogm.node import Neo4jNode
+from neo4j_ogm.core.client import Neo4jClient
+from neo4j_ogm.core.node import Neo4jNode
 
 
 class TestModel(Neo4jNode):
