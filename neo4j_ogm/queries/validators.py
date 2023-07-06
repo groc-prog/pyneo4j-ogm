@@ -13,8 +13,8 @@ class QueryOrder(str, Enum):
     Available query orders.
     """
 
-    ASC = "asc"
-    DESC = "desc"
+    ASC = "ASC"
+    DESC = "DESC"
 
 
 class QueryOptionsValidator(BaseModel):
@@ -22,10 +22,10 @@ class QueryOptionsValidator(BaseModel):
     Validation model for query options.
     """
 
-    limit: int | None = None
-    skip: int | None = None
-    sort: str | list[str] | None = None
-    order: QueryOrder | None = None
+    limit: Optional[int] = Field(default=None, ge=1)
+    skip: Optional[int] = Field(default=None, ge=0)
+    sort: Optional[Union[str, list[str]]] = None
+    order: Optional[QueryOrder] = None
 
     class Config:
         """

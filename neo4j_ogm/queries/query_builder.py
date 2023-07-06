@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from typing import Any
 
@@ -7,12 +8,13 @@ from neo4j_ogm.queries.validators import (
     ExpressionsValidator,
     LogicalExpressionValidator,
     Neo4jExpressionValidator,
+    QueryOptionsValidator,
 )
 
 
 class QueryBuilder:
     """
-    Builder class for generating queries from expressions.
+    Builder class for generating queries from expressions or options.
     """
 
     __comparison_operators: dict[str, str] = {}
@@ -45,10 +47,54 @@ class QueryBuilder:
         Returns:
             tuple[str, dict[str, Any]]: The generated query and parameters.
         """
-        normalized_expressions = self._validate_expressions(expressions=expressions)
         self.ref = ref
 
+        logging.debug("Building query for expressions %s", expressions)
+        normalized_expressions = self._validate_expressions(expressions=expressions)
+
         return self._build_nested_expressions(normalized_expressions)
+
+    def build_query_options(self, options: dict[str, Any], ref: str = "n") -> str:
+        """
+        Builds parts of a query with the given query options for paginating and sorting the result.
+
+        Args:
+            options (dict[str, Any]): The options for the result.
+            ref (str, optional): The variable to use inside the generated query. Defaults to "n".
+
+        Returns:
+            str: The generated query.
+        """
+        self.ref = ref
+        partial_queries: list[str] = []
+
+        logging.debug("Building query for options %s", options)
+        validated_options = QueryOptionsValidator.parse_obj(options)
+
+        if validated_options.sort and len(validated_options.sort) != 0:
+            partial_sort_query: list[str] = []
+
+            for property_name in (
+                validated_options.sort if isinstance(validated_options.sort, list) else [validated_options.sort]
+            ):
+                if property_name == "$elementId":
+                    partial_sort_query.append(f"elementId({self.ref})")
+                elif property_name == "$id":
+                    partial_sort_query.append(f"ID({self.ref})")
+                else:
+                    partial_sort_query.append(f"{self.ref}.{property_name}")
+
+            partial_queries.append(
+                f"ORDER BY {', '.join(partial_sort_query)} {validated_options.order if validated_options.order else ''}"
+            )
+
+        if validated_options.skip:
+            partial_queries.append(f"SKIP {validated_options.skip}")
+
+        if validated_options.limit:
+            partial_queries.append(f"LIMIT {validated_options.limit}")
+
+        return " ".join(partial_queries)
 
     def _build_nested_expressions(self, expressions: dict[str, Any], level: int = 0) -> tuple[str, dict[str, Any]]:
         """
@@ -300,6 +346,7 @@ class QueryBuilder:
         Returns:
             dict[str, Any]: The normalized expressions.
         """
+        logging.debug("Normalizing expressions %s", expressions)
         normalized: dict[str, Any] = deepcopy(expressions)
 
         if isinstance(normalized, dict):
@@ -308,17 +355,19 @@ class QueryBuilder:
                 if not isinstance(value, dict) and not isinstance(value, list):
                     # If the operator is a `$not` operator or just a property name, add a `$eq` operator
                     if operator in ["$not", "$size"] or not operator.startswith("$"):
+                        logging.debug("Normalizing operator %s and value %s to $eq operator", operator, value)
                         normalized[operator] = {"$eq": value}
 
             if len(normalized.keys()) > 1 and level > 0:
                 # If more than one operator is defined in a dict, transform operators to `$and` operator
+                logging.debug("Normalizing %s to $and operator", normalized)
                 normalized = {"$and": [{operator: expression} for operator, expression in normalized.items()]}
 
         # Normalize nested operators
         if isinstance(normalized, list):
             for index, expression in enumerate(normalized):
                 normalized[index] = self._normalize_expressions(expression, level + 1)
-        elif isinstance(normalized, dict) and ("$query" not in normalized and "$parameters" not in normalized):
+        elif isinstance(normalized, dict):
             for operator, expression in normalized.items():
                 normalized[operator] = self._normalize_expressions(expression, level + 1)
 
@@ -334,6 +383,7 @@ class QueryBuilder:
         Returns:
             dict[str, Any]: The validated expressions.
         """
+        logging.debug("Validating expressions %s", expressions)
         validated_expressions: dict[str, Any] = {}
 
         for operator_or_property, value_or_expression in self._normalize_expressions(expressions=expressions).items():
@@ -362,6 +412,7 @@ class QueryBuilder:
             level (int, optional): The recursion depth level. Should not be modified outside the function itself.
                 Defaults to 0.
         """
+        logging.debug("Removing invalid expressions from expression %s", expressions)
         operators_to_remove: list[str] = []
 
         if not isinstance(expressions, dict):
@@ -373,6 +424,7 @@ class QueryBuilder:
                 self._remove_invalid_expressions(expressions=expression, level=level + 1)
 
                 if not expression:
+                    logging.debug("Invalid operator found: %s omitted", operator)
                     operators_to_remove.append(operator)
             elif isinstance(expression, list):
                 # Handle logical operators
@@ -383,12 +435,14 @@ class QueryBuilder:
                     self._remove_invalid_expressions(expressions=nested_expression, level=level + 1)
 
                     if not nested_expression:
+                        logging.debug("Invalid operator found at index %s: %s omitted", index, operator)
                         indexes_to_remove.append(index)
 
                 # Remove all invalid indexes
                 for index in indexes_to_remove:
                     expression.pop(index)
             elif not operator.startswith("$") and level != 0:
+                logging.debug("Invalid operator found: %s omitted", operator)
                 operators_to_remove.append(operator)
 
         for operator in operators_to_remove:
