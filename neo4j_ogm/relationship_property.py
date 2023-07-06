@@ -44,7 +44,7 @@ class RelationshipProperty(BaseModel):
     ) -> None:
         # Check if model has been registered
         if isinstance(str, target_model):
-            model_class = [model for model in self._client.models if model.__class__.__name__ == target_model]
+            model_class = [model for model in self._client.database_models if model.__class__.__name__ == target_model]
 
             if len(model_class) == 0:
                 raise UnregisteredModel(unregistered_model=target_model)
@@ -57,7 +57,7 @@ class RelationshipProperty(BaseModel):
 
         # If relationship model has been registered, use model, else use provided string as type
         if isinstance(str, relationship_or_type):
-            model_class = [model for model in self._client.models if model.__class__.__name__ == target_model]
+            model_class = [model for model in self._client.database_models if model.__class__.__name__ == target_model]
 
             if len(model_class) == 0:
                 self._type = relationship_or_type

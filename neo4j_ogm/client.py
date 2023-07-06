@@ -6,6 +6,7 @@ from os import environ
 from typing import Any, Callable, LiteralString, TypedDict
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
+from neo4j.graph import Node, Relationship
 
 from neo4j_ogm.exceptions import InvalidConstraintEntity, MissingDatabaseURI, NotConnectedToDatabase
 
@@ -45,7 +46,7 @@ class Neo4jClient:
 
     _instance: "Neo4jClient"
     _driver: AsyncDriver
-    models: list = []
+    database_models: list = []
     uri: str
     auth: tuple[str, str] | None
 
@@ -54,7 +55,7 @@ class Neo4jClient:
             cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def __init__(self, models: list | None = None):
+    def __init__(self, database_models: list | None = None):
         """
         Registers models to be used by the client.
 
@@ -65,14 +66,14 @@ class Neo4jClient:
         from neo4j_ogm.node import Neo4jNode
         from neo4j_ogm.relationship import Neo4jRelationship
 
-        if models is None:
+        if database_models is None:
             return
 
-        for model in models:
-            if issubclass(Neo4jRelationship, model) or issubclass(Neo4jNode, model):
-                self.models.append(model)
+        for model in database_models:
+            if issubclass(model, (Neo4jRelationship, Neo4jNode)):
+                self.database_models.append(model)
 
-    async def connect(self, uri: str | None = None, auth: tuple[str, str] | None = None) -> None:
+    def connect(self, uri: str | None = None, auth: tuple[str, str] | None = None) -> None:
         """
         Establish a connection to a database.
 
@@ -110,7 +111,7 @@ class Neo4jClient:
 
     @ensure_connection
     async def cypher(
-        self, query: LiteralString, parameters: dict[str, Any] | None = None
+        self, query: LiteralString, parameters: dict[str, Any] | None = None, resolve_database_models: bool = True
     ) -> tuple[list[list[Any]], list[str]]:
         """
         Runs the provided cypher query with given parameters against the database.
@@ -134,6 +135,13 @@ class Neo4jClient:
 
             results = [list(r.values()) async for r in result_data]
             meta = list(result_data.keys())
+
+            if resolve_database_models:
+                for result_list in results:
+                    for result in result_list:
+                        if isinstance(result, (Node, Relationship)):
+                            a = self._resolve_database_model(result)
+                            print("RESOLVED")
 
         logging.info("Query completed")
         return results, meta
@@ -259,3 +267,22 @@ class Neo4jClient:
         for constraint in results:
             logging.debug("Dropping constraint %s", constraint[1])
             await self.cypher(f"DROP CONSTRAINT {constraint[1]}")
+
+    def _resolve_database_model(self, query_result: Node | Relationship):
+        from neo4j_ogm.node import Neo4jNode
+        from neo4j_ogm.relationship import Neo4jRelationship
+
+        labels = set(query_result.labels) if isinstance(query_result, Node) else set(query_result.type)
+
+        for model in self.database_models:
+            model_labels: set[str] = {}
+
+            if issubclass(model, Neo4jNode):
+                model_labels = set(model.__labels__)
+            elif issubclass(model, Neo4jRelationship):
+                model_labels = set(model.__type__)
+
+            if labels == model_labels:
+                return model
+
+        return None
