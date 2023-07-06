@@ -237,6 +237,29 @@ class Neo4jNode(BaseModel):
 
         return cls.inflate(results[0][0])
 
+    @classmethod
+    async def find_many(cls, expressions: dict[str, Any] | None = None) -> list[T]:
+        logging.info("Getting nodes of model %s matching expressions %s", cls.__name__, expressions)
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions if expressions is not None else {}
+        )
+
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH (n:{":".join(cls.__labels__)})
+                {f'WHERE {expression_query}' if expressions is not None else ''}
+                RETURN n
+                LIMIT 1
+            """,
+            parameters=expression_parameters,
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0:
+            return None
+
+        return cls.inflate(results[0][0])
+
     class Config:
         validate_all = True
         validate_assignment = True
