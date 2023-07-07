@@ -7,6 +7,7 @@ from uuid import uuid4
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import Neo4jNode
 from neo4j_ogm.fields import WithOptions
+from neo4j_ogm.queries.query_builder import QueryBuilder
 
 
 class TestModel(Neo4jNode):
@@ -37,12 +38,11 @@ class TestExceptionModel(Neo4jNode):
 
 
 async def main():
-    print("HERE")
     client = Neo4jClient()
     client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
-    await client.drop_constraints()
-    await client.drop_indexes()
-    await client.register_models(models=[ExceptionModel, TestExceptionModel])
+    # await client.drop_constraints()
+    # await client.drop_indexes()
+    await client.register_models(models=[TestModel])
     # await client.create_index("custom_index", "NODE", "TEXT", ["id", "name"], ["FOO", "BAR"])
     # await client.create_index("custom_index1", "RELATIONSHIP", "RANGE", ["id", "name"], "REL")
     # await client.create_index("custom_index2", "RELATIONSHIP", "POINT", ["id", "name"], "REL1")
@@ -50,7 +50,10 @@ async def main():
     # await client.create_constraint("custom_index4", "NODE", ["id", "name"], ["FOO1", "BAR1"])
     # await client.create_constraint("custom_index5", "RELATIONSHIP", ["id", "name"], "REL3")
 
-    # a = TestModel.find_many({"age": {"$gt": 30, "$lte": 35}})
+    a = await TestModel.find_many({"age": {"$gt": 30, "$lte": 35}}, {"limit": 2, "skip": 2})
+
+    # builder = QueryBuilder()
+    # b = builder.build_query_options({})
 
     print("DONE")
 

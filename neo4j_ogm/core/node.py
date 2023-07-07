@@ -8,9 +8,10 @@ from typing import Any, Type, TypeVar, cast
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import EntityTypes, IndexTypes, Neo4jClient
+from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.exceptions import InflationFailure, UnexpectedEmptyResult
 from neo4j_ogm.queries.query_builder import QueryBuilder
+from neo4j_ogm.queries.types import TypedQueryOptions
 from neo4j_ogm.utils import ensure_alive
 
 T = TypeVar("T", bound="Neo4jNode")
@@ -39,7 +40,7 @@ class Neo4jNode(BaseModel):
             if hasattr(property_name, "build_source"):
                 property_name.build_source(self.__class__)
 
-    async def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls) -> None:
         """
         Filters BaseModel and dict instances in the models properties for serialization.
         """
@@ -217,6 +218,8 @@ class Neo4jNode(BaseModel):
             T | dict[str, Any] | None: A instance of the model or a dictionary if the model has not been registered or
                 None if no match is found.
         """
+        a = await cls._client.cypher("MATCH (n) RETURN n")
+
         logging.info("Getting first node model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(
             expressions=expressions if expressions is not None else {}
@@ -239,7 +242,9 @@ class Neo4jNode(BaseModel):
         return results[0][0]
 
     @classmethod
-    async def find_many(cls: Type[T], expressions: dict[str, Any] | None = None) -> list[T | dict[str, Any]]:
+    async def find_many(
+        cls: Type[T], expressions: dict[str, Any] | None = None, options: TypedQueryOptions | None = None
+    ) -> list[T | dict[str, Any]]:
         """
         Finds the all nodes that matches `expressions` and returns them. If no matching nodes are found.
 
@@ -255,11 +260,14 @@ class Neo4jNode(BaseModel):
             expressions=expressions if expressions is not None else {}
         )
 
+        options_query = cls._query_builder.build_query_options(options=options if options else {})
+
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH (n:{":".join(cls.__labels__)})
                 {f'WHERE {expression_query}' if expressions is not None else ''}
                 RETURN n
+                {options_query}
             """,
             parameters=expression_parameters,
         )

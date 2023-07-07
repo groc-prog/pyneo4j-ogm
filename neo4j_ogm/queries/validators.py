@@ -87,6 +87,6 @@ class ExpressionsValidator(Neo4jExpressionValidator, LogicalExpressionValidator,
     """
 
     not_operator: Optional["ExpressionsValidator"] = Field(alias="$not")
-    all_operator: Optional["ExpressionsValidator"] = Field(alias="$all")
+    all_operator: Optional[list["ExpressionsValidator"]] = Field(alias="$all")
     size_operator: Optional["ComparisonExpressionValidator"] = Field(alias="$size")
     exists_operator: Optional[bool] = Field(alias="$exists")
