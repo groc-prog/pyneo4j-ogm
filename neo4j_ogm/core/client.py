@@ -3,21 +3,12 @@ Database client for running queries against the connected database.
 """
 import logging
 from os import environ
-from typing import Any, Callable, Type, TypedDict
+from typing import Any, Callable, Type
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.graph import Node, Relationship
 
 from neo4j_ogm.exceptions import InvalidConstraintEntity, MissingDatabaseURI, NotConnectedToDatabase
-
-
-class TBatchTransaction(TypedDict):
-    """
-    Dictionary type definition for a batched transaction.
-    """
-
-    query: str
-    parameters: dict[str, Any] | None
 
 
 def ensure_connection(func: Callable):
@@ -48,6 +39,7 @@ class Neo4jClient:
     _driver: AsyncDriver
     _session: AsyncSession
     _transaction: AsyncTransaction
+    _batch_enabled: bool = False
     node_models: list[Type] = []
     uri: str
     auth: tuple[str, str] | None
@@ -154,6 +146,7 @@ class Neo4jClient:
         except Exception as exc:
             logging.error("Encountered exception during transaction: %s", exc)
             await self.rollback_transaction()
+
             raise exc
 
     @ensure_connection
@@ -182,7 +175,8 @@ class Neo4jClient:
                     CREATE CONSTRAINT {name} IF NOT EXISTS
                     FOR (node:{":".join(labels_or_type)})
                     REQUIRE ({", ".join([f"node.{property}" for property in properties])}) IS UNIQUE
-                """
+                """,
+                resolve_models=False,
             )
         elif entity_type == "RELATIONSHIP":
             logging.info("Creating constraint %s", name)
@@ -197,6 +191,7 @@ class Neo4jClient:
                     "type": labels_or_type[0],
                     "properties": ", ".join([f"relationship.{property}" for property in properties]),
                 },
+                resolve_models=False,
             )
         else:
             raise InvalidConstraintEntity()
@@ -207,7 +202,7 @@ class Neo4jClient:
         Deletes all nodes in the database.
         """
         logging.warning("Deleting all nodes in database")
-        await self.cypher("MATCH (node) DETACH DELETE node")
+        await self.cypher(query="MATCH (node) DETACH DELETE node", resolve_models=False)
 
     @ensure_connection
     async def drop_constraints(self) -> None:
@@ -215,7 +210,7 @@ class Neo4jClient:
         Drops all constraints.
         """
         logging.debug("Discovering constraints")
-        results, _ = await self.cypher(query="SHOW CONSTRAINTS")
+        results, _ = await self.cypher(query="SHOW CONSTRAINTS", resolve_models=False)
 
         logging.warning("Dropping %s constraints", len(results))
         for constraint in results:

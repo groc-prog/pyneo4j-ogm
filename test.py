@@ -39,14 +39,10 @@ class TestExceptionModel(Neo4jNode):
 async def main():
     client = Neo4jClient(node_models=[TestModel])
     client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
-    # await client.drop_constraints()
+    await client.drop_constraints()
     await client.set_constraint("exception_model_unique", "NODE", ["id"], ["Exception"])
 
     # a = TestModel.find_many({"age": {"$gt": 30, "$lte": 35}})
-    b = ExceptionModel()
-    # c = TestExceptionModel()
-
-    await b.create()
 
     print("DONE")
 
