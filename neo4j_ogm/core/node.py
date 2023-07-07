@@ -8,7 +8,7 @@ from typing import Any, Type, TypeVar, cast
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core import client
+from neo4j_ogm.core.client import EntityTypes, IndexTypes, Neo4jClient
 from neo4j_ogm.exceptions import InflationFailure, UnexpectedEmptyResult
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.utils import ensure_alive
@@ -22,10 +22,11 @@ class Neo4jNode(BaseModel):
     functionality like de-/inflation and validation.
     """
 
+    __model_type__: str = "NODE"
     __labels__: tuple[str]
     __dict_properties = set()
     __model_properties = set()
-    _client: client.Neo4jClient = PrivateAttr()
+    _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
@@ -38,12 +39,12 @@ class Neo4jNode(BaseModel):
             if hasattr(property_name, "build_source"):
                 property_name.build_source(self.__class__)
 
-    def __init_subclass__(cls) -> None:
+    async def __init_subclass__(cls) -> None:
         """
         Filters BaseModel and dict instances in the models properties for serialization.
         """
         # Check if node labels is set, if not fall back to model name
-        cls._client = client.Neo4jClient()
+        cls._client = Neo4jClient()
         cls._query_builder = QueryBuilder()
 
         if not hasattr(cls, "__labels__"):
@@ -58,10 +59,6 @@ class Neo4jNode(BaseModel):
                     cls.__dict_properties.add(property_name)
                 elif issubclass(value.type_, BaseModel):
                     cls.__model_properties.add(property_name)
-
-        # Set options defined for fields
-        for _, property_definition in cls.__fields__.items():
-            pass
 
         return super().__init_subclass__()
 

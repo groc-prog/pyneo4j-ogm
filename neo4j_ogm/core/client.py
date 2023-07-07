@@ -67,7 +67,7 @@ class Neo4jClient:
     _session: AsyncSession
     _transaction: AsyncTransaction
     _batch_enabled: bool = False
-    node_models: list[Type] = []
+    models: set[Type] = set()
     uri: str
     auth: tuple[str, str] | None
 
@@ -75,20 +75,6 @@ class Neo4jClient:
         if not hasattr(cls, "_instance"):
             cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
-
-    def __init__(self, node_models: list | None = None):
-        """
-        Registers models to be used by the client.
-
-        Args:
-            node_models (list | None, optional): A list of node models to register. All models not registered
-                with the client will only return dictionaries from query results. Defaults to None.
-        """
-        if node_models is None:
-            return
-
-        for model in node_models:
-            self.node_models.append(model)
 
     def connect(self, uri: str | None = None, auth: tuple[str, str] | None = None) -> None:
         """
@@ -116,6 +102,51 @@ class Neo4jClient:
         logging.info("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth)
         logging.info("Connected to database")
+
+    @ensure_connection
+    async def register_models(self, models: list[Type]) -> None:
+        """
+        Registers models which are used with the client to resolve query results to their corresponding model
+        instances.
+
+        Args:
+            models (list[Type]): A list of models to register.
+        """
+        for model in models:
+            self.models.add(model)
+
+            for property_name, property_definition in model.__fields__.items():
+                if getattr(property_definition.type_, "_unique", False):
+                    await self.create_constraint(
+                        name=f"{model.__name__}_{property_name}_unique_constraint",
+                        entity_type=EntityTypes.NODE,
+                        properties=[property_name],
+                        labels_or_type=model.__labels__,
+                    )
+                if getattr(property_definition.type_, "_range_index", False):
+                    await self.create_index(
+                        name=f"{model.__name__}_{property_name}_range_index",
+                        entity_type=EntityTypes.NODE,
+                        index_type=IndexTypes.RANGE,
+                        properties=[property_name],
+                        labels_or_type=model.__labels__,
+                    )
+                if getattr(property_definition.type_, "_point_index", False):
+                    await self.create_index(
+                        name=f"{model.__name__}_{property_name}_point_index",
+                        entity_type=EntityTypes.NODE,
+                        index_type=IndexTypes.POINT,
+                        properties=[property_name],
+                        labels_or_type=model.__labels__,
+                    )
+                if getattr(property_definition.type_, "_text_index", False):
+                    await self.create_index(
+                        name=f"{model.__name__}_{property_name}_text_index",
+                        entity_type=EntityTypes.NODE,
+                        index_type=IndexTypes.TEXT,
+                        properties=[property_name],
+                        labels_or_type=model.__labels__,
+                    )
 
     @ensure_connection
     async def close(self) -> None:
@@ -410,8 +441,8 @@ class Neo4jClient:
         """
         labels = set(query_result.labels) if isinstance(query_result, Node) else set(query_result.type)
 
-        for model in self.node_models:
-            model_labels: set[str] = {}
+        for model in list(self.models):
+            model_labels: set[str] = set()
 
             if hasattr(model, "__labels__"):
                 model_labels = set(model.__labels__)

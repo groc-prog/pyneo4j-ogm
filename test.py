@@ -27,7 +27,7 @@ class RefModel(Neo4jNode):
 class ExceptionModel(Neo4jNode):
     __labels__ = ["Exception"]
 
-    id: WithOptions(str, unique=True) = str("ID")
+    id: WithOptions(str, unique=True, range_index=True, text_index=True, point_index=True) = str("ID")
 
 
 class TestExceptionModel(Neo4jNode):
@@ -37,16 +37,18 @@ class TestExceptionModel(Neo4jNode):
 
 
 async def main():
-    client = Neo4jClient(node_models=[TestModel])
+    print("HERE")
+    client = Neo4jClient()
     client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
     await client.drop_constraints()
     await client.drop_indexes()
-    await client.create_index("custom_index", "NODE", "TEXT", ["id", "name"], ["FOO", "BAR"])
-    await client.create_index("custom_index1", "RELATIONSHIP", "RANGE", ["id", "name"], "REL")
-    await client.create_index("custom_index2", "RELATIONSHIP", "POINT", ["id", "name"], "REL1")
-    await client.create_index("custom_index3", "RELATIONSHIP", "TOKEN", ["id", "name"], "REL2")
-    await client.create_constraint("custom_index4", "NODE", ["id", "name"], ["FOO1", "BAR1"])
-    await client.create_constraint("custom_index5", "RELATIONSHIP", ["id", "name"], "REL3")
+    await client.register_models(models=[ExceptionModel, TestExceptionModel])
+    # await client.create_index("custom_index", "NODE", "TEXT", ["id", "name"], ["FOO", "BAR"])
+    # await client.create_index("custom_index1", "RELATIONSHIP", "RANGE", ["id", "name"], "REL")
+    # await client.create_index("custom_index2", "RELATIONSHIP", "POINT", ["id", "name"], "REL1")
+    # await client.create_index("custom_index3", "RELATIONSHIP", "TOKEN", ["id", "name"], "REL2")
+    # await client.create_constraint("custom_index4", "NODE", ["id", "name"], ["FOO1", "BAR1"])
+    # await client.create_constraint("custom_index5", "RELATIONSHIP", ["id", "name"], "REL3")
 
     # a = TestModel.find_many({"age": {"$gt": 30, "$lte": 35}})
 
