@@ -40,7 +40,13 @@ async def main():
     client = Neo4jClient(node_models=[TestModel])
     client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
     await client.drop_constraints()
-    await client.set_constraint("exception_model_unique", "NODE", ["id"], ["Exception"])
+    await client.drop_indexes()
+    await client.create_index("custom_index", "NODE", "TEXT", ["id", "name"], ["FOO", "BAR"])
+    await client.create_index("custom_index1", "RELATIONSHIP", "RANGE", ["id", "name"], "REL")
+    await client.create_index("custom_index2", "RELATIONSHIP", "POINT", ["id", "name"], "REL1")
+    await client.create_index("custom_index3", "RELATIONSHIP", "TOKEN", ["id", "name"], "REL2")
+    await client.create_constraint("custom_index4", "NODE", ["id", "name"], ["FOO1", "BAR1"])
+    await client.create_constraint("custom_index5", "RELATIONSHIP", ["id", "name"], "REL3")
 
     # a = TestModel.find_many({"age": {"$gt": 30, "$lte": 35}})
 

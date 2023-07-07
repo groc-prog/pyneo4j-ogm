@@ -59,6 +59,10 @@ class Neo4jNode(BaseModel):
                 elif issubclass(value.type_, BaseModel):
                     cls.__model_properties.add(property_name)
 
+        # Set options defined for fields
+        for _, property_definition in cls.__fields__.items():
+            pass
+
         return super().__init_subclass__()
 
     def __setattr__(self, name: str, value: Any) -> None:

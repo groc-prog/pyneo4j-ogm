@@ -2,13 +2,40 @@
 Database client for running queries against the connected database.
 """
 import logging
+from enum import Enum
 from os import environ
 from typing import Any, Callable, Type
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.graph import Node, Relationship
 
-from neo4j_ogm.exceptions import InvalidConstraintEntity, MissingDatabaseURI, NotConnectedToDatabase
+from neo4j_ogm.exceptions import (
+    InvalidEntityType,
+    InvalidIndexType,
+    InvalidLabelOrType,
+    MissingDatabaseURI,
+    NotConnectedToDatabase,
+)
+
+
+class IndexTypes(str, Enum):
+    """
+    Available indexing types.
+    """
+
+    RANGE = "RANGE"
+    TEXT = "TEXT"
+    POINT = "POINT"
+    TOKEN = "TOKEN"
+
+
+class EntityTypes(str, Enum):
+    """
+    Available entity types.
+    """
+
+    NODE = "NODE"
+    RELATIONSHIP = "RELATIONSHIP"
 
 
 def ensure_connection(func: Callable):
@@ -150,12 +177,12 @@ class Neo4jClient:
             raise exc
 
     @ensure_connection
-    async def set_constraint(
-        self, name: str, entity_type: str, properties: list[str], labels_or_type: list[str]
+    async def create_constraint(
+        self, name: str, entity_type: str, properties: list[str], labels_or_type: list[str] | str
     ) -> None:
         """
-        Sets a constraint on nodes or relationships in the Neo4j database. Currently only `UNIQUENESS` constraints are
-        supported.
+        Creates a constraint on nodes or relationships in the Neo4j database. Currently only `UNIQUENESS`
+        constraints are supported.
 
         Args:
             name (str): The name of the constraint.
@@ -163,38 +190,142 @@ class Neo4jClient:
             properties (list[str]): A list of properties that should be unique for nodes/relationships satisfying
                 the constraint.
             labels_or_type (list[str]): For nodes, a list of labels to which the constraint should be applied.
-                For relationships, a list with a single element representing the relationship type.
+                For relationships, a string representing the relationship type.
 
         Raises:
-            InvalidConstraintEntity: If an invalid entity_type is provided.
+            InvalidEntityType: If an invalid entity_type is provided.
         """
-        if entity_type == "NODE":
-            logging.info("Creating constraint %s with labels %s", name, labels_or_type)
-            await self.cypher(
-                query=f"""
-                    CREATE CONSTRAINT {name} IF NOT EXISTS
-                    FOR (node:{":".join(labels_or_type)})
-                    REQUIRE ({", ".join([f"node.{property}" for property in properties])}) IS UNIQUE
-                """,
-                resolve_models=False,
-            )
-        elif entity_type == "RELATIONSHIP":
-            logging.info("Creating constraint %s", name)
-            await self.cypher(
-                query="""
-                        CREATE CONSTRAINT $name IF NOT EXISTS
-                        FOR ()-[relationship:$type]-()
-                        REQUIRE ($properties) IS UNIQUE
+        match entity_type:
+            case EntityTypes.NODE:
+                if not isinstance(labels_or_type, list):
+                    raise InvalidLabelOrType()
+
+                for label in labels_or_type:
+                    logging.info("Creating constraint %s with labels %s", name, label)
+                    await self.cypher(
+                        query=f"""
+                            CREATE CONSTRAINT {name} IF NOT EXISTS
+                            FOR (n:{label})
+                            REQUIRE ({", ".join([f"n.{property}" for property in properties])}) IS UNIQUE
+                        """,
+                        resolve_models=False,
+                    )
+            case EntityTypes.RELATIONSHIP:
+                if not isinstance(labels_or_type, str):
+                    raise InvalidLabelOrType()
+
+                logging.info("Creating constraint %s with labels %s", name, labels_or_type)
+                await self.cypher(
+                    query=f"""
+                        CREATE CONSTRAINT {name} IF NOT EXISTS
+                        FOR ()-[r:{labels_or_type}]-()
+                        REQUIRE ({", ".join([f"r.{property}" for property in properties])}) IS UNIQUE
                     """,
-                parameters={
-                    "name": name,
-                    "type": labels_or_type[0],
-                    "properties": ", ".join([f"relationship.{property}" for property in properties]),
-                },
-                resolve_models=False,
-            )
-        else:
-            raise InvalidConstraintEntity()
+                    resolve_models=False,
+                )
+            case _:
+                raise InvalidEntityType(
+                    available_types=[option.value for option in EntityTypes], entity_type=entity_type
+                )
+
+    @ensure_connection
+    async def create_index(
+        self, name: str, entity_type: str, index_type: str, properties: list[str], labels_or_type: list[str]
+    ) -> None:
+        """
+        Creates a index on nodes or relationships in the Neo4j database.
+
+        Args:
+            name (str): The name of the constraint.
+            entity_type (str): The type of entity the constraint is applied to. Must be either "NODE" or "RELATIONSHIP".
+            index_type (str): The type of index to apply.
+            properties (list[str]): A list of properties that should be unique for nodes/relationships satisfying
+                the constraint.
+            labels_or_type (list[str]): For nodes, a list of labels to which the constraint should be applied.
+                For relationships, a string representing the relationship type.
+
+        Raises:
+            InvalidEntityType: If an invalid entity_type is provided.
+        """
+        if index_type not in [index.value for index in IndexTypes]:
+            raise InvalidIndexType(available_types=[option.value for option in IndexTypes], index_type=index_type)
+
+        match entity_type:
+            case EntityTypes.NODE:
+                if not isinstance(labels_or_type, list):
+                    raise InvalidLabelOrType()
+
+                for label in labels_or_type:
+                    match index_type:
+                        case IndexTypes.TOKEN:
+                            logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                            await self.cypher(
+                                query=f"""
+                                    CREATE LOOKUP INDEX {name} IF NOT EXISTS
+                                    FOR (n)
+                                    ON EACH labels(node)
+                                """,
+                                resolve_models=False,
+                            )
+                        case IndexTypes.RANGE:
+                            logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                            await self.cypher(
+                                query=f"""
+                                    CREATE {index_type} INDEX {name} IF NOT EXISTS
+                                    FOR (n:{label})
+                                    ON ({", ".join([f"n.{property_name}" for property_name in properties])})
+                                """,
+                                resolve_models=False,
+                            )
+                        case _:
+                            logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                            await self.cypher(
+                                query=f"""
+                                    CREATE {index_type} INDEX {name} IF NOT EXISTS
+                                    FOR (n:{label})
+                                    ON (n.{properties[0]})
+                                """,
+                                resolve_models=False,
+                            )
+            case EntityTypes.RELATIONSHIP:
+                if not isinstance(labels_or_type, str):
+                    raise InvalidLabelOrType()
+
+                match index_type:
+                    case IndexTypes.TOKEN:
+                        logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                        await self.cypher(
+                            query=f"""
+                                CREATE LOOKUP INDEX {name} IF NOT EXISTS
+                                FOR ()-[r]-()
+                                ON EACH type(r)
+                            """,
+                            resolve_models=False,
+                        )
+                    case IndexTypes.RANGE:
+                        logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                        await self.cypher(
+                            query=f"""
+                                CREATE {index_type} INDEX {name} IF NOT EXISTS
+                                FOR ()-[r:{labels_or_type}]-()
+                                ON ({", ".join([f"r.{property}" for property in properties])})
+                            """,
+                            resolve_models=False,
+                        )
+                    case _:
+                        logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                        await self.cypher(
+                            query=f"""
+                                CREATE {index_type} INDEX {name} IF NOT EXISTS
+                                FOR ()-[r:{labels_or_type}]-()
+                                ON (r.{properties[0]})
+                            """,
+                            resolve_models=False,
+                        )
+            case _:
+                raise InvalidEntityType(
+                    available_types=[option.value for option in EntityTypes], entity_type=entity_type
+                )
 
     @ensure_connection
     async def drop_nodes(self) -> None:
@@ -216,6 +347,19 @@ class Neo4jClient:
         for constraint in results:
             logging.debug("Dropping constraint %s", constraint[1])
             await self.cypher(f"DROP CONSTRAINT {constraint[1]}")
+
+    @ensure_connection
+    async def drop_indexes(self) -> None:
+        """
+        Drops all indexes.
+        """
+        logging.debug("Discovering indexes")
+        results, _ = await self.cypher(query="SHOW INDEXES", resolve_models=False)
+
+        logging.warning("Dropping %s indexes", len(results))
+        for index in results:
+            logging.debug("Dropping index %s", index[1])
+            await self.cypher(f"DROP INDEX {index[1]}")
 
     @ensure_connection
     async def begin_transaction(self) -> None:

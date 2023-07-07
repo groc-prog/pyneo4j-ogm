@@ -29,13 +29,24 @@ class MissingDatabaseURI(Neo4jOGMException):
         super().__init__("Trying to initialize client without providing connection URI", *args)
 
 
-class InvalidConstraintEntity(Neo4jOGMException):
+class InvalidEntityType(Neo4jOGMException):
     """
-    Exception which gets raised if the client provides a invalid entity type when creating a new constraint.
+    Exception which gets raised if the client provides a invalid entity type
     """
 
-    def __init__(self, *args: object) -> None:
-        super().__init__("Invalid constraint entity type", *args)
+    def __init__(self, available_types: list[str], entity_type: str, *args: object) -> None:
+        super().__init__(
+            f"Invalid entity type. Expected entity type to be one of {available_types}, got {entity_type}", *args
+        )
+
+
+class InvalidIndexType(Neo4jOGMException):
+    """
+    Exception which gets raised if the client provides a invalid index type when creating a new index.
+    """
+
+    def __init__(self, available_types: list[str], index_type: str, *args: object) -> None:
+        super().__init__(f"Invalid index type. Expected index to be one of {available_types}, got {index_type}", *args)
 
 
 class InflationFailure(Neo4jOGMException):
@@ -132,3 +143,12 @@ class InvalidOperator(Neo4jOGMException):
 
     def __init__(self, message: str, *args: object) -> None:
         super().__init__(f"Invalid operant: {message}", *args)
+
+
+class InvalidLabelOrType(Neo4jOGMException):
+    """
+    Exception which gets raised when invalid labels or a invalid type are passed to a method.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Invalid label or type", *args)
