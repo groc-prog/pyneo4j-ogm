@@ -7,7 +7,7 @@ from typing import Type, TypeVar
 T = TypeVar("T")
 
 
-def WithOptions(property_type: T, indexed: bool = False, unique: bool = False) -> Type[T]:
+def WithOptions(property_type: T, indexed: bool = False, unique: bool = False, ref: str | None = None) -> Type[T]:
     """
     Returns a subclass of `property_type` which includes extra attributes like `_indexed` and `_unique`
     which can be used to define indexes and constraints on the property. Does not have an effect when called
@@ -30,6 +30,7 @@ def WithOptions(property_type: T, indexed: bool = False, unique: bool = False) -
 
         _indexed: bool = indexed
         _unique: bool = unique
+        _ref: str | None = ref
 
         def __new__(cls, *args, **kwargs) -> object:
             return property_type.__new__(property_type, *args, **kwargs)

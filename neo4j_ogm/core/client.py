@@ -60,8 +60,8 @@ class Neo4jClient:
         Registers models to be used by the client.
 
         Args:
-            models (list[Neo4jRelationship  |  Neo4jNode] | None, optional): Models available to the
-                client. Defaults to None.
+            node_models (list | None, optional): A list of node models to register. All models not registered
+                with the client will only return dictionaries from query results. Defaults to None.
         """
         if node_models is None:
             return
