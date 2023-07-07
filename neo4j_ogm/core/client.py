@@ -5,7 +5,7 @@ import logging
 from os import environ
 from typing import Any, Callable, Type, TypedDict
 
-from neo4j import AsyncDriver, AsyncGraphDatabase
+from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.graph import Node, Relationship
 
 from neo4j_ogm.exceptions import InvalidConstraintEntity, MissingDatabaseURI, NotConnectedToDatabase
@@ -46,6 +46,8 @@ class Neo4jClient:
 
     _instance: "Neo4jClient"
     _driver: AsyncDriver
+    _session: AsyncSession
+    _transaction: AsyncTransaction
     node_models: list[Type] = []
     uri: str
     auth: tuple[str, str] | None
@@ -125,87 +127,34 @@ class Neo4jClient:
         if parameters is None:
             parameters = {}
 
-        async with self._driver.session() as session:
+        if getattr(self, "_session", None) is None or getattr(self, "_transaction", None) is None:
+            await self.begin_transaction()
+
+        try:
             parameters = parameters if parameters is not None else {}
 
             logging.info("Running query %s with parameters %s", query, parameters)
-            result_data = await session.run(query=query, parameters=parameters)
+            result_data = await self._transaction.run(query=query, parameters=parameters)
 
             results = [list(r.values()) async for r in result_data]
             meta = list(result_data.keys())
 
-        if resolve_models:
-            for list_index, result_list in enumerate(results):
-                for result_index, result in enumerate(result_list):
-                    model = self._resolve_database_model(result)
+            if resolve_models:
+                for list_index, result_list in enumerate(results):
+                    for result_index, result in enumerate(result_list):
+                        model = self._resolve_database_model(result)
 
-                    if model is not None:
-                        results[list_index][result_index] = model.inflate(result)
+                        if model is not None:
+                            results[list_index][result_index] = model.inflate(result)
 
-        logging.info("Query completed")
-        return results, meta
+            await self.commit_transaction()
 
-    @ensure_connection
-    async def batch(
-        self, transactions: list[TBatchTransaction], resolve_models: bool = True
-    ) -> list[tuple[list[list[Any]], list[str]]]:
-        """
-        Run a batch query.
-
-        Args:
-            transactions (list[TBatchTransaction]): A list of queries with their parameters.
-            resolve_models (bool, optional): Whether to try and resolve query results to their corresponding database
-                models or not. Defaults to True.
-
-        Raises:
-            exc: A exception if the batch query fails.
-
-        Returns:
-            list[tuple[list[list[Any]], list[str]]]: A list of results. The results are in the same
-                order as the queries where defined in.
-        """
-        async with self._driver.session() as session:
-            tx = await session.begin_transaction()
-
-            try:
-                logging.info("Starting batch query")
-                query_results: list[tuple[list[list[Any]], list[str]]] = []
-
-                for transaction in transactions:
-                    parameters = (
-                        transaction["parameters"]
-                        if "parameters" in transaction and transaction["parameters"] is not None
-                        else {}
-                    )
-
-                    logging.debug("Running query %s with parameters %s", transaction["query"], parameters)
-                    result_data = await tx.run(transaction["query"], parameters=parameters)
-
-                    results = [list(r.values()) async for r in result_data]
-                    meta = list(result_data.keys())
-
-                    if resolve_models:
-                        for list_index, result_list in enumerate(results):
-                            for result_index, result in enumerate(result_list):
-                                model = self._resolve_database_model(result)
-
-                                if model is not None:
-                                    results[list_index][result_index] = model.inflate(result)
-
-                    query_results.append((results, meta))
-
-                logging.debug("Committing transactions")
-                await tx.commit()
-            except Exception as exc:
-                logging.error("Exception during query: %s, cancelling transaction", str(exc))
-                tx.cancel()
-                raise exc
-            finally:
-                logging.debug("Closing transaction")
-                await tx.close()
-
-        logging.info("Batch query completed")
-        return query_results
+            logging.info("Query completed")
+            return results, meta
+        except Exception as exc:
+            logging.error("Encountered exception during transaction: %s", exc)
+            await self.rollback_transaction()
+            raise exc
 
     @ensure_connection
     async def set_constraint(
@@ -227,20 +176,14 @@ class Neo4jClient:
             InvalidConstraintEntity: If an invalid entity_type is provided.
         """
         if entity_type == "NODE":
-            for label in labels_or_type:
-                logging.info("Creating constraint %s with label %s", name, label)
-                await self.cypher(
-                    query="""
-                        CREATE CONSTRAINT $name IF NOT EXISTS
-                        FOR (node:$label)
-                        REQUIRE ($properties) IS UNIQUE
-                    """,
-                    parameters={
-                        "name": name,
-                        "label": label,
-                        "properties": ", ".join([f"node.{property}" for property in properties]),
-                    },
-                )
+            logging.info("Creating constraint %s with labels %s", name, labels_or_type)
+            await self.cypher(
+                query=f"""
+                    CREATE CONSTRAINT {name} IF NOT EXISTS
+                    FOR (node:{":".join(labels_or_type)})
+                    REQUIRE ({", ".join([f"node.{property}" for property in properties])}) IS UNIQUE
+                """
+            )
         elif entity_type == "RELATIONSHIP":
             logging.info("Creating constraint %s", name)
             await self.cypher(
@@ -278,6 +221,43 @@ class Neo4jClient:
         for constraint in results:
             logging.debug("Dropping constraint %s", constraint[1])
             await self.cypher(f"DROP CONSTRAINT {constraint[1]}")
+
+    @ensure_connection
+    async def begin_transaction(self) -> None:
+        """
+        Begin a new transaction from a session. If no session exists, a new one will be cerated.
+        """
+        logging.debug("Beginning new session")
+        self._session = self._driver.session()
+        logging.debug("Session %s created", self._session)
+
+        logging.debug("Beginning new transaction for session %s", self._session)
+        self._transaction = await self._session.begin_transaction()
+        logging.debug("Transaction %s created", self._transaction)
+
+    @ensure_connection
+    async def commit_transaction(self) -> None:
+        """
+        Commits the currently active transaction and closes it.
+        """
+        logging.debug("Committing transaction %s", self._transaction)
+        try:
+            await self._transaction.commit()
+        finally:
+            self._session = None
+            self._transaction = None
+
+    @ensure_connection
+    async def rollback_transaction(self) -> None:
+        """
+        Rolls back the currently active transaction and closes it.
+        """
+        logging.debug("Rolling back transaction %s", self._transaction)
+        try:
+            await self._transaction.rollback()
+        finally:
+            self._session = None
+            self._transaction = None
 
     def _resolve_database_model(self, query_result: Node | Relationship) -> Type:
         """

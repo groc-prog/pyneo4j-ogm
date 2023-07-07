@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import Neo4jNode
+from neo4j_ogm.fields import WithOptions
 
 
 class TestModel(Neo4jNode):
@@ -23,15 +24,29 @@ class RefModel(Neo4jNode):
     name: str
 
 
+class ExceptionModel(Neo4jNode):
+    __labels__ = ["Exception"]
+
+    id: WithOptions(str, unique=True) = str("ID")
+
+
+class TestExceptionModel(Neo4jNode):
+    __labels__ = ["TestException"]
+
+    id: str
+
+
 async def main():
     client = Neo4jClient(node_models=[TestModel])
     client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
+    # await client.drop_constraints()
+    await client.set_constraint("exception_model_unique", "NODE", ["id"], ["Exception"])
 
-    # a = await TestModel.find_many({"age": {"$gt": 30, "$lte": 35}})
-    for i in range(20):
-        instance = RefModel(id=str(uuid4()), name=f"instance-{i}")
+    # a = TestModel.find_many({"age": {"$gt": 30, "$lte": 35}})
+    b = ExceptionModel()
+    # c = TestExceptionModel()
 
-        await instance.create()
+    await b.create()
 
     print("DONE")
 
