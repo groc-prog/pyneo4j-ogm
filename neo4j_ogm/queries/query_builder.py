@@ -192,7 +192,9 @@ class QueryBuilder:
         if not isinstance(exists, bool):
             raise InvalidOperator(f"$exists operator value must be a instance of bool, got {type(exists)}")
 
-        query = "IS NULL" if exists is False else "IS NOT NULL"
+        query = (
+            f"{self._get_variable_name()} IS NULL" if exists is False else f"{self._get_variable_name()} IS NOT NULL"
+        )
         return query
 
     def _build_not_operator(self, expression: dict[str, Any]) -> tuple[str, dict[str, Any]]:

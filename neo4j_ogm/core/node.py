@@ -107,12 +107,11 @@ class Neo4jNode(BaseModel):
         """
         inflated: dict[str, Any] = {}
 
-        logging.debug("Inflating node to model instance")
+        logging.debug("Inflating node %s to model instance", node.element_id)
         for node_property in node.items():
             property_name, property_value = node_property
 
             if property_name in cls.__dict_properties or property_name in cls.__model_properties:
-                logging.debug("Inflating models and dict properties")
                 try:
                     inflated[property_name] = json.loads(property_value)
                 except Exception as exc:

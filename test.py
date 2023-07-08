@@ -49,15 +49,15 @@ class TestModel(Neo4jNode):
     name: str
     age: int
     friends: list[str]
-    best_friends: str
+    best_friend: str
     meta: MetaModel = MetaModel()
     json_data: Dict[str, str] = {"key": "value"}
 
 
 expressions = {
     # "age": {"$or": [{"$and": [{"$gte": 30}, {"$lte": 45}]}, {"$eq": 60}]},
-    # "friends": {"$all": [{"$in": ["Olivia", "Mia"]}]},
-    "friends": {"$in": ["Mia", "Alice"]},
+    # "best_friend": {"$in": "Henry"},
+    "special": {"$exists": True},
 }
 
 
@@ -74,8 +74,8 @@ async def main():
     #         id=str(uuid4()),
     #         name=f"instance-{i}",
     #         age=random.randint(1, 100),
-    #         best_friends=random.sample(names, 1)[0],
-    #         friends=random.sample(names, 3),
+    #         best_friend=random.sample(names, 1)[0],
+    #         friends=random.sample(names, random.randint(3, 10)),
     #     ).create()
 
     result_one = await TestModel.find_one(expressions)
