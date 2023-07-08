@@ -58,6 +58,4 @@ async def main():
     print("DONE")
 
 
-# asyncio.run(main())
-
-TestModel.validate({"id": "ID", "age": "age"}, validate_all=False)
+asyncio.run(main())
