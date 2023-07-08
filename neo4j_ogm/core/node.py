@@ -56,7 +56,7 @@ class Neo4jNode(BaseModel):
         for property_name, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if property_name is of type None
             if value.type_ is not None:
-                if issubclass(value.type_, dict):
+                if isinstance(value.default, dict):
                     cls.__dict_properties.add(property_name)
                 elif issubclass(value.type_, BaseModel):
                     cls.__model_properties.add(property_name)

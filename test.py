@@ -1,13 +1,19 @@
 import asyncio
 import random
 from copy import deepcopy
-from typing import Generic, Type, TypeVar
+from typing import Any, Dict, Generic, Type, TypeVar
 from uuid import uuid4
+
+from pydantic import BaseModel
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import Neo4jNode
 from neo4j_ogm.fields import WithOptions
 from neo4j_ogm.queries.query_builder import QueryBuilder
+
+
+class MetaModel(BaseModel):
+    msg: str = "METADATA"
 
 
 class TestModel(Neo4jNode):
@@ -16,7 +22,9 @@ class TestModel(Neo4jNode):
     id: str
     name: str
     age: int
-    # friends: list[str]
+    friends: list[str] = []
+    meta: MetaModel = MetaModel()
+    json_data: Dict[str, str] = {"key": "value"}
 
 
 async def main():
