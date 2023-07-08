@@ -1,3 +1,6 @@
+"""
+This module contains the QueryBuilder class which handles queries build from options or operators.
+"""
 import logging
 from copy import deepcopy
 from typing import Any
@@ -52,7 +55,12 @@ class QueryBuilder:
         logging.debug("Building query for expressions %s", expressions)
         normalized_expressions = self._validate_expressions(expressions=expressions)
 
-        return self._build_nested_expressions(normalized_expressions)
+        query, parameters = self._build_nested_expressions(normalized_expressions)
+
+        if query != "":
+            return f"WHERE {query}", parameters
+
+        return query, parameters
 
     def build_query_options(self, options: dict[str, Any], ref: str = "n") -> str:
         """
@@ -170,7 +178,7 @@ class QueryBuilder:
 
         query = self.__comparison_operators[operator].format(
             property_name=self._get_variable_name(),
-            value=f"${parameter_name}",
+            value=parameter_name,
         )
         parameters[parameter_name] = value
 
@@ -411,15 +419,17 @@ class QueryBuilder:
         validated_expressions: dict[str, Any] = {}
 
         for operator_or_property, value_or_expression in self._normalize_expressions(expressions=expressions).items():
-            if operator_or_property.startswith("$") and operator_or_property in self.__neo4j_operators.items():
+            if operator_or_property.startswith("$") and operator_or_property in self.__neo4j_operators.keys():
                 # Handle neo4j operators
                 validated = ExpressionsValidator.parse_obj({operator_or_property: value_or_expression})
                 validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)[
                     operator_or_property
                 ]
-            else:
+            elif not operator_or_property.startswith("$"):
                 validated = ExpressionsValidator.parse_obj(value_or_expression)
                 validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)
+            else:
+                logging.warning("Found invalid operator %s in expressions %s", operator_or_property, expressions)
 
         # Remove empty objects which remained from pydantic validation
         self._remove_invalid_expressions(validated_expressions)

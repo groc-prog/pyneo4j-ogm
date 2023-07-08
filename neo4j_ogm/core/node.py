@@ -9,7 +9,7 @@ from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.exceptions import InflationFailure, NoResultsFound
+from neo4j_ogm.exceptions import InflationFailure, InvalidExpressions, NoResultsFound
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedQueryOptions
 from neo4j_ogm.utils import ensure_alive
@@ -87,7 +87,10 @@ class Neo4jNode(BaseModel):
 
         logging.debug("Serializing nested models to JSON strings")
         for property_name in self.__model_properties:
-            deflated[property_name] = self.__dict__[property_name].json()
+            if isinstance(getattr(self, property_name), BaseModel):
+                deflated[property_name] = self.__dict__[property_name].json()
+            else:
+                deflated[property_name] = json.dumps(deflated[property_name])
 
         return deflated
 
@@ -179,7 +182,7 @@ class Neo4jNode(BaseModel):
             query=f"""
                 MATCH (n:{":".join(self.__labels__)})
                 WHERE elementId(n) = $element_id
-                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in self._modified_properties])}
+                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated])}
                 RETURN n
             """,
             parameters={"element_id": self._element_id, **deflated},
@@ -237,10 +240,13 @@ class Neo4jNode(BaseModel):
         logging.info("Getting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
 
+        if expression_query == "":
+            raise InvalidExpressions(expressions=expressions)
+
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH (n:{":".join(cls.__labels__)})
-                {f'WHERE {expression_query}' if expressions is not None else ''}
+                {expression_query}
                 RETURN n
                 LIMIT 1
             """,
@@ -281,7 +287,7 @@ class Neo4jNode(BaseModel):
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH (n:{":".join(cls.__labels__)})
-                {f'WHERE {expression_query}' if expressions is not None else ''}
+                {expression_query}
                 RETURN n
                 {options_query}
             """,
@@ -327,10 +333,10 @@ class Neo4jNode(BaseModel):
                 found`, `None` will be returned for the old node. If `new` is set to `True`, the result will be the
                 `updated/created instance`.
         """
+        is_upsert: bool = False
         new_instance: T
 
         logging.info("Updating first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
         old_instance = await cls.find_one(expressions=expressions)
 
         logging.debug("Checking if query returned a result")
@@ -339,45 +345,28 @@ class Neo4jNode(BaseModel):
                 # If upsert is True, try and parse new instance
                 logging.debug("No results found, running upsert")
                 new_instance = cls(**update)
+                is_upsert = True
             else:
                 raise NoResultsFound()
         else:
             # Update existing instance with values and save
             logging.debug("Creating instance copy with new values %s", update)
-            new_instance = cast(T, old_instance).copy(update=update, deep=True)
+            new_instance = cls(**old_instance.dict())
 
-        deflated_properties = new_instance.deflate()
+            new_instance.__dict__.update(update)
+            setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
 
-        results, _ = await cls._client.cypher(
-            query=f"""
-                MERGE (n:{":".join(cls.__labels__)})
-                {f'WHERE {expression_query}' if expressions is not None else ''}
-                ON CREATE
-                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
-                ON MATCH
-                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
-                RETURN n
-                LIMIT 1
-            """,
-            parameters={**deflated_properties, **expression_parameters},
-        )
-
-        logging.debug("Checking if query returned a result")
-        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+        # Create query depending on whether upsert is active or not
+        if upsert and is_upsert:
+            await new_instance.create()
+            logging.info("Successfully created node %s", getattr(new_instance, "_element_id"))
+        else:
+            await new_instance.update()
+            logging.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
 
         if new:
-            instance: T = cls.inflate(results[0][0]) if isinstance(results[0][0], Node) else results[0][0]
+            return new_instance
 
-            # Log depending on operation type
-            if upsert:
-                logging.info("Successfully created node %s", getattr(instance, "_element_id"))
-            else:
-                logging.info("Successfully updated node %s", getattr(instance, "_element_id"))
-
-            return instance
-
-        logging.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
         return old_instance
 
     @classmethod
@@ -427,14 +416,16 @@ class Neo4jNode(BaseModel):
         else:
             # Try and parse update values into random instance to check validation
             logging.debug("Creating instance copy with new values %s", update)
-            new_instance = old_instances[0].copy(update=update, deep=True)
+            new_instance = cls(**old_instances[0].dict())
+            new_instance.__dict__.update(update)
 
         deflated_properties = new_instance.deflate()
 
         results, _ = await cls._client.cypher(
             query=f"""
+                MATCH (n:{":".join(cls.__labels__)})
+                {expression_query}
                 MERGE (n:{":".join(cls.__labels__)})
-                {f'WHERE {expression_query}' if expressions is not None else ''}
                 ON CREATE
                     SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
                 ON MATCH
@@ -494,10 +485,13 @@ class Neo4jNode(BaseModel):
         logging.info("Deleting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
 
+        if expression_query == "":
+            raise InvalidExpressions(expressions=expressions)
+
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH (n:{":".join(cls.__labels__)})
-                {f'WHERE {expression_query}' if expressions is not None else ''}
+                {expression_query}
                 DETACH DELETE n
                 RETURN n
             """,
@@ -537,7 +531,7 @@ class Neo4jNode(BaseModel):
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH (n:{":".join(cls.__labels__)})
-                {f'WHERE {expression_query}' if expressions is not None else ''}
+                {expression_query}
                 DETACH DELETE n
                 RETURN n
             """,
@@ -580,7 +574,7 @@ class Neo4jNode(BaseModel):
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH (n:{":".join(cls.__labels__)})
-                {f'WHERE {expression_query}' if expressions is not None else ''}
+                {expression_query}
                 RETURN count(n)
             """,
             parameters=expression_parameters,

@@ -1,6 +1,7 @@
 """
 Module containing all exceptions raised by the library.
 """
+from typing import Any
 
 
 class Neo4jOGMException(Exception):
@@ -152,3 +153,14 @@ class InvalidLabelOrType(Neo4jOGMException):
 
     def __init__(self, *args: object) -> None:
         super().__init__("Invalid label or type", *args)
+
+
+class InvalidExpressions(Neo4jOGMException):
+    """
+    Exception which gets raised when invalid expressions are passed to a method.
+    """
+
+    def __init__(self, expressions: dict[str, Any], *args: object) -> None:
+        super().__init__(
+            f"Invalid expressions: Expected expressions to contain operators, but got {expressions}", *args
+        )

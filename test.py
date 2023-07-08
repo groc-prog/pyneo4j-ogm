@@ -57,7 +57,9 @@ class TestModel(Neo4jNode):
 expressions = {
     # "age": {"$or": [{"$and": [{"$gte": 30}, {"$lte": 45}]}, {"$eq": 60}]},
     # "best_friend": {"$in": "Henry"},
-    "special": {"$exists": True},
+    # "special": {"$exists": True},
+    # "$elementId": "non-existing"
+    "id": "some-id"
 }
 
 
@@ -79,7 +81,20 @@ async def main():
     #     ).create()
 
     result_one = await TestModel.find_one(expressions)
-    result_many = await TestModel.find_many(expressions)
+    result_one = await TestModel.update_one(
+        {
+            "id": "some-id",
+            "name": "instance-upsert",
+            "age": 12,
+            "best_friend": "Henry",
+            "friends": [],
+            "meta": {"msg": "UPSERT"},
+            "json_data": {},
+        },
+        expressions,
+        upsert=True,
+    )
+    # result_many = await TestModel.find_many(expressions)
 
     # instance = await TestModel(id=str(uuid4()), name=f"instance-0", age=random.randint(1, 100)).create()
     # instance.name = "instance-updated"
@@ -91,3 +106,5 @@ async def main():
 
 
 asyncio.run(main())
+
+# 5 7 12 19

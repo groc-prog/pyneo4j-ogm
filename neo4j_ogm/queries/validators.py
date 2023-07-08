@@ -43,21 +43,21 @@ class ComparisonExpressionValidator(BaseModel):
     Validation model for comparison operators defined in expressions.
     """
 
-    eq_operator: Optional[TAnyExcludeListDict] = Field(alias="$eq", extra={"parser": "{property_name} = {value}"})
-    ne_operator: Optional[TAnyExcludeListDict] = Field(alias="$ne", extra={"parser": "NOT({property_name} = {value})"})
-    gt_operator: Optional[Union[int, float]] = Field(alias="$gt", extra={"parser": "{property_name} > {value}"})
-    gte_operator: Optional[Union[int, float]] = Field(alias="$gte", extra={"parser": "{property_name} >= {value}"})
-    lt_operator: Optional[Union[int, float]] = Field(alias="$lt", extra={"parser": "{property_name} < {value}"})
-    lte_operator: Optional[Union[int, float]] = Field(alias="$lte", extra={"parser": "{property_name} <= {value}"})
+    eq_operator: Optional[TAnyExcludeListDict] = Field(alias="$eq", extra={"parser": "{property_name} = ${value}"})
+    ne_operator: Optional[TAnyExcludeListDict] = Field(alias="$ne", extra={"parser": "NOT({property_name} = ${value})"})
+    gt_operator: Optional[Union[int, float]] = Field(alias="$gt", extra={"parser": "{property_name} > ${value}"})
+    gte_operator: Optional[Union[int, float]] = Field(alias="$gte", extra={"parser": "{property_name} >= ${value}"})
+    lt_operator: Optional[Union[int, float]] = Field(alias="$lt", extra={"parser": "{property_name} < ${value}"})
+    lte_operator: Optional[Union[int, float]] = Field(alias="$lte", extra={"parser": "{property_name} <= ${value}"})
     in_operator: Optional[Union[List[TAnyExcludeListDict], TAnyExcludeListDict]] = Field(
         alias="$in", extra={"parser": "{property_name} IN {value}"}
     )
-    contains_operator: Optional[str] = Field(alias="$contains", extra={"parser": "{property_name} CONTAINS {value}"})
+    contains_operator: Optional[str] = Field(alias="$contains", extra={"parser": "{property_name} CONTAINS ${value}"})
     starts_with_operator: Optional[str] = Field(
-        alias="$startsWith", extra={"parser": "{property_name} STARTS WITH {value}"}
+        alias="$startsWith", extra={"parser": "{property_name} STARTS WITH ${value}"}
     )
-    ends_with_operator: Optional[str] = Field(alias="$endsWith", extra={"parser": "{property_name} ENDS WITH {value}"})
-    regex_operator: Optional[str] = Field(alias="$regex", extra={"parser": "{property_name} =~ {value}"})
+    ends_with_operator: Optional[str] = Field(alias="$endsWith", extra={"parser": "{property_name} ENDS WITH ${value}"})
+    regex_operator: Optional[str] = Field(alias="$regex", extra={"parser": "{property_name} =~ ${value}"})
 
 
 class LogicalExpressionValidator(BaseModel):
@@ -81,8 +81,8 @@ class Neo4jExpressionValidator(BaseModel):
     Validation model for neo4j operators defined in expressions.
     """
 
-    element_id_operator: Optional[str] = Field(alias="$elementId", extra={"parser": "elementId({ref}) = {value}"})
-    id_operator: Optional[int] = Field(alias="$id", extra={"parser": "ID({ref}) = {value}"})
+    element_id_operator: Optional[str] = Field(alias="$elementId", extra={"parser": "elementId({ref}) = ${value}"})
+    id_operator: Optional[int] = Field(alias="$id", extra={"parser": "ID({ref}) = ${value}"})
 
 
 class ExpressionsValidator(Neo4jExpressionValidator, LogicalExpressionValidator, ComparisonExpressionValidator):
