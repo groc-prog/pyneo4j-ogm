@@ -121,15 +121,20 @@ class Neo4jNode(BaseModel):
             else:
                 inflated[property_name] = property_value
 
-        return cls(_element_id=node.element_id, **inflated)
+        instance = cls(**inflated)
+        setattr(instance, "_element_id", node.element_id)
+        return instance
 
-    async def create(self) -> None:
+    async def create(self: T) -> T:
         """
         Creates a new node from the current instance. After the method is finished, a newly created
         instance is seen as `alive`.
 
         Raises:
             NoResultsFound: Raised if the query did not return the created node.
+
+        Returns:
+            T: The current model instance.
         """
         logging.info("Creating new node from model instance %s", self.__class__.__name__)
         results, _ = await self._client.cypher(
@@ -147,11 +152,13 @@ class Neo4jNode(BaseModel):
             raise NoResultsFound()
 
         logging.debug("Hydrating instance values")
-        setattr(self, "_element_id", cast(Node, results[0][0]).element_id)
+        setattr(self, "_element_id", getattr(cast(T, results[0][0]), "_element_id"))
 
         logging.debug("Resetting modified properties")
         self._modified_properties.clear()
         logging.info("Created new node %s", self._element_id)
+
+        return self
 
     @ensure_alive
     async def update(self) -> None:

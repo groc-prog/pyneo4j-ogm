@@ -439,6 +439,9 @@ class Neo4jClient:
         Returns:
             Type: The type of the resolved database model.
         """
+        if not isinstance(query_result, (Node, Relationship)):
+            return None
+
         labels = set(query_result.labels) if isinstance(query_result, Node) else set(query_result.type)
 
         for model in list(self.models):

@@ -16,44 +16,27 @@ class TestModel(Neo4jNode):
     id: str
     name: str
     age: int
-
-
-class RefModel(Neo4jNode):
-    __labels__ = ["Ref"]
-
-    id: str
-    name: str
-
-
-class ExceptionModel(Neo4jNode):
-    __labels__ = ["Exception"]
-
-    id: WithOptions(str, unique=True, range_index=True, text_index=True, point_index=True) = str("ID")
-
-
-class TestExceptionModel(Neo4jNode):
-    __labels__ = ["TestException"]
-
-    id: str
+    # friends: list[str]
 
 
 async def main():
     client = Neo4jClient()
     client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
-    # await client.drop_constraints()
-    # await client.drop_indexes()
-    # await client.register_models(models=[TestModel])
-    # await client.create_index("custom_index", "NODE", "TEXT", ["id", "name"], ["FOO", "BAR"])
-    # await client.create_index("custom_index1", "RELATIONSHIP", "RANGE", ["id", "name"], "REL")
-    # await client.create_index("custom_index2", "RELATIONSHIP", "POINT", ["id", "name"], "REL1")
-    # await client.create_index("custom_index3", "RELATIONSHIP", "TOKEN", ["id", "name"], "REL2")
-    # await client.create_constraint("custom_index4", "NODE", ["id", "name"], ["FOO1", "BAR1"])
-    # await client.create_constraint("custom_index5", "RELATIONSHIP", ["id", "name"], "REL3")
+    await client.drop_constraints()
+    await client.drop_indexes()
+    await client.drop_nodes()
+    await client.register_models(models=[TestModel])
 
-    a = await TestModel.find_many({"age": {"$gt": 30, "$lte": 35}}, {"limit": 2, "skip": 2})
+    # for i in range(20):
+    # instance = await TestModel(id=str(uuid4()), name=f"instance-{i}", age=random.randint(1, 100)).create()
 
-    # builder = QueryBuilder()
-    # b = builder.build_query_options({})
+    # result = await TestModel.find_many({"age": {"$or": [{"$and": [{"$gt": 30}, {"$lte": 45}]}, {"$eq": 60}]}})
+
+    instance = await TestModel(id=str(uuid4()), name=f"instance-0", age=random.randint(1, 100)).create()
+    instance.name = "instance-updated"
+    instance.age = 20
+    await instance.update()
+    await instance.delete()
 
     print("DONE")
 
