@@ -76,7 +76,7 @@ class InstanceDestroyed(Neo4jOGMException):
         super().__init__("Queries can not be run on instances which have been destroyed", *args)
 
 
-class UnexpectedEmptyResult(Neo4jOGMException):
+class NoResultsFound(Neo4jOGMException):
     """
     Exception which gets raised when a query returns no result.
     """

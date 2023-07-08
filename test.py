@@ -42,7 +42,7 @@ async def main():
     client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
     # await client.drop_constraints()
     # await client.drop_indexes()
-    await client.register_models(models=[TestModel])
+    # await client.register_models(models=[TestModel])
     # await client.create_index("custom_index", "NODE", "TEXT", ["id", "name"], ["FOO", "BAR"])
     # await client.create_index("custom_index1", "RELATIONSHIP", "RANGE", ["id", "name"], "REL")
     # await client.create_index("custom_index2", "RELATIONSHIP", "POINT", ["id", "name"], "REL1")
@@ -58,4 +58,6 @@ async def main():
     print("DONE")
 
 
-asyncio.run(main())
+# asyncio.run(main())
+
+TestModel.validate({"id": "ID", "age": "age"}, validate_all=False)

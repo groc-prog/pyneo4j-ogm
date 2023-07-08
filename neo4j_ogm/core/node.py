@@ -9,7 +9,7 @@ from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.exceptions import InflationFailure, UnexpectedEmptyResult
+from neo4j_ogm.exceptions import InflationFailure, NoResultsFound
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedQueryOptions
 from neo4j_ogm.utils import ensure_alive
@@ -129,7 +129,7 @@ class Neo4jNode(BaseModel):
         instance is seen as `alive`.
 
         Raises:
-            UnexpectedEmptyResult: Raised if the query did not return the created node
+            NoResultsFound: Raised if the query did not return the created node
         """
         logging.info("Creating new node from model instance %s", self.__class__.__name__)
         results, _ = await self._client.cypher(
@@ -143,8 +143,8 @@ class Neo4jNode(BaseModel):
         )
 
         logging.debug("Checking if query returned a result")
-        if len(results) == 0 or len(results[0]) == 0:
-            raise UnexpectedEmptyResult()
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
 
         logging.debug("Hydrating instance values")
         setattr(self, "_element_id", cast(Node, results[0][0]).element_id)
@@ -156,7 +156,7 @@ class Neo4jNode(BaseModel):
         Updates the corresponding node in the database with the current instance values.
 
         Raises:
-            UnexpectedEmptyResult: Raised if the query did not return the updated node
+            NoResultsFound: Raised if the query did not return the updated node
         """
         deflated = self.deflate()
 
@@ -177,8 +177,8 @@ class Neo4jNode(BaseModel):
         )
 
         logging.debug("Checking if query returned a result")
-        if len(results) == 0 or len(results[0]) == 0:
-            raise UnexpectedEmptyResult()
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
 
         # Reset _modified_properties
         logging.debug("Resetting modified properties")
@@ -206,24 +206,20 @@ class Neo4jNode(BaseModel):
         logging.info("Deleted node %s", self._element_id)
 
     @classmethod
-    async def find_one(cls: Type[T], expressions: dict[str, Any] | None = None) -> T | dict[str, Any] | None:
+    async def find_one(cls: Type[T], expressions: dict[str, Any]) -> T | Node | None:
         """
         Finds the first node that matches `expressions` and returns it. If no matching node is found, `None`
         is returned instead.
 
         Args:
-            expressions (dict[str, Any], optional): Expressions applied to the query. Defaults to {}.
+            expressions (dict[str, Any]): Expressions applied to the query.
 
         Returns:
-            T | dict[str, Any] | None: A instance of the model or a dictionary if the model has not been registered or
+            T | Node | None: A `instance of the model` or a `Node` instance if the model has not been registered or
                 None if no match is found.
         """
-        a = await cls._client.cypher("MATCH (n) RETURN n")
-
-        logging.info("Getting first node model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
-            expressions=expressions if expressions is not None else {}
-        )
+        logging.info("Getting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
 
         results, _ = await cls._client.cypher(
             query=f"""
@@ -236,24 +232,29 @@ class Neo4jNode(BaseModel):
         )
 
         logging.debug("Checking if query returned a result")
-        if len(results) == 0 or len(results[0]) == 0:
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             return None
+
+        logging.debug("Checking if node has to be parsed to instance")
+        if isinstance(results[0][0], Node):
+            return cls.inflate(node=results[0][0])
 
         return results[0][0]
 
     @classmethod
     async def find_many(
         cls: Type[T], expressions: dict[str, Any] | None = None, options: TypedQueryOptions | None = None
-    ) -> list[T | dict[str, Any]]:
+    ) -> list[T | Node]:
         """
         Finds the all nodes that matches `expressions` and returns them. If no matching nodes are found.
 
         Args:
-            expressions (dict[str, Any], optional): Expressions applied to the query. Defaults to {}.
+            expressions (dict[str, Any] | None, optional): Expressions applied to the query. Defaults to None.
+            options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
-            list[T | dict[str, Any]]: A list of instances of the model or a list of dictionaries if the model
-                has not been registered.
+            list[T | Node]: A `list of model instances` or a `list of Node` instances if the model has not been
+                registered.
         """
         logging.info("Getting nodes of model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(
@@ -276,9 +277,136 @@ class Neo4jNode(BaseModel):
 
         for result_list in results:
             for result in result_list:
-                instances.append(result)
+                if result is None:
+                    continue
+                elif isinstance(results[0][0], Node):
+                    instances.append(cls.inflate(node=results[0][0]))
+                else:
+                    instances.append(result)
 
         return instances
+
+    @classmethod
+    async def update_one(
+        cls: Type[T], update: dict[str, Any], expressions: dict[str, Any], upsert: bool = False, new: bool = False
+    ) -> T | Node | None:
+        """
+        Finds the first node that matches `expressions` and updates it with the values defined by `update`. If no match
+        is found, a `NoResultsFound` is raised. Optionally, `upsert` can be set to `True` to create a new node if no
+        match is found. When doing so, update must contain all properties required for model validation to succeed.
+
+        Args:
+            update (dict[str, Any]): Values to update the node properties with. If `upsert` is set to `True`, all
+                required values defined on model must be present, else the model validation will fail.
+            expressions (dict[str, Any]): Expressions applied to the query. Defaults to None.
+            upsert (bool, optional): Whether to create a new node if no node is found. Defaults to False.
+            new (bool, optional): Whether to return the updated node. By default, the old node is returned. Defaults to
+                False.
+
+        Raises:
+            NoResultsFound: Raised if the query did not return the created node
+
+        Returns:
+            T | Node | None: By default, the old node instance, or a `Node` if the model has not been registered, is
+                returned. If `upsert` is set to `True` and `not match is found`, `None` will be returned for the old
+                node. If `new` is set to `True`, the result will be the `updated/created instance`.
+        """
+        old_instance: T | Node | None = None
+        new_instance: T
+
+        logging.info("Updating first encountered node of model %s matching expressions %s", cls.__name__, expressions)
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions if expressions is not None else {}
+        )
+
+        logging.debug("Getting current node of model %s matching expressions %s", cls.__name__, expressions)
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH (n:{":".join(cls.__labels__)})
+                {f'WHERE {expression_query}' if expressions is not None else ''}
+                RETURN n
+                LIMIT 1
+            """,
+            parameters=expression_parameters,
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            if upsert:
+                # If upsert is True, try and parse new instance
+                logging.debug("No results found, running upsert")
+                new_instance = cls(**update)
+            else:
+                raise NoResultsFound()
+        else:
+            # Update existing instance with values and save
+            old_instance = cast(Node | T, results[0][0])
+
+            logging.debug("Checking if result needs to be parsed to model instance")
+            if isinstance(old_instance, Node):
+                old_instance = cls.inflate(node=old_instance)
+
+            logging.debug("Creating instance copy with new values %s", update)
+            new_instance = old_instance.copy(update=update, deep=True)
+
+        deflated_properties = new_instance.deflate()
+
+        logging.debug("Updating node of model %s matching expressions %s", cls.__name__, expressions)
+        results, _ = cls._client.cypher(
+            query=f"""
+                MERGE (n:{":".join(cls.__labels__)})
+                {f'WHERE {expression_query}' if expressions is not None else ''}
+                ON CREATE
+                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
+                ON MATCH
+                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
+                RETURN n
+                LIMIT 1
+            """,
+            parameters={**deflated_properties, **expression_parameters},
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
+
+        if new:
+            logging.info("Successfully created node %s", getattr(new_instance, "_element_id"))
+            return results[0][0]
+
+        logging.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
+        return old_instance
+
+    @classmethod
+    async def count(cls: Type[T], expressions: dict[str, Any] | None = None) -> int:
+        """
+        Counts all nodes which match the provided `expressions` parameter.
+
+        Args:
+            expressions (dict[str, Any] | None, optional): Expressions applied to the query. Defaults to None.
+
+        Returns:
+            int: The number of nodes matched by the query.
+        """
+        logging.info("Getting count of nodes of model %s matching expressions %s", cls.__name__, expressions)
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions if expressions is not None else {}
+        )
+
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH (n:{":".join(cls.__labels__)})
+                {f'WHERE {expression_query}' if expressions is not None else ''}
+                RETURN count(n)
+            """,
+            parameters=expression_parameters,
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0:
+            raise NoResultsFound()
+
+        return results[0][0]
 
     class Config:
         """
