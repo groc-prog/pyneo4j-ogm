@@ -129,6 +129,8 @@ class QueryBuilder:
                 query, parameters = self._build_neo4j_operator(property_or_operator, expression_or_value)
             elif property_or_operator == "$not":
                 query, parameters = self._build_not_operator(expression=expression_or_value)
+            elif property_or_operator == "$in":
+                query, parameters = self._build_in_operator(value=expression_or_value)
             elif property_or_operator == "$size":
                 query, parameters = self._build_size_operator(expression=expression_or_value)
             elif property_or_operator == "$all":
@@ -206,6 +208,26 @@ class QueryBuilder:
         expression, complete_parameters = self._build_nested_expressions(expressions=expression, level=1)
 
         complete_query = f"NOT({expression})"
+        return complete_query, complete_parameters
+
+    def _build_in_operator(self, value: Any) -> tuple[str, dict[str, Any]]:
+        """
+        Builds a query containing a `IN` operator.
+
+        Args:
+            expression (dict[str, Any]): The expressions defined for the `$in` operator.
+
+        Returns:
+            tuple[str, dict[str, Any]]: The generated query and parameters.
+        """
+        parameter_name = self._get_parameter_name()
+        complete_parameters = {parameter_name: value}
+
+        if isinstance(value, list):
+            complete_query = f"ALL(i IN ${parameter_name} WHERE i IN {self._get_variable_name()})"
+        else:
+            complete_query = f"${parameter_name} IN {self._get_variable_name()}"
+
         return complete_query, complete_parameters
 
     def _build_size_operator(self, expression: dict[str, Any]) -> tuple[str, dict[str, Any]]:

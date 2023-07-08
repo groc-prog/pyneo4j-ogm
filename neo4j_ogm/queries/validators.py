@@ -2,10 +2,13 @@
 This module contains pydantic models for runtime validation of operators in query expressions
 and query options.
 """
+from datetime import date, datetime, time, timedelta
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
+
+TAnyExcludeListDict = Union[int, float, str, bytes, bool, datetime, date, time, timedelta]
 
 
 class QueryOrder(str, Enum):
@@ -40,14 +43,15 @@ class ComparisonExpressionValidator(BaseModel):
     Validation model for comparison operators defined in expressions.
     """
 
-    eq_operator: Optional[Any] = Field(alias="$eq", extra={"parser": "{property_name} = {value}"})
-    ne_operator: Optional[Any] = Field(alias="$ne", extra={"parser": "NOT({property_name} = {value})"})
-    gt_operator: Optional[int] = Field(alias="$gt", extra={"parser": "{property_name} > {value}"})
-    gte_operator: Optional[int] = Field(alias="$gte", extra={"parser": "{property_name} >= {value}"})
-    lt_operator: Optional[int] = Field(alias="$lt", extra={"parser": "{property_name} < {value}"})
-    lte_operator: Optional[int] = Field(alias="$lte", extra={"parser": "{property_name} <= {value}"})
-    in_operator: Optional[list[Any]] = Field(alias="$in", extra={"parser": "{value} IN {property_name}"})
-    nin_operator: Optional[list[Any]] = Field(alias="$nin", extra={"parser": "NOT({value} IN {property_name})"})
+    eq_operator: Optional[TAnyExcludeListDict] = Field(alias="$eq", extra={"parser": "{property_name} = {value}"})
+    ne_operator: Optional[TAnyExcludeListDict] = Field(alias="$ne", extra={"parser": "NOT({property_name} = {value})"})
+    gt_operator: Optional[Union[int, float]] = Field(alias="$gt", extra={"parser": "{property_name} > {value}"})
+    gte_operator: Optional[Union[int, float]] = Field(alias="$gte", extra={"parser": "{property_name} >= {value}"})
+    lt_operator: Optional[Union[int, float]] = Field(alias="$lt", extra={"parser": "{property_name} < {value}"})
+    lte_operator: Optional[Union[int, float]] = Field(alias="$lte", extra={"parser": "{property_name} <= {value}"})
+    in_operator: Optional[Union[List[TAnyExcludeListDict], TAnyExcludeListDict]] = Field(
+        alias="$in", extra={"parser": "{property_name} IN {value}"}
+    )
     contains_operator: Optional[str] = Field(alias="$contains", extra={"parser": "{property_name} CONTAINS {value}"})
     starts_with_operator: Optional[str] = Field(
         alias="$startsWith", extra={"parser": "{property_name} STARTS WITH {value}"}
@@ -61,13 +65,13 @@ class LogicalExpressionValidator(BaseModel):
     Validation model for logical operators defined in expressions.
     """
 
-    and_operator: Optional[list[Union["ExpressionsValidator", "LogicalExpressionValidator"]]] = Field(
+    and_operator: Optional[List[Union["ExpressionsValidator", "LogicalExpressionValidator"]]] = Field(
         alias="$and", extra={"parser": "AND"}
     )
-    or_operator: Optional[list[Union["ExpressionsValidator", "LogicalExpressionValidator"]]] = Field(
+    or_operator: Optional[List[Union["ExpressionsValidator", "LogicalExpressionValidator"]]] = Field(
         alias="$or", extra={"parser": "OR"}
     )
-    xor_operator: Optional[list[Union["ExpressionsValidator", "LogicalExpressionValidator"]]] = Field(
+    xor_operator: Optional[List[Union["ExpressionsValidator", "LogicalExpressionValidator"]]] = Field(
         alias="$xor", extra={"parser": "XOR"}
     )
 
@@ -87,6 +91,6 @@ class ExpressionsValidator(Neo4jExpressionValidator, LogicalExpressionValidator,
     """
 
     not_operator: Optional["ExpressionsValidator"] = Field(alias="$not")
-    all_operator: Optional[list["ExpressionsValidator"]] = Field(alias="$all")
+    all_operator: Optional[List["ExpressionsValidator"]] = Field(alias="$all")
     size_operator: Optional["ComparisonExpressionValidator"] = Field(alias="$size")
     exists_operator: Optional[bool] = Field(alias="$exists")
