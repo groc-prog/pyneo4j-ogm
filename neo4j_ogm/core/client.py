@@ -15,6 +15,7 @@ from neo4j_ogm.exceptions import (
     InvalidLabelOrType,
     MissingDatabaseURI,
     NotConnectedToDatabase,
+    TransactionInProgress,
 )
 
 
@@ -52,6 +53,7 @@ def ensure_connection(func: Callable):
             raise NotConnectedToDatabase()
 
         result = await func(self, *args, **kwargs)
+
         return result
 
     return decorator
@@ -197,13 +199,15 @@ class Neo4jClient:
                         if model is not None:
                             results[list_index][result_index] = model.inflate(result)
 
-            await self.commit_transaction()
+            if self._batch_enabled is False:
+                await self.commit_transaction()
 
             logging.info("Query completed")
             return results, meta
         except Exception as exc:
             logging.error("Encountered exception during transaction: %s", exc)
-            await self.rollback_transaction()
+            if self._batch_enabled is False:
+                await self.rollback_transaction()
 
             raise exc
 
@@ -397,6 +401,9 @@ class Neo4jClient:
         """
         Begin a new transaction from a session. If no session exists, a new one will be cerated.
         """
+        if getattr(self, "_session", None):
+            raise TransactionInProgress()
+
         logging.debug("Beginning new session")
         self._session = self._driver.session()
         logging.debug("Session %s created", self._session)
@@ -429,6 +436,15 @@ class Neo4jClient:
             self._session = None
             self._transaction = None
 
+    def batch(self) -> "BatchManager":
+        """
+        Combine multiple transactions into a batch transaction.
+
+        Returns:
+            BatchManager: A class for managing batch transaction which can be used with a `with` statement.
+        """
+        return BatchManager(self)
+
     def _resolve_database_model(self, query_result: Node | Relationship) -> Type:
         """
         Resolves a query result to the corresponding database model, if one is registered.
@@ -456,3 +472,24 @@ class Neo4jClient:
                 return model
 
         return None
+
+
+class BatchManager:
+    """
+    Class for handling batch transactions.
+    """
+
+    def __init__(self, client: "Neo4jClient") -> None:
+        self._client = client
+
+    async def __aenter__(self) -> None:
+        self._client._batch_enabled = True
+        await self._client.begin_transaction()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        if exc_val:
+            await self._client.rollback_transaction()
+        else:
+            await self._client.commit_transaction()
+
+        self._client._batch_enabled = False

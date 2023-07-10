@@ -164,3 +164,12 @@ class InvalidExpressions(Neo4jOGMException):
         super().__init__(
             f"Invalid expressions: Expected expressions to contain operators, but got {expressions}", *args
         )
+
+
+class TransactionInProgress(Neo4jOGMException):
+    """
+    Exception which gets raised when a transaction is in progress, but another one is started.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("A transaction is already in progress.", *args)

@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
-from neo4j_ogm.core.client import Neo4jClient
+from neo4j_ogm.core.client import BatchManager, Neo4jClient
 from neo4j_ogm.core.node import Neo4jNode
 from neo4j_ogm.fields import WithOptions
 from neo4j_ogm.queries.query_builder import QueryBuilder
@@ -59,7 +59,7 @@ expressions = {
     # "best_friend": {"$in": "Henry"},
     # "special": {"$exists": True},
     # "$elementId": "non-existing"
-    "id": "some-id"
+    "special": True
 }
 
 
@@ -80,20 +80,10 @@ async def main():
     #         friends=random.sample(names, random.randint(3, 10)),
     #     ).create()
 
-    result_one = await TestModel.find_one(expressions)
-    result_one = await TestModel.update_one(
-        {
-            "id": "some-id",
-            "name": "instance-upsert",
-            "age": 12,
-            "best_friend": "Henry",
-            "friends": [],
-            "meta": {"msg": "UPSERT"},
-            "json_data": {},
-        },
-        expressions,
-        upsert=True,
-    )
+    async with client.batch():
+        result_one = await TestModel.find_one(expressions)
+        result_two = await TestModel.delete_one(expressions)
+        # result_one = await TestModel.update_many({"special": False}, expressions, False, True)
     # result_many = await TestModel.find_many(expressions)
 
     # instance = await TestModel(id=str(uuid4()), name=f"instance-0", age=random.randint(1, 100)).create()
