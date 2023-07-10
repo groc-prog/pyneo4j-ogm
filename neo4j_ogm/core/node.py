@@ -11,7 +11,7 @@ from pydantic import BaseModel, PrivateAttr
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.exceptions import InflationFailure, InvalidExpressions, NoResultsFound
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import TypedQueryOptions
+from neo4j_ogm.queries.types import TypedExpressions, TypedQueryOptions
 from neo4j_ogm.utils import ensure_alive
 
 T = TypeVar("T", bound="Neo4jNode")
@@ -226,13 +226,13 @@ class Neo4jNode(BaseModel):
         logging.info("Deleted node %s", self._element_id)
 
     @classmethod
-    async def find_one(cls: Type[T], expressions: dict[str, Any]) -> T | None:
+    async def find_one(cls: Type[T], expressions: TypedExpressions) -> T | None:
         """
         Finds the first node that matches `expressions` and returns it. If no matching node is found, `None`
         is returned instead.
 
         Args:
-            expressions (dict[str, Any]): Expressions applied to the query.
+            expressions (TypedExpressions): Expressions applied to the query.
 
         Returns:
             T | None: A instance of the model or None if no match is found.
@@ -265,13 +265,13 @@ class Neo4jNode(BaseModel):
 
     @classmethod
     async def find_many(
-        cls: Type[T], expressions: dict[str, Any] | None = None, options: TypedQueryOptions | None = None
+        cls: Type[T], expressions: TypedExpressions | None = None, options: TypedQueryOptions | None = None
     ) -> list[T]:
         """
         Finds the all nodes that matches `expressions` and returns them. If no matching nodes are found.
 
         Args:
-            expressions (dict[str, Any] | None, optional): Expressions applied to the query. Defaults to None.
+            expressions (TypedExpressions | None, optional): Expressions applied to the query. Defaults to None.
             options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
@@ -310,7 +310,7 @@ class Neo4jNode(BaseModel):
 
     @classmethod
     async def update_one(
-        cls: Type[T], update: dict[str, Any], expressions: dict[str, Any], upsert: bool = False, new: bool = False
+        cls: Type[T], update: dict[str, Any], expressions: TypedExpressions, upsert: bool = False, new: bool = False
     ) -> T | None:
         """
         Finds the first node that matches `expressions` and updates it with the values defined by `update`. If no match
@@ -320,7 +320,7 @@ class Neo4jNode(BaseModel):
         Args:
             update (dict[str, Any]): Values to update the node properties with. If `upsert` is set to `True`, all
                 required values defined on model must be present, else the model validation will fail.
-            expressions (dict[str, Any]): Expressions applied to the query. Defaults to None.
+            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
             upsert (bool, optional): Whether to create a new node if no node is found. Defaults to False.
             new (bool, optional): Whether to return the updated node. By default, the old node is returned. Defaults to
                 False.
@@ -373,7 +373,7 @@ class Neo4jNode(BaseModel):
     async def update_many(
         cls: Type[T],
         update: dict[str, Any],
-        expressions: dict[str, Any] | None = None,
+        expressions: TypedExpressions | None = None,
         upsert: bool = False,
         new: bool = False,
     ) -> list[T] | T | None:
@@ -385,7 +385,7 @@ class Neo4jNode(BaseModel):
         Args:
             update (dict[str, Any]): Values to update the node properties with. If `upsert` is set to `True`, all
                 required values defined on model must be present, else the model validation will fail.
-            expressions (dict[str, Any]): Expressions applied to the query. Defaults to None.
+            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
             upsert (bool, optional): Whether to create a new node if no nodes are found. Defaults to False.
             new (bool, optional): Whether to return the updated nodes. By default, the old nodes is returned. Defaults
                 to False.
@@ -473,13 +473,13 @@ class Neo4jNode(BaseModel):
         return old_instances
 
     @classmethod
-    async def delete_one(cls: Type[T], expressions: dict[str, Any]) -> int:
+    async def delete_one(cls: Type[T], expressions: TypedExpressions) -> int:
         """
         Finds the first node that matches `expressions` and deletes it. If no match is found, a `NoResultsFound` is
         raised.
 
         Args:
-            expressions (dict[str, Any]): Expressions applied to the query. Defaults to None.
+            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
 
         Raises:
             NoResultsFound: Raised if the query did not return the node.
@@ -538,12 +538,12 @@ class Neo4jNode(BaseModel):
         return len(results)
 
     @classmethod
-    async def count(cls: Type[T], expressions: dict[str, Any] | None = None) -> int:
+    async def count(cls: Type[T], expressions: TypedExpressions | None = None) -> int:
         """
         Counts all nodes which match the provided `expressions` parameter.
 
         Args:
-            expressions (dict[str, Any] | None, optional): Expressions applied to the query. Defaults to None.
+            expressions (TypedExpressions | None, optional): Expressions applied to the query. Defaults to None.
 
         Returns:
             int: The number of nodes matched by the query.

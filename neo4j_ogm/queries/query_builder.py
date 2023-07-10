@@ -8,7 +8,7 @@ from typing import Any
 from neo4j_ogm.exceptions import InvalidOperator
 from neo4j_ogm.queries.validators import (
     ComparisonExpressionValidator,
-    ExpressionsValidator,
+    ExpressionValidator,
     LogicalExpressionValidator,
     Neo4jExpressionValidator,
     QueryOptionsValidator,
@@ -421,12 +421,12 @@ class QueryBuilder:
         for operator_or_property, value_or_expression in self._normalize_expressions(expressions=expressions).items():
             if operator_or_property.startswith("$") and operator_or_property in self.__neo4j_operators.keys():
                 # Handle neo4j operators
-                validated = ExpressionsValidator.parse_obj({operator_or_property: value_or_expression})
+                validated = Neo4jExpressionValidator.parse_obj({operator_or_property: value_or_expression})
                 validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)[
                     operator_or_property
                 ]
             elif not operator_or_property.startswith("$"):
-                validated = ExpressionsValidator.parse_obj(value_or_expression)
+                validated = ExpressionValidator.parse_obj(value_or_expression)
                 validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)
             else:
                 logging.warning("Found invalid operator %s in expressions %s", operator_or_property, expressions)

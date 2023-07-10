@@ -59,7 +59,9 @@ expressions = {
     # "best_friend": {"$in": "Henry"},
     # "special": {"$exists": True},
     # "$elementId": "non-existing"
-    "special": {"$exists": True}
+    "special": {"$exists": True},
+    "foo": {"$elementId": "abc"},
+    "$id": 12,
 }
 
 
@@ -80,10 +82,10 @@ async def main():
     #         friends=random.sample(names, random.randint(3, 10)),
     #     ).create()
 
-    async with client.batch():
-        # result_one = await TestModel.find_one(expressions)
-        result_two = await TestModel.delete_many(expressions)
-        # result_one = await TestModel.update_many({"special": False}, expressions, False, True)
+    # async with client.batch():
+    # result_one = await TestModel.find_one(expressions)
+    # result_two = await TestModel.delete_many(expressions)
+    # result_one = await TestModel.update_many({"special": False}, expressions, False, True)
     # result_many = await TestModel.find_many(expressions)
 
     # instance = await TestModel(id=str(uuid4()), name=f"instance-0", age=random.randint(1, 100)).create()
@@ -91,6 +93,9 @@ async def main():
     # instance.age = 20
     # await instance.update()
     # await instance.delete()
+
+    builder = QueryBuilder()
+    query, params = builder.build_property_expression(expressions=expressions)
 
     print("DONE")
 
