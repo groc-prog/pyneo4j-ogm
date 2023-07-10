@@ -473,7 +473,7 @@ class Neo4jNode(BaseModel):
         return old_instances
 
     @classmethod
-    async def delete_one(cls: Type[T], expressions: dict[str, Any]) -> None:
+    async def delete_one(cls: Type[T], expressions: dict[str, Any]) -> int:
         """
         Finds the first node that matches `expressions` and deletes it. If no match is found, a `NoResultsFound` is
         raised.
@@ -483,6 +483,9 @@ class Neo4jNode(BaseModel):
 
         Raises:
             NoResultsFound: Raised if the query did not return the node.
+
+        Returns:
+            int: The number of deleted nodes.
         """
         logging.info("Deleting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
@@ -505,9 +508,10 @@ class Neo4jNode(BaseModel):
             raise NoResultsFound()
 
         logging.info("Deleted node %s", cast(Node, results[0][0]).element_id)
+        return len(results)
 
     @classmethod
-    async def delete_many(cls: Type[T], expressions: dict[str, Any] | None = None) -> list[T]:
+    async def delete_many(cls: Type[T], expressions: dict[str, Any] | None = None) -> int:
         """
         Finds all nodes that match `expressions` and deletes them.
 
@@ -515,7 +519,7 @@ class Neo4jNode(BaseModel):
             expressions (dict[str, Any]): Expressions applied to the query. Defaults to None.
 
         Returns:
-            list[T]: List of deleted instances.
+            int: The number of deleted nodes.
         """
         logging.info("Deleting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
@@ -530,22 +534,8 @@ class Neo4jNode(BaseModel):
             parameters={**expression_parameters},
         )
 
-        instances: list[T] = []
-        for result_list in results:
-            for result in result_list:
-                logging.debug("Checking if node has to be parsed to instance")
-                if isinstance(result, Node):
-                    instance = cls.inflate(node=result)
-                else:
-                    instance = result
-
-                logging.debug("Marking instance %s as destroyed", getattr(instance, "_element_id"))
-                setattr(instance, "_destroyed", True)
-
-                instances.append(instance)
-
-        logging.info("Deleted %s nodes", len(instances))
-        return instances
+        logging.info("Deleted %s nodes", len(results))
+        return len(results)
 
     @classmethod
     async def count(cls: Type[T], expressions: dict[str, Any] | None = None) -> int:

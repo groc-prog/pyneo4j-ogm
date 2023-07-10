@@ -59,7 +59,7 @@ expressions = {
     # "best_friend": {"$in": "Henry"},
     # "special": {"$exists": True},
     # "$elementId": "non-existing"
-    "special": True
+    "special": {"$exists": True}
 }
 
 
@@ -81,8 +81,8 @@ async def main():
     #     ).create()
 
     async with client.batch():
-        result_one = await TestModel.find_one(expressions)
-        result_two = await TestModel.delete_one(expressions)
+        # result_one = await TestModel.find_one(expressions)
+        result_two = await TestModel.delete_many(expressions)
         # result_one = await TestModel.update_many({"special": False}, expressions, False, True)
     # result_many = await TestModel.find_many(expressions)
 
