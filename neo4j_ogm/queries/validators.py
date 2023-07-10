@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-TAnyExcludeListDict = Union[int, float, str, bytes, bool, datetime, date, time, timedelta]
+TAnyExcludeListDict = Union[bool, int, float, str, bytes, datetime, date, time, timedelta]
 
 
 class QueryOrder(str, Enum):

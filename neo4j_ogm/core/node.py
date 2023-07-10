@@ -395,13 +395,10 @@ class Neo4jNode(BaseModel):
                 matches are found`, `None` will be returned for the old nodes. If `new` is set to `True`, the result
                 will be the `updated/created instance`.
         """
+        is_upsert: bool = False
         new_instance: T
 
         logging.info("Updating all nodes of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
-            expressions=expressions if expressions is not None else {}
-        )
-
         old_instances = await cls.find_many(expressions=expressions)
 
         logging.debug("Checking if query returned a result")
@@ -410,6 +407,7 @@ class Neo4jNode(BaseModel):
                 # If upsert is True, try and parse new instance
                 logging.debug("No results found, running upsert")
                 new_instance = cls(**update)
+                is_upsert = True
             else:
                 logging.debug("No results found")
                 return []
@@ -420,16 +418,33 @@ class Neo4jNode(BaseModel):
             new_instance.__dict__.update(update)
 
         deflated_properties = new_instance.deflate()
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions if expressions is not None else {}
+        )
 
+        if is_upsert:
+            results, _ = await cls._client.cypher(
+                query=f"""
+                    CREATE (n:{":".join(cls.__labels__)})
+                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
+                    RETURN n
+                """,
+                parameters=deflated_properties,
+            )
+
+            logging.debug("Checking if query returned a result")
+            if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+                raise NoResultsFound()
+
+            logging.info("Successfully created node %s", getattr(results[0][0], "_element_id"))
+            return results[0][0] if new else None
+
+        # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH (n:{":".join(cls.__labels__)})
                 {expression_query}
-                MERGE (n:{":".join(cls.__labels__)})
-                ON CREATE
-                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
-                ON MATCH
-                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
+                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
             """,
             parameters={**deflated_properties, **expression_parameters},
@@ -440,18 +455,8 @@ class Neo4jNode(BaseModel):
 
             for result_list in results:
                 for result in result_list:
-                    if result is None:
-                        continue
-
-                    logging.debug("Checking if result needs to be parsed to model instance")
-                    if isinstance(results[0][0], Node):
-                        instances.append(cls.inflate(node=result))
-                    else:
+                    if result is not None:
                         instances.append(result)
-
-            if upsert:
-                logging.info("Successfully created node %s", getattr(instances[0], "_element_id"))
-                return instances[0]
 
             logging.info(
                 "Successfully updated %s nodes %s",
@@ -468,7 +473,7 @@ class Neo4jNode(BaseModel):
         return old_instances
 
     @classmethod
-    async def delete_one(cls: Type[T], expressions: dict[str, Any]) -> T:
+    async def delete_one(cls: Type[T], expressions: dict[str, Any]) -> None:
         """
         Finds the first node that matches `expressions` and deletes it. If no match is found, a `NoResultsFound` is
         raised.
@@ -478,9 +483,6 @@ class Neo4jNode(BaseModel):
 
         Raises:
             NoResultsFound: Raised if the query did not return the node.
-
-        Returns:
-            T: A instance of the deleted node model.
         """
         logging.info("Deleting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
@@ -502,17 +504,7 @@ class Neo4jNode(BaseModel):
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.debug("Checking if node has to be parsed to instance")
-        if isinstance(results[0][0], Node):
-            instance = cls.inflate(node=results[0][0])
-        else:
-            instance = results[0][0]
-
-        logging.debug("Marking instance as destroyed")
-        setattr(instance, "_destroyed", True)
-        logging.info("Deleted node %s", getattr(instance, "_destroyed"))
-
-        return instance
+        logging.info("Deleted node %s", cast(Node, results[0][0]).element_id)
 
     @classmethod
     async def delete_many(cls: Type[T], expressions: dict[str, Any] | None = None) -> list[T]:
