@@ -1,5 +1,5 @@
 """
-This module holds the base relationship class `Neo4jRelationship` which is used to define database models for nodes.
+This module holds the base relationship class `Neo4jRelationship` which is used to define database models for relationships.
 """
 import json
 import logging
@@ -154,14 +154,12 @@ class Neo4jRelationship(BaseModel):
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._build_relationship_match()}
-                WHERE elementId(start) = $start_node AND elementId(end) = $end_node AND elementId(r) = $rel
+                WHERE elementId(r) = $element_id
                 SET {", ".join([f"r.{property_name} = ${property_name}" for property_name in deflated])}
-                RETURN n
+                RETURN r
             """,
             parameters={
-                "start_node": self._start_node_id,
-                "end_node": self._end_node_id,
-                "rel": self._element_id,
+                "element_id": self._element_id,
                 **deflated,
             },
         )
@@ -185,16 +183,14 @@ class Neo4jRelationship(BaseModel):
             NoResultsFound: Raised if the query did not return the updated relationship.
         """
         logging.info("Deleting relationship %s of model %s", self._element_id, self.__class__.__name__)
-        results, _ = await self._client.cypher(
+        await self._client.cypher(
             query=f"""
                 MATCH {self._build_relationship_match()}
-                WHERE elementId(start) = $start_node AND elementId(end) = $end_node AND elementId(r) = $rel
+                WHERE elementId(r) = $element_id
                 DELETE r
             """,
             parameters={
-                "start_node": self._start_node_id,
-                "end_node": self._end_node_id,
-                "rel": self._element_id,
+                "element_id": self._element_id,
             },
         )
 
@@ -202,358 +198,316 @@ class Neo4jRelationship(BaseModel):
         setattr(self, "_destroyed", True)
         logging.info("Deleted relationship %s", self._element_id)
 
-    # @classmethod
-    # async def find_one(cls: Type[T], expressions: TypedExpressions) -> T | None:
-    #     """
-    #     Finds the first relationship that matches `expressions` and returns it. If no matching relationship is found, `None`
-    #     is returned instead.
+    @classmethod
+    async def find_one(cls: Type[T], expressions: TypedExpressions) -> T | None:
+        """
+        Finds the first relationship that matches `expressions` and returns it. If no matching relationship is found, `None`
+        is returned instead.
 
-    #     Args:
-    #         expressions (TypedExpressions): Expressions applied to the query.
+        Args:
+            expressions (TypedExpressions): Expressions applied to the query.
 
-    #     Returns:
-    #         T | None: A instance of the model or None if no match is found.
-    #     """
-    #     logging.info(
-    #         "Getting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
-    #     )
-    #     expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
+        Returns:
+            T | None: A instance of the model or None if no match is found.
+        """
+        logging.info(
+            "Getting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
+        )
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions, ref="r"
+        )
 
-    #     if expression_query == "":
-    #         raise InvalidExpressions(expressions=expressions)
+        if expression_query == "":
+            raise InvalidExpressions(expressions=expressions)
 
-    #     results, _ = await cls._client.cypher(
-    #         query=f"""
-    #             MATCH (n:{":".join(cls.__labels__)})
-    #             {expression_query}
-    #             RETURN n
-    #             LIMIT 1
-    #         """,
-    #         parameters=expression_parameters,
-    #     )
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH {cls._build_relationship_match()}
+                {expression_query}
+                RETURN n
+                LIMIT 1
+            """,
+            parameters=expression_parameters,
+        )
 
-    #     logging.debug("Checking if query returned a result")
-    #     if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-    #         return None
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            return None
 
-    #     logging.debug("Checking if relationship has to be parsed to instance")
-    #     if isinstance(results[0][0], Node):
-    #         return cls.inflate(relationship=results[0][0])
+        logging.debug("Checking if relationship has to be parsed to instance")
+        if isinstance(results[0][0], Relationship):
+            return cls.inflate(relationship=results[0][0])
 
-    #     return results[0][0]
+        return results[0][0]
 
-    # @classmethod
-    # async def find_many(
-    #     cls: Type[T], expressions: TypedExpressions | None = None, options: TypedQueryOptions | None = None
-    # ) -> list[T]:
-    #     """
-    #     Finds the all nodes that matches `expressions` and returns them. If no matching nodes are found.
+    @classmethod
+    async def find_many(
+        cls: Type[T], expressions: TypedExpressions | None = None, options: TypedQueryOptions | None = None
+    ) -> list[T]:
+        """
+        Finds the all relationships that matches `expressions` and returns them. If no matching relationships are found.
 
-    #     Args:
-    #         expressions (TypedExpressions | None, optional): Expressions applied to the query. Defaults to None.
-    #         options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
+        Args:
+            expressions (TypedExpressions | None, optional): Expressions applied to the query. Defaults to None.
+            options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
-    #     Returns:
-    #         list[T]: A list of model instances.
-    #     """
-    #     logging.info("Getting nodes of model %s matching expressions %s", cls.__name__, expressions)
-    #     expression_query, expression_parameters = cls._query_builder.build_property_expression(
-    #         expressions=expressions if expressions is not None else {}
-    #     )
+        Returns:
+            list[T]: A list of model instances.
+        """
+        logging.info("Getting relationships of model %s matching expressions %s", cls.__name__, expressions)
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions if expressions is not None else {}, ref="r"
+        )
 
-    #     options_query = cls._query_builder.build_query_options(options=options if options else {})
+        options_query = cls._query_builder.build_query_options(options=options if options else {}, ref="r")
 
-    #     results, _ = await cls._client.cypher(
-    #         query=f"""
-    #             MATCH (n:{":".join(cls.__labels__)})
-    #             {expression_query}
-    #             RETURN n
-    #             {options_query}
-    #         """,
-    #         parameters=expression_parameters,
-    #     )
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH {cls._build_relationship_match()}
+                {expression_query}
+                RETURN r
+                {options_query}
+            """,
+            parameters=expression_parameters,
+        )
 
-    #     instances: list[T] = []
+        instances: list[T] = []
 
-    #     for result_list in results:
-    #         for result in result_list:
-    #             if result is None:
-    #                 continue
+        for result_list in results:
+            for result in result_list:
+                if result is None:
+                    continue
 
-    #             if isinstance(results[0][0], Node):
-    #                 instances.append(cls.inflate(relationship=results[0][0]))
-    #             else:
-    #                 instances.append(result)
+                if isinstance(results[0][0], Relationship):
+                    instances.append(cls.inflate(relationship=results[0][0]))
+                else:
+                    instances.append(result)
 
-    #     return instances
+        return instances
 
-    # @classmethod
-    # async def update_one(
-    #     cls: Type[T], update: dict[str, Any], expressions: TypedExpressions, upsert: bool = False, new: bool = False
-    # ) -> T | None:
-    #     """
-    #     Finds the first relationship that matches `expressions` and updates it with the values defined by `update`. If no match
-    #     is found, a `NoResultsFound` is raised. Optionally, `upsert` can be set to `True` to create a new relationship if no
-    #     match is found. When doing so, update must contain all properties required for model validation to succeed.
+    @classmethod
+    async def update_one(
+        cls: Type[T], update: dict[str, Any], expressions: TypedExpressions, new: bool = False
+    ) -> T | None:
+        """
+        Finds the first relationship that matches `expressions` and updates it with the values defined by `update`. If
+        no match is found, a `NoResultsFound` is raised.
 
-    #     Args:
-    #         update (dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`, all
-    #             required values defined on model must be present, else the model validation will fail.
-    #         expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
-    #         upsert (bool, optional): Whether to create a new relationship if no relationship is found. Defaults to False.
-    #         new (bool, optional): Whether to return the updated relationship. By default, the old relationship is returned. Defaults to
-    #             False.
+        Args:
+            update (dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
+                all required values defined on model must be present, else the model validation will fail.
+            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
+            new (bool, optional): Whether to return the updated relationship. By default, the old relationship is
+                returned. Defaults to False.
 
-    #     Raises:
-    #         NoResultsFound: Raised if the query did not return the relationship.
+        Raises:
+            NoResultsFound: Raised if the query did not return the relationship.
 
-    #     Returns:
-    #         T | None: By default, the old relationship instance is returned. If `upsert` is set to `True` and `not match is
-    #             found`, `None` will be returned for the old relationship. If `new` is set to `True`, the result will be the
-    #             `updated/created instance`.
-    #     """
-    #     is_upsert: bool = False
-    #     new_instance: T
+        Returns:
+            T | None: By default, the old relationship instance is returned. If `new` is set to `True`, the result
+                will be the `updated instance`.
+        """
+        new_instance: T
 
-    #     logging.info(
-    #         "Updating first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
-    #     )
-    #     old_instance = await cls.find_one(expressions=expressions)
+        logging.info(
+            "Updating first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
+        )
+        old_instance = await cls.find_one(expressions=expressions)
 
-    #     logging.debug("Checking if query returned a result")
-    #     if old_instance is None:
-    #         if upsert:
-    #             # If upsert is True, try and parse new instance
-    #             logging.debug("No results found, running upsert")
-    #             new_instance = cls(**update)
-    #             is_upsert = True
-    #         else:
-    #             raise NoResultsFound()
-    #     else:
-    #         # Update existing instance with values and save
-    #         logging.debug("Creating instance copy with new values %s", update)
-    #         new_instance = cls(**old_instance.dict())
+        logging.debug("Checking if query returned a result")
+        if old_instance is None:
+            raise NoResultsFound()
 
-    #         new_instance.__dict__.update(update)
-    #         setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
+        # Update existing instance with values and save
+        logging.debug("Creating instance copy with new values %s", update)
+        new_instance = cls(**old_instance.dict())
 
-    #     # Create query depending on whether upsert is active or not
-    #     if upsert and is_upsert:
-    #         await new_instance.create()
-    #         logging.info("Successfully created relationship %s", getattr(new_instance, "_element_id"))
-    #     else:
-    #         await new_instance.update()
-    #         logging.info("Successfully updated relationship %s", getattr(new_instance, "_element_id"))
+        new_instance.__dict__.update(update)
+        setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
 
-    #     if new:
-    #         return new_instance
+        # Create query depending on whether upsert is active or not
+        await new_instance.update()
+        logging.info("Successfully updated relationship %s", getattr(new_instance, "_element_id"))
 
-    #     return old_instance
+        if new:
+            return new_instance
 
-    # @classmethod
-    # async def update_many(
-    #     cls: Type[T],
-    #     update: dict[str, Any],
-    #     expressions: TypedExpressions | None = None,
-    #     upsert: bool = False,
-    #     new: bool = False,
-    # ) -> list[T] | T | None:
-    #     """
-    #     Finds all nodes that match `expressions` and updates them with the values defined by `update`. Optionally,
-    #     `upsert` can be set to `True` to create a new relationship if no matches are found. When doing so, update must contain
-    #     all properties required for model validation to succeed.
+        return old_instance
 
-    #     Args:
-    #         update (dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`, all
-    #             required values defined on model must be present, else the model validation will fail.
-    #         expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
-    #         upsert (bool, optional): Whether to create a new relationship if no nodes are found. Defaults to False.
-    #         new (bool, optional): Whether to return the updated nodes. By default, the old nodes is returned. Defaults
-    #             to False.
+    @classmethod
+    async def update_many(
+        cls: Type[T],
+        update: dict[str, Any],
+        expressions: TypedExpressions | None = None,
+        new: bool = False,
+    ) -> list[T] | T | None:
+        """
+        Finds all relationships that match `expressions` and updates them with the values defined by `update`.
 
-    #     Returns:
-    #         list[T] | T | None: By default, the old relationship instances are returned. If `upsert` is set to `True` and `not
-    #             matches are found`, `None` will be returned for the old nodes. If `new` is set to `True`, the result
-    #             will be the `updated/created instance`.
-    #     """
-    #     is_upsert: bool = False
-    #     new_instance: T
+        Args:
+            update (dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
+                all required values defined on model must be present, else the model validation will fail.
+            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
+            new (bool, optional): Whether to return the updated relationships. By default, the old relationships is
+                returned. Defaults to False.
 
-    #     logging.info("Updating all nodes of model %s matching expressions %s", cls.__name__, expressions)
-    #     old_instances = await cls.find_many(expressions=expressions)
+        Returns:
+            list[T] | T | None: By default, the old relationship instances are returned. If `new` is set to `True`, the
+                result will be the `updated instance`.
+        """
+        new_instance: T
 
-    #     logging.debug("Checking if query returned a result")
-    #     if len(old_instances) == 0:
-    #         if upsert:
-    #             # If upsert is True, try and parse new instance
-    #             logging.debug("No results found, running upsert")
-    #             new_instance = cls(**update)
-    #             is_upsert = True
-    #         else:
-    #             logging.debug("No results found")
-    #             return []
-    #     else:
-    #         # Try and parse update values into random instance to check validation
-    #         logging.debug("Creating instance copy with new values %s", update)
-    #         new_instance = cls(**old_instances[0].dict())
-    #         new_instance.__dict__.update(update)
+        logging.info("Updating all relationships of model %s matching expressions %s", cls.__name__, expressions)
+        old_instances = await cls.find_many(expressions=expressions)
 
-    #     deflated_properties = new_instance.deflate()
-    #     expression_query, expression_parameters = cls._query_builder.build_property_expression(
-    #         expressions=expressions if expressions is not None else {}
-    #     )
+        logging.debug("Checking if query returned a result")
+        if len(old_instances) == 0:
+            logging.debug("No results found")
+            return []
 
-    #     if is_upsert:
-    #         results, _ = await cls._client.cypher(
-    #             query=f"""
-    #                 CREATE (n:{":".join(cls.__labels__)})
-    #                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
-    #                 RETURN n
-    #             """,
-    #             parameters=deflated_properties,
-    #         )
+        # Try and parse update values into random instance to check validation
+        logging.debug("Creating instance copy with new values %s", update)
+        new_instance = cls(**old_instances[0].dict())
+        new_instance.__dict__.update(update)
 
-    #         logging.debug("Checking if query returned a result")
-    #         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-    #             raise NoResultsFound()
+        deflated_properties = new_instance.deflate()
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions if expressions is not None else {}, ref="r"
+        )
 
-    #         logging.info("Successfully created relationship %s", getattr(results[0][0], "_element_id"))
-    #         return results[0][0] if new else None
+        # Update instances
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH {cls._build_relationship_match()}
+                {expression_query}
+                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
+                RETURN n
+            """,
+            parameters={**deflated_properties, **expression_parameters},
+        )
 
-    #     # Update instances
-    #     results, _ = await cls._client.cypher(
-    #         query=f"""
-    #             MATCH (n:{":".join(cls.__labels__)})
-    #             {expression_query}
-    #             SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
-    #             RETURN n
-    #         """,
-    #         parameters={**deflated_properties, **expression_parameters},
-    #     )
+        if new:
+            instances: list[T] = []
 
-    #     if new:
-    #         instances: list[T] = []
+            for result_list in results:
+                for result in result_list:
+                    if result is not None:
+                        instances.append(result)
 
-    #         for result_list in results:
-    #             for result in result_list:
-    #                 if result is not None:
-    #                     instances.append(result)
+            logging.info(
+                "Successfully updated %s relationships %s",
+                len(instances),
+                [getattr(instance, "_element_id") for instance in instances],
+            )
+            return instances
 
-    #         logging.info(
-    #             "Successfully updated %s nodes %s",
-    #             len(instances),
-    #             [getattr(instance, "_element_id") for instance in instances],
-    #         )
-    #         return instances
+        logging.info(
+            "Successfully updated %s relationships %s",
+            len(old_instances),
+            [getattr(instance, "_element_id") for instance in old_instances],
+        )
+        return old_instances
 
-    #     logging.info(
-    #         "Successfully updated %s nodes %s",
-    #         len(old_instances),
-    #         [getattr(instance, "_element_id") for instance in old_instances],
-    #     )
-    #     return old_instances
+    @classmethod
+    async def delete_one(cls: Type[T], expressions: TypedExpressions) -> int:
+        """
+        Finds the first relationship that matches `expressions` and deletes it. If no match is found, a
+        `NoResultsFound` is raised.
 
-    # @classmethod
-    # async def delete_one(cls: Type[T], expressions: TypedExpressions) -> int:
-    #     """
-    #     Finds the first relationship that matches `expressions` and deletes it. If no match is found, a `NoResultsFound` is
-    #     raised.
+        Args:
+            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
 
-    #     Args:
-    #         expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
+        Raises:
+            NoResultsFound: Raised if the query did not return the relationship.
 
-    #     Raises:
-    #         NoResultsFound: Raised if the query did not return the relationship.
+        Returns:
+            int: The number of deleted relationships.
+        """
+        logging.info(
+            "Deleting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
+        )
+        relationship = await cls.find_one(expressions=expressions)
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions, ref="r"
+        )
 
-    #     Returns:
-    #         int: The number of deleted nodes.
-    #     """
-    #     logging.info(
-    #         "Deleting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
-    #     )
-    #     expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
+        if expression_query == "":
+            raise InvalidExpressions(expressions=expressions)
 
-    #     if expression_query == "":
-    #         raise InvalidExpressions(expressions=expressions)
+        await cls._client.cypher(
+            query=f"""
+                MATCH {cls._build_relationship_match()}
+                {expression_query}
+                DELETE r
+            """,
+            parameters={**expression_parameters},
+        )
 
-    #     results, _ = await cls._client.cypher(
-    #         query=f"""
-    #             MATCH (n:{":".join(cls.__labels__)})
-    #             {expression_query}
-    #             DETACH DELETE n
-    #             RETURN n
-    #         """,
-    #         parameters={**expression_parameters},
-    #     )
+        logging.info("Deleted relationship %s", getattr(relationship, "_element_id"))
+        return len(relationship)
 
-    #     logging.debug("Checking if query returned a result")
-    #     if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-    #         raise NoResultsFound()
+    @classmethod
+    async def delete_many(cls: Type[T], expressions: TypedExpressions | None = None) -> int:
+        """
+        Finds all relationships that match `expressions` and deletes them.
 
-    #     logging.info("Deleted relationship %s", cast(Node, results[0][0]).element_id)
-    #     return len(results)
+        Args:
+            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
 
-    # @classmethod
-    # async def delete_many(cls: Type[T], expressions: dict[str, Any] | None = None) -> int:
-    #     """
-    #     Finds all nodes that match `expressions` and deletes them.
+        Returns:
+            int: The number of deleted relationships.
+        """
+        logging.info("Deleting all relationships of model %s matching expressions %s", cls.__name__, expressions)
+        relationships = await cls.find_many(expressions=expressions)
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions, ref="r"
+        )
 
-    #     Args:
-    #         expressions (dict[str, Any]): Expressions applied to the query. Defaults to None.
+        await cls._client.cypher(
+            query=f"""
+                MATCH {cls._build_relationship_match()}
+                {expression_query}
+                DELETE r
+            """,
+            parameters={**expression_parameters},
+        )
 
-    #     Returns:
-    #         int: The number of deleted nodes.
-    #     """
-    #     logging.info(
-    #         "Deleting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
-    #     )
-    #     expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
+        logging.info("Deleted %s relationships", len(relationships))
+        return len(relationships)
 
-    #     results, _ = await cls._client.cypher(
-    #         query=f"""
-    #             MATCH (n:{":".join(cls.__labels__)})
-    #             {expression_query}
-    #             DETACH DELETE n
-    #             RETURN n
-    #         """,
-    #         parameters={**expression_parameters},
-    #     )
+    @classmethod
+    async def count(cls: Type[T], expressions: TypedExpressions | None = None) -> int:
+        """
+        Counts all relationships which match the provided `expressions` parameter.
 
-    #     logging.info("Deleted %s nodes", len(results))
-    #     return len(results)
+        Args:
+            expressions (TypedExpressions | None, optional): Expressions applied to the query. Defaults to None.
 
-    # @classmethod
-    # async def count(cls: Type[T], expressions: TypedExpressions | None = None) -> int:
-    #     """
-    #     Counts all nodes which match the provided `expressions` parameter.
+        Returns:
+            int: The number of relationships matched by the query.
+        """
+        logging.info("Getting count of relationships of model %s matching expressions %s", cls.__name__, expressions)
+        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+            expressions=expressions if expressions is not None else {}, ref="r"
+        )
 
-    #     Args:
-    #         expressions (TypedExpressions | None, optional): Expressions applied to the query. Defaults to None.
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH {cls._build_relationship_match()}
+                {expression_query}
+                RETURN count(r)
+            """,
+            parameters=expression_parameters,
+        )
 
-    #     Returns:
-    #         int: The number of nodes matched by the query.
-    #     """
-    #     logging.info("Getting count of nodes of model %s matching expressions %s", cls.__name__, expressions)
-    #     expression_query, expression_parameters = cls._query_builder.build_property_expression(
-    #         expressions=expressions if expressions is not None else {}
-    #     )
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
 
-    #     results, _ = await cls._client.cypher(
-    #         query=f"""
-    #             MATCH (n:{":".join(cls.__labels__)})
-    #             {expression_query}
-    #             RETURN count(n)
-    #         """,
-    #         parameters=expression_parameters,
-    #     )
+        return results[0][0]
 
-    #     logging.debug("Checking if query returned a result")
-    #     if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-    #         raise NoResultsFound()
-
-    #     return results[0][0]
-
-    def _build_relationship_match(self, rel_ref: str = "r", start_ref: str = "start", end_ref: str = "end") -> str:
+    @classmethod
+    def _build_relationship_match(cls, rel_ref: str = "r", start_ref: str = "start", end_ref: str = "end") -> str:
         """
         Builds a relationships `MATCH` clause based on the defined ref names and direction.
 
@@ -568,11 +522,11 @@ class Neo4jRelationship(BaseModel):
         Returns:
             str: The generated `MATCH` clause.
         """
-        start_node = f"({start_ref}:{':'.join(self._start_node_model.__labels__)})"
-        end_node = f"({end_ref}:{':'.join(self._end_node_model.__labels__)})"
-        relationship = f"[{rel_ref}:{self.__type__}]"
+        start_node = f"({start_ref}:{':'.join(cls._start_node_model.__labels__)})"
+        end_node = f"({end_ref}:{':'.join(cls._end_node_model.__labels__)})"
+        relationship = f"[{rel_ref}:{cls.__type__}]"
 
-        match self._direction:
+        match cls._direction:
             case Direction.BOTH:
                 return f"{start_node}-{relationship}-{end_node}"
             case Direction.INCOMING:
@@ -581,7 +535,7 @@ class Neo4jRelationship(BaseModel):
                 return f"{start_node}-{relationship}->{end_node}"
             case _:
                 raise UnknownRelationshipDirection(
-                    expected_directions=[option.value for option in Direction], actual_direction=self._direction
+                    expected_directions=[option.value for option in Direction], actual_direction=cls._direction
                 )
 
     class Config:

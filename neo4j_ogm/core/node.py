@@ -422,7 +422,7 @@ class Neo4jNode(BaseModel):
             expressions=expressions if expressions is not None else {}
         )
 
-        if is_upsert:
+        if upsert and is_upsert:
             results, _ = await cls._client.cypher(
                 query=f"""
                     CREATE (n:{":".join(cls.__labels__)})
@@ -511,17 +511,17 @@ class Neo4jNode(BaseModel):
         return len(results)
 
     @classmethod
-    async def delete_many(cls: Type[T], expressions: dict[str, Any] | None = None) -> int:
+    async def delete_many(cls: Type[T], expressions: TypedExpressions | None = None) -> int:
         """
         Finds all nodes that match `expressions` and deletes them.
 
         Args:
-            expressions (dict[str, Any]): Expressions applied to the query. Defaults to None.
+            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
 
         Returns:
             int: The number of deleted nodes.
         """
-        logging.info("Deleting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
+        logging.info("Deleting all nodes of model %s matching expressions %s", cls.__name__, expressions)
         expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
 
         results, _ = await cls._client.cypher(
