@@ -198,11 +198,79 @@ class Neo4jRelationship(BaseModel):
         setattr(self, "_destroyed", True)
         logging.info("Deleted relationship %s", self._element_id)
 
+    @ensure_alive
+    async def start_node(self) -> Type[Neo4jNode]:
+        """
+        Returns the start node the relationship belongs to.
+
+        Raises:
+            NoResultsFound: Raised if the query did not return the start node.
+
+        Returns:
+            Type[Neo4jNode]: A instance of the start node model.
+        """
+        logging.info(
+            "Getting start node %s relationship %s of model %s",
+            self._start_node_id,
+            self._element_id,
+            self.__class__.__name__,
+        )
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH {self._build_relationship_match()}
+                WHERE elementId(r) = $element_id
+                RETURN start
+            """,
+            parameters={
+                "element_id": self._element_id,
+            },
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
+
+        return results[0][0]
+
+    @ensure_alive
+    async def end_node(self) -> Type[Neo4jNode]:
+        """
+        Returns the end node the relationship belongs to.
+
+        Raises:
+            NoResultsFound: Raised if the query did not return the end node.
+
+        Returns:
+            Type[Neo4jNode]: A instance of the end node model.
+        """
+        logging.info(
+            "Getting end node %s relationship %s of model %s",
+            self._end_node_id,
+            self._element_id,
+            self.__class__.__name__,
+        )
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH {self._build_relationship_match()}
+                WHERE elementId(r) = $element_id
+                RETURN end
+            """,
+            parameters={
+                "element_id": self._element_id,
+            },
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
+
+        return results[0][0]
+
     @classmethod
     async def find_one(cls: Type[T], expressions: TypedExpressions) -> T | None:
         """
-        Finds the first relationship that matches `expressions` and returns it. If no matching relationship is found, `None`
-        is returned instead.
+        Finds the first relationship that matches `expressions` and returns it. If no matching relationship is found,
+        `None` is returned instead.
 
         Args:
             expressions (TypedExpressions): Expressions applied to the query.
