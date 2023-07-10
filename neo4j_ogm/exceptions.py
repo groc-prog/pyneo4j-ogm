@@ -52,7 +52,7 @@ class InvalidIndexType(Neo4jOGMException):
 
 class InflationFailure(Neo4jOGMException):
     """
-    Exception which gets raised when the inflation from a Neo4j node to a model instance fails.
+    Exception which gets raised when the inflation from a Neo4j node or relationship to a model instance fails.
     """
 
     def __init__(self, model: str, *args: object) -> None:

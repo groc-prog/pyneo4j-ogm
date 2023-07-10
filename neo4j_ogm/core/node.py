@@ -44,10 +44,10 @@ class Neo4jNode(BaseModel):
         """
         Filters BaseModel and dict instances in the models properties for serialization.
         """
-        # Check if node labels is set, if not fall back to model name
         cls._client = Neo4jClient()
         cls._query_builder = QueryBuilder()
 
+        # Check if node labels is set, if not fall back to model name
         if not hasattr(cls, "__labels__"):
             logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
             cls.__labels__ = tuple(cls.__name__)
