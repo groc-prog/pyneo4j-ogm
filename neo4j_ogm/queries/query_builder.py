@@ -11,7 +11,10 @@ from neo4j_ogm.queries.validators import (
     ExpressionValidator,
     LogicalExpressionValidator,
     Neo4jExpressionValidator,
+    NodePatternExpressionValidator,
+    PatternExpressionValidator,
     QueryOptionsValidator,
+    RelationshipPatternExpressionValidator,
 )
 
 
@@ -401,7 +404,14 @@ class QueryBuilder:
                 normalized[index] = self._normalize_expressions(expression, level + 1)
         elif isinstance(normalized, dict):
             for operator, expression in normalized.items():
-                normalized[operator] = self._normalize_expressions(expression, level + 1)
+                if operator == "$pattern":
+                    for index, pattern in enumerate(expression):
+                        for pattern_operator, pattern_expression in pattern.items():
+                            normalized[operator][index][pattern_operator] = self._normalize_expressions(
+                                pattern_expression, 0
+                            )
+                else:
+                    normalized[operator] = self._normalize_expressions(expression, level + 1)
 
         return normalized
 
@@ -425,6 +435,27 @@ class QueryBuilder:
                 validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)[
                     operator_or_property
                 ]
+            elif operator_or_property == "$pattern":
+                validated_expressions[operator_or_property] = value_or_expression
+
+                for index, pattern in enumerate(value_or_expression):
+                    validated = PatternExpressionValidator.parse_obj(pattern)
+
+                    for pattern_operator, pattern_expression in validated.dict(
+                        by_alias=True, exclude_none=True
+                    ).items():
+                        if isinstance(pattern_expression, dict):
+                            validated_pattern_expression = self._validate_expressions(expressions=pattern_expression)
+
+                            validated_expressions[operator_or_property][index][
+                                pattern_operator
+                            ] = validated_pattern_expression
+            elif operator_or_property == "$node":
+                validated = NodePatternExpressionValidator.parse_obj(value_or_expression)
+                validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)
+            elif operator_or_property == "$relationship":
+                validated = RelationshipPatternExpressionValidator.parse_obj(value_or_expression)
+                validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)
             elif not operator_or_property.startswith("$"):
                 validated = ExpressionValidator.parse_obj(value_or_expression)
                 validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)

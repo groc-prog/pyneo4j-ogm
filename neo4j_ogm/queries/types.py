@@ -97,5 +97,30 @@ TypedNeo4jExpressions = TypedDict(
     {"$elementId": Optional[str], "$id": Optional[int]},
 )
 
+TypedRelationshipTypePatternExpressions = TypedDict(
+    "TypedRelationshipTypePatternExpressions",
+    {"$type": Optional[str]},
+)
 
-TypedExpressions = Union[TypedNeo4jExpressions, Dict[str, TypedCombinedExpression]]
+TypedNodeLabelsPatternExpressions = TypedDict(
+    "TypedNodeLabelsPatternExpressions",
+    {"$labels": Optional[List[str]]},
+)
+
+TypedCombinedPatternExpressions = TypedDict(
+    "TypedCombinedPatternExpressions",
+    {
+        "$direction": Optional[str],
+        "$node": Optional[
+            Union[TypedNodeLabelsPatternExpressions, TypedNeo4jExpressions, Dict[str, TypedCombinedExpression]]
+        ],
+        "$relationship": Optional[
+            Union[TypedRelationshipTypePatternExpressions, TypedNeo4jExpressions, Dict[str, TypedCombinedExpression]]
+        ],
+    },
+)
+
+TypedPatternExpressions = TypedDict("TypedPatternExpressions", {"$pattern": List[TypedCombinedPatternExpressions]})
+
+
+TypedExpressions = Union[TypedPatternExpressions, TypedNeo4jExpressions, Dict[str, TypedCombinedExpression]]

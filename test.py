@@ -11,6 +11,7 @@ from neo4j_ogm.core.client import BatchManager, Neo4jClient
 from neo4j_ogm.core.node import Neo4jNode
 from neo4j_ogm.fields import WithOptions
 from neo4j_ogm.queries.query_builder import QueryBuilder
+from neo4j_ogm.queries.types import TypedExpressions
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -54,14 +55,16 @@ class TestModel(Neo4jNode):
     json_data: Dict[str, str] = {"key": "value"}
 
 
-expressions = {
+expressions: TypedExpressions = {
     # "age": {"$or": [{"$and": [{"$gte": 30}, {"$lte": 45}]}, {"$eq": 60}]},
     # "best_friend": {"$in": "Henry"},
     # "special": {"$exists": True},
     # "$elementId": "non-existing"
-    "special": {"$exists": True},
-    "foo": {"$elementId": "abc"},
-    "$id": 12,
+    # "special": {"$exists": True},
+    # "foo": {"$elementId": "abc"},
+    "$pattern": [
+        {"$node": {"abc": 12, "$labels": ["FOO", "BAR"], "def": {"$and": [{"$gte": 12}, {"$not": {"lt": 40}}]}}}
+    ],
 }
 
 
@@ -95,7 +98,8 @@ async def main():
     # await instance.delete()
 
     builder = QueryBuilder()
-    query, params = builder.build_filter_expressions(expressions=expressions)
+    normalized = builder._normalize_expressions(expressions=expressions)
+    validated = builder._validate_expressions(normalized)
 
     print("DONE")
 

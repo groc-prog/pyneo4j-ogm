@@ -3,11 +3,21 @@ This module contains pydantic models for runtime validation of operators in quer
 and query options.
 """
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
 from neo4j_ogm.queries.types import TAnyExcludeListDict
+
+
+class PatternDirection(str, Enum):
+    """
+    Available relationship directions for pattern expressions.
+    """
+
+    INCOMING = "INCOMING"
+    OUTGOING = "OUTGOING"
+    BOTH = "BOTH"
 
 
 class QueryOrder(str, Enum):
@@ -127,3 +137,30 @@ class ExpressionValidator(LogicalExpressionValidator, ComparisonExpressionValida
         Union["NumericComparisonExpressionValidator", "GeneralComparisonExpressionValidator"]
     ] = Field(alias="$size")
     exists_operator: Optional[bool] = Field(alias="$exists")
+    pattern_operator: Optional[List["PatternExpressionValidator"]] = Field(alias="$pattern")
+
+
+class RelationshipPatternExpressionValidator(Neo4jExpressionValidator):
+    """
+    Validation model for relationship expression validators.
+    """
+
+    type_operant: Optional[str] = Field(alias="$type")
+
+
+class NodePatternExpressionValidator(Neo4jExpressionValidator):
+    """
+    Validation model for node expression validators.
+    """
+
+    labels_operant: Optional[List[str]] = Field(alias="$labels")
+
+
+class PatternExpressionValidator(BaseModel):
+    """
+    Validation model for pattern expression validators.
+    """
+
+    direction_operator: Optional["PatternDirection"] = Field(alias="$direction", default=PatternDirection.BOTH)
+    node_operator: Optional[Dict[str, Any]] = Field(alias="$node")
+    relationship_operator: Optional[Dict[str, Any]] = Field(alias="$relationship")
