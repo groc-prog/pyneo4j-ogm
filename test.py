@@ -95,7 +95,7 @@ async def main():
     # await instance.delete()
 
     builder = QueryBuilder()
-    query, params = builder.build_property_expression(expressions=expressions)
+    query, params = builder.build_filter_expressions(expressions=expressions)
 
     print("DONE")
 

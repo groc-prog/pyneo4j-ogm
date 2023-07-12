@@ -238,7 +238,7 @@ class Neo4jNode(BaseModel):
             T | None: A instance of the model or None if no match is found.
         """
         logging.info("Getting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(expressions=expressions)
 
         if expression_query == "":
             raise InvalidExpressions(expressions=expressions)
@@ -278,7 +278,7 @@ class Neo4jNode(BaseModel):
             list[T]: A list of model instances.
         """
         logging.info("Getting nodes of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
             expressions=expressions if expressions is not None else {}
         )
 
@@ -418,7 +418,7 @@ class Neo4jNode(BaseModel):
             new_instance.__dict__.update(update)
 
         deflated_properties = new_instance.deflate()
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
             expressions=expressions if expressions is not None else {}
         )
 
@@ -488,7 +488,7 @@ class Neo4jNode(BaseModel):
             int: The number of deleted nodes.
         """
         logging.info("Deleting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(expressions=expressions)
 
         if expression_query == "":
             raise InvalidExpressions(expressions=expressions)
@@ -522,7 +522,7 @@ class Neo4jNode(BaseModel):
             int: The number of deleted nodes.
         """
         logging.info("Deleting all nodes of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(expressions=expressions)
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(expressions=expressions)
 
         results, _ = await cls._client.cypher(
             query=f"""
@@ -549,7 +549,7 @@ class Neo4jNode(BaseModel):
             int: The number of nodes matched by the query.
         """
         logging.info("Getting count of nodes of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
             expressions=expressions if expressions is not None else {}
         )
 

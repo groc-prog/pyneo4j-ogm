@@ -39,7 +39,7 @@ class QueryBuilder:
         for _, field in Neo4jExpressionValidator.__fields__.items():
             self.__neo4j_operators[field.alias] = field.field_info.extra["extra"]["parser"]
 
-    def build_property_expression(self, expressions: dict[str, Any], ref: str = "n") -> tuple[str, dict[str, Any]]:
+    def build_filter_expressions(self, expressions: dict[str, Any], ref: str = "n") -> tuple[str, dict[str, Any]]:
         """
         Builds a query for filtering properties with the given operators.
 

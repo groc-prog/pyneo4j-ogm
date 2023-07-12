@@ -281,7 +281,7 @@ class Neo4jRelationship(BaseModel):
         logging.info(
             "Getting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
         )
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
             expressions=expressions, ref="r"
         )
 
@@ -323,7 +323,7 @@ class Neo4jRelationship(BaseModel):
             list[T]: A list of model instances.
         """
         logging.info("Getting relationships of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
             expressions=expressions if expressions is not None else {}, ref="r"
         )
 
@@ -439,7 +439,7 @@ class Neo4jRelationship(BaseModel):
         new_instance.__dict__.update(update)
 
         deflated_properties = new_instance.deflate()
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
             expressions=expressions if expressions is not None else {}, ref="r"
         )
 
@@ -495,7 +495,7 @@ class Neo4jRelationship(BaseModel):
             "Deleting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
         )
         relationship = await cls.find_one(expressions=expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
             expressions=expressions, ref="r"
         )
 
@@ -527,7 +527,7 @@ class Neo4jRelationship(BaseModel):
         """
         logging.info("Deleting all relationships of model %s matching expressions %s", cls.__name__, expressions)
         relationships = await cls.find_many(expressions=expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
             expressions=expressions, ref="r"
         )
 
@@ -555,7 +555,7 @@ class Neo4jRelationship(BaseModel):
             int: The number of relationships matched by the query.
         """
         logging.info("Getting count of relationships of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_property_expression(
+        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
             expressions=expressions if expressions is not None else {}, ref="r"
         )
 
