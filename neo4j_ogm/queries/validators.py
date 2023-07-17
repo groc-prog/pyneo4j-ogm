@@ -2,12 +2,26 @@
 This module contains pydantic models for runtime validation of operators in query expressions
 and query options.
 """
+import logging
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Extra, Field, ValidationError, root_validator
 
 from neo4j_ogm.queries.types import TAnyExcludeListDict
+
+
+def _validate_properties(cls, values: dict[str, Any]) -> dict[str, Any]:
+    for property_name, property_value in values.items():
+        if not property_name.startswith("$"):
+            try:
+                validated = ExpressionValidator.parse_obj(property_value)
+                values[property_name] = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+                logging.debug("Validated property %s", property_name)
+            except ValidationError:
+                logging.debug("Omitting %s", property_name)
+
+    return values
 
 
 class PatternDirection(str, Enum):
@@ -47,6 +61,7 @@ class QueryOptionsValidator(BaseModel):
         use_enum_values = True
 
 
+# Basic expression validators shared for both nodes and relationships
 class StringComparisonValidator(BaseModel):
     """
     Validation model for string comparison operators defined in expressions.
@@ -70,7 +85,7 @@ class ListComparisonValidator(BaseModel):
     )
 
 
-class NumericComparisonExpressionValidator(BaseModel):
+class NumericComparisonValidator(BaseModel):
     """
     Validation model for numerical comparison operators defined in expressions.
     """
@@ -81,7 +96,7 @@ class NumericComparisonExpressionValidator(BaseModel):
     lte_operator: Optional[Union[int, float]] = Field(alias="$lte", extra={"parser": "{property_name} <= ${value}"})
 
 
-class GeneralComparisonExpressionValidator(BaseModel):
+class BaseComparisonValidator(BaseModel):
     """
     Validation model for general comparison operators defined in expressions.
     """
@@ -90,77 +105,109 @@ class GeneralComparisonExpressionValidator(BaseModel):
     ne_operator: Optional[TAnyExcludeListDict] = Field(alias="$ne", extra={"parser": "NOT({property_name} = ${value})"})
 
 
-class ComparisonExpressionValidator(
-    NumericComparisonExpressionValidator,
+class ComparisonValidator(
+    NumericComparisonValidator,
     StringComparisonValidator,
     ListComparisonValidator,
-    GeneralComparisonExpressionValidator,
+    BaseComparisonValidator,
 ):
     """
     Validation model which combines all other comparison operators.
     """
 
 
-class LogicalExpressionValidator(BaseModel):
+class LogicalValidator(BaseModel):
     """
     Validation model for logical operators defined in expressions.
     """
 
-    and_operator: Optional[List[Union["ExpressionValidator", "LogicalExpressionValidator"]]] = Field(
+    and_operator: Optional[List[Union["ExpressionValidator", "LogicalValidator"]]] = Field(
         alias="$and", extra={"parser": "AND"}
     )
-    or_operator: Optional[List[Union["ExpressionValidator", "LogicalExpressionValidator"]]] = Field(
+    or_operator: Optional[List[Union["ExpressionValidator", "LogicalValidator"]]] = Field(
         alias="$or", extra={"parser": "OR"}
     )
-    xor_operator: Optional[List[Union["ExpressionValidator", "LogicalExpressionValidator"]]] = Field(
+    xor_operator: Optional[List[Union["ExpressionValidator", "LogicalValidator"]]] = Field(
         alias="$xor", extra={"parser": "XOR"}
     )
 
 
-class Neo4jExpressionValidator(BaseModel):
+class ElementValidator(BaseModel):
     """
-    Validation model for neo4j operators defined in expressions.
+    Validation model for neo4j element operators defined in expressions.
     """
 
     element_id_operator: Optional[str] = Field(alias="$elementId", extra={"parser": "elementId({ref}) = ${value}"})
     id_operator: Optional[int] = Field(alias="$id", extra={"parser": "ID({ref}) = ${value}"})
 
 
-class ExpressionValidator(LogicalExpressionValidator, ComparisonExpressionValidator):
+class ExpressionValidator(LogicalValidator, ComparisonValidator):
     """
     Validation model which combines all other validators.
     """
 
     not_operator: Optional["ExpressionValidator"] = Field(alias="$not")
     all_operator: Optional[List["ExpressionValidator"]] = Field(alias="$all")
-    size_operator: Optional[
-        Union["NumericComparisonExpressionValidator", "GeneralComparisonExpressionValidator"]
-    ] = Field(alias="$size")
+    size_operator: Optional[Union["NumericComparisonValidator", "BaseComparisonValidator"]] = Field(alias="$size")
     exists_operator: Optional[bool] = Field(alias="$exists")
-    pattern_operator: Optional[List["PatternExpressionValidator"]] = Field(alias="$pattern")
 
 
-class RelationshipPatternExpressionValidator(Neo4jExpressionValidator):
+class NodeValidator(ElementValidator):
     """
-    Validation model for relationship expression validators.
-    """
-
-    type_operant: Optional[str] = Field(alias="$type")
-
-
-class NodePatternExpressionValidator(Neo4jExpressionValidator):
-    """
-    Validation model for node expression validators.
+    Validation model for node pattern expressions.
     """
 
-    labels_operant: Optional[List[str]] = Field(alias="$labels")
+    labels_operator: Optional[List[str]] = Field(alias="$labels")
+    pattern_operator: Optional[List["NodePatternValidator"]] = Field(alias="$pattern")
+
+    property_validator = root_validator(allow_reuse=True)(_validate_properties)
+
+    class Config:
+        """
+        Pydantic configurations.
+        """
+
+        extra = Extra.allow
 
 
-class PatternExpressionValidator(BaseModel):
+class RelationshipValidator(ElementValidator):
     """
-    Validation model for pattern expression validators.
+    Validation model for relationship pattern expressions.
     """
 
+    type_operator: Optional[str] = Field(alias="$type")
+    hops_operator: Optional[int] = Field(alias="$hops", default=1, gt=0)
+
+    property_validator = root_validator(allow_reuse=True)(_validate_properties)
+
+    class Config:
+        """
+        Pydantic configurations.
+        """
+
+        extra = Extra.allow
+
+
+class NodePatternValidator(BaseModel):
+    """
+    Validation model for node patterns used in node queries.
+    """
+
+    node_operator: Optional["NodeValidator"] = Field(alias="$node")
     direction_operator: Optional["PatternDirection"] = Field(alias="$direction", default=PatternDirection.BOTH)
-    node_operator: Optional[Dict[str, Any]] = Field(alias="$node")
-    relationship_operator: Optional[Dict[str, Any]] = Field(alias="$relationship")
+    relationship_operator: Optional["RelationshipValidator"] = Field(alias="$relationship")
+
+
+class RelationshipPatternValidator(BaseModel):
+    """
+    Validation model for relationship patterns used in node queries.
+    """
+
+    start_node_operator: Optional[Dict[str, Any]] = Field(alias="$startNode")
+    end_node_operator: Optional[Dict[str, Any]] = Field(alias="$endNode")
+    direction_operator: Optional["PatternDirection"] = Field(alias="$direction", default=PatternDirection.BOTH)
+
+
+# Update forward-refs
+NodeValidator.update_forward_refs()
+RelationshipValidator.update_forward_refs()

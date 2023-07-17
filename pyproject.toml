@@ -23,3 +23,7 @@ extension-pkg-whitelist = "pydantic"
 
 [tool.pyright]
 reportGeneralTypeIssues = false
+
+
+[tool.pylint.messages_control]
+disable = "no-self-argument"

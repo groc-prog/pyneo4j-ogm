@@ -59,11 +59,15 @@ expressions: TypedExpressions = {
     # "age": {"$or": [{"$and": [{"$gte": 30}, {"$lte": 45}]}, {"$eq": 60}]},
     # "best_friend": {"$in": "Henry"},
     # "special": {"$exists": True},
-    # "$elementId": "non-existing"
-    # "special": {"$exists": True},
-    # "foo": {"$elementId": "abc"},
-    "$pattern": [
-        {"$node": {"abc": 12, "$labels": ["FOO", "BAR"], "def": {"$and": [{"$gte": 12}, {"$not": {"lt": 40}}]}}}
+    # "$elementId": "non-existing",
+    # "key1": {"$exists": True},
+    # "key2": {"$elementId": "abc"},
+    "$patterns": [
+        {
+            "$node": {"nkey1": 12, "$labels": ["FOO", "BAR"], "nkey2": {"$and": [{"$gte": 12}, {"$not": {"lt": 40}}]}},
+            "$direction": "INCOMING",
+            "$relationship": {"$hops": 3, "$type": "ABCDEFG", "rkey1": 12, "rkey2": {"$in": [1, 2, 3, 5]}},
+        }
     ],
 }
 
@@ -99,7 +103,7 @@ async def main():
 
     builder = QueryBuilder()
     normalized = builder._normalize_expressions(expressions=expressions)
-    validated = builder._validate_expressions(normalized)
+    validated = builder._validate_expressions(expressions=normalized, is_node_expression=True)
 
     print("DONE")
 
