@@ -590,9 +590,9 @@ class Neo4jRelationship(BaseModel):
         Returns:
             str: The generated `MATCH` clause.
         """
-        start_node = f"({start_ref}:{':'.join(cls._start_node_model.__labels__)})"
-        end_node = f"({end_ref}:{':'.join(cls._end_node_model.__labels__)})"
-        relationship = f"[{rel_ref}:{cls.__type__}]"
+        start_node = f"({start_ref}:`{':'.join(cls._start_node_model.__labels__)}`)"
+        end_node = f"({end_ref}:`{':'.join(cls._end_node_model.__labels__)}`)"
+        relationship = f"[{rel_ref}:`{cls.__type__}`]"
 
         match cls._direction:
             case Direction.BOTH:
