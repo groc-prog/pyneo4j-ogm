@@ -3,6 +3,7 @@ This module contains pydantic models for runtime validation of operators in quer
 and query options.
 """
 import logging
+from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -12,16 +13,21 @@ from neo4j_ogm.queries.types import TAnyExcludeListDict
 
 
 def _validate_properties(cls, values: dict[str, Any]) -> dict[str, Any]:
+    validated_properties: dict[str, Any] = deepcopy(values)
+
     for property_name, property_value in values.items():
-        if not property_name.startswith("$"):
+        if property_name not in cls.__fields__.keys():
             try:
                 validated = ExpressionValidator.parse_obj(property_value)
-                values[property_name] = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+                validated_properties[property_name] = validated.dict(
+                    by_alias=True, exclude_none=True, exclude_unset=True
+                )
                 logging.debug("Validated property %s", property_name)
             except ValidationError:
+                validated_properties.pop(property_name)
                 logging.debug("Omitting %s", property_name)
 
-    return values
+    return validated_properties
 
 
 class PatternDirection(str, Enum):
@@ -61,7 +67,6 @@ class QueryOptionsValidator(BaseModel):
         use_enum_values = True
 
 
-# Basic expression validators shared for both nodes and relationships
 class StringComparisonValidator(BaseModel):
     """
     Validation model for string comparison operators defined in expressions.
@@ -157,8 +162,7 @@ class NodeValidator(ElementValidator):
     Validation model for node pattern expressions.
     """
 
-    labels_operator: Optional[List[str]] = Field(alias="$labels")
-    pattern_operator: Optional[List["NodePatternValidator"]] = Field(alias="$pattern")
+    pattern_operator: Optional[List["NodePatternValidator"]] = Field(alias="$patterns")
 
     property_validator = root_validator(allow_reuse=True)(_validate_properties)
 
@@ -168,6 +172,7 @@ class NodeValidator(ElementValidator):
         """
 
         extra = Extra.allow
+        use_enum_values = True
 
 
 class RelationshipValidator(ElementValidator):
@@ -175,8 +180,7 @@ class RelationshipValidator(ElementValidator):
     Validation model for relationship pattern expressions.
     """
 
-    type_operator: Optional[str] = Field(alias="$type")
-    hops_operator: Optional[int] = Field(alias="$hops", default=1, gt=0)
+    pattern_operator: Optional[List["RelationshipPatternValidator"]] = Field(alias="$patterns")
 
     property_validator = root_validator(allow_reuse=True)(_validate_properties)
 
@@ -186,6 +190,25 @@ class RelationshipValidator(ElementValidator):
         """
 
         extra = Extra.allow
+        use_enum_values = True
+
+
+class NodeElementValidator(NodeValidator):
+    """
+    Validation model for neo4j node element operators defined in expressions.
+    """
+
+    labels_operator: Optional[List[str]] = Field(alias="$labels")
+
+
+class RelationshipElementValidator(NodeValidator):
+    """
+    Validation model for neo4j relationship element operators defined in expressions.
+    """
+
+    types_operator: Optional[List[str]] = Field(alias="$types")
+    min_hops_operator: Optional[int] = Field(alias="$minHops", gt=0)
+    max_hops_operator: Optional[int] = Field(alias="$maxHops", gt=0)
 
 
 class NodePatternValidator(BaseModel):
@@ -193,9 +216,9 @@ class NodePatternValidator(BaseModel):
     Validation model for node patterns used in node queries.
     """
 
-    node_operator: Optional["NodeValidator"] = Field(alias="$node")
+    node_operator: Optional["NodeElementValidator"] = Field(alias="$node")
     direction_operator: Optional["PatternDirection"] = Field(alias="$direction", default=PatternDirection.BOTH)
-    relationship_operator: Optional["RelationshipValidator"] = Field(alias="$relationship")
+    relationship_operator: Optional["RelationshipElementValidator"] = Field(alias="$relationship")
 
 
 class RelationshipPatternValidator(BaseModel):
@@ -203,8 +226,8 @@ class RelationshipPatternValidator(BaseModel):
     Validation model for relationship patterns used in node queries.
     """
 
-    start_node_operator: Optional[Dict[str, Any]] = Field(alias="$startNode")
-    end_node_operator: Optional[Dict[str, Any]] = Field(alias="$endNode")
+    start_node_operator: Optional["NodeElementValidator"] = Field(alias="$startNode")
+    end_node_operator: Optional["NodeElementValidator"] = Field(alias="$endNode")
     direction_operator: Optional["PatternDirection"] = Field(alias="$direction", default=PatternDirection.BOTH)
 
 

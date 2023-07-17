@@ -10,10 +10,9 @@ from neo4j_ogm.queries.validators import (
     ComparisonValidator,
     ElementValidator,
     LogicalValidator,
-    NodePatternValidator,
     NodeValidator,
+    PatternDirection,
     QueryOptionsValidator,
-    RelationshipPatternValidator,
     RelationshipValidator,
 )
 
@@ -25,9 +24,11 @@ class QueryBuilder:
 
     __comparison_operators: dict[str, str] = {}
     __logical_operators: dict[str, str] = {}
-    __neo4j_operators: dict[str, str] = {}
+    __element_operators: dict[str, str] = {}
+    _is_node_expression: bool
     _variable_name_overwrite: str | None = None
     _parameter_count: int = 0
+    _pattern_count: int = 0
     property_name: str
     ref: str
 
@@ -40,9 +41,9 @@ class QueryBuilder:
             self.__logical_operators[field.alias] = field.field_info.extra["extra"]["parser"]
 
         for _, field in ElementValidator.__fields__.items():
-            self.__neo4j_operators[field.alias] = field.field_info.extra["extra"]["parser"]
+            self.__element_operators[field.alias] = field.field_info.extra["extra"]["parser"]
 
-    def build_filter_expressions(self, expressions: dict[str, Any], ref: str = "n") -> tuple[str, dict[str, Any]]:
+    def build_node_expressions(self, expressions: dict[str, Any], ref: str = "n") -> tuple[str, str, dict[str, Any]]:
         """
         Builds a query for filtering properties with the given operators.
 
@@ -51,19 +52,16 @@ class QueryBuilder:
             ref (str, optional): The variable to use inside the generated query. Defaults to "n".
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            tuple[str, str, dict[str, Any]]: The generated query and parameters.
         """
         self.ref = ref
+        self._is_node_expression = True
 
         logging.debug("Building query for expressions %s", expressions)
-        normalized_expressions = self._validate_expressions(expressions=expressions)
+        normalized_expressions = self._normalize_expressions(expressions=expressions)
+        validated_expressions = self._validate_expressions(expressions=normalized_expressions)
 
-        query, parameters = self._build_nested_expressions(normalized_expressions)
-
-        if query != "":
-            return f"WHERE {query}", parameters
-
-        return query, parameters
+        return self._build_nested_expressions(validated_expressions)
 
     def build_query_options(self, options: dict[str, Any], ref: str = "n") -> str:
         """
@@ -107,63 +105,247 @@ class QueryBuilder:
 
         return " ".join(partial_queries)
 
-    def _build_nested_expressions(self, expressions: dict[str, Any], level: int = 0) -> tuple[str, dict[str, Any]]:
+    def _build_node_pattern(self, patterns: list[dict[str, Any]]) -> tuple[str, str, dict[str, Any]]:
+        """
+        Builds a `$pattern` operator for node expressions.
+
+        Args:
+            patterns (list[dict[str, Any]]): The patterns to build.
+
+        Returns:
+            tuple[str, str, dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
+        """
+        old_ref = deepcopy(self.ref)
+        match_queries: list[str] = []
+        where_queries: list[str] = []
+        parameters: dict[str, Any] = {}
+
+        for pattern in patterns:
+            node_ref = self._get_pattern_ref_name() if "$node" in pattern else ""
+            relationship_ref = ""
+            relationship = ""
+
+            # Check if relationship is defined and build MATCH clause
+            if "$relationship" in pattern:
+                relationship_ref = self._get_pattern_ref_name()
+
+                if "$minHops" not in pattern["$relationship"] and "$maxHops" not in pattern["$relationship"]:
+                    relationship = f"[{relationship_ref}]"
+                else:
+                    relationship_min_hops = (
+                        pattern["$relationship"]["$minHops"] if "$minHops" in pattern["$relationship"] else ""
+                    )
+                    relationship_max_hops = (
+                        pattern["$relationship"]["$maxHops"] if "$maxHops" in pattern["$relationship"] else ""
+                    )
+
+                    relationship = f"[{relationship_ref}*{relationship_min_hops}..{relationship_max_hops}]"
+
+            # Build relationship direction
+            match pattern["$direction"]:
+                case PatternDirection.INCOMING:
+                    match_queries.append(f"({self.ref})<-{relationship}-({node_ref})")
+                case PatternDirection.OUTGOING:
+                    match_queries.append(f"({self.ref})-{relationship}->({node_ref})")
+                case _:
+                    match_queries.append(f"({self.ref})-{relationship}-({node_ref})")
+
+            # Build node and relationship expressions if present
+            if "$node" in pattern:
+                self.ref = node_ref
+                match_query, where_query, node_parameters = self._build_nested_expressions(expressions=pattern["$node"])
+
+                if where_query is not None:
+                    where_queries.append(where_query)
+                if match_query is not None:
+                    match_queries.append(match_query)
+                parameters = {**parameters, **node_parameters}
+
+            if "$relationship" in pattern:
+                self.ref = relationship_ref
+                match_query, where_query, node_parameters = self._build_nested_expressions(
+                    expressions=pattern["$relationship"]
+                )
+
+                if where_query is not None:
+                    where_queries.append(where_query)
+                if match_query is not None:
+                    match_queries.append(match_query)
+                parameters = {**parameters, **node_parameters}
+
+        self.ref = old_ref
+        complete_match_query = " AND ".join(match_queries) if len(match_queries) != 0 else None
+        complete_where_query = " AND ".join(where_queries) if len(where_queries) != 0 else None
+        return complete_match_query, complete_where_query, parameters
+
+    def _build_relationship_pattern(self, patterns: list[dict[str, Any]]) -> tuple[str, str, dict[str, Any]]:
+        """
+        Builds a `$pattern` operator for relationship expressions.
+
+        Args:
+            patterns (list[dict[str, Any]]): The patterns to build.
+
+        Returns:
+            tuple[str, str, dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
+        """
+        old_ref = deepcopy(self.ref)
+        match_queries: list[str] = []
+        where_queries: list[str] = []
+        parameters: dict[str, Any] = {}
+
+        for pattern in patterns:
+            start_node_ref = self._get_pattern_ref_name() if "$startNode" in pattern else ""
+            end_node_ref = self._get_pattern_ref_name() if "$endNode" in pattern else ""
+
+            # Build relationship direction
+            match pattern["$direction"]:
+                case PatternDirection.INCOMING:
+                    match_queries.append(f"({start_node_ref})<-[{self.ref}]-({end_node_ref})")
+                case PatternDirection.OUTGOING:
+                    match_queries.append(f"({start_node_ref})-[{self.ref}]->({end_node_ref})")
+                case _:
+                    match_queries.append(f"({start_node_ref})-[{self.ref}]-({end_node_ref})")
+
+            # Build node and relationship expressions if present
+            if "$startNode" in pattern:
+                self.ref = start_node_ref
+                match_query, where_query, node_parameters = self._build_nested_expressions(
+                    expressions=pattern["$startNode"]
+                )
+
+                if where_query is not None:
+                    where_queries.append(where_query)
+                if match_query is not None:
+                    match_queries.append(match_query)
+                parameters = {**parameters, **node_parameters}
+
+            if "$endNode" in pattern:
+                self.ref = end_node_ref
+                match_query, where_query, node_parameters = self._build_nested_expressions(
+                    expressions=pattern["$endNode"]
+                )
+
+                if where_query is not None:
+                    where_queries.append(where_query)
+                if match_query is not None:
+                    match_queries.append(match_query)
+                parameters = {**parameters, **node_parameters}
+
+        self.ref = old_ref
+        complete_match_query = " AND ".join(match_queries) if len(match_queries) != 0 else None
+        complete_where_query = " AND ".join(where_queries) if len(where_queries) != 0 else None
+        return complete_match_query, complete_where_query, parameters
+
+    def _build_nested_expressions(self, expressions: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
         """
         Builds nested operators defined in provided expressions.
 
         Args:
             expressions (dict[str, Any]): The expressions to build the query from.
-            level (int, optional): The recursion depth level. Should not be modified outside the function itself.
-                Defaults to 0.
 
         Raises:
             InvalidOperator: If the `expressions` parameter is not a valid dict.
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            tuple[str, str, dict[str, Any]]: The generated query and parameters.
         """
         complete_parameters: dict[str, Any] = {}
-        partial_queries: list[str] = []
+        partial_match_queries: list[str] = []
+        partial_where_queries: list[str] = []
 
         if not isinstance(expressions, dict):
             raise InvalidOperator(f"Expressions must be instance of dict, got {type(expressions)}")
 
         for property_or_operator, expression_or_value in expressions.items():
             parameters = {}
-            query = ""
+            where_query = None
+            match_query = None
 
             if not property_or_operator.startswith("$"):
                 # Update current property name if the key is not a operator
                 self.property_name = property_or_operator
 
-            if level == 0 and property_or_operator.startswith("$"):
-                query, parameters = self._build_neo4j_operator(property_or_operator, expression_or_value)
+            if property_or_operator in self.__element_operators:
+                where_query, parameters = self._build_element_operator(property_or_operator, expression_or_value)
             elif property_or_operator == "$not":
-                query, parameters = self._build_not_operator(expression=expression_or_value)
+                match_query, where_query, parameters = self._build_not_operator(expression=expression_or_value)
             elif property_or_operator == "$in":
-                query, parameters = self._build_in_operator(value=expression_or_value)
+                where_query, parameters = self._build_in_operator(value=expression_or_value)
             elif property_or_operator == "$size":
-                query, parameters = self._build_size_operator(expression=expression_or_value)
+                where_query, parameters = self._build_size_operator(expression=expression_or_value)
             elif property_or_operator == "$all":
-                query, parameters = self._build_all_operator(expressions=expression_or_value)
+                match_query, where_query, parameters = self._build_all_operator(expressions=expression_or_value)
             elif property_or_operator == "$exists":
-                query = self._build_exists_operator(exists=expression_or_value)
+                where_query = self._build_exists_operator(exists=expression_or_value)
+            elif property_or_operator == "$labels":
+                where_query, parameters = self._build_labels_operator(labels=expression_or_value)
+            elif property_or_operator == "$types":
+                where_query, parameters = self._build_types_operator(types=expression_or_value)
+            elif property_or_operator == "$patterns":
+                if self._is_node_expression:
+                    match_query, where_query, parameters = self._build_node_pattern(patterns=expression_or_value)
+                else:
+                    match_query, where_query, parameters = self._build_relationship_pattern(
+                        patterns=expression_or_value
+                    )
             elif property_or_operator in self.__comparison_operators:
-                query, parameters = self._build_comparison_operator(
+                where_query, parameters = self._build_comparison_operator(
                     operator=property_or_operator, value=expression_or_value
                 )
             elif property_or_operator in self.__logical_operators:
-                query, parameters = self._build_logical_operator(
+                match_query, where_query, parameters = self._build_logical_operator(
                     operator=property_or_operator, expressions=expression_or_value
                 )
             elif not property_or_operator.startswith("$"):
-                query, parameters = self._build_nested_expressions(expressions=expression_or_value, level=level + 1)
+                match_query, where_query, parameters = self._build_nested_expressions(expressions=expression_or_value)
 
-            partial_queries.append(query)
+            if where_query is not None:
+                partial_where_queries.append(where_query)
+
+            if match_query is not None:
+                partial_match_queries.append(match_query)
+
             complete_parameters = {**complete_parameters, **parameters}
 
-        complete_query = " AND ".join(partial_queries)
-        return complete_query, complete_parameters
+        complete_match_query = " AND ".join(partial_match_queries) if len(partial_match_queries) != 0 else None
+        complete_where_query = " AND ".join(partial_where_queries) if len(partial_where_queries) != 0 else None
+        return complete_match_query, complete_where_query, complete_parameters
+
+    def _build_labels_operator(self, labels: list[str]) -> tuple[str, dict[str, Any]]:
+        """
+        Builds comparison operators.
+
+        Args:
+            labels (list[str]): The labels to filter by.
+
+        Returns:
+            tuple[str, dict[str, Any]]: The generated query and parameters.
+        """
+        parameter_name = self._get_parameter_name()
+        parameters = {}
+
+        query = f"ALL(label in ${parameter_name} WHERE label IN labels({self.ref}))"
+        parameters[parameter_name] = labels
+
+        return query, parameters
+
+    def _build_types_operator(self, types: list[str]) -> tuple[str, dict[str, Any]]:
+        """
+        Builds comparison operators.
+
+        Args:
+            types (list[str]): The types to filter by.
+
+        Returns:
+            tuple[str, dict[str, Any]]: The generated query and parameters.
+        """
+        parameter_name = self._get_parameter_name()
+        parameters = {}
+
+        query = f"type({self.ref}) IN ${parameter_name}"
+        parameters[parameter_name] = types
+
+        return query, parameters
 
     def _build_comparison_operator(self, operator: str, value: Any) -> tuple[str, dict[str, Any]]:
         """
@@ -208,7 +390,7 @@ class QueryBuilder:
         )
         return query
 
-    def _build_not_operator(self, expression: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    def _build_not_operator(self, expression: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
         """
         Builds a `NOT()` clause with the defined expressions.
 
@@ -216,12 +398,12 @@ class QueryBuilder:
             expression (dict[str, Any]): The expressions defined for the `$not` operator.
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            tuple[str, str, dict[str, Any]]: The generated query and parameters.
         """
-        expression, complete_parameters = self._build_nested_expressions(expressions=expression, level=1)
+        match_query, where_query, complete_parameters = self._build_nested_expressions(expressions=expression)
 
-        complete_query = f"NOT({expression})"
-        return complete_query, complete_parameters
+        complete_where_query = f"NOT({where_query})"
+        return match_query, complete_where_query, complete_parameters
 
     def _build_in_operator(self, value: Any) -> tuple[str, dict[str, Any]]:
         """
@@ -264,7 +446,7 @@ class QueryBuilder:
 
         return query, parameters
 
-    def _build_all_operator(self, expressions: list[dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+    def _build_all_operator(self, expressions: list[dict[str, Any]]) -> tuple[str, str, dict[str, Any]]:
         """
         Builds a `ALL()` clause with the defined expressions.
 
@@ -275,30 +457,32 @@ class QueryBuilder:
             InvalidOperator: If the operator value is not a list.
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            tuple[str, str, dict[str, Any]]: The generated query and parameters.
         """
         self._variable_name_overwrite = "i"
         complete_parameters: dict[str, Any] = {}
-        partial_queries: list[str] = []
+        partial_match_queries: list[str] = []
+        partial_where_queries: list[str] = []
 
         if not isinstance(expressions, list):
             raise InvalidOperator(f"Value of $all operator must be list, got {type(expressions)}")
 
         for expression in expressions:
-            query, parameters = self._build_nested_expressions(expressions=expression, level=1)
+            match_query, where_query, parameters = self._build_nested_expressions(expressions=expression)
 
-            partial_queries.append(query)
-            complete_parameters = {
-                **complete_parameters,
-                **parameters,
-            }
+            partial_where_queries.append(where_query)
+            partial_match_queries.append(match_query)
+            complete_parameters = {**complete_parameters, **parameters}
 
         self._variable_name_overwrite = None
 
-        complete_query = f"ALL(i IN {self._get_variable_name()} WHERE {' AND '.join(partial_queries)})"
-        return complete_query, complete_parameters
+        complete_where_query = f"ALL(i IN {self._get_variable_name()} WHERE {' AND '.join(partial_where_queries)})"
+        complete_match_query = " AND ".join(partial_match_queries) if len(partial_match_queries) != 0 else None
+        return complete_match_query, complete_where_query, complete_parameters
 
-    def _build_logical_operator(self, operator: str, expressions: list[dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+    def _build_logical_operator(
+        self, operator: str, expressions: list[dict[str, Any]]
+    ) -> tuple[str, str, dict[str, Any]]:
         """
         Builds all expressions defined inside a logical operator.
 
@@ -310,24 +494,27 @@ class QueryBuilder:
             InvalidOperator: If the operator value is not a list.
 
         Returns:
-            tuple[str, dict[str, Any]]: The query and parameters.
+            tuple[str, str, dict[str, Any]]: The query and parameters.
         """
         complete_parameters: dict[str, Any] = {}
-        partial_queries: list[str] = []
+        partial_match_queries: list[str] = []
+        partial_where_queries: list[str] = []
 
         if not isinstance(expressions, list):
             raise InvalidOperator(f"Value of {operator} operator must be list, got {type(expressions)}")
 
         for expression in expressions:
-            nested_query, parameters = self._build_nested_expressions(expressions=expression, level=1)
+            match_query, where_query, parameters = self._build_nested_expressions(expressions=expression)
 
-            partial_queries.append(nested_query)
+            partial_where_queries.append(where_query)
+            partial_match_queries.append(match_query)
             complete_parameters = {**complete_parameters, **parameters}
 
-        complete_query = f"({f' {self.__logical_operators[operator]} '.join(partial_queries)})"
-        return complete_query, complete_parameters
+        complete_where_query = f"({f' {self.__logical_operators[operator]} '.join(partial_where_queries)})"
+        complete_match_query = " AND ".join(partial_match_queries) if len(partial_match_queries) != 0 else None
+        return complete_match_query, complete_where_query, complete_parameters
 
-    def _build_neo4j_operator(self, operator: str, value: Any) -> tuple[str, dict[str, Any]]:
+    def _build_element_operator(self, operator: str, value: Any) -> tuple[str, dict[str, Any]]:
         """
         Builds operators for Neo4j-specific `elementId()` and `ID()`.
 
@@ -340,7 +527,7 @@ class QueryBuilder:
         """
         variable_name = self._get_parameter_name()
 
-        query = self.__neo4j_operators[operator].format(ref=self.ref, value=variable_name)
+        query = self.__element_operators[operator].format(ref=self.ref, value=variable_name)
         parameters = {variable_name: value}
 
         return query, parameters
@@ -356,6 +543,18 @@ class QueryBuilder:
         self._parameter_count += 1
 
         return parameter_name
+
+    def _get_pattern_ref_name(self) -> str:
+        """
+        Builds the pattern ref to use increments the pattern count by one.
+
+        Returns:
+            str: The generated pattern name.
+        """
+        pattern_ref_name = f"r_{self._pattern_count}"
+        self._pattern_count += 1
+
+        return pattern_ref_name
 
     def _get_variable_name(self) -> str:
         """
@@ -384,7 +583,7 @@ class QueryBuilder:
         logging.debug("Normalizing expressions %s", expressions)
         normalized: dict[str, Any] = deepcopy(expressions)
 
-        if isinstance(normalized, dict):
+        if isinstance(normalized, dict) and level == 0:
             # Transform values without a operator to a `$eq` operator
             for operator, value in normalized.items():
                 if not isinstance(value, dict) and not isinstance(value, list):
@@ -415,7 +614,7 @@ class QueryBuilder:
 
         return normalized
 
-    def _validate_expressions(self, expressions: dict[str, Any], is_node_expression: bool) -> dict[str, Any]:
+    def _validate_expressions(self, expressions: dict[str, Any]) -> dict[str, Any]:
         """
         Validates given expressions.
 
@@ -426,58 +625,18 @@ class QueryBuilder:
             dict[str, Any]: The validated expressions.
         """
         logging.debug("Validating expressions %s", expressions)
-        validated_expressions: dict[str, Any] = {}
 
-        for operator_or_property, value_or_expression in expressions.items():
-            if operator_or_property.startswith("$") and operator_or_property in self.__neo4j_operators.keys():
-                # Handle neo4j operators
-                validated = ElementValidator.parse_obj({operator_or_property: value_or_expression})
-                validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)[
-                    operator_or_property
-                ]
-            elif operator_or_property == "$patterns":
-                validated_expressions[operator_or_property] = value_or_expression
-
-                for index, pattern in enumerate(value_or_expression):
-                    validated = (
-                        NodePatternValidator.parse_obj(pattern)
-                        if is_node_expression
-                        else RelationshipPatternValidator.parse_obj(pattern)
-                    )
-
-                    for pattern_operator, pattern_expression in validated.dict(
-                        by_alias=True, exclude_none=True
-                    ).items():
-                        if isinstance(pattern_expression, dict):
-                            validated_pattern_expression = None
-
-                            if pattern_operator == "$relationship":
-                                validated_pattern_expression = self._validate_expressions(
-                                    expressions=pattern_expression, is_node_expression=False
-                                )
-                            elif pattern_operator in ["$node", "$startNode", "$endNode"]:
-                                validated_pattern_expression = self._validate_expressions(
-                                    expressions=pattern_expression, is_node_expression=True
-                                )
-
-                            if validated_pattern_expression is not None:
-                                validated_expressions[operator_or_property][index][
-                                    pattern_operator
-                                ] = validated_pattern_expression
-            elif not operator_or_property.startswith("$"):
-                validated = (
-                    NodePatternValidator.parse_obj(value_or_expression)
-                    if is_node_expression
-                    else RelationshipPatternValidator.parse_obj(value_or_expression)
-                )
-                validated_expressions[operator_or_property] = validated.dict(by_alias=True, exclude_none=True)
-            else:
-                logging.warning("Found invalid operator %s in expressions %s", operator_or_property, expressions)
+        if self._is_node_expression:
+            validated = NodeValidator.parse_obj(expressions)
+            validated = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+        else:
+            validated = RelationshipValidator.parse_obj(expressions)
+            validated = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
 
         # Remove empty objects which remained from pydantic validation
-        self._remove_invalid_expressions(validated_expressions)
+        self._remove_invalid_expressions(validated)
 
-        return validated_expressions
+        return validated
 
     def _remove_invalid_expressions(self, expressions: dict[str, Any], level: int = 0) -> None:
         """
