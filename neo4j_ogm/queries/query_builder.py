@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Any
 
 from neo4j_ogm.exceptions import InvalidOperator
+from neo4j_ogm.queries.types import TypedQueryOptions
 from neo4j_ogm.queries.validators import (
     ComparisonValidator,
     ElementValidator,
@@ -63,7 +64,7 @@ class QueryBuilder:
 
         return self._build_nested_expressions(validated_expressions)
 
-    def build_query_options(self, options: dict[str, Any], ref: str = "n") -> str:
+    def build_query_options(self, options: TypedQueryOptions, ref: str = "n") -> str:
         """
         Builds parts of a query with the given query options for paginating and sorting the result.
 
@@ -77,7 +78,7 @@ class QueryBuilder:
         self.ref = ref
         partial_queries: list[str] = []
 
-        logging.debug("Building query for options %s", options)
+        logging.debug("Validating options %s", options)
         validated_options = QueryOptionsValidator.parse_obj(options)
 
         if validated_options.sort and len(validated_options.sort) != 0:
@@ -279,8 +280,8 @@ class QueryBuilder:
                 where_query = self._build_exists_operator(exists=expression_or_value)
             elif property_or_operator == "$labels":
                 where_query, parameters = self._build_labels_operator(labels=expression_or_value)
-            elif property_or_operator == "$types":
-                where_query, parameters = self._build_types_operator(types=expression_or_value)
+            elif property_or_operator == "$type":
+                where_query, parameters = self._build_types_operator(relationship_type=expression_or_value)
             elif property_or_operator == "$patterns":
                 if self._is_node_expression:
                     match_query, where_query, parameters = self._build_node_pattern(patterns=expression_or_value)
@@ -329,12 +330,12 @@ class QueryBuilder:
 
         return query, parameters
 
-    def _build_types_operator(self, types: list[str]) -> tuple[str, dict[str, Any]]:
+    def _build_types_operator(self, relationship_type: str | list[str]) -> tuple[str, dict[str, Any]]:
         """
         Builds comparison operators.
 
         Args:
-            types (list[str]): The types to filter by.
+            relationship_type (list[str]): The type or types to filter by.
 
         Returns:
             tuple[str, dict[str, Any]]: The generated query and parameters.
@@ -342,8 +343,11 @@ class QueryBuilder:
         parameter_name = self._get_parameter_name()
         parameters = {}
 
-        query = f"type({self.ref}) IN ${parameter_name}"
-        parameters[parameter_name] = types
+        if isinstance(relationship_type, list):
+            query = f"type({self.ref}) IN ${parameter_name}"
+        else:
+            query = f"type({self.ref}) = ${parameter_name}"
+        parameters[parameter_name] = relationship_type
 
         return query, parameters
 

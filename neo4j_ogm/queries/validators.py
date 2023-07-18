@@ -5,20 +5,20 @@ and query options.
 import logging
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator
 
 from neo4j_ogm.queries.types import TAnyExcludeListDict
 
 
-def _validate_properties(cls, values: dict[str, Any]) -> dict[str, Any]:
-    validated_properties: dict[str, Any] = deepcopy(values)
+def _validate_properties(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    validated_properties: Dict[str, Any] = deepcopy(values)
 
     for property_name, property_value in values.items():
         if property_name not in cls.__fields__.keys():
             try:
-                validated = ExpressionValidator.parse_obj(property_value)
+                validated = CombinedExpressionValidator.parse_obj(property_value)
                 validated_properties[property_name] = validated.dict(
                     by_alias=True, exclude_none=True, exclude_unset=True
                 )
@@ -56,7 +56,7 @@ class QueryOptionsValidator(BaseModel):
 
     limit: Optional[int] = Field(default=None, ge=1)
     skip: Optional[int] = Field(default=None, ge=0)
-    sort: Optional[Union[str, list[str]]] = None
+    sort: Optional[str | List[str]] = None
     order: Optional[QueryOrder] = None
 
     class Config:
@@ -85,7 +85,7 @@ class ListComparisonValidator(BaseModel):
     Validation model for list comparison operators defined in expressions.
     """
 
-    in_operator: Optional[Union[List[TAnyExcludeListDict], TAnyExcludeListDict]] = Field(
+    in_operator: Optional[List[TAnyExcludeListDict] | TAnyExcludeListDict] = Field(
         alias="$in", extra={"parser": "{property_name} IN {value}"}
     )
 
@@ -95,10 +95,10 @@ class NumericComparisonValidator(BaseModel):
     Validation model for numerical comparison operators defined in expressions.
     """
 
-    gt_operator: Optional[Union[int, float]] = Field(alias="$gt", extra={"parser": "{property_name} > ${value}"})
-    gte_operator: Optional[Union[int, float]] = Field(alias="$gte", extra={"parser": "{property_name} >= ${value}"})
-    lt_operator: Optional[Union[int, float]] = Field(alias="$lt", extra={"parser": "{property_name} < ${value}"})
-    lte_operator: Optional[Union[int, float]] = Field(alias="$lte", extra={"parser": "{property_name} <= ${value}"})
+    gt_operator: Optional[int | float] = Field(alias="$gt", extra={"parser": "{property_name} > ${value}"})
+    gte_operator: Optional[int | float] = Field(alias="$gte", extra={"parser": "{property_name} >= ${value}"})
+    lt_operator: Optional[int | float] = Field(alias="$lt", extra={"parser": "{property_name} < ${value}"})
+    lte_operator: Optional[int | float] = Field(alias="$lte", extra={"parser": "{property_name} <= ${value}"})
 
 
 class BaseComparisonValidator(BaseModel):
@@ -126,13 +126,13 @@ class LogicalValidator(BaseModel):
     Validation model for logical operators defined in expressions.
     """
 
-    and_operator: Optional[List[Union["ExpressionValidator", "LogicalValidator"]]] = Field(
+    and_operator: Optional[List["CombinedExpressionValidator" | "LogicalValidator"]] = Field(
         alias="$and", extra={"parser": "AND"}
     )
-    or_operator: Optional[List[Union["ExpressionValidator", "LogicalValidator"]]] = Field(
+    or_operator: Optional[List["CombinedExpressionValidator" | "LogicalValidator"]] = Field(
         alias="$or", extra={"parser": "OR"}
     )
-    xor_operator: Optional[List[Union["ExpressionValidator", "LogicalValidator"]]] = Field(
+    xor_operator: Optional[List["CombinedExpressionValidator" | "LogicalValidator"]] = Field(
         alias="$xor", extra={"parser": "XOR"}
     )
 
@@ -146,14 +146,14 @@ class ElementValidator(BaseModel):
     id_operator: Optional[int] = Field(alias="$id", extra={"parser": "ID({ref}) = ${value}"})
 
 
-class ExpressionValidator(LogicalValidator, ComparisonValidator):
+class CombinedExpressionValidator(LogicalValidator, ComparisonValidator):
     """
     Validation model which combines all other validators.
     """
 
-    not_operator: Optional["ExpressionValidator"] = Field(alias="$not")
-    all_operator: Optional[List["ExpressionValidator"]] = Field(alias="$all")
-    size_operator: Optional[Union["NumericComparisonValidator", "BaseComparisonValidator"]] = Field(alias="$size")
+    not_operator: Optional["CombinedExpressionValidator"] = Field(alias="$not")
+    all_operator: Optional[List["CombinedExpressionValidator"]] = Field(alias="$all")
+    size_operator: Optional["NumericComparisonValidator" | "BaseComparisonValidator"] = Field(alias="$size")
     exists_operator: Optional[bool] = Field(alias="$exists")
 
 
@@ -201,12 +201,12 @@ class NodeElementValidator(NodeValidator):
     labels_operator: Optional[List[str]] = Field(alias="$labels")
 
 
-class RelationshipElementValidator(NodeValidator):
+class RelationshipElementValidator(RelationshipValidator):
     """
     Validation model for neo4j relationship element operators defined in expressions.
     """
 
-    types_operator: Optional[List[str]] = Field(alias="$types")
+    type_operator: Optional[str | List[str]] = Field(alias="$type")
     min_hops_operator: Optional[int] = Field(alias="$minHops", gt=0)
     max_hops_operator: Optional[int] = Field(alias="$maxHops", gt=0)
 

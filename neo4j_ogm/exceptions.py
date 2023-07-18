@@ -3,6 +3,9 @@ Module containing all exceptions raised by the library.
 """
 
 
+from typing import List
+
+
 class Neo4jOGMException(Exception):
     """
     Base exception for all Neo4jOGM exceptions
@@ -34,7 +37,7 @@ class InvalidEntityType(Neo4jOGMException):
     Exception which gets raised if the client provides a invalid entity type
     """
 
-    def __init__(self, available_types: list[str], entity_type: str, *args: object) -> None:
+    def __init__(self, available_types: List[str], entity_type: str, *args: object) -> None:
         super().__init__(
             f"Invalid entity type. Expected entity type to be one of {available_types}, got {entity_type}", *args
         )
@@ -45,7 +48,7 @@ class InvalidIndexType(Neo4jOGMException):
     Exception which gets raised if the client provides a invalid index type when creating a new index.
     """
 
-    def __init__(self, available_types: list[str], index_type: str, *args: object) -> None:
+    def __init__(self, available_types: List[str], index_type: str, *args: object) -> None:
         super().__init__(f"Invalid index type. Expected index to be one of {available_types}, got {index_type}", *args)
 
 
@@ -90,7 +93,7 @@ class UnknownRelationshipDirection(Neo4jOGMException):
     Exception which gets raised when a invalid relationship direction is provided.
     """
 
-    def __init__(self, expected_directions: list[str], actual_direction: str, *args: object) -> None:
+    def __init__(self, expected_directions: List[str], actual_direction: str, *args: object) -> None:
         super().__init__(f"Expected one of {expected_directions}, got {actual_direction}", *args)
 
 

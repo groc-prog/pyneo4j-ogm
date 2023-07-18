@@ -4,7 +4,7 @@ Database client for running queries against the connected database.
 import logging
 from enum import Enum
 from os import environ
-from typing import Any, Callable, Type
+from typing import Any, Callable, Dict, List, Set, Tuple, Type
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.graph import Node, Relationship
@@ -69,23 +69,23 @@ class Neo4jClient:
     _session: AsyncSession
     _transaction: AsyncTransaction
     _batch_enabled: bool = False
-    models: set[Type] = set()
+    models: Set[Type] = set()
     uri: str
-    auth: tuple[str, str] | None
+    auth: Tuple[str, str] | None
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
             cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def connect(self, uri: str | None = None, auth: tuple[str, str] | None = None) -> None:
+    def connect(self, uri: str | None = None, auth: Tuple[str, str] | None = None) -> None:
         """
         Establish a connection to a database.
 
         Args:
             uri (str | None, optional): Connection URI. If not provided, will try to fall back to
                 NEO4J_URI environment variable. Defaults to None.
-            auth (tuple[str, str] | None, optional): Username and password authentication to use.
+            auth (Tuple[str, str] | None, optional): Username and password authentication to use.
                 Defaults to None.
 
         Raises:
@@ -106,13 +106,13 @@ class Neo4jClient:
         logging.info("Connected to database")
 
     @ensure_connection
-    async def register_models(self, models: list[Type]) -> None:
+    async def register_models(self, models: List[Type]) -> None:
         """
         Registers models which are used with the client to resolve query results to their corresponding model
         instances.
 
         Args:
-            models (list[Type]): A list of models to register.
+            models (List[Type]): A list of models to register.
         """
         for model in models:
             self.models.add(model)
@@ -161,19 +161,19 @@ class Neo4jClient:
 
     @ensure_connection
     async def cypher(
-        self, query: str, parameters: dict[str, Any] | None = None, resolve_models: bool = True
-    ) -> tuple[list[list[Any]], list[str]]:
+        self, query: str, parameters: Dict[str, Any] | None = None, resolve_models: bool = True
+    ) -> Tuple[List[List[Any]], List[str]]:
         """
         Runs the provided cypher query with given parameters against the database.
 
         Args:
             query (str): Query to run.
-            parameters (dict[str, Any]): Parameters passed to the transaction.
+            parameters (Dict[str, Any]): Parameters passed to the transaction.
             resolve_models (bool, optional): Whether to try and resolve query results to their corresponding database
                 models or not. Defaults to True.
 
         Returns:
-            tuple[list[list[Any]], list[str]]: A tuple containing the query result and the names
+            Tuple[List[List[Any]], List[str]]: A tuple containing the query result and the names
                 of the returned variables.
         """
         if parameters is None:
@@ -213,7 +213,7 @@ class Neo4jClient:
 
     @ensure_connection
     async def create_constraint(
-        self, name: str, entity_type: str, properties: list[str], labels_or_type: list[str] | str
+        self, name: str, entity_type: str, properties: List[str], labels_or_type: List[str] | str
     ) -> None:
         """
         Creates a constraint on nodes or relationships in the Neo4j database. Currently only `UNIQUENESS`
@@ -222,9 +222,9 @@ class Neo4jClient:
         Args:
             name (str): The name of the constraint.
             entity_type (str): The type of entity the constraint is applied to. Must be either "NODE" or "RELATIONSHIP".
-            properties (list[str]): A list of properties that should be unique for nodes/relationships satisfying
+            properties (List[str]): A list of properties that should be unique for nodes/relationships satisfying
                 the constraint.
-            labels_or_type (list[str]): For nodes, a list of labels to which the constraint should be applied.
+            labels_or_type (List[str]): For nodes, a list of labels to which the constraint should be applied.
                 For relationships, a string representing the relationship type.
 
         Raises:
@@ -265,7 +265,7 @@ class Neo4jClient:
 
     @ensure_connection
     async def create_index(
-        self, name: str, entity_type: str, index_type: str, properties: list[str], labels_or_type: list[str]
+        self, name: str, entity_type: str, index_type: str, properties: List[str], labels_or_type: List[str]
     ) -> None:
         """
         Creates a index on nodes or relationships in the Neo4j database.
@@ -274,9 +274,9 @@ class Neo4jClient:
             name (str): The name of the constraint.
             entity_type (str): The type of entity the constraint is applied to. Must be either "NODE" or "RELATIONSHIP".
             index_type (str): The type of index to apply.
-            properties (list[str]): A list of properties that should be unique for nodes/relationships satisfying
+            properties (List[str]): A list of properties that should be unique for nodes/relationships satisfying
                 the constraint.
-            labels_or_type (list[str]): For nodes, a list of labels to which the constraint should be applied.
+            labels_or_type (List[str]): For nodes, a list of labels to which the constraint should be applied.
                 For relationships, a string representing the relationship type.
 
         Raises:
