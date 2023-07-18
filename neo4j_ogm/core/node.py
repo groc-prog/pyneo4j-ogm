@@ -9,7 +9,7 @@ from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.exceptions import InflationFailure, InvalidExpressions, NoResultsFound
+from neo4j_ogm.exceptions import InflationFailure, NoResultsFound
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedExpressions, TypedQueryOptions
 from neo4j_ogm.utils import ensure_alive
@@ -238,15 +238,16 @@ class Neo4jNode(BaseModel):
             T | None: A instance of the model or None if no match is found.
         """
         logging.info("Getting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_node_expressions(expressions=expressions)
-
-        if expression_query == "":
-            raise InvalidExpressions(expressions=expressions)
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_node_expressions(expressions=expressions)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`)
-                {expression_query}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 LIMIT 1
             """,
@@ -278,16 +279,17 @@ class Neo4jNode(BaseModel):
             list[T]: A list of model instances.
         """
         logging.info("Getting nodes of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_node_expressions(
-            expressions=expressions if expressions is not None else {}
-        )
-
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
         options_query = cls._query_builder.build_query_options(options=options if options else {})
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`)
-                {expression_query}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 {options_query}
             """,
@@ -488,15 +490,16 @@ class Neo4jNode(BaseModel):
             int: The number of deleted nodes.
         """
         logging.info("Deleting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_node_expressions(expressions=expressions)
-
-        if expression_query == "":
-            raise InvalidExpressions(expressions=expressions)
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_node_expressions(expressions=expressions)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`)
-                {expression_query}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 DETACH DELETE n
                 RETURN n
             """,
@@ -522,12 +525,16 @@ class Neo4jNode(BaseModel):
             int: The number of deleted nodes.
         """
         logging.info("Deleting all nodes of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_node_expressions(expressions=expressions)
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`)
-                {expression_query}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 DETACH DELETE n
                 RETURN n
             """,
@@ -549,14 +556,16 @@ class Neo4jNode(BaseModel):
             int: The number of nodes matched by the query.
         """
         logging.info("Getting count of nodes of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_node_expressions(
-            expressions=expressions if expressions is not None else {}
-        )
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`)
-                {expression_query}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 RETURN count(n)
             """,
             parameters=expression_parameters,
