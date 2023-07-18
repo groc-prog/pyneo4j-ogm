@@ -3,10 +3,10 @@ This module contains the QueryBuilder class which handles queries build from opt
 """
 import logging
 from copy import deepcopy
-from typing import Any
+from typing import Any, Dict, Tuple
 
 from neo4j_ogm.exceptions import InvalidOperator
-from neo4j_ogm.queries.types import TypedQueryOptions
+from neo4j_ogm.queries.types import TypedNodeExpressions, TypedQueryOptions, TypedRelationshipExpressions
 from neo4j_ogm.queries.validators import (
     ComparisonValidator,
     ElementValidator,
@@ -23,9 +23,9 @@ class QueryBuilder:
     Builder class for generating queries from expressions or options.
     """
 
-    __comparison_operators: dict[str, str] = {}
-    __logical_operators: dict[str, str] = {}
-    __element_operators: dict[str, str] = {}
+    __comparison_operators: Dict[str, str] = {}
+    __logical_operators: Dict[str, str] = {}
+    __element_operators: Dict[str, str] = {}
     _is_node_expression: bool
     _variable_name_overwrite: str | None = None
     _parameter_count: int = 0
@@ -44,19 +44,43 @@ class QueryBuilder:
         for _, field in ElementValidator.__fields__.items():
             self.__element_operators[field.alias] = field.field_info.extra["extra"]["parser"]
 
-    def build_node_expressions(self, expressions: dict[str, Any], ref: str = "n") -> tuple[str, str, dict[str, Any]]:
+    def build_node_expressions(
+        self, expressions: TypedNodeExpressions, ref: str = "n"
+    ) -> Tuple[str, str, Dict[str, Any]]:
         """
-        Builds a query for filtering properties with the given operators.
+        Builds a query for filtering node properties with the given operators.
 
         Args:
-            expressions (dict[str, Any]): The expressions defining the operators.
+            expressions (Dict[str, Any]): The expressions defining the operators.
             ref (str, optional): The variable to use inside the generated query. Defaults to "n".
 
         Returns:
-            tuple[str, str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, str, Dict[str, Any]]: The generated query and parameters.
         """
         self.ref = ref
         self._is_node_expression = True
+
+        logging.debug("Building query for expressions %s", expressions)
+        normalized_expressions = self._normalize_expressions(expressions=expressions)
+        validated_expressions = self._validate_expressions(expressions=normalized_expressions)
+
+        return self._build_nested_expressions(validated_expressions)
+
+    def build_relationship_expressions(
+        self, expressions: TypedRelationshipExpressions, ref: str = "n"
+    ) -> Tuple[str, str, Dict[str, Any]]:
+        """
+        Builds a query for filtering relationship properties with the given operators.
+
+        Args:
+            expressions (Dict[str, Any]): The expressions defining the operators.
+            ref (str, optional): The variable to use inside the generated query. Defaults to "n".
+
+        Returns:
+            Tuple[str, str, Dict[str, Any]]: The generated query and parameters.
+        """
+        self.ref = ref
+        self._is_node_expression = False
 
         logging.debug("Building query for expressions %s", expressions)
         normalized_expressions = self._normalize_expressions(expressions=expressions)
@@ -69,7 +93,7 @@ class QueryBuilder:
         Builds parts of a query with the given query options for paginating and sorting the result.
 
         Args:
-            options (dict[str, Any]): The options for the result.
+            options (Dict[str, Any]): The options for the result.
             ref (str, optional): The variable to use inside the generated query. Defaults to "n".
 
         Returns:
@@ -106,20 +130,20 @@ class QueryBuilder:
 
         return " ".join(partial_queries)
 
-    def _build_node_pattern(self, patterns: list[dict[str, Any]]) -> tuple[str, str, dict[str, Any]]:
+    def _build_node_pattern(self, patterns: list[Dict[str, Any]]) -> Tuple[str, str, Dict[str, Any]]:
         """
         Builds a `$pattern` operator for node expressions.
 
         Args:
-            patterns (list[dict[str, Any]]): The patterns to build.
+            patterns (list[Dict[str, Any]]): The patterns to build.
 
         Returns:
-            tuple[str, str, dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
+            Tuple[str, str, Dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
         """
         old_ref = deepcopy(self.ref)
         match_queries: list[str] = []
         where_queries: list[str] = []
-        parameters: dict[str, Any] = {}
+        parameters: Dict[str, Any] = {}
 
         for pattern in patterns:
             node_ref = self._get_pattern_ref_name() if "$node" in pattern else ""
@@ -179,20 +203,20 @@ class QueryBuilder:
         complete_where_query = " AND ".join(where_queries) if len(where_queries) != 0 else None
         return complete_match_query, complete_where_query, parameters
 
-    def _build_relationship_pattern(self, patterns: list[dict[str, Any]]) -> tuple[str, str, dict[str, Any]]:
+    def _build_relationship_pattern(self, patterns: list[Dict[str, Any]]) -> Tuple[str, str, Dict[str, Any]]:
         """
         Builds a `$pattern` operator for relationship expressions.
 
         Args:
-            patterns (list[dict[str, Any]]): The patterns to build.
+            patterns (list[Dict[str, Any]]): The patterns to build.
 
         Returns:
-            tuple[str, str, dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
+            Tuple[str, str, Dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
         """
         old_ref = deepcopy(self.ref)
         match_queries: list[str] = []
         where_queries: list[str] = []
-        parameters: dict[str, Any] = {}
+        parameters: Dict[str, Any] = {}
 
         for pattern in patterns:
             start_node_ref = self._get_pattern_ref_name() if "$startNode" in pattern else ""
@@ -237,20 +261,20 @@ class QueryBuilder:
         complete_where_query = " AND ".join(where_queries) if len(where_queries) != 0 else None
         return complete_match_query, complete_where_query, parameters
 
-    def _build_nested_expressions(self, expressions: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
+    def _build_nested_expressions(self, expressions: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
         """
         Builds nested operators defined in provided expressions.
 
         Args:
-            expressions (dict[str, Any]): The expressions to build the query from.
+            expressions (Dict[str, Any]): The expressions to build the query from.
 
         Raises:
             InvalidOperator: If the `expressions` parameter is not a valid dict.
 
         Returns:
-            tuple[str, str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, str, Dict[str, Any]]: The generated query and parameters.
         """
-        complete_parameters: dict[str, Any] = {}
+        complete_parameters: Dict[str, Any] = {}
         partial_match_queries: list[str] = []
         partial_where_queries: list[str] = []
 
@@ -312,7 +336,7 @@ class QueryBuilder:
         complete_where_query = " AND ".join(partial_where_queries) if len(partial_where_queries) != 0 else None
         return complete_match_query, complete_where_query, complete_parameters
 
-    def _build_labels_operator(self, labels: list[str]) -> tuple[str, dict[str, Any]]:
+    def _build_labels_operator(self, labels: list[str]) -> Tuple[str, Dict[str, Any]]:
         """
         Builds comparison operators.
 
@@ -320,7 +344,7 @@ class QueryBuilder:
             labels (list[str]): The labels to filter by.
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, Dict[str, Any]]: The generated query and parameters.
         """
         parameter_name = self._get_parameter_name()
         parameters = {}
@@ -330,7 +354,7 @@ class QueryBuilder:
 
         return query, parameters
 
-    def _build_types_operator(self, relationship_type: str | list[str]) -> tuple[str, dict[str, Any]]:
+    def _build_types_operator(self, relationship_type: str | list[str]) -> Tuple[str, Dict[str, Any]]:
         """
         Builds comparison operators.
 
@@ -338,7 +362,7 @@ class QueryBuilder:
             relationship_type (list[str]): The type or types to filter by.
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, Dict[str, Any]]: The generated query and parameters.
         """
         parameter_name = self._get_parameter_name()
         parameters = {}
@@ -351,7 +375,7 @@ class QueryBuilder:
 
         return query, parameters
 
-    def _build_comparison_operator(self, operator: str, value: Any) -> tuple[str, dict[str, Any]]:
+    def _build_comparison_operator(self, operator: str, value: Any) -> Tuple[str, Dict[str, Any]]:
         """
         Builds comparison operators.
 
@@ -360,7 +384,7 @@ class QueryBuilder:
             value (Any): The provided value for the operator.
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, Dict[str, Any]]: The generated query and parameters.
         """
         parameter_name = self._get_parameter_name()
         parameters = {}
@@ -394,30 +418,30 @@ class QueryBuilder:
         )
         return query
 
-    def _build_not_operator(self, expression: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
+    def _build_not_operator(self, expression: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
         """
         Builds a `NOT()` clause with the defined expressions.
 
         Args:
-            expression (dict[str, Any]): The expressions defined for the `$not` operator.
+            expression (Dict[str, Any]): The expressions defined for the `$not` operator.
 
         Returns:
-            tuple[str, str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, str, Dict[str, Any]]: The generated query and parameters.
         """
         match_query, where_query, complete_parameters = self._build_nested_expressions(expressions=expression)
 
         complete_where_query = f"NOT({where_query})"
         return match_query, complete_where_query, complete_parameters
 
-    def _build_in_operator(self, value: Any) -> tuple[str, dict[str, Any]]:
+    def _build_in_operator(self, value: Any) -> Tuple[str, Dict[str, Any]]:
         """
         Builds a query containing a `IN` operator.
 
         Args:
-            expression (dict[str, Any]): The expressions defined for the `$in` operator.
+            expression (Dict[str, Any]): The expressions defined for the `$in` operator.
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, Dict[str, Any]]: The generated query and parameters.
         """
         parameter_name = self._get_parameter_name()
         complete_parameters = {parameter_name: value}
@@ -429,15 +453,15 @@ class QueryBuilder:
 
         return complete_query, complete_parameters
 
-    def _build_size_operator(self, expression: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    def _build_size_operator(self, expression: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         """
         Builds a `SIZE()` clause with the defined comparison operator.
 
         Args:
-            expression (dict[str, Any]): The expression defined fot the `$size` operator.
+            expression (Dict[str, Any]): The expression defined fot the `$size` operator.
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, Dict[str, Any]]: The generated query and parameters.
         """
         comparison_operator = next(iter(expression))
         self._variable_name_overwrite = f"SIZE({self._get_variable_name()})"
@@ -450,21 +474,21 @@ class QueryBuilder:
 
         return query, parameters
 
-    def _build_all_operator(self, expressions: list[dict[str, Any]]) -> tuple[str, str, dict[str, Any]]:
+    def _build_all_operator(self, expressions: list[Dict[str, Any]]) -> Tuple[str, str, Dict[str, Any]]:
         """
         Builds a `ALL()` clause with the defined expressions.
 
         Args:
-            expressions (list[dict[str, Any]]): Expressions to apply inside the `$all` operator.
+            expressions (list[Dict[str, Any]]): Expressions to apply inside the `$all` operator.
 
         Raises:
             InvalidOperator: If the operator value is not a list.
 
         Returns:
-            tuple[str, str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, str, Dict[str, Any]]: The generated query and parameters.
         """
         self._variable_name_overwrite = "i"
-        complete_parameters: dict[str, Any] = {}
+        complete_parameters: Dict[str, Any] = {}
         partial_match_queries: list[str] = []
         partial_where_queries: list[str] = []
 
@@ -485,22 +509,22 @@ class QueryBuilder:
         return complete_match_query, complete_where_query, complete_parameters
 
     def _build_logical_operator(
-        self, operator: str, expressions: list[dict[str, Any]]
-    ) -> tuple[str, str, dict[str, Any]]:
+        self, operator: str, expressions: list[Dict[str, Any]]
+    ) -> Tuple[str, str, Dict[str, Any]]:
         """
         Builds all expressions defined inside a logical operator.
 
         Args:
             operator (str): The logical operator.
-            expressions (list[dict[str, Any]]): The expressions chained together by the operator.
+            expressions (list[Dict[str, Any]]): The expressions chained together by the operator.
 
         Raises:
             InvalidOperator: If the operator value is not a list.
 
         Returns:
-            tuple[str, str, dict[str, Any]]: The query and parameters.
+            Tuple[str, str, Dict[str, Any]]: The query and parameters.
         """
-        complete_parameters: dict[str, Any] = {}
+        complete_parameters: Dict[str, Any] = {}
         partial_match_queries: list[str] = []
         partial_where_queries: list[str] = []
 
@@ -518,7 +542,7 @@ class QueryBuilder:
         complete_match_query = " AND ".join(partial_match_queries) if len(partial_match_queries) != 0 else None
         return complete_match_query, complete_where_query, complete_parameters
 
-    def _build_element_operator(self, operator: str, value: Any) -> tuple[str, dict[str, Any]]:
+    def _build_element_operator(self, operator: str, value: Any) -> Tuple[str, Dict[str, Any]]:
         """
         Builds operators for Neo4j-specific `elementId()` and `ID()`.
 
@@ -527,7 +551,7 @@ class QueryBuilder:
             value (Any): The value to use for building the operator.
 
         Returns:
-            tuple[str, dict[str, Any]]: The generated query and parameters.
+            Tuple[str, Dict[str, Any]]: The generated query and parameters.
         """
         variable_name = self._get_parameter_name()
 
@@ -572,20 +596,20 @@ class QueryBuilder:
 
         return f"{self.ref}.{self.property_name}"
 
-    def _normalize_expressions(self, expressions: dict[str, Any], level: int = 0) -> dict[str, Any]:
+    def _normalize_expressions(self, expressions: Dict[str, Any], level: int = 0) -> Dict[str, Any]:
         """
         Normalizes and formats the provided expressions into usable expressions for the builder.
 
         Args:
-            expressions (dict[str, Any]): The expressions to normalize
+            expressions (Dict[str, Any]): The expressions to normalize
             level (int, optional): The recursion depth level. Should not be modified outside the function itself.
                 Defaults to 0.
 
         Returns:
-            dict[str, Any]: The normalized expressions.
+            Dict[str, Any]: The normalized expressions.
         """
         logging.debug("Normalizing expressions %s", expressions)
-        normalized: dict[str, Any] = deepcopy(expressions)
+        normalized: Dict[str, Any] = deepcopy(expressions)
 
         if isinstance(normalized, dict) and level == 0:
             # Transform values without a operator to a `$eq` operator
@@ -618,15 +642,15 @@ class QueryBuilder:
 
         return normalized
 
-    def _validate_expressions(self, expressions: dict[str, Any]) -> dict[str, Any]:
+    def _validate_expressions(self, expressions: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validates given expressions.
 
         Args:
-            expressions (dict[str, Any]): The expressions to validate.
+            expressions (Dict[str, Any]): The expressions to validate.
 
         Returns:
-            dict[str, Any]: The validated expressions.
+            Dict[str, Any]: The validated expressions.
         """
         logging.debug("Validating expressions %s", expressions)
 
@@ -642,13 +666,13 @@ class QueryBuilder:
 
         return validated
 
-    def _remove_invalid_expressions(self, expressions: dict[str, Any], level: int = 0) -> None:
+    def _remove_invalid_expressions(self, expressions: Dict[str, Any], level: int = 0) -> None:
         """
         Recursively removes empty objects and nested fields which do not start with a `$` and are not top level keys
         from nested dictionaries and lists.
 
         Args:
-            expressions (dict[str, Any]): The expression to check.
+            expressions (Dict[str, Any]): The expression to check.
             level (int, optional): The recursion depth level. Should not be modified outside the function itself.
                 Defaults to 0.
         """
