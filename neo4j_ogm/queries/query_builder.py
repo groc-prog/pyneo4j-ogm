@@ -12,8 +12,8 @@ from neo4j_ogm.queries.validators import (
     ElementValidator,
     LogicalValidator,
     NodeValidator,
-    PatternDirection,
     QueryOptionsValidator,
+    RelationshipDirection,
     RelationshipValidator,
 )
 
@@ -168,9 +168,9 @@ class QueryBuilder:
 
             # Build relationship direction
             match pattern["$direction"]:
-                case PatternDirection.INCOMING:
+                case RelationshipDirection.INCOMING:
                     match_queries.append(f"({self.ref})<-{relationship}-({node_ref})")
-                case PatternDirection.OUTGOING:
+                case RelationshipDirection.OUTGOING:
                     match_queries.append(f"({self.ref})-{relationship}->({node_ref})")
                 case _:
                     match_queries.append(f"({self.ref})-{relationship}-({node_ref})")
@@ -226,9 +226,9 @@ class QueryBuilder:
 
             # Build relationship direction
             match pattern["$direction"]:
-                case PatternDirection.INCOMING:
+                case RelationshipDirection.INCOMING:
                     match_queries.append(f"({start_node_ref})<-[{self.ref}]-({end_node_ref})")
-                case PatternDirection.OUTGOING:
+                case RelationshipDirection.OUTGOING:
                     match_queries.append(f"({start_node_ref})-[{self.ref}]->({end_node_ref})")
                 case _:
                     match_queries.append(f"({start_node_ref})-[{self.ref}]-({end_node_ref})")

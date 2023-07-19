@@ -30,7 +30,7 @@ def _validate_properties(cls, values: Dict[str, Any]) -> Dict[str, Any]:
     return validated_properties
 
 
-class PatternDirection(str, Enum):
+class RelationshipDirection(str, Enum):
     """
     Available relationship directions for pattern expressions.
     """
@@ -217,7 +217,9 @@ class NodePatternValidator(BaseModel):
     """
 
     node_operator: Optional["NodeElementValidator"] = Field(alias="$node")
-    direction_operator: Optional["PatternDirection"] = Field(alias="$direction", default=PatternDirection.BOTH)
+    direction_operator: Optional["RelationshipDirection"] = Field(
+        alias="$direction", default=RelationshipDirection.BOTH
+    )
     relationship_operator: Optional["RelationshipElementValidator"] = Field(alias="$relationship")
 
 
@@ -228,7 +230,9 @@ class RelationshipPatternValidator(BaseModel):
 
     start_node_operator: Optional["NodeElementValidator"] = Field(alias="$startNode")
     end_node_operator: Optional["NodeElementValidator"] = Field(alias="$endNode")
-    direction_operator: Optional["PatternDirection"] = Field(alias="$direction", default=PatternDirection.BOTH)
+    direction_operator: Optional["RelationshipDirection"] = Field(
+        alias="$direction", default=RelationshipDirection.BOTH
+    )
 
 
 # Update forward-refs

@@ -14,15 +14,10 @@ from neo4j_ogm.core.node import Neo4jNode
 from neo4j_ogm.exceptions import InflationFailure, NoResultsFound, UnknownRelationshipDirection
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedQueryOptions, TypedRelationshipExpressions
+from neo4j_ogm.queries.validators import RelationshipDirection
 from neo4j_ogm.utils import ensure_alive
 
 T = TypeVar("T", bound="Neo4jRelationship")
-
-
-class Direction(str, Enum):
-    INCOMING = "INCOMING"
-    OUTGOING = "OUTGOING"
-    BOTH = "BOTH"
 
 
 class Neo4jRelationship(BaseModel):
@@ -39,7 +34,7 @@ class Neo4jRelationship(BaseModel):
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
-    _direction: Direction = PrivateAttr()
+    _direction: RelationshipDirection = PrivateAttr()
     _element_id: str | None = PrivateAttr(default=None)
     _start_node_id: str | None = PrivateAttr(default=None)
     _end_node_id: str | None = PrivateAttr(default=None)
@@ -600,15 +595,16 @@ class Neo4jRelationship(BaseModel):
         relationship = f"[{rel_ref}:`{cls.__type__}`]"
 
         match cls._direction:
-            case Direction.BOTH:
+            case RelationshipDirection.BOTH:
                 return f"{start_node}-{relationship}-{end_node}"
-            case Direction.INCOMING:
+            case RelationshipDirection.INCOMING:
                 return f"{start_node}<-{relationship}-{end_node}"
-            case Direction.BOTH:
+            case RelationshipDirection.BOTH:
                 return f"{start_node}-{relationship}->{end_node}"
             case _:
                 raise UnknownRelationshipDirection(
-                    expected_directions=[option.value for option in Direction], actual_direction=cls._direction
+                    expected_directions=[option.value for option in RelationshipDirection],
+                    actual_direction=cls._direction,
                 )
 
     class Config:
