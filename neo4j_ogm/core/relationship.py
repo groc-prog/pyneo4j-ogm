@@ -11,13 +11,7 @@ from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import EntityType, Neo4jClient
 from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.exceptions import (
-    InflationFailure,
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    NoResultsFound,
-    UnknownRelationshipDirection,
-)
+from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedQueryOptions, TypedRelationshipExpressions
 
@@ -73,6 +67,7 @@ class RelationshipModel(BaseModel):
     __type__: str
     __dict_properties = set()
     __model_properties = set()
+    _relationship_match: str = PrivateAttr()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: set[str] = PrivateAttr(default=set())
@@ -104,6 +99,14 @@ class RelationshipModel(BaseModel):
                     cls.__dict_properties.add(property_name)
                 elif issubclass(value.type_, BaseModel):
                     cls.__model_properties.add(property_name)
+
+        # Build relationship match query
+        cls._relationship_match = cls._query_builder.build_relationship_match(
+            direction=cls._direction,
+            relationship_type=cls.__type__,
+            start_node_labels=cls._start_node_model.__labels__,
+            end_node_labels=cls._end_node_model.__labels__,
+        )
 
         return super().__init_subclass__()
 
@@ -191,7 +194,7 @@ class RelationshipModel(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._build_relationship_match()}
+                MATCH {self._relationship_match}
                 WHERE elementId(r) = $element_id
                 SET {", ".join([f"r.{property_name} = ${property_name}" for property_name in deflated])}
                 RETURN r
@@ -223,7 +226,7 @@ class RelationshipModel(BaseModel):
         logging.info("Deleting relationship %s of model %s", self._element_id, self.__class__.__name__)
         await self._client.cypher(
             query=f"""
-                MATCH {self._build_relationship_match()}
+                MATCH {self._relationship_match}
                 WHERE elementId(r) = $element_id
                 DELETE r
             """,
@@ -255,7 +258,7 @@ class RelationshipModel(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._build_relationship_match()}
+                MATCH {self._relationship_match}
                 WHERE elementId(r) = $element_id
                 RETURN start
             """,
@@ -289,7 +292,7 @@ class RelationshipModel(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._build_relationship_match()}
+                MATCH {self._relationship_match}
                 WHERE elementId(r) = $element_id
                 RETURN end
             """,
@@ -327,7 +330,7 @@ class RelationshipModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
                 {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 LIMIT 1
@@ -369,7 +372,7 @@ class RelationshipModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
                 {expression_where_query if expression_where_query is not None else ""}
                 RETURN r
                 {options_query}
@@ -486,7 +489,7 @@ class RelationshipModel(BaseModel):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
                 {expression_where_query if expression_where_query is not None else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
@@ -543,7 +546,7 @@ class RelationshipModel(BaseModel):
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
                 {expression_where_query if expression_where_query is not None else ""}
                 DELETE r
             """,
@@ -574,7 +577,7 @@ class RelationshipModel(BaseModel):
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
                 {expression_where_query if expression_where_query is not None else ""}
                 DELETE r
             """,
@@ -604,7 +607,7 @@ class RelationshipModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
                 {expression_where_query if expression_where_query is not None else ""}
                 RETURN count(r)
             """,
@@ -616,39 +619,6 @@ class RelationshipModel(BaseModel):
             raise NoResultsFound()
 
         return results[0][0]
-
-    @classmethod
-    def _build_relationship_match(cls, rel_ref: str = "r", start_ref: str = "start", end_ref: str = "end") -> str:
-        """
-        Builds a relationships `MATCH` clause based on the defined ref names and direction.
-
-        Args:
-            rel_ref (str, optional): Variable name to use for the relationship. Defaults to "r".
-            start_ref (str, optional): Variable name to use for the start node. Defaults to "start".
-            end_ref (str, optional): Variable name to use for the end node. Defaults to "end".
-
-        Raises:
-            UnknownRelationshipDirection: Raised if a invalid direction is provided.
-
-        Returns:
-            str: The generated `MATCH` clause.
-        """
-        start_node = f"({start_ref}:`{':'.join(cls._start_node_model.__labels__)}`)"
-        end_node = f"({end_ref}:`{':'.join(cls._end_node_model.__labels__)}`)"
-        relationship = f"[{rel_ref}:`{cls.__type__}`]"
-
-        match cls._direction:
-            case RelationshipDirection.BOTH:
-                return f"{start_node}-{relationship}-{end_node}"
-            case RelationshipDirection.INCOMING:
-                return f"{start_node}<-{relationship}-{end_node}"
-            case RelationshipDirection.BOTH:
-                return f"{start_node}-{relationship}->{end_node}"
-            case _:
-                raise UnknownRelationshipDirection(
-                    expected_directions=[option.value for option in RelationshipDirection],
-                    actual_direction=cls._direction,
-                )
 
     class Config:
         """

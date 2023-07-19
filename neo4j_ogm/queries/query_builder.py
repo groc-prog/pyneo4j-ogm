@@ -3,9 +3,9 @@ This module contains the QueryBuilder class which handles queries build from opt
 """
 import logging
 from copy import deepcopy
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
-from neo4j_ogm.exceptions import InvalidOperator
+from neo4j_ogm.exceptions import InvalidOperator, UnknownRelationshipDirection
 from neo4j_ogm.queries.types import TypedNodeExpressions, TypedQueryOptions, TypedRelationshipExpressions
 from neo4j_ogm.queries.validators import (
     ComparisonValidator,
@@ -100,13 +100,13 @@ class QueryBuilder:
             str: The generated query.
         """
         self.ref = ref
-        partial_queries: list[str] = []
+        partial_queries: List[str] = []
 
         logging.debug("Validating options %s", options)
         validated_options = QueryOptionsValidator.parse_obj(options)
 
         if validated_options.sort and len(validated_options.sort) != 0:
-            partial_sort_query: list[str] = []
+            partial_sort_query: List[str] = []
 
             for property_name in (
                 validated_options.sort if isinstance(validated_options.sort, list) else [validated_options.sort]
@@ -130,19 +130,64 @@ class QueryBuilder:
 
         return " ".join(partial_queries)
 
-    def _build_node_pattern(self, patterns: list[Dict[str, Any]]) -> Tuple[str | None, str | None, Dict[str, Any]]:
+    def build_relationship_match(
+        self,
+        direction: RelationshipDirection,
+        relationship_type: str,
+        start_node_labels: List[str],
+        end_node_labels: List[str],
+        rel_ref: str = "r",
+        start_ref: str = "start",
+        end_ref: str = "end",
+    ) -> str:
+        """
+        Builds a relationships `MATCH` clause based on the defined ref names and direction.
+
+        Args:
+            direction (RelationshipDirection): The direction that should be used whe building the relationship.
+            relationship_type (str): The relationship type.
+            start_node_labels (List[str]): The start node labels.
+            end_node_labels (List[str]): The end node labels.
+            rel_ref (str, optional): Variable name to use for the relationship. Defaults to "r".
+            start_ref (str, optional): Variable name to use for the start node. Defaults to "start".
+            end_ref (str, optional): Variable name to use for the end node. Defaults to "end".
+
+        Raises:
+            UnknownRelationshipDirection: Raised if a invalid direction is provided.
+
+        Returns:
+            str: The generated `MATCH` clause.
+        """
+        start_node = f"({start_ref}:`{':'.join(start_node_labels)}`)"
+        end_node = f"({end_ref}:`{':'.join(end_node_labels)}`)"
+        relationship = f"[{rel_ref}:`{relationship_type}`]"
+
+        match direction:
+            case RelationshipDirection.BOTH:
+                return f"{start_node}-{relationship}-{end_node}"
+            case RelationshipDirection.INCOMING:
+                return f"{start_node}<-{relationship}-{end_node}"
+            case RelationshipDirection.BOTH:
+                return f"{start_node}-{relationship}->{end_node}"
+            case _:
+                raise UnknownRelationshipDirection(
+                    expected_directions=[option.value for option in RelationshipDirection],
+                    actual_direction=direction,
+                )
+
+    def _build_node_pattern(self, patterns: List[Dict[str, Any]]) -> Tuple[str | None, str | None, Dict[str, Any]]:
         """
         Builds a `$pattern` operator for node expressions.
 
         Args:
-            patterns (list[Dict[str, Any]]): The patterns to build.
+            patterns (List[Dict[str, Any]]): The patterns to build.
 
         Returns:
             Tuple[str | None, str | None, Dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
         """
         old_ref = deepcopy(self.ref)
-        match_queries: list[str] = []
-        where_queries: list[str] = []
+        match_queries: List[str] = []
+        where_queries: List[str] = []
         parameters: Dict[str, Any] = {}
 
         for pattern in patterns:
@@ -204,20 +249,20 @@ class QueryBuilder:
         return complete_match_query, complete_where_query, parameters
 
     def _build_relationship_pattern(
-        self, patterns: list[Dict[str, Any]]
+        self, patterns: List[Dict[str, Any]]
     ) -> Tuple[str | None, str | None, Dict[str, Any]]:
         """
         Builds a `$pattern` operator for relationship expressions.
 
         Args:
-            patterns (list[Dict[str, Any]]): The patterns to build.
+            patterns (List[Dict[str, Any]]): The patterns to build.
 
         Returns:
             Tuple[str | None, str | None, Dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
         """
         old_ref = deepcopy(self.ref)
-        match_queries: list[str] = []
-        where_queries: list[str] = []
+        match_queries: List[str] = []
+        where_queries: List[str] = []
         parameters: Dict[str, Any] = {}
 
         for pattern in patterns:
@@ -277,8 +322,8 @@ class QueryBuilder:
             Tuple[str | None, str | None, Dict[str, Any]]: The generated query and parameters.
         """
         complete_parameters: Dict[str, Any] = {}
-        partial_match_queries: list[str] = []
-        partial_where_queries: list[str] = []
+        partial_match_queries: List[str] = []
+        partial_where_queries: List[str] = []
 
         if not isinstance(expressions, dict):
             raise InvalidOperator(f"Expressions must be instance of dict, got {type(expressions)}")
@@ -338,12 +383,12 @@ class QueryBuilder:
         complete_where_query = " AND ".join(partial_where_queries) if len(partial_where_queries) != 0 else None
         return complete_match_query, complete_where_query, complete_parameters
 
-    def _build_labels_operator(self, labels: list[str]) -> Tuple[str, Dict[str, Any]]:
+    def _build_labels_operator(self, labels: List[str]) -> Tuple[str, Dict[str, Any]]:
         """
         Builds comparison operators.
 
         Args:
-            labels (list[str]): The labels to filter by.
+            labels (List[str]): The labels to filter by.
 
         Returns:
             Tuple[str, Dict[str, Any]]: The generated query and parameters.
@@ -356,12 +401,12 @@ class QueryBuilder:
 
         return query, parameters
 
-    def _build_types_operator(self, relationship_type: str | list[str]) -> Tuple[str, Dict[str, Any]]:
+    def _build_types_operator(self, relationship_type: str | List[str]) -> Tuple[str, Dict[str, Any]]:
         """
         Builds comparison operators.
 
         Args:
-            relationship_type (list[str]): The type or types to filter by.
+            relationship_type (List[str]): The type or types to filter by.
 
         Returns:
             Tuple[str, Dict[str, Any]]: The generated query and parameters.
@@ -476,12 +521,12 @@ class QueryBuilder:
 
         return query, parameters
 
-    def _build_all_operator(self, expressions: list[Dict[str, Any]]) -> Tuple[str | None, str, Dict[str, Any]]:
+    def _build_all_operator(self, expressions: List[Dict[str, Any]]) -> Tuple[str | None, str, Dict[str, Any]]:
         """
         Builds a `ALL()` clause with the defined expressions.
 
         Args:
-            expressions (list[Dict[str, Any]]): Expressions to apply inside the `$all` operator.
+            expressions (List[Dict[str, Any]]): Expressions to apply inside the `$all` operator.
 
         Raises:
             InvalidOperator: If the operator value is not a list.
@@ -491,8 +536,8 @@ class QueryBuilder:
         """
         self._variable_name_overwrite = "i"
         complete_parameters: Dict[str, Any] = {}
-        partial_match_queries: list[str] = []
-        partial_where_queries: list[str] = []
+        partial_match_queries: List[str] = []
+        partial_where_queries: List[str] = []
 
         if not isinstance(expressions, list):
             raise InvalidOperator(f"Value of $all operator must be list, got {type(expressions)}")
@@ -511,14 +556,14 @@ class QueryBuilder:
         return complete_match_query, complete_where_query, complete_parameters
 
     def _build_logical_operator(
-        self, operator: str, expressions: list[Dict[str, Any]]
+        self, operator: str, expressions: List[Dict[str, Any]]
     ) -> Tuple[str | None, str, Dict[str, Any]]:
         """
         Builds all expressions defined inside a logical operator.
 
         Args:
             operator (str): The logical operator.
-            expressions (list[Dict[str, Any]]): The expressions chained together by the operator.
+            expressions (List[Dict[str, Any]]): The expressions chained together by the operator.
 
         Raises:
             InvalidOperator: If the operator value is not a list.
@@ -527,8 +572,8 @@ class QueryBuilder:
             Tuple[str | None, str, Dict[str, Any]]: The query and parameters.
         """
         complete_parameters: Dict[str, Any] = {}
-        partial_match_queries: list[str] = []
-        partial_where_queries: list[str] = []
+        partial_match_queries: List[str] = []
+        partial_where_queries: List[str] = []
 
         if not isinstance(expressions, list):
             raise InvalidOperator(f"Value of {operator} operator must be list, got {type(expressions)}")
@@ -679,7 +724,7 @@ class QueryBuilder:
                 Defaults to 0.
         """
         logging.debug("Removing invalid expressions from expression %s", expressions)
-        operators_to_remove: list[str] = []
+        operators_to_remove: List[str] = []
 
         if not isinstance(expressions, dict):
             return
@@ -694,7 +739,7 @@ class QueryBuilder:
                     operators_to_remove.append(operator)
             elif isinstance(expression, list):
                 # Handle logical operators
-                indexes_to_remove: list[str] = []
+                indexes_to_remove: List[str] = []
 
                 for index, nested_expression in enumerate(expression):
                     # Search through all operators nested within
