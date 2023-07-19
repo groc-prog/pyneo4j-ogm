@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator
 
+from neo4j_ogm.core.relationship import RelationshipDirection
 from neo4j_ogm.queries.types import TAnyExcludeListDict
 
 
@@ -28,16 +29,6 @@ def _validate_properties(cls, values: Dict[str, Any]) -> Dict[str, Any]:
                 logging.debug("Omitting %s", property_name)
 
     return validated_properties
-
-
-class RelationshipDirection(str, Enum):
-    """
-    Available relationship directions for pattern expressions.
-    """
-
-    INCOMING = "INCOMING"
-    OUTGOING = "OUTGOING"
-    BOTH = "BOTH"
 
 
 class QueryOrder(str, Enum):
