@@ -1,5 +1,5 @@
 """
-This module holds the base relationship class `RelationshipSchema` which is used to define database models for relationships.
+This module holds the base relationship class `RelationshipModel` which is used to define database models for relationships.
 """
 import json
 import logging
@@ -9,8 +9,8 @@ from typing import Any, Callable, Type, TypeVar, cast
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.core.node import NodeSchema
+from neo4j_ogm.core.client import EntityType, Neo4jClient
+from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.exceptions import (
     InflationFailure,
     InstanceDestroyed,
@@ -21,7 +21,7 @@ from neo4j_ogm.exceptions import (
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedQueryOptions, TypedRelationshipExpressions
 
-T = TypeVar("T", bound="RelationshipSchema")
+T = TypeVar("T", bound="RelationshipModel")
 
 
 def ensure_alive(func: Callable):
@@ -63,13 +63,13 @@ class RelationshipDirection(str, Enum):
     BOTH = "BOTH"
 
 
-class RelationshipSchema(BaseModel):
+class RelationshipModel(BaseModel):
     """
     Base model for all relationship models. Every relationship model should inherit from this class to have needed base
     functionality like de-/inflation and validation.
     """
 
-    __model_type__: str = "RELATIONSHIP"
+    __model_type__: str = EntityType.RELATIONSHIP
     __type__: str
     __dict_properties = set()
     __model_properties = set()
@@ -81,8 +81,8 @@ class RelationshipSchema(BaseModel):
     _element_id: str | None = PrivateAttr(default=None)
     _start_node_id: str | None = PrivateAttr(default=None)
     _end_node_id: str | None = PrivateAttr(default=None)
-    _start_node_model: Type["NodeSchema"] = PrivateAttr()
-    _end_node_model: Type["NodeSchema"] = PrivateAttr()
+    _start_node_model: Type["NodeModel"] = PrivateAttr()
+    _end_node_model: Type["NodeModel"] = PrivateAttr()
 
     def __init_subclass__(cls) -> None:
         """
@@ -237,7 +237,7 @@ class RelationshipSchema(BaseModel):
         logging.info("Deleted relationship %s", self._element_id)
 
     @ensure_alive
-    async def start_node(self) -> Type[NodeSchema]:
+    async def start_node(self) -> Type[NodeModel]:
         """
         Returns the start node the relationship belongs to.
 
@@ -245,7 +245,7 @@ class RelationshipSchema(BaseModel):
             NoResultsFound: Raised if the query did not return the start node.
 
         Returns:
-            Type[NodeSchema]: A instance of the start node model.
+            Type[NodeModel]: A instance of the start node model.
         """
         logging.info(
             "Getting start node %s relationship %s of model %s",
@@ -271,7 +271,7 @@ class RelationshipSchema(BaseModel):
         return results[0][0]
 
     @ensure_alive
-    async def end_node(self) -> Type[NodeSchema]:
+    async def end_node(self) -> Type[NodeModel]:
         """
         Returns the end node the relationship belongs to.
 
@@ -279,7 +279,7 @@ class RelationshipSchema(BaseModel):
             NoResultsFound: Raised if the query did not return the end node.
 
         Returns:
-            Type[NodeSchema]: A instance of the end node model.
+            Type[NodeModel]: A instance of the end node model.
         """
         logging.info(
             "Getting end node %s relationship %s of model %s",

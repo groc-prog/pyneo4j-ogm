@@ -112,7 +112,7 @@ class InvalidTargetModel(Neo4jOGMException):
     """
 
     def __init__(self, target_model: str, *args: object) -> None:
-        super().__init__(f"Expected target model to be string or NodeSchema, but got {type(target_model)}", *args)
+        super().__init__(f"Expected target model to be string or NodeModel, but got {type(target_model)}", *args)
 
 
 class InvalidRelationshipModelOrType(Neo4jOGMException):
@@ -123,7 +123,7 @@ class InvalidRelationshipModelOrType(Neo4jOGMException):
     def __init__(self, relationship_or_type: str, *args: object) -> None:
         super().__init__(
             f"""
-                Expected relationship model or type to be string or RelationshipSchema, but got
+                Expected relationship model or type to be string or RelationshipModel, but got
                 {type(relationship_or_type)}
             """,
             *args,

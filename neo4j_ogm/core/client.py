@@ -4,7 +4,7 @@ Database client for running queries against the connected database.
 import logging
 from enum import Enum
 from os import environ
-from typing import Any, Callable, Dict, List, Set, Tuple, Type
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.graph import Node, Relationship
@@ -18,8 +18,15 @@ from neo4j_ogm.exceptions import (
     TransactionInProgress,
 )
 
+if TYPE_CHECKING:
+    from neo4j_ogm.core.node import NodeModel
+    from neo4j_ogm.core.relationship import RelationshipModel
+else:
+    NodeModel = object
+    RelationshipModel = object
 
-class IndexTypes(str, Enum):
+
+class IndexType(str, Enum):
     """
     Available indexing types.
     """
@@ -30,7 +37,7 @@ class IndexTypes(str, Enum):
     TOKEN = "TOKEN"
 
 
-class EntityTypes(str, Enum):
+class EntityType(str, Enum):
     """
     Available entity types.
     """
@@ -69,7 +76,7 @@ class Neo4jClient:
     _session: AsyncSession
     _transaction: AsyncTransaction
     _batch_enabled: bool = False
-    models: Set[Type] = set()
+    models: Set[Type[NodeModel | RelationshipModel]] = set()
     uri: str
     auth: Tuple[str, str] | None
 
@@ -106,49 +113,52 @@ class Neo4jClient:
         logging.info("Connected to database")
 
     @ensure_connection
-    async def register_models(self, models: List[Type]) -> None:
+    async def register_models(self, models: List[Type[NodeModel | RelationshipModel]]) -> None:
         """
         Registers models which are used with the client to resolve query results to their corresponding model
         instances.
 
         Args:
-            models (List[Type]): A list of models to register.
+            models (List[Type[NodeModel | RelationshipModel]]): A list of models to register.
         """
         for model in models:
-            self.models.add(model)
+            if hasattr(model, "__model_type__") and getattr(model, "__model_type__") in [
+                member.value for member in EntityType
+            ]:
+                self.models.add(model)
 
-            for property_name, property_definition in model.__fields__.items():
-                if getattr(property_definition.type_, "_unique", False):
-                    await self.create_constraint(
-                        name=f"{model.__name__}_{property_name}_unique_constraint",
-                        entity_type=EntityTypes.NODE,
-                        properties=[property_name],
-                        labels_or_type=model.__labels__,
-                    )
-                if getattr(property_definition.type_, "_range_index", False):
-                    await self.create_index(
-                        name=f"{model.__name__}_{property_name}_range_index",
-                        entity_type=EntityTypes.NODE,
-                        index_type=IndexTypes.RANGE,
-                        properties=[property_name],
-                        labels_or_type=model.__labels__,
-                    )
-                if getattr(property_definition.type_, "_point_index", False):
-                    await self.create_index(
-                        name=f"{model.__name__}_{property_name}_point_index",
-                        entity_type=EntityTypes.NODE,
-                        index_type=IndexTypes.POINT,
-                        properties=[property_name],
-                        labels_or_type=model.__labels__,
-                    )
-                if getattr(property_definition.type_, "_text_index", False):
-                    await self.create_index(
-                        name=f"{model.__name__}_{property_name}_text_index",
-                        entity_type=EntityTypes.NODE,
-                        index_type=IndexTypes.TEXT,
-                        properties=[property_name],
-                        labels_or_type=model.__labels__,
-                    )
+                for property_name, property_definition in model.__fields__.items():
+                    if getattr(property_definition.type_, "_unique", False):
+                        await self.create_constraint(
+                            name=f"{model.__name__}_{property_name}_unique_constraint",
+                            entity_type=EntityType.NODE,
+                            properties=[property_name],
+                            labels_or_type=model.__labels__,
+                        )
+                    if getattr(property_definition.type_, "_range_index", False):
+                        await self.create_index(
+                            name=f"{model.__name__}_{property_name}_range_index",
+                            entity_type=EntityType.NODE,
+                            index_type=IndexType.RANGE,
+                            properties=[property_name],
+                            labels_or_type=model.__labels__,
+                        )
+                    if getattr(property_definition.type_, "_point_index", False):
+                        await self.create_index(
+                            name=f"{model.__name__}_{property_name}_point_index",
+                            entity_type=EntityType.NODE,
+                            index_type=IndexType.POINT,
+                            properties=[property_name],
+                            labels_or_type=model.__labels__,
+                        )
+                    if getattr(property_definition.type_, "_text_index", False):
+                        await self.create_index(
+                            name=f"{model.__name__}_{property_name}_text_index",
+                            entity_type=EntityType.NODE,
+                            index_type=IndexType.TEXT,
+                            properties=[property_name],
+                            labels_or_type=model.__labels__,
+                        )
 
     @ensure_connection
     async def close(self) -> None:
@@ -231,7 +241,7 @@ class Neo4jClient:
             InvalidEntityType: If an invalid entity_type is provided.
         """
         match entity_type:
-            case EntityTypes.NODE:
+            case EntityType.NODE:
                 if not isinstance(labels_or_type, list):
                     raise InvalidLabelOrType()
 
@@ -245,7 +255,7 @@ class Neo4jClient:
                         """,
                         resolve_models=False,
                     )
-            case EntityTypes.RELATIONSHIP:
+            case EntityType.RELATIONSHIP:
                 if not isinstance(labels_or_type, str):
                     raise InvalidLabelOrType()
 
@@ -260,7 +270,7 @@ class Neo4jClient:
                 )
             case _:
                 raise InvalidEntityType(
-                    available_types=[option.value for option in EntityTypes], entity_type=entity_type
+                    available_types=[option.value for option in EntityType], entity_type=entity_type
                 )
 
     @ensure_connection
@@ -282,17 +292,17 @@ class Neo4jClient:
         Raises:
             InvalidEntityType: If an invalid entity_type is provided.
         """
-        if index_type not in [index.value for index in IndexTypes]:
-            raise InvalidIndexType(available_types=[option.value for option in IndexTypes], index_type=index_type)
+        if index_type not in [index.value for index in IndexType]:
+            raise InvalidIndexType(available_types=[option.value for option in IndexType], index_type=index_type)
 
         match entity_type:
-            case EntityTypes.NODE:
+            case EntityType.NODE:
                 if not isinstance(labels_or_type, list):
                     raise InvalidLabelOrType()
 
                 for label in labels_or_type:
                     match index_type:
-                        case IndexTypes.TOKEN:
+                        case IndexType.TOKEN:
                             logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
                             await self.cypher(
                                 query=f"""
@@ -302,7 +312,7 @@ class Neo4jClient:
                                 """,
                                 resolve_models=False,
                             )
-                        case IndexTypes.RANGE:
+                        case IndexType.RANGE:
                             logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
                             await self.cypher(
                                 query=f"""
@@ -322,12 +332,12 @@ class Neo4jClient:
                                 """,
                                 resolve_models=False,
                             )
-            case EntityTypes.RELATIONSHIP:
+            case EntityType.RELATIONSHIP:
                 if not isinstance(labels_or_type, str):
                     raise InvalidLabelOrType()
 
                 match index_type:
-                    case IndexTypes.TOKEN:
+                    case IndexType.TOKEN:
                         logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
                         await self.cypher(
                             query=f"""
@@ -337,7 +347,7 @@ class Neo4jClient:
                             """,
                             resolve_models=False,
                         )
-                    case IndexTypes.RANGE:
+                    case IndexType.RANGE:
                         logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
                         await self.cypher(
                             query=f"""
@@ -359,7 +369,7 @@ class Neo4jClient:
                         )
             case _:
                 raise InvalidEntityType(
-                    available_types=[option.value for option in EntityTypes], entity_type=entity_type
+                    available_types=[option.value for option in EntityType], entity_type=entity_type
                 )
 
     @ensure_connection
@@ -463,9 +473,9 @@ class Neo4jClient:
         for model in list(self.models):
             model_labels: set[str] = set()
 
-            if hasattr(model, "__labels__"):
+            if getattr(model, "__model_type__") == EntityType.NODE:
                 model_labels = set(model.__labels__)
-            elif hasattr(model, "__type__"):
+            elif getattr(model, "__model_type__") == EntityType.RELATIONSHIP:
                 model_labels = set(model.__type__)
 
             if labels == model_labels:

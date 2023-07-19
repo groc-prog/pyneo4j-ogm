@@ -1,5 +1,5 @@
 """
-This module holds the base node class `NodeSchema` which is used to define database models for nodes.
+This module holds the base node class `NodeModel` which is used to define database models for nodes.
 """
 import json
 import logging
@@ -8,12 +8,12 @@ from typing import Any, Callable, Dict, List, Set, Tuple, Type, TypeVar, cast
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import Neo4jClient
+from neo4j_ogm.core.client import EntityType, Neo4jClient
 from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedNodeExpression, TypedQueryOptions
 
-T = TypeVar("T", bound="NodeSchema")
+T = TypeVar("T", bound="NodeModel")
 
 
 def ensure_alive(func: Callable):
@@ -38,13 +38,13 @@ def ensure_alive(func: Callable):
     return decorator
 
 
-class NodeSchema(BaseModel):
+class NodeModel(BaseModel):
     """
     Base model for all node models. Every node model should inherit from this class to have needed base
     functionality like de-/inflation and validation.
     """
 
-    __model_type__: str = "NODE"
+    __model_type__: str = EntityType.NODE
     __labels__: Tuple[str]
     __dict_properties: Set[str] = set()
     __model_properties: Set[str] = set()
