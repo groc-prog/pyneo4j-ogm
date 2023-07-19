@@ -11,9 +11,9 @@ from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import Neo4jNode
-from neo4j_ogm.exceptions import InflationFailure, InvalidExpressions, NoResultsFound, UnknownRelationshipDirection
+from neo4j_ogm.exceptions import InflationFailure, NoResultsFound, UnknownRelationshipDirection
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import TypedExpressions, TypedQueryOptions
+from neo4j_ogm.queries.types import TypedQueryOptions, TypedRelationshipExpressions
 from neo4j_ogm.utils import ensure_alive
 
 T = TypeVar("T", bound="Neo4jRelationship")

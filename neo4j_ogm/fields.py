@@ -13,7 +13,6 @@ def WithOptions(
     text_index: bool = False,
     point_index: bool = False,
     unique: bool = False,
-    ref: str | None = None,
 ) -> Type[T]:
     """
     Returns a subclass of `property_type` which includes extra attributes which can be used to define indexes and
@@ -40,7 +39,6 @@ def WithOptions(
         _text_index: bool = text_index
         _point_index: bool = point_index
         _unique: bool = unique
-        _ref: str | None = ref
 
         def __new__(cls, *args, **kwargs) -> object:
             return property_type.__new__(property_type, *args, **kwargs)
