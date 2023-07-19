@@ -1,5 +1,5 @@
 """
-This module holds the base node class `Neo4jNode` which is used to define database models for nodes.
+This module holds the base node class `NodeSchema` which is used to define database models for nodes.
 """
 import json
 import logging
@@ -13,7 +13,7 @@ from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNo
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedNodeExpression, TypedQueryOptions
 
-T = TypeVar("T", bound="Neo4jNode")
+T = TypeVar("T", bound="NodeSchema")
 
 
 def ensure_alive(func: Callable):
@@ -38,7 +38,7 @@ def ensure_alive(func: Callable):
     return decorator
 
 
-class Neo4jNode(BaseModel):
+class NodeSchema(BaseModel):
     """
     Base model for all node models. Every node model should inherit from this class to have needed base
     functionality like de-/inflation and validation.

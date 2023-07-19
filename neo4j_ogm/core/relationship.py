@@ -1,5 +1,5 @@
 """
-This module holds the base relationship class `Neo4jRelationship` which is used to define database models for relationships.
+This module holds the base relationship class `RelationshipSchema` which is used to define database models for relationships.
 """
 import json
 import logging
@@ -9,7 +9,7 @@ from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.core.node import Neo4jNode
+from neo4j_ogm.core.node import NodeSchema
 from neo4j_ogm.exceptions import (
     InflationFailure,
     InstanceDestroyed,
@@ -21,7 +21,7 @@ from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedQueryOptions, TypedRelationshipExpressions
 from neo4j_ogm.queries.validators import RelationshipDirection
 
-T = TypeVar("T", bound="Neo4jRelationship")
+T = TypeVar("T", bound="RelationshipSchema")
 
 
 def ensure_alive(func: Callable):
@@ -53,7 +53,7 @@ def ensure_alive(func: Callable):
     return decorator
 
 
-class Neo4jRelationship(BaseModel):
+class RelationshipSchema(BaseModel):
     """
     Base model for all relationship models. Every relationship model should inherit from this class to have needed base
     functionality like de-/inflation and validation.
@@ -71,8 +71,8 @@ class Neo4jRelationship(BaseModel):
     _element_id: str | None = PrivateAttr(default=None)
     _start_node_id: str | None = PrivateAttr(default=None)
     _end_node_id: str | None = PrivateAttr(default=None)
-    _start_node_model: Type["Neo4jNode"] = PrivateAttr()
-    _end_node_model: Type["Neo4jNode"] = PrivateAttr()
+    _start_node_model: Type["NodeSchema"] = PrivateAttr()
+    _end_node_model: Type["NodeSchema"] = PrivateAttr()
 
     def __init_subclass__(cls) -> None:
         """
@@ -227,7 +227,7 @@ class Neo4jRelationship(BaseModel):
         logging.info("Deleted relationship %s", self._element_id)
 
     @ensure_alive
-    async def start_node(self) -> Type[Neo4jNode]:
+    async def start_node(self) -> Type[NodeSchema]:
         """
         Returns the start node the relationship belongs to.
 
@@ -235,7 +235,7 @@ class Neo4jRelationship(BaseModel):
             NoResultsFound: Raised if the query did not return the start node.
 
         Returns:
-            Type[Neo4jNode]: A instance of the start node model.
+            Type[NodeSchema]: A instance of the start node model.
         """
         logging.info(
             "Getting start node %s relationship %s of model %s",
@@ -261,7 +261,7 @@ class Neo4jRelationship(BaseModel):
         return results[0][0]
 
     @ensure_alive
-    async def end_node(self) -> Type[Neo4jNode]:
+    async def end_node(self) -> Type[NodeSchema]:
         """
         Returns the end node the relationship belongs to.
 
@@ -269,7 +269,7 @@ class Neo4jRelationship(BaseModel):
             NoResultsFound: Raised if the query did not return the end node.
 
         Returns:
-            Type[Neo4jNode]: A instance of the end node model.
+            Type[NodeSchema]: A instance of the end node model.
         """
         logging.info(
             "Getting end node %s relationship %s of model %s",
