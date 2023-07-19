@@ -106,37 +106,13 @@ class UnregisteredModel(Neo4jOGMException):
         super().__init__(f"Model {unregistered_model} was not registered, but another model is using it", *args)
 
 
-class InvalidTargetModel(Neo4jOGMException):
+class InvalidTargetNode(Neo4jOGMException):
     """
-    Exception which gets raised when a relationship property defines a invalid target model.
-    """
-
-    def __init__(self, target_model: str, *args: object) -> None:
-        super().__init__(f"Expected target model to be string or NodeModel, but got {type(target_model)}", *args)
-
-
-class InvalidRelationshipModelOrType(Neo4jOGMException):
-    """
-    Exception which gets raised when a relationship property defines a invalid model or type.
+    Exception which gets raised when a relationship property receives a target node of the wrong model type.
     """
 
-    def __init__(self, relationship_or_type: str, *args: object) -> None:
-        super().__init__(
-            f"""
-                Expected relationship model or type to be string or RelationshipModel, but got
-                {type(relationship_or_type)}
-            """,
-            *args,
-        )
-
-
-class TargetModelMismatch(Neo4jOGMException):
-    """
-    Exception which gets raised when a relationship property defines a invalid model or type.
-    """
-
-    def __init__(self, expected: str, actual: str, *args: object) -> None:
-        super().__init__(f"Expected node model type {expected}, got {actual}", *args)
+    def __init__(self, expected_type: str, actual_type: str, *args: object) -> None:
+        super().__init__(f"Expected target node to be of type {expected_type}, but got {actual_type}", *args)
 
 
 class InvalidOperator(Neo4jOGMException):
