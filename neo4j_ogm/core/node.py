@@ -3,18 +3,39 @@ This module holds the base node class `Neo4jNode` which is used to define databa
 """
 import json
 import logging
-from typing import Any, Dict, List, Set, Tuple, Type, TypeVar, cast
+from typing import Any, Callable, Dict, List, Set, Tuple, Type, TypeVar, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.exceptions import InflationFailure, NoResultsFound
+from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedNodeExpression, TypedQueryOptions
-from neo4j_ogm.utils import ensure_alive
 
 T = TypeVar("T", bound="Neo4jNode")
+
+
+def ensure_alive(func: Callable):
+    """
+    Decorator which ensures that a instance has not been destroyed and has been hydrated before running any queries.
+
+    Raises:
+        InstanceDestroyed: Raised if the method is called on a instance which has been destroyed
+        InstanceNotHydrated: Raised if the method is called on a instance which has been saved to the database
+    """
+
+    async def decorator(self, *args, **kwargs):
+        if getattr(self, "_destroyed", True):
+            raise InstanceDestroyed()
+
+        if getattr(self, "_element_id", None) is None:
+            raise InstanceNotHydrated()
+
+        result = await func(self, *args, **kwargs)
+        return result
+
+    return decorator
 
 
 class Neo4jNode(BaseModel):
