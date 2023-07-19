@@ -267,13 +267,13 @@ class Neo4jRelationship(BaseModel):
         return results[0][0]
 
     @classmethod
-    async def find_one(cls: Type[T], expressions: TypedExpressions) -> T | None:
+    async def find_one(cls: Type[T], expressions: TypedRelationshipExpressions) -> T | None:
         """
         Finds the first relationship that matches `expressions` and returns it. If no matching relationship is found,
         `None` is returned instead.
 
         Args:
-            expressions (TypedExpressions): Expressions applied to the query.
+            expressions (TypedRelationshipExpressions): Expressions applied to the query.
 
         Returns:
             T | None: A instance of the model or None if no match is found.
@@ -281,17 +281,16 @@ class Neo4jRelationship(BaseModel):
         logging.info(
             "Getting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
         )
-        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
-            expressions=expressions, ref="r"
-        )
-
-        if expression_query == "":
-            raise InvalidExpressions(expressions=expressions)
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()}
-                {expression_query}
+                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 LIMIT 1
             """,
@@ -310,29 +309,30 @@ class Neo4jRelationship(BaseModel):
 
     @classmethod
     async def find_many(
-        cls: Type[T], expressions: TypedExpressions | None = None, options: TypedQueryOptions | None = None
+        cls: Type[T], expressions: TypedRelationshipExpressions | None = None, options: TypedQueryOptions | None = None
     ) -> list[T]:
         """
         Finds the all relationships that matches `expressions` and returns them. If no matching relationships are found.
 
         Args:
-            expressions (TypedExpressions | None, optional): Expressions applied to the query. Defaults to None.
+            expressions (TypedRelationshipExpressions | None, optional): Expressions applied to the query. Defaults to None.
             options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
             list[T]: A list of model instances.
         """
         logging.info("Getting relationships of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
-            expressions=expressions if expressions is not None else {}, ref="r"
-        )
-
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
         options_query = cls._query_builder.build_query_options(options=options if options else {}, ref="r")
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()}
-                {expression_query}
+                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 RETURN r
                 {options_query}
             """,
@@ -355,7 +355,7 @@ class Neo4jRelationship(BaseModel):
 
     @classmethod
     async def update_one(
-        cls: Type[T], update: dict[str, Any], expressions: TypedExpressions, new: bool = False
+        cls: Type[T], update: dict[str, Any], expressions: TypedRelationshipExpressions, new: bool = False
     ) -> T | None:
         """
         Finds the first relationship that matches `expressions` and updates it with the values defined by `update`. If
@@ -364,7 +364,7 @@ class Neo4jRelationship(BaseModel):
         Args:
             update (dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
                 all required values defined on model must be present, else the model validation will fail.
-            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
+            expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
             new (bool, optional): Whether to return the updated relationship. By default, the old relationship is
                 returned. Defaults to False.
 
@@ -406,7 +406,7 @@ class Neo4jRelationship(BaseModel):
     async def update_many(
         cls: Type[T],
         update: dict[str, Any],
-        expressions: TypedExpressions | None = None,
+        expressions: TypedRelationshipExpressions | None = None,
         new: bool = False,
     ) -> list[T] | T | None:
         """
@@ -415,7 +415,7 @@ class Neo4jRelationship(BaseModel):
         Args:
             update (dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
                 all required values defined on model must be present, else the model validation will fail.
-            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
+            expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
             new (bool, optional): Whether to return the updated relationships. By default, the old relationships is
                 returned. Defaults to False.
 
@@ -439,15 +439,17 @@ class Neo4jRelationship(BaseModel):
         new_instance.__dict__.update(update)
 
         deflated_properties = new_instance.deflate()
-        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
-            expressions=expressions if expressions is not None else {}, ref="r"
-        )
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()}
-                {expression_query}
+                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
             """,
@@ -477,13 +479,13 @@ class Neo4jRelationship(BaseModel):
         return old_instances
 
     @classmethod
-    async def delete_one(cls: Type[T], expressions: TypedExpressions) -> int:
+    async def delete_one(cls: Type[T], expressions: TypedRelationshipExpressions) -> int:
         """
         Finds the first relationship that matches `expressions` and deletes it. If no match is found, a
         `NoResultsFound` is raised.
 
         Args:
-            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
+            expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
 
         Raises:
             NoResultsFound: Raised if the query did not return the relationship.
@@ -495,17 +497,16 @@ class Neo4jRelationship(BaseModel):
             "Deleting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
         )
         relationship = await cls.find_one(expressions=expressions)
-        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
-            expressions=expressions, ref="r"
-        )
-
-        if expression_query == "":
-            raise InvalidExpressions(expressions=expressions)
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()}
-                {expression_query}
+                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 DELETE r
             """,
             parameters={**expression_parameters},
@@ -515,26 +516,28 @@ class Neo4jRelationship(BaseModel):
         return len(relationship)
 
     @classmethod
-    async def delete_many(cls: Type[T], expressions: TypedExpressions | None = None) -> int:
+    async def delete_many(cls: Type[T], expressions: TypedRelationshipExpressions | None = None) -> int:
         """
         Finds all relationships that match `expressions` and deletes them.
 
         Args:
-            expressions (TypedExpressions): Expressions applied to the query. Defaults to None.
+            expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
 
         Returns:
             int: The number of deleted relationships.
         """
         logging.info("Deleting all relationships of model %s matching expressions %s", cls.__name__, expressions)
         relationships = await cls.find_many(expressions=expressions)
-        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
-            expressions=expressions, ref="r"
-        )
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()}
-                {expression_query}
+                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 DELETE r
             """,
             parameters={**expression_parameters},
@@ -544,25 +547,27 @@ class Neo4jRelationship(BaseModel):
         return len(relationships)
 
     @classmethod
-    async def count(cls: Type[T], expressions: TypedExpressions | None = None) -> int:
+    async def count(cls: Type[T], expressions: TypedRelationshipExpressions | None = None) -> int:
         """
         Counts all relationships which match the provided `expressions` parameter.
 
         Args:
-            expressions (TypedExpressions | None, optional): Expressions applied to the query. Defaults to None.
+            expressions (TypedRelationshipExpressions | None, optional): Expressions applied to the query. Defaults to None.
 
         Returns:
             int: The number of relationships matched by the query.
         """
         logging.info("Getting count of relationships of model %s matching expressions %s", cls.__name__, expressions)
-        expression_query, expression_parameters = cls._query_builder.build_filter_expressions(
-            expressions=expressions if expressions is not None else {}, ref="r"
-        )
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._build_relationship_match()}
-                {expression_query}
+                MATCH {cls._build_relationship_match()} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 RETURN count(r)
             """,
             parameters=expression_parameters,
