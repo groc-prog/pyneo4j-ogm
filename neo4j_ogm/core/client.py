@@ -131,33 +131,41 @@ class Neo4jClient:
                     if getattr(property_definition.type_, "_unique", False):
                         await self.create_constraint(
                             name=f"{model.__name__}_{property_name}_unique_constraint",
-                            entity_type=EntityType.NODE,
+                            entity_type=model.__model_type__,
                             properties=[property_name],
-                            labels_or_type=model.__labels__,
+                            labels_or_type=model.__labels__
+                            if model.__model_type__ == EntityType.NODE
+                            else model.__type__,
                         )
                     if getattr(property_definition.type_, "_range_index", False):
                         await self.create_index(
                             name=f"{model.__name__}_{property_name}_range_index",
-                            entity_type=EntityType.NODE,
+                            entity_type=model.__model_type__,
                             index_type=IndexType.RANGE,
                             properties=[property_name],
-                            labels_or_type=model.__labels__,
+                            labels_or_type=model.__labels__
+                            if model.__model_type__ == EntityType.NODE
+                            else model.__type__,
                         )
                     if getattr(property_definition.type_, "_point_index", False):
                         await self.create_index(
                             name=f"{model.__name__}_{property_name}_point_index",
-                            entity_type=EntityType.NODE,
+                            entity_type=model.__model_type__,
                             index_type=IndexType.POINT,
                             properties=[property_name],
-                            labels_or_type=model.__labels__,
+                            labels_or_type=model.__labels__
+                            if model.__model_type__ == EntityType.NODE
+                            else model.__type__,
                         )
                     if getattr(property_definition.type_, "_text_index", False):
                         await self.create_index(
                             name=f"{model.__name__}_{property_name}_text_index",
-                            entity_type=EntityType.NODE,
+                            entity_type=model.__model_type__,
                             index_type=IndexType.TEXT,
                             properties=[property_name],
-                            labels_or_type=model.__labels__,
+                            labels_or_type=model.__labels__
+                            if model.__model_type__ == EntityType.NODE
+                            else model.__type__,
                         )
 
     @ensure_connection
