@@ -420,9 +420,11 @@ class Neo4jNode(BaseModel):
             new_instance.__dict__.update(update)
 
         deflated_properties = new_instance.deflate()
-        expression_query, expression_parameters = cls._query_builder.build_node_expressions(
-            expressions=expressions if expressions is not None else {}
-        )
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_node_expressions(expressions=expressions)
 
         if upsert and is_upsert:
             results, _ = await cls._client.cypher(
@@ -444,8 +446,8 @@ class Neo4jNode(BaseModel):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`)
-                {expression_query}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
             """,
