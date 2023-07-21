@@ -3,13 +3,21 @@ This module holds the `RelationshipProperty` class which can be used to make rel
 on a `NodeModel` models field.
 """
 import logging
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Type, TypeVar, cast
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipDirection, RelationshipModel
-from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, InvalidTargetNode, UnregisteredModel
+from neo4j_ogm.exceptions import (
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    InvalidTargetNode,
+    NoResultsFound,
+    UnregisteredModel,
+)
 from neo4j_ogm.queries.query_builder import QueryBuilder
+
+R = TypeVar("R", bound=RelationshipModel)
 
 
 class RelationshipProperty:
@@ -23,14 +31,16 @@ class RelationshipProperty:
     _target_model: Type[NodeModel]
     _source_node: NodeModel
     _direction: RelationshipDirection
-    _relationship: Type[RelationshipModel] | str
+    _relationship: Type[R] | str
     _relationship_is_model: bool = False
+    _allow_multiple: bool
 
     def __init__(
         self,
         target_model: Type[NodeModel] | str,
-        relationship: Type[RelationshipModel] | str,
+        relationship: Type[R] | str,
         direction: RelationshipDirection,
+        allow_multiple: bool = False,
     ) -> None:
         """
         Verifies that the defined target model has been registered with the client. If not, a `UnregisteredModel`
@@ -39,13 +49,16 @@ class RelationshipProperty:
         Args:
             target_model (Type[NodeModel] | str): The model which is the target of the relationship. Can be a
                 model class or a string which matches the name of the model class.
-            relationship (Type[RelationshipModel] | str): The relationship model or the relationship type as a string.
+            relationship (Type[R] | str): The relationship model or the relationship type as a string.
             direction (RelationshipDirection): The direction of the relationship.
+            allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to False.
 
         Raises:
-            UnregisteredModel: Raised if the target model or the relationship model have not been registered with the client.
+            UnregisteredModel: Raised if the target model or the relationship model have not been registered with the
+                client.
         """
         self._client = Neo4jClient()
+        self._allow_multiple = allow_multiple
 
         # Check if target model has been registered with client
         target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
@@ -58,8 +71,7 @@ class RelationshipProperty:
         if issubclass(relationship, RelationshipModel):
             if relationship not in self._client.models:
                 raise UnregisteredModel(unregistered_model=relationship.__name__)
-            else:
-                self._relationship_is_model = True
+            self._relationship_is_model = True
 
         self._target_model = registered_target_model
         self._direction = direction
@@ -81,7 +93,7 @@ class RelationshipProperty:
         self._source_node = source_model
         return self
 
-    async def relationship(self, node: NodeModel) -> RelationshipModel | Dict[str, Any] | None:
+    async def relationship(self, node: NodeModel) -> R | Dict[str, Any] | None:
         """
         Gets the relationship between the current node instance and the provided node. If the nodes are not connected
         the defined relationship, `None` will be returned.
@@ -90,7 +102,7 @@ class RelationshipProperty:
             node (NodeModel): The node to which to get the relationship.
 
         Returns:
-            (RelationshipModel | None): Returns a `relationship model instance` describing relationship between
+            (R | Dict[str, Any] | None): Returns a `relationship model instance` describing relationship between
                 the nodes or a `dictionary` if the relationship model has not been registered or `None` if no
                 relationship exists between the two.
         """
@@ -101,7 +113,7 @@ class RelationshipProperty:
             getattr(node, "_element_id", None),
             getattr(self._source_node, "_element_id", None),
         )
-        match_query = self._query_builder.build_relationship_match(
+        match_query = self._query_builder.build_relationship_query(
             direction=self._direction,
             relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
             start_node_labels=self._source_node.__labels__,
@@ -121,6 +133,72 @@ class RelationshipProperty:
 
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             return None
+        return results[0][0]
+
+    async def connect(self, node: NodeModel, properties: Dict[str, Any]) -> R:
+        """
+        Connects the given node to the source node. By default only one relationship will be created between nodes.
+        If `allow_multiple` has been set to `True` and a relationship already exists between the nodes, a duplicate
+        relationship will be created.
+
+        Args:
+            node (NodeModel): Node instance to create a relationship to.
+            properties (Dict[str, Any]): Properties defined on the relationship model. If no model has been provided,
+                the properties will be omitted.
+
+        Returns:
+            R: The created relationship.
+        """
+        self._ensure_alive(node)
+
+        logging.info(
+            "Creating relationship between target node %s and source node %s",
+            getattr(node, "_element_id", None),
+            getattr(self._source_node, "_element_id", None),
+        )
+        relationship_query = self._query_builder.build_relationship_query(
+            direction=self._direction,
+            relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
+            start_node_labels=self._source_node.__labels__,
+            end_node_labels=node.__labels__,
+        )
+
+        # Build properties if relationship is defined as model
+        deflated_properties: Dict[str, Any] = {}
+
+        if self._relationship_is_model:
+            instance = cast(Type[R], self._relationship).parse_obj(properties)
+            deflated_properties = instance.deflate()
+
+        # Build MERGE/CREATE part of query depending on if duplicate relationships are allowed or not
+        logging.debug("Building create/merge query")
+        if self._allow_multiple:
+            build_query = f"""
+                CREATE {relationship_query}
+                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
+            """
+        else:
+            build_query = f"""
+                MERGE {relationship_query}
+                ON CREATE
+                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
+            """
+
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH {relationship_query}
+                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                {build_query}
+                RETURN r
+            """,
+            parameters={
+                "startId": getattr(self._source_node, "_element_id", None),
+                "endId": getattr(node, "_element_id", None),
+            },
+        )
+
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
         return results[0][0]
 
     def _ensure_alive(self, nodes: NodeModel | List[NodeModel]) -> None:

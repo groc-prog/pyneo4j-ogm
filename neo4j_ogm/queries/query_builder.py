@@ -130,7 +130,7 @@ class QueryBuilder:
 
         return " ".join(partial_queries)
 
-    def build_relationship_match(
+    def build_relationship_query(
         self,
         direction: RelationshipDirection,
         relationship_type: str,

@@ -101,7 +101,7 @@ class RelationshipModel(BaseModel):
                     cls.__model_properties.add(property_name)
 
         # Build relationship match query
-        cls._relationship_match = cls._query_builder.build_relationship_match(
+        cls._relationship_match = cls._query_builder.build_relationship_query(
             direction=cls._direction,
             relationship_type=cls.__type__,
             start_node_labels=cls._start_node_model.__labels__,
@@ -356,7 +356,8 @@ class RelationshipModel(BaseModel):
         Finds the all relationships that matches `expressions` and returns them. If no matching relationships are found.
 
         Args:
-            expressions (TypedRelationshipExpressions | None, optional): Expressions applied to the query. Defaults to None.
+            expressions (TypedRelationshipExpressions | None, optional): Expressions applied to the query. Defaults to
+                None.
             options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
@@ -593,7 +594,8 @@ class RelationshipModel(BaseModel):
         Counts all relationships which match the provided `expressions` parameter.
 
         Args:
-            expressions (TypedRelationshipExpressions | None, optional): Expressions applied to the query. Defaults to None.
+            expressions (TypedRelationshipExpressions | None, optional): Expressions applied to the query. Defaults
+                to None.
 
         Returns:
             int: The number of relationships matched by the query.
