@@ -201,6 +201,68 @@ class RelationshipProperty:
             raise NoResultsFound()
         return results[0][0]
 
+    async def disconnect(self, node: NodeModel) -> int:
+        """
+        Disconnects the provided node from the source node. If the nodes are `not connected`, the query will not modify
+        any of the nodes and `return 0`. If multiple relationships exists, all will be deleted.
+
+        Args:
+            node (NodeModel): The node to disconnect.
+
+        Returns:
+            int: The number of disconnected nodes.
+        """
+        self._ensure_alive(node)
+
+        logging.info(
+            "Getting relationship between target node %s and source node %s",
+            getattr(node, "_element_id", None),
+            getattr(self._source_node, "_element_id", None),
+        )
+        match_query = self._query_builder.build_relationship_query(
+            direction=self._direction,
+            relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
+            start_node_labels=self._source_node.__labels__,
+            end_node_labels=node.__labels__,
+        )
+
+        logging.debug("Getting relationship count between source and target node")
+        count_results, _ = await self._client.cypher(
+            query=f"""
+                MATCH {match_query}
+                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                RETURN count(r)
+            """,
+            parameters={
+                "startId": getattr(self._source_node, "_element_id", None),
+                "endId": getattr(node, "_element_id", None),
+            },
+            resolve_models=False,
+        )
+
+        if len(count_results) == 0 or len(count_results[0]) == 0 or count_results[0][0] is None:
+            logging.debug(
+                "No relationships found between source node %s and target node %s",
+                getattr(self._source_node, "_element_id", None),
+                getattr(node, "_element_id", None),
+            )
+            return 0
+
+        logging.debug("Found %s, deleting relationships", count_results[0][0])
+        await self._client.cypher(
+            query=f"""
+                MATCH {match_query}
+                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                DELETE r
+            """,
+            parameters={
+                "startId": getattr(self._source_node, "_element_id", None),
+                "endId": getattr(node, "_element_id", None),
+            },
+        )
+
+        return count_results[0][0]
+
     def _ensure_alive(self, nodes: NodeModel | List[NodeModel]) -> None:
         """
         Ensures that the provided nodes are alive.
