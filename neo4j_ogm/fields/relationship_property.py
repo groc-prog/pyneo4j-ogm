@@ -146,6 +146,9 @@ class RelationshipProperty:
             properties (Dict[str, Any]): Properties defined on the relationship model. If no model has been provided,
                 the properties will be omitted.
 
+        Raises:
+            NoResultsFound: Raised if the query did not return the new relationship.
+
         Returns:
             R: The created relationship.
         """
@@ -215,7 +218,7 @@ class RelationshipProperty:
         self._ensure_alive(node)
 
         logging.info(
-            "Getting relationship between target node %s and source node %s",
+            "Deleting relationships between target node %s and source node %s",
             getattr(node, "_element_id", None),
             getattr(self._source_node, "_element_id", None),
         )
@@ -258,6 +261,54 @@ class RelationshipProperty:
             parameters={
                 "startId": getattr(self._source_node, "_element_id", None),
                 "endId": getattr(node, "_element_id", None),
+            },
+        )
+
+        return count_results[0][0]
+
+    async def disconnect_all(self) -> int:
+        """
+        Disconnects all nodes.
+
+        Returns:
+            int: The number of disconnected nodes.
+        """
+        logging.info(
+            "Deleting all relationships associated with source node %s", getattr(self._source_node, "_element_id", None)
+        )
+        match_query = self._query_builder.build_relationship_query(
+            direction=self._direction,
+            relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
+            start_node_labels=self._source_node.__labels__,
+            end_node_labels=[],
+        )
+
+        logging.debug("Getting relationship count for source node")
+        count_results, _ = await self._client.cypher(
+            query=f"""
+                MATCH {match_query}
+                WHERE elementId(start) = $startId
+                RETURN count(r)
+            """,
+            parameters={
+                "startId": getattr(self._source_node, "_element_id", None),
+            },
+            resolve_models=False,
+        )
+
+        if len(count_results) == 0 or len(count_results[0]) == 0 or count_results[0][0] is None:
+            logging.debug("No relationships found for source node %s", getattr(self._source_node, "_element_id", None))
+            return 0
+
+        logging.debug("Found %s, deleting relationships", count_results[0][0])
+        await self._client.cypher(
+            query=f"""
+                MATCH {match_query}
+                WHERE elementId(start) = $startId
+                DELETE r
+            """,
+            parameters={
+                "startId": getattr(self._source_node, "_element_id", None),
             },
         )
 
