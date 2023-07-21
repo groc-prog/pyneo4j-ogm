@@ -136,6 +136,16 @@ class ElementValidator(BaseModel):
     element_id_operator: Optional[str] = Field(alias="$elementId", extra={"parser": "elementId({ref}) = ${value}"})
     id_operator: Optional[int] = Field(alias="$id", extra={"parser": "ID({ref}) = ${value}"})
 
+    property_validator = root_validator(allow_reuse=True)(_validate_properties)
+
+    class Config:
+        """
+        Pydantic configurations.
+        """
+
+        extra = Extra.allow
+        use_enum_values = True
+
 
 class CombinedExpressionValidator(LogicalValidator, ComparisonValidator):
     """
@@ -155,16 +165,6 @@ class NodeValidator(ElementValidator):
 
     pattern_operator: Optional[List["NodePatternValidator"]] = Field(alias="$patterns")
 
-    property_validator = root_validator(allow_reuse=True)(_validate_properties)
-
-    class Config:
-        """
-        Pydantic configurations.
-        """
-
-        extra = Extra.allow
-        use_enum_values = True
-
 
 class RelationshipValidator(ElementValidator):
     """
@@ -173,18 +173,8 @@ class RelationshipValidator(ElementValidator):
 
     pattern_operator: Optional[List["RelationshipPatternValidator"]] = Field(alias="$patterns")
 
-    property_validator = root_validator(allow_reuse=True)(_validate_properties)
 
-    class Config:
-        """
-        Pydantic configurations.
-        """
-
-        extra = Extra.allow
-        use_enum_values = True
-
-
-class NodeElementValidator(NodeValidator):
+class NodeElementValidator(ElementValidator):
     """
     Validation model for neo4j node element operators defined in expressions.
     """
@@ -192,7 +182,7 @@ class NodeElementValidator(NodeValidator):
     labels_operator: Optional[List[str]] = Field(alias="$labels")
 
 
-class RelationshipElementValidator(RelationshipValidator):
+class RelationshipElementValidator(ElementValidator):
     """
     Validation model for neo4j relationship element operators defined in expressions.
     """
