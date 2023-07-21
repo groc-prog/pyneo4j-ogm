@@ -13,11 +13,13 @@ from neo4j_ogm.exceptions import (
     InstanceNotHydrated,
     InvalidTargetNode,
     NoResultsFound,
+    NotConnectedToSourceNode,
     UnregisteredModel,
 )
 from neo4j_ogm.queries.query_builder import QueryBuilder
 
-R = TypeVar("R", bound=RelationshipModel)
+T = TypeVar("T", bound=NodeModel)
+U = TypeVar("U", bound=RelationshipModel)
 
 
 class RelationshipProperty:
@@ -28,17 +30,17 @@ class RelationshipProperty:
 
     _client: Neo4jClient
     _query_builder: QueryBuilder
-    _target_model: Type[NodeModel]
-    _source_node: NodeModel
+    _target_model: Type[T]
+    _source_node: T
     _direction: RelationshipDirection
-    _relationship: Type[R] | str
+    _relationship: Type[U] | str
     _relationship_is_model: bool = False
     _allow_multiple: bool
 
     def __init__(
         self,
-        target_model: Type[NodeModel] | str,
-        relationship: Type[R] | str,
+        target_model: Type[T] | str,
+        relationship: Type[U] | str,
         direction: RelationshipDirection,
         allow_multiple: bool = False,
     ) -> None:
@@ -47,9 +49,9 @@ class RelationshipProperty:
         will be raised.
 
         Args:
-            target_model (Type[NodeModel] | str): The model which is the target of the relationship. Can be a
+            target_model (Type[T] | str): The model which is the target of the relationship. Can be a
                 model class or a string which matches the name of the model class.
-            relationship (Type[R] | str): The relationship model or the relationship type as a string.
+            relationship (Type[U] | str): The relationship model or the relationship type as a string.
             direction (RelationshipDirection): The direction of the relationship.
             allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to False.
 
@@ -76,12 +78,12 @@ class RelationshipProperty:
         self._target_model = registered_target_model
         self._direction = direction
 
-    def _build_property(self, source_model: NodeModel) -> None:
+    def _build_property(self, source_model: T) -> None:
         """
         Sets the source node and returns self.
 
         Args:
-            source_model (NodeModel): The source model instance.
+            source_model (T): The source model instance.
 
         Raises:
             UnregisteredModel: Raised if the source model has not been registered with the client.
@@ -93,16 +95,16 @@ class RelationshipProperty:
         self._source_node = source_model
         return self
 
-    async def relationship(self, node: NodeModel) -> R | Dict[str, Any] | None:
+    async def relationship(self, node: T) -> U | Dict[str, Any] | None:
         """
         Gets the relationship between the current node instance and the provided node. If the nodes are not connected
         the defined relationship, `None` will be returned.
 
         Args:
-            node (NodeModel): The node to which to get the relationship.
+            node (T): The node to which to get the relationship.
 
         Returns:
-            (R | Dict[str, Any] | None): Returns a `relationship model instance` describing relationship between
+            (U | Dict[str, Any] | None): Returns a `relationship model instance` describing relationship between
                 the nodes or a `dictionary` if the relationship model has not been registered or `None` if no
                 relationship exists between the two.
         """
@@ -135,14 +137,14 @@ class RelationshipProperty:
             return None
         return results[0][0]
 
-    async def connect(self, node: NodeModel, properties: Dict[str, Any]) -> R:
+    async def connect(self, node: T, properties: Dict[str, Any]) -> U | Dict[str, Any]:
         """
         Connects the given node to the source node. By default only one relationship will be created between nodes.
         If `allow_multiple` has been set to `True` and a relationship already exists between the nodes, a duplicate
         relationship will be created.
 
         Args:
-            node (NodeModel): Node instance to create a relationship to.
+            node (T): Node instance to create a relationship to.
             properties (Dict[str, Any]): Properties defined on the relationship model. If no model has been provided,
                 the properties will be omitted.
 
@@ -150,7 +152,7 @@ class RelationshipProperty:
             NoResultsFound: Raised if the query did not return the new relationship.
 
         Returns:
-            R: The created relationship.
+            U | Dict[str, Any]: The created relationship.
         """
         self._ensure_alive(node)
 
@@ -170,7 +172,7 @@ class RelationshipProperty:
         deflated_properties: Dict[str, Any] = {}
 
         if self._relationship_is_model:
-            instance = cast(Type[R], self._relationship).parse_obj(properties)
+            instance = cast(Type[U], self._relationship).parse_obj(properties)
             deflated_properties = instance.deflate()
 
         # Build MERGE/CREATE part of query depending on if duplicate relationships are allowed or not
@@ -204,13 +206,13 @@ class RelationshipProperty:
             raise NoResultsFound()
         return results[0][0]
 
-    async def disconnect(self, node: NodeModel) -> int:
+    async def disconnect(self, node: T) -> int:
         """
         Disconnects the provided node from the source node. If the nodes are `not connected`, the query will not modify
         any of the nodes and `return 0`. If multiple relationships exists, all will be deleted.
 
         Args:
-            node (NodeModel): The node to disconnect.
+            node (T): The node to disconnect.
 
         Returns:
             int: The number of disconnected nodes.
@@ -314,12 +316,45 @@ class RelationshipProperty:
 
         return count_results[0][0]
 
-    def _ensure_alive(self, nodes: NodeModel | List[NodeModel]) -> None:
+    async def replace(self, old_node: T, new_node: T) -> U:
+        """
+        Disconnects a old node and replaces it with a new node. All relationship properties will be carried over to
+        the new relationship.
+
+        Args:
+            old_node (T): The currently connected node.
+            new_node (T): The node which replaces the currently connected node.
+
+        Returns:
+            U: The new relationship between the source node and the newly connected node.
+        """
+        self._ensure_alive([old_node, new_node])
+
+        logging.info(
+            "Replacing old node %s with new node %s",
+            getattr(old_node, "_element_id", None),
+            getattr(new_node, "_element_id", None),
+        )
+        relationship = await self.relationship(node=old_node)
+
+        if relationship is None:
+            raise NotConnectedToSourceNode()
+
+        deflated_properties = (
+            relationship if not issubclass(relationship, RelationshipModel) else relationship.deflate()
+        )
+
+        await self.disconnect(node=old_node)
+        new_relationship = await self.connect(node=new_node, properties=deflated_properties)
+
+        return new_relationship
+
+    def _ensure_alive(self, nodes: T | List[T]) -> None:
         """
         Ensures that the provided nodes are alive.
 
         Args:
-            nodes (NodeModel | List[NodeModel]): Nodes to check for hydration and alive.
+            nodes (T | List[T]): Nodes to check for hydration and alive.
 
         Raises:
             InstanceNotHydrated: Raised if a node is not hydrated yet.

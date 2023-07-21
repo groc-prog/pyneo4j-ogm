@@ -140,3 +140,13 @@ class TransactionInProgress(Neo4jOGMException):
 
     def __init__(self, *args: object) -> None:
         super().__init__("A transaction is already in progress.", *args)
+
+
+class NotConnectedToSourceNode(Neo4jOGMException):
+    """
+    Exception which gets raised when a node is to be replaced by another, but the node is not connected to the source
+    node.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Node not connected to source node.", *args)
