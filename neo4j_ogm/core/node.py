@@ -333,18 +333,16 @@ class NodeModel(BaseModel):
 
     @classmethod
     async def update_one(
-        cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpression, upsert: bool = False, new: bool = False
-    ) -> T | None:
+        cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpression, new: bool = False
+    ) -> T:
         """
         Finds the first node that matches `expressions` and updates it with the values defined by `update`. If no match
-        is found, a `NoResultsFound` is raised. Optionally, `upsert` can be set to `True` to create a new node if no
-        match is found. When doing so, update must contain all properties required for model validation to succeed.
+        is found, a `NoResultsFound` is raised.
 
         Args:
             update (Dict[str, Any]): Values to update the node properties with. If `upsert` is set to `True`, all
                 required values defined on model must be present, else the model validation will fail.
             expressions (TypedNodeExpression): Expressions applied to the query. Defaults to None.
-            upsert (bool, optional): Whether to create a new node if no node is found. Defaults to False.
             new (bool, optional): Whether to return the updated node. By default, the old node is returned. Defaults to
                 False.
 
@@ -352,11 +350,9 @@ class NodeModel(BaseModel):
             NoResultsFound: Raised if the query did not return the node.
 
         Returns:
-            T | None: By default, the old node instance is returned. If `upsert` is set to `True` and `not match is
-                found`, `None` will be returned for the old node. If `new` is set to `True`, the result will be the
+            T: By default, the old node instance is returned. If `new` is set to `True`, the result will be the
                 `updated/created instance`.
         """
-        is_upsert: bool = False
         new_instance: T
 
         logging.info("Updating first encountered node of model %s matching expressions %s", cls.__name__, expressions)
@@ -364,13 +360,7 @@ class NodeModel(BaseModel):
 
         logging.debug("Checking if query returned a result")
         if old_instance is None:
-            if upsert:
-                # If upsert is True, try and parse new instance
-                logging.debug("No results found, running upsert")
-                new_instance = cls(**update)
-                is_upsert = True
-            else:
-                raise NoResultsFound()
+            raise NoResultsFound()
         else:
             # Update existing instance with values and save
             logging.debug("Creating instance copy with new values %s", update)
@@ -379,13 +369,8 @@ class NodeModel(BaseModel):
             new_instance.__dict__.update(update)
             setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
 
-        # Create query depending on whether upsert is active or not
-        if upsert and is_upsert:
-            await new_instance.create()
-            logging.info("Successfully created node %s", getattr(new_instance, "_element_id"))
-        else:
-            await new_instance.update()
-            logging.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
+        await new_instance.update()
+        logging.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
 
         if new:
             return new_instance
@@ -394,31 +379,22 @@ class NodeModel(BaseModel):
 
     @classmethod
     async def update_many(
-        cls: Type[T],
-        update: Dict[str, Any],
-        expressions: TypedNodeExpression | None = None,
-        upsert: bool = False,
-        new: bool = False,
+        cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpression | None = None, new: bool = False
     ) -> list[T] | T | None:
         """
-        Finds all nodes that match `expressions` and updates them with the values defined by `update`. Optionally,
-        `upsert` can be set to `True` to create a new node if no matches are found. When doing so, update must contain
-        all properties required for model validation to succeed.
+        Finds all nodes that match `expressions` and updates them with the values defined by `update`.
 
         Args:
             update (Dict[str, Any]): Values to update the node properties with. If `upsert` is set to `True`, all
                 required values defined on model must be present, else the model validation will fail.
             expressions (TypedNodeExpression): Expressions applied to the query. Defaults to None.
-            upsert (bool, optional): Whether to create a new node if no nodes are found. Defaults to False.
             new (bool, optional): Whether to return the updated nodes. By default, the old nodes is returned. Defaults
                 to False.
 
         Returns:
-            list[T] | T | None: By default, the old node instances are returned. If `upsert` is set to `True` and `not
-                matches are found`, `None` will be returned for the old nodes. If `new` is set to `True`, the result
+            list[T] | T: By default, the old node instances are returned. If `new` is set to `True`, the result
                 will be the `updated/created instance`.
         """
-        is_upsert: bool = False
         new_instance: T
 
         logging.info("Updating all nodes of model %s matching expressions %s", cls.__name__, expressions)
@@ -426,14 +402,8 @@ class NodeModel(BaseModel):
 
         logging.debug("Checking if query returned a result")
         if len(old_instances) == 0:
-            if upsert:
-                # If upsert is True, try and parse new instance
-                logging.debug("No results found, running upsert")
-                new_instance = cls(**update)
-                is_upsert = True
-            else:
-                logging.debug("No results found")
-                return []
+            logging.debug("No results found")
+            return []
         else:
             # Try and parse update values into random instance to check validation
             logging.debug("Creating instance copy with new values %s", update)
@@ -446,23 +416,6 @@ class NodeModel(BaseModel):
             expression_where_query,
             expression_parameters,
         ) = cls._query_builder.build_node_expressions(expressions=expressions)
-
-        if upsert and is_upsert:
-            results, _ = await cls._client.cypher(
-                query=f"""
-                    CREATE (n:`{":".join(cls.__labels__)}`)
-                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
-                    RETURN n
-                """,
-                parameters=deflated_properties,
-            )
-
-            logging.debug("Checking if query returned a result")
-            if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-                raise NoResultsFound()
-
-            logging.info("Successfully created node %s", getattr(results[0][0], "_element_id"))
-            return results[0][0] if new else None
 
         # Update instances
         results, _ = await cls._client.cypher(
