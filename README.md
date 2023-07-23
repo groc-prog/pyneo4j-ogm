@@ -13,6 +13,8 @@
 - [ ] `NodeModel.count()` - Returns the count of nodes found
 - [ ] `NodeModel.find_connected_nodes()` - Finds connected nodes for one or more hops
 
+- [ ] Add automatic refs for defined relationship properties in node models
+
 
 ## RelationshipModel
 

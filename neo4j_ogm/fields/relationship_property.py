@@ -5,6 +5,8 @@ on a `NodeModel` models field.
 import logging
 from typing import Any, Dict, List, Type, TypeVar, cast
 
+from neo4j.graph import Node
+
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipDirection, RelationshipModel
@@ -17,6 +19,7 @@ from neo4j_ogm.exceptions import (
     UnregisteredModel,
 )
 from neo4j_ogm.queries.query_builder import QueryBuilder
+from neo4j_ogm.queries.types import TypedPropertyExpressions, TypedQueryOptions
 
 T = TypeVar("T", bound=NodeModel)
 U = TypeVar("U", bound=RelationshipModel)
@@ -282,7 +285,6 @@ class RelationshipProperty:
             direction=self._direction,
             relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
             start_node_labels=self._source_node.__labels__,
-            end_node_labels=[],
         )
 
         logging.debug("Getting relationship count for source node")
@@ -348,6 +350,58 @@ class RelationshipProperty:
         new_relationship = await self.connect(node=new_node, properties=deflated_properties)
 
         return new_relationship
+
+    async def find_connected_nodes(
+        self, expressions: TypedPropertyExpressions | None = None, options: TypedQueryOptions | None = None
+    ) -> List[T]:
+        """
+        Finds the all nodes that matches `expressions` and are connected to the source node.
+
+        Args:
+            expressions (TypedPropertyExpressions | None, optional): Expressions applied to the query. Defaults to None.
+            options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
+
+        Returns:
+            List[T]: A list of model instances.
+        """
+        logging.info("Getting connected nodes matching expressions %s", expressions)
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = self._query_builder.build_node_expressions(
+            expressions=expressions if expressions is not None else {}, ref="end"
+        )
+        match_query = self._query_builder.build_relationship_query(
+            direction=self._direction,
+            relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
+            start_node_labels=self._source_node.__labels__,
+        )
+        options_query = self._query_builder.build_query_options(options=options if options else {}, ref="end")
+
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH {match_query} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                {expression_where_query if expression_where_query is not None else ""}
+                RETURN end
+                {options_query}
+            """,
+            parameters=expression_parameters,
+        )
+
+        instances: List[T] = []
+
+        for result_list in results:
+            for result in result_list:
+                if result is None:
+                    continue
+
+                if isinstance(results[0][0], Node):
+                    instances.append(self._target_model.inflate(node=results[0][0]))
+                else:
+                    instances.append(result)
+
+        return instances
 
     def _ensure_alive(self, nodes: T | List[T]) -> None:
         """
