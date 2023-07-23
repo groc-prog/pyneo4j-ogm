@@ -130,8 +130,8 @@ TypedLogicalExpression = TypedDict(
 )
 
 
-TypedNeo4jExpression = TypedDict(
-    "TypedNeo4jExpression",
+TypedElementExpression = TypedDict(
+    "TypedElementExpression",
     {
         "$elementId": Optional[str],
         "$id": Optional[int],
@@ -165,3 +165,4 @@ TypedCombinedExpression = TypedDict(
 
 TypedNodeExpressions = TypedNodeExpression | Dict[str, TypedCombinedExpression]
 TypedRelationshipExpressions = TypedRelationshipExpression | Dict[str, TypedCombinedExpression]
+TypedPropertyExpressions = TypedElementExpression | Dict[str, TypedCombinedExpression]

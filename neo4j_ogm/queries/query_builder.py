@@ -6,16 +6,15 @@ from copy import deepcopy
 from typing import Any, Dict, List, Tuple
 
 from neo4j_ogm.exceptions import InvalidOperator, UnknownRelationshipDirection
-from neo4j_ogm.queries.types import TypedNodeExpressions, TypedQueryOptions, TypedRelationshipExpressions
-from neo4j_ogm.queries.validators import (
-    ComparisonValidator,
-    ElementValidator,
-    LogicalValidator,
-    NodeValidator,
-    QueryOptionsValidator,
-    RelationshipDirection,
-    RelationshipValidator,
-)
+from neo4j_ogm.queries.types import (TypedNodeExpressions,
+                                     TypedPropertyExpressions,
+                                     TypedQueryOptions,
+                                     TypedRelationshipExpressions)
+from neo4j_ogm.queries.validators import (ComparisonValidator,
+                                          ElementValidator, LogicalValidator,
+                                          NodeValidator, QueryOptionsValidator,
+                                          RelationshipDirection,
+                                          RelationshipValidator)
 
 
 class QueryBuilder:
@@ -26,7 +25,7 @@ class QueryBuilder:
     __comparison_operators: Dict[str, str] = {}
     __logical_operators: Dict[str, str] = {}
     __element_operators: Dict[str, str] = {}
-    _is_node_expression: bool
+    _is_node_expression: bool | None
     _variable_name_overwrite: str | None = None
     _parameter_count: int = 0
     _pattern_count: int = 0
@@ -51,7 +50,7 @@ class QueryBuilder:
         Builds a query for filtering node properties with the given operators.
 
         Args:
-            expressions (Dict[str, Any]): The expressions defining the operators.
+            expressions (TypedNodeExpressions): The expressions defining the operators.
             ref (str, optional): The variable to use inside the generated query. Defaults to "n".
 
         Returns:
@@ -60,7 +59,7 @@ class QueryBuilder:
         self.ref = ref
         self._is_node_expression = True
 
-        logging.debug("Building query for expressions %s", expressions)
+        logging.debug("Building query for node expressions %s", expressions)
         normalized_expressions = self._normalize_expressions(expressions=expressions)
         validated_expressions = self._validate_expressions(expressions=normalized_expressions)
 
@@ -73,7 +72,7 @@ class QueryBuilder:
         Builds a query for filtering relationship properties with the given operators.
 
         Args:
-            expressions (Dict[str, Any]): The expressions defining the operators.
+            expressions (TypedPropertyExpressions): The expressions defining the operators.
             ref (str, optional): The variable to use inside the generated query. Defaults to "n".
 
         Returns:
@@ -82,7 +81,29 @@ class QueryBuilder:
         self.ref = ref
         self._is_node_expression = False
 
-        logging.debug("Building query for expressions %s", expressions)
+        logging.debug("Building query for relationship expressions %s", expressions)
+        normalized_expressions = self._normalize_expressions(expressions=expressions)
+        validated_expressions = self._validate_expressions(expressions=normalized_expressions)
+
+        return self._build_nested_expressions(validated_expressions)
+
+    def build_property_expressions(
+        self, expressions: TypedPropertyExpressions, ref: str = "n"
+    ) -> Tuple[str | None, str | None, Dict[str, Any]]:
+        """
+        Builds a query for filtering relationship-property (defined on node models) properties with the given operators.
+
+        Args:
+            expressions (TypedPropertyExpressions): The expressions defining the operators.
+            ref (str, optional): The variable to use inside the generated query. Defaults to "n".
+
+        Returns:
+            Tuple[str | None, str | None, Dict[str, Any]]: The generated query and parameters.
+        """
+        self.ref = ref
+        self._is_node_expression = None
+
+        logging.debug("Building query for property expressions %s", expressions)
         normalized_expressions = self._normalize_expressions(expressions=expressions)
         validated_expressions = self._validate_expressions(expressions=normalized_expressions)
 
@@ -135,7 +156,7 @@ class QueryBuilder:
         direction: RelationshipDirection,
         relationship_type: str,
         start_node_labels: List[str],
-        end_node_labels: List[str],
+        end_node_labels: List[str] | None = None,
         rel_ref: str = "r",
         start_ref: str = "start",
         end_ref: str = "end",
@@ -147,7 +168,7 @@ class QueryBuilder:
             direction (RelationshipDirection): The direction that should be used whe building the relationship.
             relationship_type (str): The relationship type.
             start_node_labels (List[str]): The start node labels.
-            end_node_labels (List[str]): The end node labels.
+            end_node_labels (List[str] | None): The end node labels. Defaults to None.
             rel_ref (str, optional): Variable name to use for the relationship. Defaults to "r".
             start_ref (str, optional): Variable name to use for the start node. Defaults to "start".
             end_ref (str, optional): Variable name to use for the end node. Defaults to "end".
@@ -158,8 +179,10 @@ class QueryBuilder:
         Returns:
             str: The generated `MATCH` clause.
         """
-        start_node = f"({start_ref}:`{':'.join(start_node_labels)}`)"
-        end_node = f"({end_ref}:`{':'.join(end_node_labels)}`)"
+        start_labels = ":".join(start_node_labels)
+        end_labels = ":".join(end_node_labels if end_node_labels is not None else [])
+        start_node = f"({start_ref}{f':`{start_labels}`' if len(start_labels) > 0 else ''})"
+        end_node = f"({end_ref}{f':`{end_labels}`' if len(end_labels) > 0 else ''})"
         relationship = f"[{rel_ref}:`{relationship_type}`]"
 
         match direction:
@@ -379,7 +402,7 @@ class QueryBuilder:
 
             complete_parameters = {**complete_parameters, **parameters}
 
-        complete_match_query = " AND ".join(partial_match_queries) if len(partial_match_queries) != 0 else None
+        complete_match_query = ", ".join(partial_match_queries) if len(partial_match_queries) != 0 else None
         complete_where_query = " AND ".join(partial_where_queries) if len(partial_where_queries) != 0 else None
         return complete_match_query, complete_where_query, complete_parameters
 
@@ -700,12 +723,16 @@ class QueryBuilder:
             Dict[str, Any]: The validated expressions.
         """
         logging.debug("Validating expressions %s", expressions)
+        is_node_expression = getattr(self, "_is_node_expression", None)
 
-        if self._is_node_expression:
+        if is_node_expression is True:
             validated = NodeValidator.parse_obj(expressions)
             validated = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
-        else:
+        elif is_node_expression is False:
             validated = RelationshipValidator.parse_obj(expressions)
+            validated = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+        else:
+            validated = ElementValidator.parse_obj(expressions)
             validated = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
 
         # Remove empty objects which remained from pydantic validation
