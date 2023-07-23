@@ -330,8 +330,8 @@ class RelationshipModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._relationship_match} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 LIMIT 1
             """,
@@ -353,7 +353,7 @@ class RelationshipModel(BaseModel):
         cls: Type[T], expressions: TypedRelationshipExpressions | None = None, options: TypedQueryOptions | None = None
     ) -> list[T]:
         """
-        Finds the all relationships that matches `expressions` and returns them. If no matching relationships are found.
+        Finds the all relationships that matches `expressions` and returns them.
 
         Args:
             expressions (TypedRelationshipExpressions | None, optional): Expressions applied to the query. Defaults to
@@ -373,8 +373,8 @@ class RelationshipModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._relationship_match} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN r
                 {options_query}
             """,
@@ -490,8 +490,8 @@ class RelationshipModel(BaseModel):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._relationship_match} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
             """,
@@ -547,8 +547,8 @@ class RelationshipModel(BaseModel):
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._relationship_match} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 DELETE r
             """,
             parameters={**expression_parameters},
@@ -578,8 +578,8 @@ class RelationshipModel(BaseModel):
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._relationship_match} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 DELETE r
             """,
             parameters={**expression_parameters},
@@ -609,8 +609,8 @@ class RelationshipModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match} {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._relationship_match} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN count(r)
             """,
             parameters=expression_parameters,

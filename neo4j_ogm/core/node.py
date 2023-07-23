@@ -267,8 +267,8 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 LIMIT 1
             """,
@@ -290,7 +290,7 @@ class NodeModel(BaseModel):
         cls: Type[T], expressions: TypedNodeExpression | None = None, options: TypedQueryOptions | None = None
     ) -> List[T]:
         """
-        Finds the all nodes that matches `expressions` and returns them. If no matching nodes are found.
+        Finds the all nodes that matches `expressions` and returns them.
 
         Args:
             expressions (TypedNodeExpression | None, optional): Expressions applied to the query. Defaults to None.
@@ -309,8 +309,8 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 {options_query}
             """,
@@ -420,8 +420,8 @@ class NodeModel(BaseModel):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
             """,
@@ -474,8 +474,8 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 DETACH DELETE n
                 RETURN n
             """,
@@ -509,8 +509,8 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 DETACH DELETE n
                 RETURN n
             """,
@@ -540,8 +540,8 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f'AND {expression_match_query}' if expression_match_query is not None else ""}
-                {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN count(n)
             """,
             parameters=expression_parameters,
