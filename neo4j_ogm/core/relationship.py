@@ -3,6 +3,7 @@ This module holds the base relationship class `RelationshipModel` which is used 
 """
 import json
 import logging
+import re
 from typing import Any, Callable, ClassVar, Type, TypeVar, cast
 
 from neo4j.graph import Node, Relationship
@@ -78,7 +79,9 @@ class RelationshipModel(BaseModel):
         # Check if relationship type is set, else fall back to class name
         if not hasattr(cls._settings, "type"):
             logging.warning("No type has been defined for model %s, using model name as type", cls.__name__)
-            cls._settings.type = cls.__name__
+            # Convert class name to upper snake case
+            relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
+            cls._settings.type = relationship_type.upper()
 
         logging.debug("Collecting dict and model fields")
         for property_name, value in cls.__fields__.items():
