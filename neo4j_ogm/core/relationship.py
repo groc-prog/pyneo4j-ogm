@@ -66,7 +66,7 @@ class RelationshipModel(BaseModel):
 
     __dict_properties = set()
     __model_properties = set()
-    _settings: ClassVar["RelationshipModelSettings"]
+    _settings: ClassVar[RelationshipModelSettings]
     _relationship_match: str = PrivateAttr()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()

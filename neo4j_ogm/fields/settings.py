@@ -18,3 +18,11 @@ class RelationshipModelSettings:
     """
 
     type: Optional[str]
+
+
+class RelationshipPropertySettings:
+    """
+    Settings for a RelationshipProperty class or subclass.
+    """
+
+    allow_multiple: Optional[bool] = False

@@ -6,14 +6,17 @@ from enum import Enum
 from os import environ
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type
 
-from neo4j import (AsyncDriver, AsyncGraphDatabase, AsyncSession,
-                   AsyncTransaction)
+from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.graph import Node, Relationship
 
-from neo4j_ogm.exceptions import (InvalidEntityType, InvalidIndexType,
-                                  InvalidLabelOrType, MissingDatabaseURI,
-                                  NotConnectedToDatabase,
-                                  TransactionInProgress)
+from neo4j_ogm.exceptions import (
+    InvalidEntityType,
+    InvalidIndexType,
+    InvalidLabelOrType,
+    MissingDatabaseURI,
+    NotConnectedToDatabase,
+    TransactionInProgress,
+)
 
 if TYPE_CHECKING:
     from neo4j_ogm.core.node import NodeModel

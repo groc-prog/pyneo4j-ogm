@@ -47,7 +47,7 @@ class NodeModel(BaseModel):
 
     __dict_properties: Set[str] = set()
     __model_properties: Set[str] = set()
-    _settings: ClassVar["NodeModelSettings"]
+    _settings: ClassVar[NodeModelSettings]
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: Set[str] = PrivateAttr(default=set())
