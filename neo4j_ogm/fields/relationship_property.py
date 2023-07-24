@@ -34,16 +34,17 @@ class RelationshipProperty:
     _client: Neo4jClient
     _query_builder: QueryBuilder
     _target_model: Type[T]
+    _target_model_name: str
     _source_node: T
     _direction: RelationshipDirection
-    _relationship: Type[U] | str
-    _relationship_is_model: bool = False
+    _relationship_model: Type[U]
+    _relationship_model_name: str
     _allow_multiple: bool
 
     def __init__(
         self,
         target_model: Type[T] | str,
-        relationship: Type[U] | str,
+        relationship_model: Type[U] | str,
         direction: RelationshipDirection,
         allow_multiple: bool = False,
     ) -> None:
@@ -54,7 +55,8 @@ class RelationshipProperty:
         Args:
             target_model (Type[T] | str): The model which is the target of the relationship. Can be a
                 model class or a string which matches the name of the model class.
-            relationship (Type[U] | str): The relationship model or the relationship type as a string.
+            direction (RelationshipDirection): The relationship direction.
+            relationship_model (Type[U] | str): The relationship model or the relationship type as a string.
             direction (RelationshipDirection): The direction of the relationship.
             allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to False.
 
@@ -64,22 +66,11 @@ class RelationshipProperty:
         """
         self._client = Neo4jClient()
         self._allow_multiple = allow_multiple
-
-        # Check if target model has been registered with client
-        target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
-
-        logging.debug("Checking if target model %s has been registered with client", target_model_name)
-        registered_target_model = [model for model in self._client.models if model.__name__ == target_model_name]
-        if len(registered_target_model) == 0:
-            raise UnregisteredModel(unregistered_model=target_model_name)
-
-        if issubclass(relationship, RelationshipModel):
-            if relationship not in self._client.models:
-                raise UnregisteredModel(unregistered_model=relationship.__name__)
-            self._relationship_is_model = True
-
-        self._target_model = registered_target_model
         self._direction = direction
+        self._relationship_model_name = (
+            relationship_model if isinstance(relationship_model, str) else relationship_model.__name__
+        )
+        self._target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
 
     def _build_property(self, source_model: T) -> None:
         """
@@ -96,6 +87,27 @@ class RelationshipProperty:
             raise UnregisteredModel(unregistered_model=source_model.__name__)
 
         self._source_node = source_model
+
+        logging.debug("Checking if target model %s has been registered with client", self._target_model_name)
+        registered_relationship_model = [
+            model for model in self._client.models if model.__name__ == self._target_model_name
+        ]
+        if len(registered_relationship_model) == 0:
+            raise UnregisteredModel(unregistered_model=self._target_model_name)
+
+        self._target_model = registered_relationship_model
+
+        logging.debug(
+            "Checking if relationship model %s has been registered with client", self._relationship_model_name
+        )
+        registered_relationship_model = [
+            model for model in self._client.models if model.__name__ == self._relationship_model_name
+        ]
+        if len(registered_relationship_model) == 0:
+            raise UnregisteredModel(unregistered_model=self._relationship_model_name)
+
+        self._relationship_model = registered_relationship_model
+
         return self
 
     async def relationship(self, node: T) -> U | Dict[str, Any] | None:
@@ -120,11 +132,9 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.relationship_type
-            if self._relationship_is_model
-            else self._relationship,
-            start_node_labels=self._source_node.node_labels,
-            end_node_labels=node.node_labels,
+            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
+            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
+            end_node_labels=getattr(node.__model_settings__, "labels"),
         )
         results, _ = await self._client.cypher(
             query=f"""
@@ -168,19 +178,13 @@ class RelationshipProperty:
         )
         relationship_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.relationship_type
-            if self._relationship_is_model
-            else self._relationship,
-            start_node_labels=self._source_node.node_labels,
-            end_node_labels=node.node_labels,
+            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
+            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
+            end_node_labels=getattr(node.__model_settings__, "labels"),
         )
 
         # Build properties if relationship is defined as model
         deflated_properties: Dict[str, Any] = {}
-
-        if self._relationship_is_model:
-            instance = cast(Type[U], self._relationship).parse_obj(properties)
-            deflated_properties = instance.deflate()
 
         # Build MERGE/CREATE part of query depending on if duplicate relationships are allowed or not
         logging.debug("Building create/merge query")
@@ -233,11 +237,9 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.relationship_type
-            if self._relationship_is_model
-            else self._relationship,
-            start_node_labels=self._source_node.node_labels,
-            end_node_labels=node.node_labels,
+            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
+            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
+            end_node_labels=getattr(node.__model_settings__, "labels"),
         )
 
         logging.debug("Getting relationship count between source and target node")
@@ -289,10 +291,8 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.relationship_type
-            if self._relationship_is_model
-            else self._relationship,
-            start_node_labels=self._source_node.node_labels,
+            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
+            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
         )
 
         logging.debug("Getting relationship count for source node")
@@ -382,10 +382,8 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.relationship_type
-            if self._relationship_is_model
-            else self._relationship,
-            start_node_labels=self._source_node.node_labels,
+            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
+            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
         )
         options_query = self._query_builder.build_query_options(options=options if options else {}, ref="end")
 

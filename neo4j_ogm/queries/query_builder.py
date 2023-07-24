@@ -159,7 +159,7 @@ class QueryBuilder:
 
     def build_relationship_query(
         self,
-        direction: RelationshipDirection,
+        direction: RelationshipDirection = RelationshipDirection.BOTH,
         relationship_type: str | None = None,
         start_node_labels: List[str] | None = None,
         end_node_labels: List[str] | None = None,
@@ -172,6 +172,7 @@ class QueryBuilder:
 
         Args:
             direction (RelationshipDirection): The direction that should be used whe building the relationship.
+                Defaults to RelationshipDirection.BOTH
             relationship_type (str | None): The relationship type. Defaults to None.
             start_node_labels (List[str] | None): The start node labels. Defaults to None.
             end_node_labels (List[str] | None): The end node labels. Defaults to None.

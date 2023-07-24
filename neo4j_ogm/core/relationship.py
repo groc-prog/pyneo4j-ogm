@@ -14,7 +14,7 @@ from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
 from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import RelationshipDirection, TypedQueryOptions, TypedRelationshipExpressions
+from neo4j_ogm.queries.types import TypedQueryOptions, TypedRelationshipExpressions
 
 T = TypeVar("T", bound="RelationshipModel")
 
@@ -54,20 +54,17 @@ class RelationshipModel(BaseModel):
     functionality like de-/inflation and validation.
     """
 
+    __model__settings__: ClassVar[RelationshipModelSettings]
     __dict_properties = set()
     __model_properties = set()
-    _settings: ClassVar[RelationshipModelSettings]
     _relationship_match: str = PrivateAttr()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
-    _direction: RelationshipDirection = PrivateAttr()
     _element_id: str | None = PrivateAttr(default=None)
     _start_node_id: str | None = PrivateAttr(default=None)
     _end_node_id: str | None = PrivateAttr(default=None)
-    _start_node_model: Type["NodeModel"] = PrivateAttr()
-    _end_node_model: Type["NodeModel"] = PrivateAttr()
 
     def __init_subclass__(cls) -> None:
         """
@@ -76,12 +73,15 @@ class RelationshipModel(BaseModel):
         cls._client = Neo4jClient()
         cls._query_builder = QueryBuilder()
 
+        if not hasattr(cls, "__model__settings__"):
+            setattr(cls, "__model__settings__", RelationshipModelSettings())
+
         # Check if relationship type is set, else fall back to class name
-        if not hasattr(cls._settings, "type"):
+        if not hasattr(cls.__model__settings__, "type"):
             logging.warning("No type has been defined for model %s, using model name as type", cls.__name__)
             # Convert class name to upper snake case
-            relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
-            cls._settings.type = relationship_type.upper()
+            __model_settings__ = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
+            setattr(cls.__model__settings__, "type", __model_settings__.upper())
 
         logging.debug("Collecting dict and model fields")
         for property_name, value in cls.__fields__.items():
@@ -94,10 +94,7 @@ class RelationshipModel(BaseModel):
 
         # Build relationship match query
         cls._relationship_match = cls._query_builder.build_relationship_query(
-            direction=cls._direction,
-            relationship_type=cls._settings.type,
-            start_node_labels=cls._start_node_model.node_labels,
-            end_node_labels=cls._end_node_model.node_labels,
+            relationship_type=cls.__model__settings__.type
         )
 
         return super().__init_subclass__()
@@ -110,14 +107,14 @@ class RelationshipModel(BaseModel):
         return super().__setattr__(name, value)
 
     @property
-    def relationship_type(self) -> str:
+    def __model_settings__(self) -> str:
         """
         Property getter for relationship type.
 
         Returns:
             str: Relationship type.
         """
-        return self._settings.type
+        return self.__model__settings__.type
 
     def deflate(self) -> dict[str, Any]:
         """
