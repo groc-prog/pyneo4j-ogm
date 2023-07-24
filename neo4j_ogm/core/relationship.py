@@ -4,7 +4,7 @@ This module holds the base relationship class `RelationshipModel` which is used 
 import json
 import logging
 import re
-from typing import Any, Callable, ClassVar, Type, TypeVar, cast
+from typing import Any, Callable, ClassVar, Dict, List, Type, TypeVar, cast
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
@@ -116,15 +116,15 @@ class RelationshipModel(BaseModel):
         """
         return self.__model__settings__.type
 
-    def deflate(self) -> dict[str, Any]:
+    def deflate(self) -> Dict[str, Any]:
         """
         Deflates the current model instance into a python dictionary which can be stored in Neo4j.
 
         Returns:
-            dict[str, Any]: The deflated model instance
+            Dict[str, Any]: The deflated model instance
         """
         logging.debug("Deflating model to storable dictionary")
-        deflated: dict[str, Any] = json.loads(self.json())
+        deflated: Dict[str, Any] = json.loads(self.json())
 
         # Serialize nested BaseModel or dict instances to JSON strings
         logging.debug("Serializing nested dictionaries to JSON strings")
@@ -154,7 +154,7 @@ class RelationshipModel(BaseModel):
         Returns:
             T: A new instance of the current model with the properties from the relationship instance
         """
-        inflated: dict[str, Any] = {}
+        inflated: Dict[str, Any] = {}
 
         logging.debug("Inflating relationship %s to model instance", relationship.element_id)
         for node_property in relationship.items():
@@ -376,7 +376,7 @@ class RelationshipModel(BaseModel):
     @classmethod
     async def find_many(
         cls: Type[T], expressions: TypedRelationshipExpressions | None = None, options: TypedQueryOptions | None = None
-    ) -> list[T]:
+    ) -> List[T]:
         """
         Finds the all relationships that matches `expressions` and returns them.
 
@@ -386,7 +386,7 @@ class RelationshipModel(BaseModel):
             options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
-            list[T]: A list of model instances.
+            List[T]: A list of model instances.
         """
         logging.info("Getting relationships of model %s matching expressions %s", cls.__name__, expressions)
         (
@@ -406,7 +406,7 @@ class RelationshipModel(BaseModel):
             parameters=expression_parameters,
         )
 
-        instances: list[T] = []
+        instances: List[T] = []
 
         for result_list in results:
             for result in result_list:
@@ -422,14 +422,14 @@ class RelationshipModel(BaseModel):
 
     @classmethod
     async def update_one(
-        cls: Type[T], update: dict[str, Any], expressions: TypedRelationshipExpressions, new: bool = False
+        cls: Type[T], update: Dict[str, Any], expressions: TypedRelationshipExpressions, new: bool = False
     ) -> T | None:
         """
         Finds the first relationship that matches `expressions` and updates it with the values defined by `update`. If
         no match is found, a `NoResultsFound` is raised.
 
         Args:
-            update (dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
+            update (Dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
                 all required values defined on model must be present, else the model validation will fail.
             expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
             new (bool, optional): Whether to return the updated relationship. By default, the old relationship is
@@ -472,22 +472,22 @@ class RelationshipModel(BaseModel):
     @classmethod
     async def update_many(
         cls: Type[T],
-        update: dict[str, Any],
+        update: Dict[str, Any],
         expressions: TypedRelationshipExpressions | None = None,
         new: bool = False,
-    ) -> list[T] | T | None:
+    ) -> List[T] | T | None:
         """
         Finds all relationships that match `expressions` and updates them with the values defined by `update`.
 
         Args:
-            update (dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
+            update (Dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
                 all required values defined on model must be present, else the model validation will fail.
             expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
             new (bool, optional): Whether to return the updated relationships. By default, the old relationships is
                 returned. Defaults to False.
 
         Returns:
-            list[T] | T | None: By default, the old relationship instances are returned. If `new` is set to `True`, the
+            List[T] | T | None: By default, the old relationship instances are returned. If `new` is set to `True`, the
                 result will be the `updated instance`.
         """
         new_instance: T
@@ -524,7 +524,7 @@ class RelationshipModel(BaseModel):
         )
 
         if new:
-            instances: list[T] = []
+            instances: List[T] = []
 
             for result_list in results:
                 for result in result_list:

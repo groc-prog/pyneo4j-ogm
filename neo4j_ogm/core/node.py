@@ -111,7 +111,7 @@ class NodeModel(BaseModel):
             Dict[str, Any]: The deflated model instance
         """
         logging.debug("Deflating model to storable dictionary")
-        deflated: dict[str, Any] = json.loads(self.json())
+        deflated: Dict[str, Any] = json.loads(self.json())
 
         # Serialize nested BaseModel or dict instances to JSON strings
         logging.debug("Serializing nested dictionaries to JSON strings")
@@ -485,7 +485,7 @@ class NodeModel(BaseModel):
     @classmethod
     async def update_many(
         cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpression | None = None, new: bool = False
-    ) -> list[T] | T | None:
+    ) -> List[T] | T | None:
         """
         Finds all nodes that match `expressions` and updates them with the values defined by `update`.
 
@@ -497,7 +497,7 @@ class NodeModel(BaseModel):
                 to False.
 
         Returns:
-            list[T] | T: By default, the old node instances are returned. If `new` is set to `True`, the result
+            List[T] | T: By default, the old node instances are returned. If `new` is set to `True`, the result
                 will be the `updated/created instance`.
         """
         new_instance: T
