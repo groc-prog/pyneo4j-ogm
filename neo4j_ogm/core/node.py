@@ -252,9 +252,9 @@ class NodeModel(BaseModel):
         Refreshes the current instance with the values from the database.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the updated node.
+            NoResultsFound: Raised if the query did not return the current node.
         """
-        logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
+        logging.info("Refreshing node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH (n:{":".join(self.__labels__)})
