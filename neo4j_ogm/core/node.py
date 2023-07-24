@@ -246,6 +246,32 @@ class NodeModel(BaseModel):
         setattr(self, "_destroyed", True)
         logging.info("Deleted node %s", self._element_id)
 
+    @ensure_alive
+    async def refresh(self) -> None:
+        """
+        Refreshes the current instance with the values from the database.
+
+        Raises:
+            NoResultsFound: Raised if the query did not return the updated node.
+        """
+        logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH (n:{":".join(self.__labels__)})
+                WHERE elementId(n) = $element_id
+                RETURN n
+            """,
+            parameters={"element_id": self._element_id},
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
+
+        logging.debug("Updating current instance")
+        self.__dict__.update(cast(T, results[0][0]).__dict__)
+        logging.info("Refreshed node %s", self._element_id)
+
     @classmethod
     async def find_one(cls: Type[T], expressions: TypedNodeExpression) -> T | None:
         """
