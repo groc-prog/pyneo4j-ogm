@@ -5,7 +5,7 @@ and query options.
 import logging
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator
 
@@ -46,7 +46,7 @@ class QueryOptionsValidator(BaseModel):
 
     limit: Optional[int] = Field(default=None, ge=1)
     skip: Optional[int] = Field(default=None, ge=0)
-    sort: Optional[str | List[str]] = None
+    sort: Optional[Union[str, List[str]]] = None
     order: Optional[QueryOrder] = None
 
     class Config:
@@ -75,7 +75,7 @@ class ListComparisonValidator(BaseModel):
     Validation model for list comparison operators defined in expressions.
     """
 
-    in_operator: Optional[List[TAnyExcludeListDict] | TAnyExcludeListDict] = Field(
+    in_operator: Optional[Union[List[TAnyExcludeListDict], TAnyExcludeListDict]] = Field(
         alias="$in", extra={"parser": "{property_name} IN {value}"}
     )
 
@@ -85,10 +85,10 @@ class NumericComparisonValidator(BaseModel):
     Validation model for numerical comparison operators defined in expressions.
     """
 
-    gt_operator: Optional[int | float] = Field(alias="$gt", extra={"parser": "{property_name} > ${value}"})
-    gte_operator: Optional[int | float] = Field(alias="$gte", extra={"parser": "{property_name} >= ${value}"})
-    lt_operator: Optional[int | float] = Field(alias="$lt", extra={"parser": "{property_name} < ${value}"})
-    lte_operator: Optional[int | float] = Field(alias="$lte", extra={"parser": "{property_name} <= ${value}"})
+    gt_operator: Optional[Union[int, float]] = Field(alias="$gt", extra={"parser": "{property_name} > ${value}"})
+    gte_operator: Optional[Union[int, float]] = Field(alias="$gte", extra={"parser": "{property_name} >= ${value}"})
+    lt_operator: Optional[Union[int, float]] = Field(alias="$lt", extra={"parser": "{property_name} < ${value}"})
+    lte_operator: Optional[Union[int, float]] = Field(alias="$lte", extra={"parser": "{property_name} <= ${value}"})
 
 
 class BaseComparisonValidator(BaseModel):
@@ -116,13 +116,13 @@ class LogicalValidator(BaseModel):
     Validation model for logical operators defined in expressions.
     """
 
-    and_operator: Optional[List["CombinedExpressionValidator" | "LogicalValidator"]] = Field(
+    and_operator: Optional[List[Union["CombinedExpressionValidator", "LogicalValidator"]]] = Field(
         alias="$and", extra={"parser": "AND"}
     )
-    or_operator: Optional[List["CombinedExpressionValidator" | "LogicalValidator"]] = Field(
+    or_operator: Optional[List[Union["CombinedExpressionValidator", "LogicalValidator"]]] = Field(
         alias="$or", extra={"parser": "OR"}
     )
-    xor_operator: Optional[List["CombinedExpressionValidator" | "LogicalValidator"]] = Field(
+    xor_operator: Optional[List[Union["CombinedExpressionValidator", "LogicalValidator"]]] = Field(
         alias="$xor", extra={"parser": "XOR"}
     )
 
@@ -153,7 +153,7 @@ class CombinedExpressionValidator(LogicalValidator, ComparisonValidator):
 
     not_operator: Optional["CombinedExpressionValidator"] = Field(alias="$not")
     all_operator: Optional[List["CombinedExpressionValidator"]] = Field(alias="$all")
-    size_operator: Optional["NumericComparisonValidator" | "BaseComparisonValidator"] = Field(alias="$size")
+    size_operator: Optional[Union["NumericComparisonValidator", "BaseComparisonValidator"]] = Field(alias="$size")
     exists_operator: Optional[bool] = Field(alias="$exists")
 
 
@@ -186,7 +186,7 @@ class RelationshipElementValidator(ElementValidator):
     Validation model for neo4j relationship element operators defined in expressions.
     """
 
-    type_operator: Optional[str | List[str]] = Field(alias="$type")
+    type_operator: Optional[Union[str, List[str]]] = Field(alias="$type")
     min_hops_operator: Optional[int] = Field(alias="$minHops", gt=0)
     max_hops_operator: Optional[int] = Field(alias="$maxHops", gt=0)
 

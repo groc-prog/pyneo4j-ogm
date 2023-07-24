@@ -3,7 +3,7 @@ This module contains types for options passed to the `QueryBuilder` class.
 """
 from datetime import date, datetime, time, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict, Union
 
 TAnyExcludeListDict = bool | int | float | str | bytes | datetime | date | time | timedelta
 
@@ -134,9 +134,9 @@ TypedSizeComparisonExpression = TypedDict(
 TypedLogicalExpression = TypedDict(
     "TypedLogicalExpression",
     {
-        "$and": Optional[List["TypedCombinedExpression" | "TypedLogicalExpression"]],
-        "$or": Optional[List["TypedCombinedExpression" | "TypedLogicalExpression"]],
-        "$xor": Optional[List["TypedCombinedExpression" | "TypedLogicalExpression"]],
+        "$and": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
+        "$or": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
+        "$xor": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
     },
 )
 
@@ -168,9 +168,9 @@ TypedCombinedExpression = TypedDict(
         "$startsWith": Optional[str],
         "$endsWith": Optional[str],
         "$regex": Optional[str],
-        "$and": Optional[List["TypedCombinedExpression" | "TypedLogicalExpression"]],
-        "$or": Optional[List["TypedCombinedExpression" | "TypedLogicalExpression"]],
-        "$xor": Optional[List["TypedCombinedExpression" | "TypedLogicalExpression"]],
+        "$and": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
+        "$or": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
+        "$xor": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
     },
 )
 
