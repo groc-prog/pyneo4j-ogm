@@ -2,9 +2,20 @@
 This module contains types for options passed to the `QueryBuilder` class.
 """
 from datetime import date, datetime, time, timedelta
+from enum import Enum
 from typing import Dict, List, Optional, TypedDict
 
 TAnyExcludeListDict = bool | int | float | str | bytes | datetime | date | time | timedelta
+
+
+class RelationshipDirection(str, Enum):
+    """
+    Available relationship directions for pattern expressions.
+    """
+
+    INCOMING = "INCOMING"
+    OUTGOING = "OUTGOING"
+    BOTH = "BOTH"
 
 
 class TypedQueryOptions(TypedDict):

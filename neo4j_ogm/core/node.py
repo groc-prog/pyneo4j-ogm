@@ -9,10 +9,16 @@ from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
+from neo4j_ogm.exceptions import (
+    InflationFailure,
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    NoResultsFound,
+    UnregisteredModel,
+)
 from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import TypedNodeExpression, TypedQueryOptions
+from neo4j_ogm.queries.types import RelationshipDirection, TypedNodeExpression, TypedQueryOptions
 
 T = TypeVar("T", bound="NodeModel")
 
@@ -284,6 +290,37 @@ class NodeModel(BaseModel):
         logging.debug("Updating current instance")
         self.__dict__.update(cast(T, results[0][0]).__dict__)
         logging.info("Refreshed node %s", self._element_id)
+
+    @ensure_alive
+    async def find_connected_nodes(
+        self: T,
+        target_model: Type[T] | str,
+        min_hops: int = 1,
+        max_hops: int = 1,
+        expressions: TypedNodeExpression | None = None,
+        options: TypedQueryOptions | None = None,
+    ) -> List[T | Dict[str, Any]]:
+        """
+        Finds nodes connected to the current instance with the given expressions applied to the target node.
+
+        Args:
+            target_node (Type[T] | str): Model or model name of the target node.
+            min_hops (int, optional): The lower hops limit when querying for nodes. Defaults to 1.
+            max_hops (int, optional): The upper hops limit when querying for nodes. Defaults to 1.
+            expressions (TypedNodeExpression | None, optional): Expressions applied to the target nodes. Defaults to None.
+            options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
+
+        Returns:
+            List[T | Dict[str, Any]]: Nodes of the given model which are connected to the current instance.
+        """
+        target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
+
+        logging.debug("Checking if target model %s has been registered with client", target_model_name)
+        registered_target_model = [model for model in self._client.models if model.__name__ == target_model_name]
+        if len(registered_target_model) == 0:
+            raise UnregisteredModel(unregistered_model=target_model_name)
+
+        match_query = self._query_builder.build_relationship_query(direction=RelationshipDirection)
 
     @classmethod
     async def find_one(cls: Type[T], expressions: TypedNodeExpression) -> T | None:

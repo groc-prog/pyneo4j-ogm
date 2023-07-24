@@ -6,15 +6,21 @@ from copy import deepcopy
 from typing import Any, Dict, List, Tuple
 
 from neo4j_ogm.exceptions import InvalidOperator, UnknownRelationshipDirection
-from neo4j_ogm.queries.types import (TypedNodeExpressions,
-                                     TypedPropertyExpressions,
-                                     TypedQueryOptions,
-                                     TypedRelationshipExpressions)
-from neo4j_ogm.queries.validators import (ComparisonValidator,
-                                          ElementValidator, LogicalValidator,
-                                          NodeValidator, QueryOptionsValidator,
-                                          RelationshipDirection,
-                                          RelationshipValidator)
+from neo4j_ogm.queries.types import (
+    RelationshipDirection,
+    TypedNodeExpressions,
+    TypedPropertyExpressions,
+    TypedQueryOptions,
+    TypedRelationshipExpressions,
+)
+from neo4j_ogm.queries.validators import (
+    ComparisonValidator,
+    ElementValidator,
+    LogicalValidator,
+    NodeValidator,
+    QueryOptionsValidator,
+    RelationshipValidator,
+)
 
 
 class QueryBuilder:

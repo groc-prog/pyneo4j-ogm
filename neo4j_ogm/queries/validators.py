@@ -9,8 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator
 
-from neo4j_ogm.core.relationship import RelationshipDirection
-from neo4j_ogm.queries.types import TAnyExcludeListDict
+from neo4j_ogm.queries.types import RelationshipDirection, TAnyExcludeListDict
 
 
 def _validate_properties(cls, values: Dict[str, Any]) -> Dict[str, Any]:

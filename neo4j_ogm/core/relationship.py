@@ -3,7 +3,6 @@ This module holds the base relationship class `RelationshipModel` which is used 
 """
 import json
 import logging
-from enum import Enum
 from typing import Any, Callable, ClassVar, Type, TypeVar, cast
 
 from neo4j.graph import Node, Relationship
@@ -14,7 +13,7 @@ from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
 from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import TypedQueryOptions, TypedRelationshipExpressions
+from neo4j_ogm.queries.types import RelationshipDirection, TypedQueryOptions, TypedRelationshipExpressions
 
 T = TypeVar("T", bound="RelationshipModel")
 
@@ -46,16 +45,6 @@ def ensure_alive(func: Callable):
         return result
 
     return decorator
-
-
-class RelationshipDirection(str, Enum):
-    """
-    Available relationship directions for pattern expressions.
-    """
-
-    INCOMING = "INCOMING"
-    OUTGOING = "OUTGOING"
-    BOTH = "BOTH"
 
 
 class RelationshipModel(BaseModel):

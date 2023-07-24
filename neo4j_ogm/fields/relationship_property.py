@@ -9,7 +9,7 @@ from neo4j.graph import Node
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.core.relationship import RelationshipDirection, RelationshipModel
+from neo4j_ogm.core.relationship import RelationshipModel
 from neo4j_ogm.exceptions import (
     InstanceDestroyed,
     InstanceNotHydrated,
@@ -19,7 +19,7 @@ from neo4j_ogm.exceptions import (
     UnregisteredModel,
 )
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import TypedPropertyExpressions, TypedQueryOptions
+from neo4j_ogm.queries.types import RelationshipDirection, TypedPropertyExpressions, TypedQueryOptions
 
 T = TypeVar("T", bound=NodeModel)
 U = TypeVar("U", bound=RelationshipModel)
