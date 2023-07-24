@@ -1,8 +1,6 @@
 """
 Database client for running queries against the connected database.
 """
-import importlib
-import inspect
 import logging
 import os
 from enum import Enum
@@ -133,7 +131,7 @@ class Neo4jClient:
                 for property_name, property_definition in model.__fields__.items():
                     entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
                     labels_or_type = (
-                        getattr(model.__model_settings__, "labels")
+                        list(getattr(model.__model_settings__, "labels"))
                         if issubclass(model, NodeModel)
                         else getattr(model.__model_settings__, "type")
                     )
@@ -169,33 +167,6 @@ class Neo4jClient:
                             properties=[property_name],
                             labels_or_type=labels_or_type,
                         )
-
-    @ensure_connection
-    async def register_model_directory(self, directory: str) -> None:
-        """
-        Loads all NodeModel and RelationshipModel subclasses found in the directory.
-
-        Args:
-            directory (str): The directory to search in.
-        """
-        modules: List[str] = []
-
-        logging.debug("Getting modules from directory %s", directory)
-        for filename in os.listdir(directory):
-            if filename.endswith(".py") and filename != "__init__.py":
-                module_name = os.path.splitext(filename)[0]
-                module = importlib.import_module(f"{directory}.{module_name}")
-                modules.append(module)
-
-        logging.debug("Checking module classes for models")
-        for module in modules:
-            for _, obj in inspect.getmembers(module):
-                if (
-                    inspect.isclass(obj)
-                    and issubclass(obj, (NodeModel, RelationshipModel))
-                    and not obj.__name__ in [NodeModel.__name__, RelationshipModel.__name__]
-                ):
-                    self.models.add(obj)
 
     @ensure_connection
     async def close(self) -> None:

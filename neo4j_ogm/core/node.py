@@ -80,7 +80,7 @@ class NodeModel(BaseModel):
         # Check if node labels is set, if not fall back to model name
         if not hasattr(cls.__model_settings__, "labels"):
             logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
-            cls.__model_settings__.labels = tuple(cls.__name__.capitalize())
+            cls.__model_settings__.labels = (cls.__name__.capitalize(),)
         elif hasattr(cls.__model_settings__, "labels") and isinstance(cls.__model_settings__.labels, str):
             logging.debug("str class provided as labels, converting to tuple")
             setattr(cls.__model_settings__, "labels", tuple(cls.__model_settings__.labels))

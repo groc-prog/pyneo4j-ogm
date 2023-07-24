@@ -54,7 +54,7 @@ class RelationshipModel(BaseModel):
     functionality like de-/inflation and validation.
     """
 
-    __model__settings__: ClassVar[RelationshipModelSettings]
+    __model_settings__: ClassVar[RelationshipModelSettings]
     __dict_properties = set()
     __model_properties = set()
     _relationship_match: str = PrivateAttr()
@@ -73,15 +73,15 @@ class RelationshipModel(BaseModel):
         cls._client = Neo4jClient()
         cls._query_builder = QueryBuilder()
 
-        if not hasattr(cls, "__model__settings__"):
-            setattr(cls, "__model__settings__", RelationshipModelSettings())
+        if not hasattr(cls, "__model_settings__"):
+            setattr(cls, "__model_settings__", RelationshipModelSettings())
 
         # Check if relationship type is set, else fall back to class name
-        if not hasattr(cls.__model__settings__, "type"):
+        if not hasattr(cls.__model_settings__, "type"):
             logging.warning("No type has been defined for model %s, using model name as type", cls.__name__)
             # Convert class name to upper snake case
-            __model_settings__ = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
-            setattr(cls.__model__settings__, "type", __model_settings__.upper())
+            relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
+            setattr(cls.__model_settings__, "type", relationship_type.upper())
 
         logging.debug("Collecting dict and model fields")
         for property_name, value in cls.__fields__.items():
@@ -94,7 +94,7 @@ class RelationshipModel(BaseModel):
 
         # Build relationship match query
         cls._relationship_match = cls._query_builder.build_relationship_query(
-            relationship_type=cls.__model__settings__.type
+            relationship_type=cls.__model_settings__.type
         )
 
         return super().__init_subclass__()
@@ -105,16 +105,6 @@ class RelationshipModel(BaseModel):
             self._modified_properties.add(name)
 
         return super().__setattr__(name, value)
-
-    @property
-    def __model_settings__(self) -> str:
-        """
-        Property getter for relationship type.
-
-        Returns:
-            str: Relationship type.
-        """
-        return self.__model__settings__.type
 
     def deflate(self) -> Dict[str, Any]:
         """
@@ -655,3 +645,4 @@ class RelationshipModel(BaseModel):
         validate_all = True
         validate_assignment = True
         revalidate_instances = "always"
+        arbitrary_types_allowed = True
