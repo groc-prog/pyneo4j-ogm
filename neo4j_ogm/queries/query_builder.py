@@ -160,8 +160,8 @@ class QueryBuilder:
     def build_relationship_query(
         self,
         direction: RelationshipDirection,
-        relationship_type: str,
-        start_node_labels: List[str],
+        relationship_type: str | None = None,
+        start_node_labels: List[str] | None = None,
         end_node_labels: List[str] | None = None,
         rel_ref: str = "r",
         start_ref: str = "start",
@@ -172,8 +172,8 @@ class QueryBuilder:
 
         Args:
             direction (RelationshipDirection): The direction that should be used whe building the relationship.
-            relationship_type (str): The relationship type.
-            start_node_labels (List[str]): The start node labels.
+            relationship_type (str | None): The relationship type. Defaults to None.
+            start_node_labels (List[str] | None): The start node labels. Defaults to None.
             end_node_labels (List[str] | None): The end node labels. Defaults to None.
             rel_ref (str, optional): Variable name to use for the relationship. Defaults to "r".
             start_ref (str, optional): Variable name to use for the start node. Defaults to "start".
@@ -185,11 +185,11 @@ class QueryBuilder:
         Returns:
             str: The generated `MATCH` clause.
         """
-        start_labels = ":".join(start_node_labels)
+        start_labels = ":".join(start_node_labels if start_node_labels is not None else [])
         end_labels = ":".join(end_node_labels if end_node_labels is not None else [])
         start_node = f"({start_ref}{f':`{start_labels}`' if len(start_labels) > 0 else ''})"
         end_node = f"({end_ref}{f':`{end_labels}`' if len(end_labels) > 0 else ''})"
-        relationship = f"[{rel_ref}:`{relationship_type}`]"
+        relationship = f"[{rel_ref}:`{relationship_type}`]" if relationship_type is not None else f"[{rel_ref}]"
 
         match direction:
             case RelationshipDirection.BOTH:

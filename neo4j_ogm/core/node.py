@@ -18,7 +18,7 @@ from neo4j_ogm.exceptions import (
 )
 from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import RelationshipDirection, TypedNodeExpression, TypedQueryOptions
+from neo4j_ogm.queries.types import TypedNodeExpression, TypedQueryOptions
 
 T = TypeVar("T", bound="NodeModel")
 
@@ -299,7 +299,7 @@ class NodeModel(BaseModel):
         max_hops: int = 1,
         expressions: TypedNodeExpression | None = None,
         options: TypedQueryOptions | None = None,
-    ) -> List[T | Dict[str, Any]]:
+    ) -> List[T]:
         """
         Finds nodes connected to the current instance with the given expressions applied to the target node.
 
@@ -311,7 +311,7 @@ class NodeModel(BaseModel):
             options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
-            List[T | Dict[str, Any]]: Nodes of the given model which are connected to the current instance.
+            List[T]: Nodes of the given model which are connected to the current instance.
         """
         target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
 
@@ -320,7 +320,43 @@ class NodeModel(BaseModel):
         if len(registered_target_model) == 0:
             raise UnregisteredModel(unregistered_model=target_model_name)
 
-        match_query = self._query_builder.build_relationship_query(direction=RelationshipDirection)
+        logging.info(
+            "Getting nodes of model %s connected to current instance %s with expressions %s",
+            target_model_name,
+            self._element_id,
+            expressions,
+        )
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = self._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
+        options_query = self._query_builder.build_query_options(options=options if options else {})
+
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH
+                    (self:`{":".join(self._settings.labels)}`)-[rel*{min_hops}..{max_hops}]->(target:`{":".join(target_model.node_labels)}`)
+                    {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE
+                    elementId(self) = $self_element_id
+                    {expression_where_query if expression_where_query is not None else ""}
+                RETURN target
+                {options_query}
+            """,
+            parameters={"self_element_id": self._element_id, **expression_parameters},
+        )
+
+        instances: List[T] = []
+
+        for result_list in results:
+            for result in result_list:
+                if result is None:
+                    continue
+
+                instances.append(result)
+
+        return instances
 
     @classmethod
     async def find_one(cls: Type[T], expressions: TypedNodeExpression) -> T | None:
