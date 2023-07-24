@@ -121,51 +121,47 @@ class Neo4jClient:
         Args:
             models (List[Type[NodeModel | RelationshipModel]]): A list of models to register.
         """
+        from neo4j_ogm.core.node import NodeModel
+        from neo4j_ogm.core.relationship import RelationshipModel
+
         for model in models:
-            if hasattr(model, "__model_type__") and getattr(model, "__model_type__") in [
-                member.value for member in EntityType
-            ]:
+            if issubclass(model, (NodeModel, RelationshipModel)):
                 self.models.add(model)
 
                 for property_name, property_definition in model.__fields__.items():
+                    entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
+                    labels_or_type = model.__labels__ if issubclass(model, NodeModel) else model.__type__
+
                     if getattr(property_definition.type_, "_unique", False):
                         await self.create_constraint(
                             name=f"{model.__name__}_{property_name}_unique_constraint",
-                            entity_type=model.__model_type__,
+                            entity_type=entity_type,
                             properties=[property_name],
-                            labels_or_type=model.__labels__
-                            if model.__model_type__ == EntityType.NODE
-                            else model.__type__,
+                            labels_or_type=labels_or_type,
                         )
                     if getattr(property_definition.type_, "_range_index", False):
                         await self.create_index(
                             name=f"{model.__name__}_{property_name}_range_index",
-                            entity_type=model.__model_type__,
+                            entity_type=entity_type,
                             index_type=IndexType.RANGE,
                             properties=[property_name],
-                            labels_or_type=model.__labels__
-                            if model.__model_type__ == EntityType.NODE
-                            else model.__type__,
+                            labels_or_type=labels_or_type,
                         )
                     if getattr(property_definition.type_, "_point_index", False):
                         await self.create_index(
                             name=f"{model.__name__}_{property_name}_point_index",
-                            entity_type=model.__model_type__,
+                            entity_type=entity_type,
                             index_type=IndexType.POINT,
                             properties=[property_name],
-                            labels_or_type=model.__labels__
-                            if model.__model_type__ == EntityType.NODE
-                            else model.__type__,
+                            labels_or_type=labels_or_type,
                         )
                     if getattr(property_definition.type_, "_text_index", False):
                         await self.create_index(
                             name=f"{model.__name__}_{property_name}_text_index",
-                            entity_type=model.__model_type__,
+                            entity_type=entity_type,
                             index_type=IndexType.TEXT,
                             properties=[property_name],
-                            labels_or_type=model.__labels__
-                            if model.__model_type__ == EntityType.NODE
-                            else model.__type__,
+                            labels_or_type=labels_or_type,
                         )
 
     @ensure_connection
@@ -481,9 +477,9 @@ class Neo4jClient:
         for model in list(self.models):
             model_labels: set[str] = set()
 
-            if getattr(model, "__model_type__") == EntityType.NODE:
+            if getattr(model, "_model_type") == EntityType.NODE:
                 model_labels = set(model.__labels__)
-            elif getattr(model, "__model_type__") == EntityType.RELATIONSHIP:
+            elif getattr(model, "_model_type") == EntityType.RELATIONSHIP:
                 model_labels = set(model.__type__)
 
             if labels == model_labels:

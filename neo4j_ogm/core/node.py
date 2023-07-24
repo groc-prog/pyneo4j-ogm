@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Set, Tuple, Type, TypeVar, cast
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import EntityType, Neo4jClient
+from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedNodeExpression, TypedQueryOptions
@@ -44,7 +44,6 @@ class NodeModel(BaseModel):
     functionality like de-/inflation and validation.
     """
 
-    __model_type__: str = EntityType.NODE
     __labels__: Tuple[str]
     __dict_properties: Set[str] = set()
     __model_properties: Set[str] = set()

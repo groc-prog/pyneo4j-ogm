@@ -9,7 +9,7 @@ from typing import Any, Callable, Type, TypeVar, cast
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import EntityType, Neo4jClient
+from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
 from neo4j_ogm.queries.query_builder import QueryBuilder
@@ -63,7 +63,6 @@ class RelationshipModel(BaseModel):
     functionality like de-/inflation and validation.
     """
 
-    __model_type__: str = EntityType.RELATIONSHIP
     __type__: str
     __dict_properties = set()
     __model_properties = set()
@@ -238,6 +237,32 @@ class RelationshipModel(BaseModel):
         logging.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
         logging.info("Deleted relationship %s", self._element_id)
+
+    @ensure_alive
+    async def refresh(self) -> None:
+        """
+        Refreshes the current instance with the values from the database.
+
+        Raises:
+            NoResultsFound: Raised if the query did not return the current relationship.
+        """
+        logging.info("Refreshing relationship %s of model %s", self._element_id, self.__class__.__name__)
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH {self._relationship_match}
+                WHERE elementId(r) = $element_id
+                RETURN r
+            """,
+            parameters={"element_id": self._element_id},
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
+
+        logging.debug("Updating current instance")
+        self.__dict__.update(cast(T, results[0][0]).__dict__)
+        logging.info("Refreshed relationship %s", self._element_id)
 
     @ensure_alive
     async def start_node(self) -> Type[NodeModel]:
