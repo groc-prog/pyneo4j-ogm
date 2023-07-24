@@ -4,7 +4,7 @@ This module holds the base relationship class `RelationshipModel` which is used 
 import json
 import logging
 from enum import Enum
-from typing import Any, Callable, Type, TypeVar, cast
+from typing import Any, Callable, ClassVar, Type, TypeVar, cast
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
@@ -12,6 +12,7 @@ from pydantic import BaseModel, PrivateAttr
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
+from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedQueryOptions, TypedRelationshipExpressions
 
@@ -63,9 +64,9 @@ class RelationshipModel(BaseModel):
     functionality like de-/inflation and validation.
     """
 
-    __type__: str
     __dict_properties = set()
     __model_properties = set()
+    _settings: ClassVar["RelationshipModelSettings"]
     _relationship_match: str = PrivateAttr()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
@@ -86,9 +87,9 @@ class RelationshipModel(BaseModel):
         cls._query_builder = QueryBuilder()
 
         # Check if relationship type is set, else fall back to class name
-        if not hasattr(cls, "__type__"):
+        if not hasattr(cls._settings, "type"):
             logging.warning("No type has been defined for model %s, using model name as type", cls.__name__)
-            cls.__type__ = cls.__name__
+            cls._settings.type = cls.__name__
 
         logging.debug("Collecting dict and model fields")
         for property_name, value in cls.__fields__.items():
@@ -102,9 +103,9 @@ class RelationshipModel(BaseModel):
         # Build relationship match query
         cls._relationship_match = cls._query_builder.build_relationship_query(
             direction=cls._direction,
-            relationship_type=cls.__type__,
-            start_node_labels=cls._start_node_model.__labels__,
-            end_node_labels=cls._end_node_model.__labels__,
+            relationship_type=cls._settings.type,
+            start_node_labels=cls._start_node_model.node_labels,
+            end_node_labels=cls._end_node_model.node_labels,
         )
 
         return super().__init_subclass__()
@@ -115,6 +116,10 @@ class RelationshipModel(BaseModel):
             self._modified_properties.add(name)
 
         return super().__setattr__(name, value)
+
+    @property
+    def relationship_type(self):
+        return self._settings.type
 
     def deflate(self) -> dict[str, Any]:
         """

@@ -3,13 +3,14 @@ This module holds the base node class `NodeModel` which is used to define databa
 """
 import json
 import logging
-from typing import Any, Callable, Dict, List, Set, Tuple, Type, TypeVar, cast
+from typing import Any, Callable, ClassVar, Dict, List, Set, Type, TypeVar, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
+from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedNodeExpression, TypedQueryOptions
 
@@ -44,9 +45,9 @@ class NodeModel(BaseModel):
     functionality like de-/inflation and validation.
     """
 
-    __labels__: Tuple[str]
     __dict_properties: Set[str] = set()
     __model_properties: Set[str] = set()
+    _settings: ClassVar["NodeModelSettings"]
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: Set[str] = PrivateAttr(default=set())
@@ -68,9 +69,12 @@ class NodeModel(BaseModel):
         cls._query_builder = QueryBuilder()
 
         # Check if node labels is set, if not fall back to model name
-        if not hasattr(cls, "__labels__"):
+        if not hasattr(cls._settings, "labels"):
             logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
-            cls.__labels__ = tuple(cls.__name__)
+            cls._settings.labels = tuple(cls.__name__)
+        elif hasattr(cls._settings, "labels") and isinstance(cls._settings.labels, str):
+            logging.debug("str class provided as labels, converting to tuple")
+            cls._settings.labels = tuple(cls._settings.labels)
 
         logging.debug("Collecting dict and model fields")
         for property_name, value in cls.__fields__.items():
@@ -89,6 +93,10 @@ class NodeModel(BaseModel):
             self._modified_properties.add(name)
 
         return super().__setattr__(name, value)
+
+    @property
+    def node_labels(self):
+        return self._settings.labels
 
     def deflate(self) -> Dict[str, Any]:
         """
@@ -161,7 +169,7 @@ class NodeModel(BaseModel):
         logging.info("Creating new node from model instance %s", self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                CREATE (n:{":".join(self.__labels__)} $properties)
+                CREATE (n:{":".join(self._settings.labels)} $properties)
                 RETURN n
             """,
             parameters={
@@ -200,7 +208,7 @@ class NodeModel(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH (n:{":".join(self.__labels__)})
+                MATCH (n:{":".join(self._settings.labels)})
                 WHERE elementId(n) = $element_id
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated])}
                 RETURN n
@@ -229,7 +237,7 @@ class NodeModel(BaseModel):
         logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH (n:{":".join(self.__labels__)})
+                MATCH (n:{":".join(self._settings.labels)})
                 WHERE elementId(n) = $element_id
                 DETACH DELETE n
                 RETURN count(n)
@@ -256,7 +264,7 @@ class NodeModel(BaseModel):
         logging.info("Refreshing node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH (n:{":".join(self.__labels__)})
+                MATCH (n:{":".join(self._settings.labels)})
                 WHERE elementId(n) = $element_id
                 RETURN n
             """,
@@ -292,7 +300,7 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH (n:`{":".join(cls._settings.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
                 WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 LIMIT 1
@@ -334,7 +342,7 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH (n:`{":".join(cls._settings.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
                 WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 {options_query}
@@ -445,7 +453,7 @@ class NodeModel(BaseModel):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH (n:`{":".join(cls._settings.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
                 WHERE {expression_where_query if expression_where_query is not None else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
@@ -499,7 +507,7 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH (n:`{":".join(cls._settings.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
                 WHERE {expression_where_query if expression_where_query is not None else ""}
                 DETACH DELETE n
                 RETURN n
@@ -534,7 +542,7 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH (n:`{":".join(cls._settings.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
                 WHERE {expression_where_query if expression_where_query is not None else ""}
                 DETACH DELETE n
                 RETURN n
@@ -565,7 +573,7 @@ class NodeModel(BaseModel):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__labels__)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH (n:`{":".join(cls._settings.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
                 WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN count(n)
             """,

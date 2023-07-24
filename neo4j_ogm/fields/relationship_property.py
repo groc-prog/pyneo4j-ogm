@@ -120,9 +120,11 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
-            start_node_labels=self._source_node.__labels__,
-            end_node_labels=node.__labels__,
+            relationship_type=self._relationship.relationship_type
+            if self._relationship_is_model
+            else self._relationship,
+            start_node_labels=self._source_node.node_labels,
+            end_node_labels=node.node_labels,
         )
         results, _ = await self._client.cypher(
             query=f"""
@@ -166,9 +168,11 @@ class RelationshipProperty:
         )
         relationship_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
-            start_node_labels=self._source_node.__labels__,
-            end_node_labels=node.__labels__,
+            relationship_type=self._relationship.relationship_type
+            if self._relationship_is_model
+            else self._relationship,
+            start_node_labels=self._source_node.node_labels,
+            end_node_labels=node.node_labels,
         )
 
         # Build properties if relationship is defined as model
@@ -229,9 +233,11 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
-            start_node_labels=self._source_node.__labels__,
-            end_node_labels=node.__labels__,
+            relationship_type=self._relationship.relationship_type
+            if self._relationship_is_model
+            else self._relationship,
+            start_node_labels=self._source_node.node_labels,
+            end_node_labels=node.node_labels,
         )
 
         logging.debug("Getting relationship count between source and target node")
@@ -283,8 +289,10 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
-            start_node_labels=self._source_node.__labels__,
+            relationship_type=self._relationship.relationship_type
+            if self._relationship_is_model
+            else self._relationship,
+            start_node_labels=self._source_node.node_labels,
         )
 
         logging.debug("Getting relationship count for source node")
@@ -374,8 +382,10 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.build_relationship_query(
             direction=self._direction,
-            relationship_type=self._relationship.__type__ if self._relationship_is_model else self._relationship,
-            start_node_labels=self._source_node.__labels__,
+            relationship_type=self._relationship.relationship_type
+            if self._relationship_is_model
+            else self._relationship,
+            start_node_labels=self._source_node.node_labels,
         )
         options_query = self._query_builder.build_query_options(options=options if options else {}, ref="end")
 

@@ -130,7 +130,7 @@ class Neo4jClient:
 
                 for property_name, property_definition in model.__fields__.items():
                     entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
-                    labels_or_type = model.__labels__ if issubclass(model, NodeModel) else model.__type__
+                    labels_or_type = model.node_labels if issubclass(model, NodeModel) else model.__type__
 
                     if getattr(property_definition.type_, "_unique", False):
                         await self.create_constraint(
@@ -478,7 +478,7 @@ class Neo4jClient:
             model_labels: set[str] = set()
 
             if getattr(model, "_model_type") == EntityType.NODE:
-                model_labels = set(model.__labels__)
+                model_labels = set(model.node_labels)
             elif getattr(model, "_model_type") == EntityType.RELATIONSHIP:
                 model_labels = set(model.__type__)
 
