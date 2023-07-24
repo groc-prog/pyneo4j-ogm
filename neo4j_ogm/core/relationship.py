@@ -118,7 +118,13 @@ class RelationshipModel(BaseModel):
         return super().__setattr__(name, value)
 
     @property
-    def relationship_type(self):
+    def relationship_type(self) -> str:
+        """
+        Property getter for relationship type.
+
+        Returns:
+            str: Relationship type.
+        """
         return self._settings.type
 
     def deflate(self) -> dict[str, Any]:

@@ -95,7 +95,13 @@ class NodeModel(BaseModel):
         return super().__setattr__(name, value)
 
     @property
-    def node_labels(self):
+    def node_labels(self) -> tuple[str]:
+        """
+        Property getter for node labels.
+
+        Returns:
+            tuple[str]: Node labels.
+        """
         return self._settings.labels
 
     def deflate(self) -> Dict[str, Any]:
