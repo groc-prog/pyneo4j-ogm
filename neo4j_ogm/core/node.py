@@ -51,8 +51,8 @@ class NodeModel(BaseModel):
     functionality like de-/inflation and validation.
     """
 
-    __dict_properties: Set[str] = set()
-    __model_properties: Set[str] = set()
+    __dict_properties = set()
+    __model_properties = set()
     _settings: ClassVar[NodeModelSettings]
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
@@ -77,7 +77,7 @@ class NodeModel(BaseModel):
         # Check if node labels is set, if not fall back to model name
         if not hasattr(cls._settings, "labels"):
             logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
-            cls._settings.labels = tuple(cls.__name__)
+            cls._settings.labels = tuple(cls.__name__.capitalize())
         elif hasattr(cls._settings, "labels") and isinstance(cls._settings.labels, str):
             logging.debug("str class provided as labels, converting to tuple")
             cls._settings.labels = tuple(cls._settings.labels)
