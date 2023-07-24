@@ -6,17 +6,14 @@ from enum import Enum
 from os import environ
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type
 
-from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
+from neo4j import (AsyncDriver, AsyncGraphDatabase, AsyncSession,
+                   AsyncTransaction)
 from neo4j.graph import Node, Relationship
 
-from neo4j_ogm.exceptions import (
-    InvalidEntityType,
-    InvalidIndexType,
-    InvalidLabelOrType,
-    MissingDatabaseURI,
-    NotConnectedToDatabase,
-    TransactionInProgress,
-)
+from neo4j_ogm.exceptions import (InvalidEntityType, InvalidIndexType,
+                                  InvalidLabelOrType, MissingDatabaseURI,
+                                  NotConnectedToDatabase,
+                                  TransactionInProgress)
 
 if TYPE_CHECKING:
     from neo4j_ogm.core.node import NodeModel
@@ -130,7 +127,7 @@ class Neo4jClient:
 
                 for property_name, property_definition in model.__fields__.items():
                     entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
-                    labels_or_type = model.node_labels if issubclass(model, NodeModel) else model.__type__
+                    labels_or_type = model.node_labels if issubclass(model, NodeModel) else model.relationship_type
 
                     if getattr(property_definition.type_, "_unique", False):
                         await self.create_constraint(
@@ -480,7 +477,7 @@ class Neo4jClient:
             if getattr(model, "_model_type") == EntityType.NODE:
                 model_labels = set(model.node_labels)
             elif getattr(model, "_model_type") == EntityType.RELATIONSHIP:
-                model_labels = set(model.__type__)
+                model_labels = set(model.relationship_type)
 
             if labels == model_labels:
                 return model
