@@ -1,9 +1,11 @@
 """
 Database client for running queries against the connected database.
 """
+import importlib
+import inspect
 import logging
+import os
 from enum import Enum
-from os import environ
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
@@ -99,8 +101,8 @@ class Neo4jClient:
             MissingDatabaseURI: Raised if no uri is provided and the NEO4J_URI env variable is
                 not set
         """
-        db_uri = uri if uri is not None else environ.get("NEO4J_URI", None)
-        db_auth = auth if auth is not None else environ.get("NEO4J_AUTH", None)
+        db_uri = uri if uri is not None else os.environ.get("NEO4J_URI", None)
+        db_auth = auth if auth is not None else os.environ.get("NEO4J_AUTH", None)
 
         if db_uri is None:
             raise MissingDatabaseURI()
@@ -130,7 +132,11 @@ class Neo4jClient:
 
                 for property_name, property_definition in model.__fields__.items():
                     entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
-                    labels_or_type = model.node_labels if issubclass(model, NodeModel) else model.relationship_type
+                    labels_or_type = (
+                        getattr(model.__model_settings__, "labels")
+                        if issubclass(model, NodeModel)
+                        else getattr(model.__model_settings__, "type")
+                    )
 
                     if getattr(property_definition.type_, "_unique", False):
                         await self.create_constraint(
@@ -163,6 +169,33 @@ class Neo4jClient:
                             properties=[property_name],
                             labels_or_type=labels_or_type,
                         )
+
+    @ensure_connection
+    async def register_model_directory(self, directory: str) -> None:
+        """
+        Loads all NodeModel and RelationshipModel subclasses found in the directory.
+
+        Args:
+            directory (str): The directory to search in.
+        """
+        modules: List[str] = []
+
+        logging.debug("Getting modules from directory %s", directory)
+        for filename in os.listdir(directory):
+            if filename.endswith(".py") and filename != "__init__.py":
+                module_name = os.path.splitext(filename)[0]
+                module = importlib.import_module(f"{directory}.{module_name}")
+                modules.append(module)
+
+        logging.debug("Checking module classes for models")
+        for module in modules:
+            for _, obj in inspect.getmembers(module):
+                if (
+                    inspect.isclass(obj)
+                    and issubclass(obj, (NodeModel, RelationshipModel))
+                    and not obj.__name__ in [NodeModel.__name__, RelationshipModel.__name__]
+                ):
+                    self.models.add(obj)
 
     @ensure_connection
     async def close(self) -> None:
@@ -459,7 +492,7 @@ class Neo4jClient:
         """
         return BatchManager(self)
 
-    def _resolve_database_model(self, query_result: Node | Relationship) -> Type:
+    def _resolve_database_model(self, query_result: Node | Relationship) -> Type[NodeModel | RelationshipModel]:
         """
         Resolves a query result to the corresponding database model, if one is registered.
 
@@ -469,6 +502,9 @@ class Neo4jClient:
         Returns:
             Type: The type of the resolved database model.
         """
+        from neo4j_ogm.core.node import NodeModel
+        from neo4j_ogm.core.relationship import RelationshipModel
+
         if not isinstance(query_result, (Node, Relationship)):
             return None
 
@@ -477,10 +513,10 @@ class Neo4jClient:
         for model in list(self.models):
             model_labels: set[str] = set()
 
-            if getattr(model, "_model_type") == EntityType.NODE:
-                model_labels = set(model.node_labels)
-            elif getattr(model, "_model_type") == EntityType.RELATIONSHIP:
-                model_labels = set(model.relationship_type)
+            if issubclass(model, NodeModel):
+                model_labels = set(getattr(model.__model_settings__, "labels"))
+            elif issubclass(model, RelationshipModel):
+                model_labels = set(model.__model_settings__)
 
             if labels == model_labels:
                 return model
