@@ -66,13 +66,21 @@ class RelationshipModel(BaseModel):
     _start_node_id: str | None = PrivateAttr(default=None)
     _end_node_id: str | None = PrivateAttr(default=None)
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._client = Neo4jClient()
+        self._query_builder = QueryBuilder()
+
+        # Build relationship match query
+        self._relationship_match = self._query_builder.build_relationship_query(
+            relationship_type=self.__model_settings__.type
+        )
+
     def __init_subclass__(cls) -> None:
         """
         Filters BaseModel and dict instances in the models properties for serialization.
         """
-        cls._client = Neo4jClient()
-        cls._query_builder = QueryBuilder()
-
         if not hasattr(cls, "__model_settings__"):
             setattr(cls, "__model_settings__", RelationshipModelSettings())
 
@@ -91,11 +99,6 @@ class RelationshipModel(BaseModel):
                     cls.__dict_properties.add(property_name)
                 elif issubclass(value.type_, BaseModel):
                     cls.__model_properties.add(property_name)
-
-        # Build relationship match query
-        cls._relationship_match = cls._query_builder.build_relationship_query(
-            relationship_type=cls.__model_settings__.type
-        )
 
         return super().__init_subclass__()
 

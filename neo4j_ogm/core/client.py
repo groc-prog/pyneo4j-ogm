@@ -1,8 +1,11 @@
 """
 Database client for running queries against the connected database.
 """
+import importlib.util
+import inspect
 import logging
 import os
+import sys
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type
 
@@ -167,6 +170,38 @@ class Neo4jClient:
                             properties=[property_name],
                             labels_or_type=labels_or_type,
                         )
+
+    @ensure_connection
+    async def register_models_directory(self, directory_path: str) -> None:
+        from neo4j_ogm.core.node import NodeModel
+        from neo4j_ogm.core.relationship import RelationshipModel
+
+        current_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+        models_path = os.path.abspath(os.path.join(current_path, directory_path))
+        model_modules: List[str] = []
+
+        logging.debug("Walking path %s", models_path)
+        for root, _, files in os.walk(models_path):
+            for file in files:
+                if file.endswith(".py"):
+                    file_path = os.path.join(root, file)
+                    module_name = os.path.splitext(os.path.basename(file_path))[0]
+
+                    spec = importlib.util.spec_from_file_location(module_name, file_path)
+                    module = importlib.util.module_from_spec(spec)
+
+                    if spec is not None and spec.loader is not None:
+                        spec.loader.exec_module(module)
+                        model_modules.append(module)
+
+        for module in model_modules:
+            for name, obj in inspect.getmembers(module):
+                if (
+                    inspect.isclass(obj)
+                    and issubclass(obj, (NodeModel, RelationshipModel))
+                    and name not in [NodeModel.__name__, RelationshipModel.__name__]
+                ):
+                    self.models.add(obj)
 
     @ensure_connection
     async def close(self) -> None:

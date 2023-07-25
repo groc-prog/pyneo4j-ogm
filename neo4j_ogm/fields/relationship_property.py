@@ -3,7 +3,7 @@ This module holds the `RelationshipProperty` class which can be used to make rel
 on a `NodeModel` models field.
 """
 import logging
-from typing import Any, Dict, List, Type, TypeVar, cast
+from typing import Any, Dict, List, Type, TypeVar
 
 from neo4j.graph import Node
 
@@ -71,44 +71,6 @@ class RelationshipProperty:
             relationship_model if isinstance(relationship_model, str) else relationship_model.__name__
         )
         self._target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
-
-    def _build_property(self, source_model: T) -> None:
-        """
-        Sets the source node and returns self.
-
-        Args:
-            source_model (T): The source model instance.
-
-        Raises:
-            UnregisteredModel: Raised if the source model has not been registered with the client.
-        """
-        logging.debug("Checking if source model %s has been registered with client", source_model.__class__.__name__)
-        if source_model.__class__ not in self._client.models:
-            raise UnregisteredModel(unregistered_model=source_model.__name__)
-
-        self._source_node = source_model
-
-        logging.debug("Checking if target model %s has been registered with client", self._target_model_name)
-        registered_relationship_model = [
-            model for model in self._client.models if model.__name__ == self._target_model_name
-        ]
-        if len(registered_relationship_model) == 0:
-            raise UnregisteredModel(unregistered_model=self._target_model_name)
-
-        self._target_model = registered_relationship_model
-
-        logging.debug(
-            "Checking if relationship model %s has been registered with client", self._relationship_model_name
-        )
-        registered_relationship_model = [
-            model for model in self._client.models if model.__name__ == self._relationship_model_name
-        ]
-        if len(registered_relationship_model) == 0:
-            raise UnregisteredModel(unregistered_model=self._relationship_model_name)
-
-        self._relationship_model = registered_relationship_model
-
-        return self
 
     async def relationship(self, node: T) -> U | Dict[str, Any] | None:
         """
@@ -184,7 +146,7 @@ class RelationshipProperty:
         )
 
         # Build properties if relationship is defined as model
-        deflated_properties: Dict[str, Any] = {}
+        deflated_properties: Dict[str, Any] = self._relationship_model.deflate(properties)
 
         # Build MERGE/CREATE part of query depending on if duplicate relationships are allowed or not
         logging.debug("Building create/merge query")
@@ -410,6 +372,44 @@ class RelationshipProperty:
                     instances.append(result)
 
         return instances
+
+    def _build_property(self, source_model: T) -> None:
+        """
+        Sets the source node and returns self.
+
+        Args:
+            source_model (T): The source model instance.
+
+        Raises:
+            UnregisteredModel: Raised if the source model has not been registered with the client.
+        """
+        logging.debug("Checking if source model %s has been registered with client", source_model.__class__.__name__)
+        if source_model.__class__ not in self._client.models:
+            raise UnregisteredModel(unregistered_model=source_model.__name__)
+
+        self._source_node = source_model
+
+        logging.debug("Checking if target model %s has been registered with client", self._target_model_name)
+        registered_relationship_model = [
+            model for model in self._client.models if model.__name__ == self._target_model_name
+        ]
+        if len(registered_relationship_model) == 0:
+            raise UnregisteredModel(unregistered_model=self._target_model_name)
+
+        self._target_model = registered_relationship_model
+
+        logging.debug(
+            "Checking if relationship model %s has been registered with client", self._relationship_model_name
+        )
+        registered_relationship_model = [
+            model for model in self._client.models if model.__name__ == self._relationship_model_name
+        ]
+        if len(registered_relationship_model) == 0:
+            raise UnregisteredModel(unregistered_model=self._relationship_model_name)
+
+        self._relationship_model = registered_relationship_model
+
+        return self
 
     def _ensure_alive(self, nodes: T | List[T]) -> None:
         """

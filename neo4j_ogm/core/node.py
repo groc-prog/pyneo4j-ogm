@@ -63,6 +63,9 @@ class NodeModel(BaseModel):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+        self._client = Neo4jClient()
+        self._query_builder = QueryBuilder()
+
         for _, property_name in self.__dict__.items():
             if hasattr(property_name, "build_source"):
                 property_name.build_source(self.__class__)
@@ -71,9 +74,6 @@ class NodeModel(BaseModel):
         """
         Filters BaseModel and dict instances in the models properties for serialization.
         """
-        cls._client = Neo4jClient()
-        cls._query_builder = QueryBuilder()
-
         if not hasattr(cls, "__model_settings__"):
             setattr(cls, "__model_settings__", NodeModelSettings())
 
@@ -300,7 +300,8 @@ class NodeModel(BaseModel):
             target_node (Type[T] | str): Model or model name of the target node.
             min_hops (int, optional): The lower hops limit when querying for nodes. Defaults to 1.
             max_hops (int, optional): The upper hops limit when querying for nodes. Defaults to 1.
-            expressions (TypedNodeExpression | None, optional): Expressions applied to the target nodes. Defaults to None.
+            expressions (TypedNodeExpression | None, optional): Expressions applied to the target nodes. Defaults to
+                None.
             options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
