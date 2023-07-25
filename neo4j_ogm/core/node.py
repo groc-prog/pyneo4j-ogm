@@ -3,7 +3,7 @@ This module holds the base node class `NodeModel` which is used to define databa
 """
 import json
 import logging
-from typing import Any, Callable, ClassVar, Dict, List, Set, Type, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Set, Type, TypeVar, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
@@ -19,6 +19,11 @@ from neo4j_ogm.exceptions import (
 from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import TypedNodeExpression, TypedQueryOptions
+
+if TYPE_CHECKING:
+    from neo4j_ogm.fields.relationship_property import RelationshipProperty
+else:
+    RelationshipProperty = object
 
 T = TypeVar("T", bound="NodeModel")
 
@@ -54,6 +59,7 @@ class NodeModel(BaseModel):
     __model_settings__: ClassVar[NodeModelSettings]
     __dict_properties = set()
     __model_properties = set()
+    __relationships_properties = set()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: Set[str] = PrivateAttr(default=set())
@@ -63,17 +69,17 @@ class NodeModel(BaseModel):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._client = Neo4jClient()
-        self._query_builder = QueryBuilder()
-
         for _, property_name in self.__dict__.items():
-            if hasattr(property_name, "build_source"):
-                property_name.build_source(self.__class__)
+            if hasattr(property_name, "_build_property"):
+                cast(RelationshipProperty, property_name)._build_property(self.__class__)
 
     def __init_subclass__(cls) -> None:
         """
         Filters BaseModel and dict instances in the models properties for serialization.
         """
+        cls._client = Neo4jClient()
+        cls._query_builder = QueryBuilder()
+
         if not hasattr(cls, "__model_settings__"):
             setattr(cls, "__model_settings__", NodeModelSettings())
 
@@ -93,6 +99,8 @@ class NodeModel(BaseModel):
                     cls.__dict_properties.add(property_name)
                 elif issubclass(value.type_, BaseModel):
                     cls.__model_properties.add(property_name)
+                elif hasattr(value.type_, "_build_property"):
+                    cls.__relationships_properties.add(property_name)
 
         return super().__init_subclass__()
 
@@ -111,7 +119,7 @@ class NodeModel(BaseModel):
             Dict[str, Any]: The deflated model instance
         """
         logging.debug("Deflating model to storable dictionary")
-        deflated: Dict[str, Any] = json.loads(self.json())
+        deflated: Dict[str, Any] = json.loads(self.json(exclude=self.__relationships_properties))
 
         # Serialize nested BaseModel or dict instances to JSON strings
         logging.debug("Serializing nested dictionaries to JSON strings")

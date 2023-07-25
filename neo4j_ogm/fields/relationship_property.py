@@ -64,7 +64,6 @@ class RelationshipProperty:
             UnregisteredModel: Raised if the target model or the relationship model have not been registered with the
                 client.
         """
-        self._client = Neo4jClient()
         self._allow_multiple = allow_multiple
         self._direction = direction
         self._relationship_model_name = (
@@ -373,7 +372,7 @@ class RelationshipProperty:
 
         return instances
 
-    def _build_property(self, source_model: T) -> None:
+    def _build_property(self, source_model: Type[T]) -> None:
         """
         Sets the source node and returns self.
 
@@ -383,8 +382,10 @@ class RelationshipProperty:
         Raises:
             UnregisteredModel: Raised if the source model has not been registered with the client.
         """
-        logging.debug("Checking if source model %s has been registered with client", source_model.__class__.__name__)
-        if source_model.__class__ not in self._client.models:
+        self._client = Neo4jClient()
+
+        logging.debug("Checking if source model %s has been registered with client", source_model.__name__)
+        if source_model not in self._client.models:
             raise UnregisteredModel(unregistered_model=source_model.__name__)
 
         self._source_node = source_model

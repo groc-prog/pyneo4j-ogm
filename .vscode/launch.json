@@ -8,7 +8,7 @@
       "name": "Python: Test File",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/neo4j_ogm/test.py",
+      "program": "${workspaceFolder}/tests/test.py",
       "console": "integratedTerminal",
       "justMyCode": false
     }

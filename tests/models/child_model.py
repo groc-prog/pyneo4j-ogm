@@ -10,16 +10,20 @@ from neo4j_ogm.fields.relationship_property import RelationshipProperty
 from neo4j_ogm.queries.types import RelationshipDirection
 
 
-class OwnsToy(RelationshipModel):
-    class Settings:
-        type = "OWNS"
+class HasChild(RelationshipModel):
+    born: datetime = Field(default_factory=datetime.now)
 
 
-class Toy(NodeModel):
+class Child(NodeModel):
     id: WithOptions(property_type=UUID, unique=True) = Field(default_factory=uuid4)
-    make: str
-    produced_at: int = Field(default=lambda: datetime.timestamp(datetime.now()))
+    name: str
 
-    owner = RelationshipProperty(
-        target_model="Child", relationship_model=OwnsToy, direction=RelationshipDirection.INCOMING
+    parents = RelationshipProperty(
+        target_model="Adult", relationship_model=HasChild, direction=RelationshipDirection.INCOMING
     )
+    toys = RelationshipProperty(
+        target_model="Toy", relationship_model="OwnsToy", direction=RelationshipDirection.OUTGOING
+    )
+
+    class Settings:
+        labels = "Child"
