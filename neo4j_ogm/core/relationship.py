@@ -437,11 +437,29 @@ class RelationshipModel(BaseModel):
         logging.info(
             "Updating first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
         )
-        old_instance = await cls.find_one(expressions=expressions)
+        logging.debug(
+            "Getting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
+        )
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
+
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH {cls._relationship_match} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
+                RETURN n
+                LIMIT 1
+            """,
+            parameters=expression_parameters,
+        )
 
         logging.debug("Checking if query returned a result")
-        if old_instance is None:
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
+        old_instance = results[0][0]
 
         # Update existing instance with values and save
         logging.debug("Creating instance copy with new values %s", update)
@@ -483,7 +501,33 @@ class RelationshipModel(BaseModel):
         new_instance: T
 
         logging.info("Updating all relationships of model %s matching expressions %s", cls.__name__, expressions)
-        old_instances = await cls.find_many(expressions=expressions)
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
+
+        logging.debug("Getting all relationships of model %s matching expressions %s", cls.__name__, expressions)
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH {cls._relationship_match} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
+                RETURN r
+            """,
+            parameters=expression_parameters,
+        )
+
+        old_instances: List[T] = []
+
+        for result_list in results:
+            for result in result_list:
+                if result is None:
+                    continue
+
+                if isinstance(results[0][0], Relationship):
+                    old_instances.append(cls.inflate(relationship=results[0][0]))
+                else:
+                    old_instances.append(result)
 
         logging.debug("Checking if query returned a result")
         if len(old_instances) == 0:
@@ -496,11 +540,6 @@ class RelationshipModel(BaseModel):
         new_instance.__dict__.update(update)
 
         deflated_properties = new_instance.deflate()
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         # Update instances
         results, _ = await cls._client.cypher(

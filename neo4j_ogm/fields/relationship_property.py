@@ -113,7 +113,7 @@ class RelationshipProperty:
             return None
         return results[0][0]
 
-    async def connect(self, node: T, properties: Dict[str, Any]) -> U | Dict[str, Any]:
+    async def connect(self, node: T, properties: Dict[str, Any] | None = None) -> U | Dict[str, Any]:
         """
         Connects the given node to the source node. By default only one relationship will be created between nodes.
         If `allow_multiple` has been set to `True` and a relationship already exists between the nodes, a duplicate
@@ -121,8 +121,8 @@ class RelationshipProperty:
 
         Args:
             node (T): Node instance to create a relationship to.
-            properties (Dict[str, Any]): Properties defined on the relationship model. If no model has been provided,
-                the properties will be omitted.
+            properties (Dict[str, Any] | None): Properties defined on the relationship model. If no model has been provided,
+                the properties will be omitted. Defaults to None.
 
         Raises:
             NoResultsFound: Raised if the query did not return the new relationship.
@@ -145,7 +145,8 @@ class RelationshipProperty:
         )
 
         # Build properties if relationship is defined as model
-        deflated_properties: Dict[str, Any] = self._relationship_model.deflate(properties)
+        relationship_instance = self._relationship_model.validate(properties if properties is not None else {})
+        deflated_properties: Dict[str, Any] = relationship_instance.deflate()
 
         # Build MERGE/CREATE part of query depending on if duplicate relationships are allowed or not
         logging.debug("Building create/merge query")
@@ -163,7 +164,9 @@ class RelationshipProperty:
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {relationship_query}
+                MATCH
+                    (start:`{":".join(self._source_node.__model_settings__.labels)}`),
+                    (end:`{":".join(self._target_model.__model_settings__.labels)}`)
                 WHERE elementId(start) = $startId AND elementId(end) = $endId
                 {build_query}
                 RETURN r
@@ -171,6 +174,7 @@ class RelationshipProperty:
             parameters={
                 "startId": getattr(self._source_node, "_element_id", None),
                 "endId": getattr(node, "_element_id", None),
+                **deflated_properties,
             },
         )
 
@@ -372,7 +376,7 @@ class RelationshipProperty:
 
         return instances
 
-    def _build_property(self, source_model: Type[T]) -> None:
+    def _build_property(self, source_model: T) -> None:
         """
         Sets the source node and returns self.
 
@@ -383,10 +387,11 @@ class RelationshipProperty:
             UnregisteredModel: Raised if the source model has not been registered with the client.
         """
         self._client = Neo4jClient()
+        self._query_builder = QueryBuilder()
 
-        logging.debug("Checking if source model %s has been registered with client", source_model.__name__)
-        if source_model not in self._client.models:
-            raise UnregisteredModel(unregistered_model=source_model.__name__)
+        logging.debug("Checking if source model %s has been registered with client", source_model.__class__.__name__)
+        if source_model.__class__ not in self._client.models:
+            raise UnregisteredModel(unregistered_model=source_model.__class__.__name__)
 
         self._source_node = source_model
 
@@ -397,7 +402,7 @@ class RelationshipProperty:
         if len(registered_relationship_model) == 0:
             raise UnregisteredModel(unregistered_model=self._target_model_name)
 
-        self._target_model = registered_relationship_model
+        self._target_model = registered_relationship_model[0]
 
         logging.debug(
             "Checking if relationship model %s has been registered with client", self._relationship_model_name
@@ -408,7 +413,7 @@ class RelationshipProperty:
         if len(registered_relationship_model) == 0:
             raise UnregisteredModel(unregistered_model=self._relationship_model_name)
 
-        self._relationship_model = registered_relationship_model
+        self._relationship_model = registered_relationship_model[0]
 
         return self
 

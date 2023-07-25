@@ -71,7 +71,7 @@ class NodeModel(BaseModel):
 
         for _, property_name in self.__dict__.items():
             if hasattr(property_name, "_build_property"):
-                cast(RelationshipProperty, property_name)._build_property(self.__class__)
+                cast(RelationshipProperty, property_name)._build_property(self)
 
     def __init_subclass__(cls) -> None:
         """
@@ -182,7 +182,7 @@ class NodeModel(BaseModel):
         logging.info("Creating new node from model instance %s", self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                CREATE (n:{":".join(self.__model_settings__.labels)} $properties)
+                CREATE (n:`{":".join(self.__model_settings__.labels)}` $properties)
                 RETURN n
             """,
             parameters={
@@ -221,9 +221,9 @@ class NodeModel(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH (n:{":".join(self.__model_settings__.labels)})
+                MATCH (n:`{":".join(self.__model_settings__.labels)}`)
                 WHERE elementId(n) = $element_id
-                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated])}
+                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated if property_name in self._modified_properties])}
                 RETURN n
             """,
             parameters={"element_id": self._element_id, **deflated},
@@ -250,7 +250,7 @@ class NodeModel(BaseModel):
         logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH (n:{":".join(self.__model_settings__.labels)})
+                MATCH (n:`{":".join(self.__model_settings__.labels)}`)
                 WHERE elementId(n) = $element_id
                 DETACH DELETE n
                 RETURN count(n)
@@ -277,7 +277,7 @@ class NodeModel(BaseModel):
         logging.info("Refreshing node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH (n:{":".join(self.__model_settings__.labels)})
+                MATCH (n:`{":".join(self.__model_settings__.labels)}`)
                 WHERE elementId(n) = $element_id
                 RETURN n
             """,
@@ -470,18 +470,34 @@ class NodeModel(BaseModel):
         new_instance: T
 
         logging.info("Updating first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        old_instance = await cls.find_one(expressions=expressions)
+        logging.debug("Getting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
+        (
+            expression_match_query,
+            expression_where_query,
+            expression_parameters,
+        ) = cls._query_builder.build_node_expressions(expressions=expressions)
+
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
+                RETURN n
+                LIMIT 1
+            """,
+            parameters=expression_parameters,
+        )
 
         logging.debug("Checking if query returned a result")
-        if old_instance is None:
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
-        else:
-            # Update existing instance with values and save
-            logging.debug("Creating instance copy with new values %s", update)
-            new_instance = cls(**old_instance.dict())
+        old_instance = results[0][0]
 
-            new_instance.__dict__.update(update)
-            setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
+        # Update existing instance with values and save
+        logging.debug("Creating instance copy with new values %s", update)
+        new_instance = cls(**old_instance.dict())
+
+        new_instance.__dict__.update(update)
+        setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
 
         await new_instance.update()
         logging.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
@@ -512,24 +528,45 @@ class NodeModel(BaseModel):
         new_instance: T
 
         logging.info("Updating all nodes of model %s matching expressions %s", cls.__name__, expressions)
-        old_instances = await cls.find_many(expressions=expressions)
-
-        logging.debug("Checking if query returned a result")
-        if len(old_instances) == 0:
-            logging.debug("No results found")
-            return []
-        else:
-            # Try and parse update values into random instance to check validation
-            logging.debug("Creating instance copy with new values %s", update)
-            new_instance = cls(**old_instances[0].dict())
-            new_instance.__dict__.update(update)
-
-        deflated_properties = new_instance.deflate()
         (
             expression_match_query,
             expression_where_query,
             expression_parameters,
         ) = cls._query_builder.build_node_expressions(expressions=expressions)
+
+        logging.debug("Getting all nodes of model %s matching expressions %s", cls.__name__, expressions)
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
+                RETURN n
+            """,
+            parameters=expression_parameters,
+        )
+
+        old_instances: List[T] = []
+
+        for result_list in results:
+            for result in result_list:
+                if result is None:
+                    continue
+
+                if isinstance(results[0][0], Node):
+                    old_instances.append(cls.inflate(node=results[0][0]))
+                else:
+                    old_instances.append(result)
+
+        logging.debug("Checking if query returned a result")
+        if len(old_instances) == 0:
+            logging.debug("No results found")
+            return []
+
+        # Try and parse update values into random instance to check validation
+        logging.debug("Creating instance copy with new values %s", update)
+        new_instance = cls(**old_instances[0].dict())
+        new_instance.__dict__.update(update)
+
+        deflated_properties = new_instance.deflate()
 
         # Update instances
         results, _ = await cls._client.cypher(
