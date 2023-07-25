@@ -45,6 +45,7 @@ async def setup() -> None:
     await adult1.friends.connect(adult4, {"since": datetime.now(), "best_friends": True})
     await adult2.friends.connect(adult4, {"since": datetime.now(), "best_friends": False})
     await adult3.friends.connect(adult4, {"since": datetime.now(), "best_friends": True})
+    await adult3.friends.connect(adult4, {"since": datetime.now(), "best_friends": True})
     await adult5.friends.connect(adult4, {"since": datetime.now(), "best_friends": False})
     await adult6.friends.connect(adult4, {"since": datetime.now(), "best_friends": False})
 
@@ -59,6 +60,7 @@ async def setup() -> None:
     await child3.toys.connect(toy2)
     await child2.toys.connect(toy2)
     await child2.toys.connect(toy3)
+    await child1.toys.connect(toy4)
     await child1.toys.connect(toy4)
 
 

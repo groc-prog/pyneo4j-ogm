@@ -18,6 +18,15 @@ class RelationshipDirection(str, Enum):
     BOTH = "BOTH"
 
 
+class RelationshipPropertyDirection(str, Enum):
+    """
+    Available relationship directions for relationship properties.
+    """
+
+    INCOMING = "INCOMING"
+    OUTGOING = "OUTGOING"
+
+
 class TypedQueryOptions(TypedDict):
     """
     Type definition for query options.

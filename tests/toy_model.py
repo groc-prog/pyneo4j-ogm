@@ -7,7 +7,7 @@ from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
 from neo4j_ogm.fields.node_options import WithOptions
 from neo4j_ogm.fields.relationship_property import RelationshipProperty
-from neo4j_ogm.queries.types import RelationshipDirection
+from neo4j_ogm.queries.types import RelationshipPropertyDirection
 
 
 class OwnsToy(RelationshipModel):
@@ -21,5 +21,5 @@ class Toy(NodeModel):
     produced_at: float = Field(default=lambda: datetime.timestamp(datetime.now()))
 
     owner = RelationshipProperty(
-        target_model="Child", relationship_model=OwnsToy, direction=RelationshipDirection.INCOMING
+        target_model="Child", relationship_model=OwnsToy, direction=RelationshipPropertyDirection.INCOMING
     )

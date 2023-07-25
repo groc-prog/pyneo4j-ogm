@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Tuple
 from neo4j_ogm.exceptions import InvalidOperator, UnknownRelationshipDirection
 from neo4j_ogm.queries.types import (
     RelationshipDirection,
+    RelationshipPropertyDirection,
     TypedNodeExpressions,
     TypedPropertyExpressions,
     TypedQueryOptions,
@@ -159,7 +160,7 @@ class QueryBuilder:
 
     def build_relationship_query(
         self,
-        direction: RelationshipDirection = RelationshipDirection.BOTH,
+        direction: RelationshipPropertyDirection = RelationshipPropertyDirection.OUTGOING,
         relationship_type: str | None = None,
         start_node_labels: List[str] | None = None,
         end_node_labels: List[str] | None = None,
@@ -171,8 +172,8 @@ class QueryBuilder:
         Builds a relationships `MATCH` clause based on the defined ref names and direction.
 
         Args:
-            direction (RelationshipDirection): The direction that should be used whe building the relationship.
-                Defaults to RelationshipDirection.BOTH
+            direction (RelationshipPropertyDirection): The direction that should be used whe building the relationship.
+                Defaults to RelationshipPropertyDirection.OUTGOING
             relationship_type (str | None): The relationship type. Defaults to None.
             start_node_labels (List[str] | None): The start node labels. Defaults to None.
             end_node_labels (List[str] | None): The end node labels. Defaults to None.
@@ -193,15 +194,13 @@ class QueryBuilder:
         relationship = f"[{rel_ref}:`{relationship_type}`]" if relationship_type is not None else f"[{rel_ref}]"
 
         match direction:
-            case RelationshipDirection.BOTH:
-                return f"{start_node}-{relationship}-{end_node}"
-            case RelationshipDirection.INCOMING:
+            case RelationshipPropertyDirection.INCOMING:
                 return f"{start_node}<-{relationship}-{end_node}"
-            case RelationshipDirection.BOTH:
+            case RelationshipPropertyDirection.OUTGOING:
                 return f"{start_node}-{relationship}->{end_node}"
             case _:
                 raise UnknownRelationshipDirection(
-                    expected_directions=[option.value for option in RelationshipDirection],
+                    expected_directions=[option.value for option in RelationshipPropertyDirection],
                     actual_direction=direction,
                 )
 

@@ -19,7 +19,7 @@ from neo4j_ogm.exceptions import (
     UnregisteredModel,
 )
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import RelationshipDirection, TypedPropertyExpressions, TypedQueryOptions
+from neo4j_ogm.queries.types import RelationshipPropertyDirection, TypedPropertyExpressions, TypedQueryOptions
 
 T = TypeVar("T", bound=NodeModel)
 U = TypeVar("U", bound=RelationshipModel)
@@ -36,7 +36,7 @@ class RelationshipProperty:
     _target_model: Type[T]
     _target_model_name: str
     _source_node: T
-    _direction: RelationshipDirection
+    _direction: RelationshipPropertyDirection
     _relationship_model: Type[U]
     _relationship_model_name: str
     _allow_multiple: bool
@@ -45,7 +45,7 @@ class RelationshipProperty:
         self,
         target_model: Type[T] | str,
         relationship_model: Type[U] | str,
-        direction: RelationshipDirection,
+        direction: RelationshipPropertyDirection,
         allow_multiple: bool = False,
     ) -> None:
         """
@@ -55,9 +55,9 @@ class RelationshipProperty:
         Args:
             target_model (Type[T] | str): The model which is the target of the relationship. Can be a
                 model class or a string which matches the name of the model class.
-            direction (RelationshipDirection): The relationship direction.
+            direction (RelationshipPropertyDirection): The relationship direction.
             relationship_model (Type[U] | str): The relationship model or the relationship type as a string.
-            direction (RelationshipDirection): The direction of the relationship.
+            direction (RelationshipPropertyDirection): The direction of the relationship.
             allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to False.
 
         Raises:
@@ -121,8 +121,7 @@ class RelationshipProperty:
 
         Args:
             node (T): Node instance to create a relationship to.
-            properties (Dict[str, Any] | None): Properties defined on the relationship model. If no model has been provided,
-                the properties will be omitted. Defaults to None.
+            properties (Dict[str, Any] | None): Properties defined on the relationship model. Defaults to None.
 
         Raises:
             NoResultsFound: Raised if the query did not return the new relationship.
@@ -137,30 +136,28 @@ class RelationshipProperty:
             getattr(node, "_element_id", None),
             getattr(self._source_node, "_element_id", None),
         )
-        relationship_query = self._query_builder.build_relationship_query(
-            direction=self._direction,
-            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
-            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
-            end_node_labels=getattr(node.__model_settings__, "labels"),
-        )
 
         # Build properties if relationship is defined as model
         relationship_instance = self._relationship_model.validate(properties if properties is not None else {})
         deflated_properties: Dict[str, Any] = relationship_instance.deflate()
 
+        relationship_query = self._query_builder.build_relationship_query(
+            direction=self._direction,
+            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
+        )
+
         # Build MERGE/CREATE part of query depending on if duplicate relationships are allowed or not
-        logging.debug("Building create/merge query")
+        logging.debug("Building queries")
         if self._allow_multiple:
-            build_query = f"""
-                CREATE {relationship_query}
-                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
-            """
+            build_query = f"CREATE {relationship_query}"
         else:
-            build_query = f"""
-                MERGE {relationship_query}
-                ON CREATE
-                    SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties])}
-            """
+            build_query = f"MERGE {relationship_query}"
+
+        set_query = (
+            f"SET {', '.join([f'r.{property_name} = ${property_name}' for property_name in deflated_properties])}"
+            if len(deflated_properties.keys()) != 0
+            else ""
+        )
 
         results, _ = await self._client.cypher(
             query=f"""
@@ -169,6 +166,7 @@ class RelationshipProperty:
                     (end:`{":".join(self._target_model.__model_settings__.labels)}`)
                 WHERE elementId(start) = $startId AND elementId(end) = $endId
                 {build_query}
+                {set_query}
                 RETURN r
             """,
             parameters={

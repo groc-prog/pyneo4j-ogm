@@ -7,7 +7,7 @@ from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
 from neo4j_ogm.fields.node_options import WithOptions
 from neo4j_ogm.fields.relationship_property import RelationshipProperty
-from neo4j_ogm.queries.types import RelationshipDirection
+from neo4j_ogm.queries.types import RelationshipPropertyDirection
 
 
 class Married(RelationshipModel):
@@ -31,13 +31,16 @@ class Adult(NodeModel):
     age: int
 
     friends = RelationshipProperty(
-        target_model="Adult", relationship_model=Friends, direction=RelationshipDirection.BOTH, allow_multiple=True
+        target_model="Adult",
+        relationship_model=Friends,
+        direction=RelationshipPropertyDirection.OUTGOING,
+        allow_multiple=True,
     )
     partner = RelationshipProperty(
-        target_model="Adult", relationship_model=Married, direction=RelationshipDirection.BOTH
+        target_model="Adult", relationship_model=Married, direction=RelationshipPropertyDirection.OUTGOING
     )
     children = RelationshipProperty(
-        target_model="Child", relationship_model="HasChild", direction=RelationshipDirection.OUTGOING
+        target_model="Child", relationship_model="HasChild", direction=RelationshipPropertyDirection.OUTGOING
     )
 
     class Settings:
