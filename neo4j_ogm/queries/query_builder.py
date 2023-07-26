@@ -52,7 +52,7 @@ class QueryBuilder:
 
     def build_node_expressions(
         self, expressions: TypedNodeExpressions, ref: str = "n"
-    ) -> Tuple[str | None, str | None, Dict[str, Any]]:
+    ) -> Tuple[str | None, Dict[str, Any]]:
         """
         Builds a query for filtering node properties with the given operators.
 
@@ -61,7 +61,7 @@ class QueryBuilder:
             ref (str, optional): The variable to use inside the generated query. Defaults to "n".
 
         Returns:
-            Tuple[str | None, str | None, Dict[str, Any]]: The generated query and parameters.
+            Tuple[str | None, Dict[str, Any]]: The generated query and parameters.
         """
         self.ref = ref
         self._is_node_expression = True
@@ -74,7 +74,7 @@ class QueryBuilder:
 
     def build_relationship_expressions(
         self, expressions: TypedRelationshipExpressions, ref: str = "n"
-    ) -> Tuple[str | None, str | None, Dict[str, Any]]:
+    ) -> Tuple[str | None, Dict[str, Any]]:
         """
         Builds a query for filtering relationship properties with the given operators.
 
@@ -83,7 +83,7 @@ class QueryBuilder:
             ref (str, optional): The variable to use inside the generated query. Defaults to "n".
 
         Returns:
-            Tuple[str | None, str | None, Dict[str, Any]]: The generated query and parameters.
+            Tuple[str | None, Dict[str, Any]]: The generated query and parameters.
         """
         self.ref = ref
         self._is_node_expression = False
@@ -96,7 +96,7 @@ class QueryBuilder:
 
     def build_property_expressions(
         self, expressions: TypedPropertyExpressions, ref: str = "n"
-    ) -> Tuple[str | None, str | None, Dict[str, Any]]:
+    ) -> Tuple[str | None, Dict[str, Any]]:
         """
         Builds a query for filtering relationship-property (defined on node models) properties with the given operators.
 
@@ -105,7 +105,7 @@ class QueryBuilder:
             ref (str, optional): The variable to use inside the generated query. Defaults to "n".
 
         Returns:
-            Tuple[str | None, str | None, Dict[str, Any]]: The generated query and parameters.
+            Tuple[str | None, Dict[str, Any]]: The generated query and parameters.
         """
         self.ref = ref
         self._is_node_expression = None
@@ -204,7 +204,7 @@ class QueryBuilder:
                     actual_direction=direction,
                 )
 
-    def _build_node_pattern(self, patterns: List[Dict[str, Any]]) -> Tuple[str | None, str | None, Dict[str, Any]]:
+    def _build_node_pattern(self, patterns: List[Dict[str, Any]]) -> Tuple[str | None, Dict[str, Any]]:
         """
         Builds a `$pattern` operator for node expressions.
 
@@ -212,11 +212,10 @@ class QueryBuilder:
             patterns (List[Dict[str, Any]]): The patterns to build.
 
         Returns:
-            Tuple[str | None, str | None, Dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
+            Tuple[str | None, Dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
         """
         old_ref = deepcopy(self.ref)
-        match_queries: List[str] = []
-        where_queries: List[str] = []
+        partial_queries: List[str] = []
         parameters: Dict[str, Any] = {}
 
         for pattern in patterns:
@@ -243,44 +242,40 @@ class QueryBuilder:
             # Build relationship direction
             match pattern["$direction"]:
                 case RelationshipDirection.INCOMING:
-                    match_queries.append(f"({self.ref})<-{relationship}-({node_ref})")
+                    match_query = f"({self.ref})<-{relationship}-({node_ref})"
                 case RelationshipDirection.OUTGOING:
-                    match_queries.append(f"({self.ref})-{relationship}->({node_ref})")
+                    match_query = f"({self.ref})-{relationship}->({node_ref})"
                 case _:
-                    match_queries.append(f"({self.ref})-{relationship}-({node_ref})")
+                    match_query = f"({self.ref})-{relationship}-({node_ref})"
+
+            if "$negate" in pattern and pattern["$negate"] is True:
+                partial_queries.append(f"NOT({match_query})")
+            else:
+                partial_queries.append(match_query)
 
             # Build node and relationship expressions if present
             if "$node" in pattern:
                 self.ref = node_ref
-                match_query, where_query, node_parameters = self._build_nested_expressions(expressions=pattern["$node"])
+                query, node_parameters = self._build_nested_expressions(expressions=pattern["$node"])
 
-                if where_query is not None:
-                    where_queries.append(where_query)
-                if match_query is not None:
-                    match_queries.append(match_query)
-                parameters = {**parameters, **node_parameters}
+                if query is not None:
+                    partial_queries.append(query)
 
             if "$relationship" in pattern:
                 self.ref = relationship_ref
-                match_query, where_query, node_parameters = self._build_nested_expressions(
-                    expressions=pattern["$relationship"]
-                )
+                query, node_parameters = self._build_nested_expressions(expressions=pattern["$relationship"])
 
-                if where_query is not None:
-                    where_queries.append(where_query)
-                if match_query is not None:
-                    match_queries.append(match_query)
+                if query is not None:
+                    partial_queries.append(query)
                 parameters = {**parameters, **node_parameters}
 
-        self.ref = old_ref
-        complete_match_query = " AND ".join(match_queries) if len(match_queries) != 0 else None
-        complete_where_query = " AND ".join(where_queries) if len(where_queries) != 0 else None
+            self.ref = old_ref
 
-        return complete_match_query, complete_where_query, parameters
+        complete_query = " AND ".join(partial_queries) if len(partial_queries) != 0 else None
 
-    def _build_relationship_pattern(
-        self, patterns: List[Dict[str, Any]]
-    ) -> Tuple[str | None, str | None, Dict[str, Any]]:
+        return complete_query, parameters
+
+    def _build_relationship_pattern(self, patterns: List[Dict[str, Any]]) -> Tuple[str | None, Dict[str, Any]]:
         """
         Builds a `$pattern` operator for relationship expressions.
 
@@ -288,11 +283,10 @@ class QueryBuilder:
             patterns (List[Dict[str, Any]]): The patterns to build.
 
         Returns:
-            Tuple[str | None, str | None, Dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
+            Tuple[str | None, Dict[str, Any]]: The generated `MATCH/WHERE` clauses and `parameters`.
         """
         old_ref = deepcopy(self.ref)
-        match_queries: List[str] = []
-        where_queries: List[str] = []
+        partial_queries: List[str] = []
         parameters: Dict[str, Any] = {}
 
         for pattern in patterns:
@@ -302,43 +296,40 @@ class QueryBuilder:
             # Build relationship direction
             match pattern["$direction"]:
                 case RelationshipDirection.INCOMING:
-                    match_queries.append(f"({start_node_ref})<-[{self.ref}]-({end_node_ref})")
+                    match_query = f"({start_node_ref})<-[{self.ref}]-({end_node_ref})"
                 case RelationshipDirection.OUTGOING:
-                    match_queries.append(f"({start_node_ref})-[{self.ref}]->({end_node_ref})")
+                    match_query = f"({start_node_ref})-[{self.ref}]->({end_node_ref})"
                 case _:
-                    match_queries.append(f"({start_node_ref})-[{self.ref}]-({end_node_ref})")
+                    match_query = f"({start_node_ref})-[{self.ref}]-({end_node_ref})"
+
+            if "$negate" in pattern and pattern["$negate"] is True:
+                partial_queries.append(f"NOT({match_query})")
+            else:
+                partial_queries.append(match_query)
 
             # Build node and relationship expressions if present
             if "$startNode" in pattern:
                 self.ref = start_node_ref
-                match_query, where_query, node_parameters = self._build_nested_expressions(
-                    expressions=pattern["$startNode"]
-                )
+                query, node_parameters = self._build_nested_expressions(expressions=pattern["$startNode"])
 
-                if where_query is not None:
-                    where_queries.append(where_query)
-                if match_query is not None:
-                    match_queries.append(match_query)
+                if query is not None:
+                    partial_queries.append(query)
                 parameters = {**parameters, **node_parameters}
 
             if "$endNode" in pattern:
                 self.ref = end_node_ref
-                match_query, where_query, node_parameters = self._build_nested_expressions(
-                    expressions=pattern["$endNode"]
-                )
+                query, node_parameters = self._build_nested_expressions(expressions=pattern["$endNode"])
 
-                if where_query is not None:
-                    where_queries.append(where_query)
-                if match_query is not None:
-                    match_queries.append(match_query)
+                if query is not None:
+                    partial_queries.append(query)
                 parameters = {**parameters, **node_parameters}
 
-        self.ref = old_ref
-        complete_match_query = " AND ".join(match_queries) if len(match_queries) != 0 else None
-        complete_where_query = " AND ".join(where_queries) if len(where_queries) != 0 else None
-        return complete_match_query, complete_where_query, parameters
+            self.ref = old_ref
 
-    def _build_nested_expressions(self, expressions: Dict[str, Any]) -> Tuple[str | None, str | None, Dict[str, Any]]:
+        complete_query = " AND ".join(partial_queries) if len(partial_queries) != 0 else None
+        return complete_query, parameters
+
+    def _build_nested_expressions(self, expressions: Dict[str, Any]) -> Tuple[str | None, Dict[str, Any]]:
         """
         Builds nested operators defined in provided expressions.
 
@@ -349,69 +340,61 @@ class QueryBuilder:
             InvalidOperator: If the `expressions` parameter is not a valid dict.
 
         Returns:
-            Tuple[str | None, str | None, Dict[str, Any]]: The generated query and parameters.
+            Tuple[str | None, Dict[str, Any]]: The generated query and parameters.
         """
         complete_parameters: Dict[str, Any] = {}
-        partial_match_queries: List[str] = []
-        partial_where_queries: List[str] = []
+        partial_queries: List[str] = []
 
         if not isinstance(expressions, dict):
             raise InvalidOperator(f"Expressions must be instance of dict, got {type(expressions)}")
 
         for property_or_operator, expression_or_value in expressions.items():
             parameters: Dict[str, Any] = {}
-            where_query = None
-            match_query = None
+            query = None
 
             if not property_or_operator.startswith("$"):
                 # Update current property name if the key is not a operator
                 self.property_name = property_or_operator
 
             if property_or_operator in self.__element_operators:
-                where_query, parameters = self._build_element_operator(property_or_operator, expression_or_value)
+                query, parameters = self._build_element_operator(property_or_operator, expression_or_value)
             elif property_or_operator == "$not":
-                match_query, where_query, parameters = self._build_not_operator(expression=expression_or_value)
+                query, parameters = self._build_not_operator(expression=expression_or_value)
             elif property_or_operator == "$in":
-                where_query, parameters = self._build_in_operator(value=expression_or_value)
+                query, parameters = self._build_in_operator(value=expression_or_value)
             elif property_or_operator == "$size":
-                where_query, parameters = self._build_size_operator(expression=expression_or_value)
+                query, parameters = self._build_size_operator(expression=expression_or_value)
             elif property_or_operator == "$all":
-                match_query, where_query, parameters = self._build_all_operator(expressions=expression_or_value)
+                query, parameters = self._build_all_operator(expressions=expression_or_value)
             elif property_or_operator == "$exists":
-                where_query = self._build_exists_operator(exists=expression_or_value)
+                query = self._build_exists_operator(exists=expression_or_value)
             elif property_or_operator == "$labels":
-                where_query, parameters = self._build_labels_operator(labels=expression_or_value)
+                query, parameters = self._build_labels_operator(labels=expression_or_value)
             elif property_or_operator == "$type":
-                where_query, parameters = self._build_types_operator(relationship_type=expression_or_value)
+                query, parameters = self._build_types_operator(relationship_type=expression_or_value)
             elif property_or_operator == "$patterns":
                 if self._is_node_expression:
-                    match_query, where_query, parameters = self._build_node_pattern(patterns=expression_or_value)
+                    query, parameters = self._build_node_pattern(patterns=expression_or_value)
                 else:
-                    match_query, where_query, parameters = self._build_relationship_pattern(
-                        patterns=expression_or_value
-                    )
+                    query, parameters = self._build_relationship_pattern(patterns=expression_or_value)
             elif property_or_operator in self.__comparison_operators:
-                where_query, parameters = self._build_comparison_operator(
+                query, parameters = self._build_comparison_operator(
                     operator=property_or_operator, value=expression_or_value
                 )
             elif property_or_operator in self.__logical_operators:
-                match_query, where_query, parameters = self._build_logical_operator(
+                query, parameters = self._build_logical_operator(
                     operator=property_or_operator, expressions=expression_or_value
                 )
             elif not property_or_operator.startswith("$"):
-                match_query, where_query, parameters = self._build_nested_expressions(expressions=expression_or_value)
+                query, parameters = self._build_nested_expressions(expressions=expression_or_value)
 
-            if where_query is not None:
-                partial_where_queries.append(where_query)
-
-            if match_query is not None:
-                partial_match_queries.append(match_query)
+            if query is not None:
+                partial_queries.append(query)
 
             complete_parameters = {**complete_parameters, **parameters}
 
-        complete_match_query = ", ".join(partial_match_queries) if len(partial_match_queries) != 0 else None
-        complete_where_query = " AND ".join(partial_where_queries) if len(partial_where_queries) != 0 else None
-        return complete_match_query, complete_where_query, complete_parameters
+        complete_query = " AND ".join(partial_queries) if len(partial_queries) != 0 else None
+        return complete_query, complete_parameters
 
     def _build_labels_operator(self, labels: List[str]) -> Tuple[str, Dict[str, Any]]:
         """
@@ -505,10 +488,10 @@ class QueryBuilder:
         Returns:
             Tuple[str | None, str, Dict[str, Any]]: The generated query and parameters.
         """
-        match_query, where_query, complete_parameters = self._build_nested_expressions(expressions=expression)
+        query, complete_parameters = self._build_nested_expressions(expressions=expression)
 
-        complete_where_query = f"NOT({where_query})"
-        return match_query, complete_where_query, complete_parameters
+        complete_query = f"NOT({query})"
+        return complete_query, complete_parameters
 
     def _build_in_operator(self, value: Any) -> Tuple[str, Dict[str, Any]]:
         """
@@ -566,31 +549,23 @@ class QueryBuilder:
         """
         self._variable_name_overwrite = "i"
         complete_parameters: Dict[str, Any] = {}
-        partial_match_queries: List[str] = []
-        partial_where_queries: List[str] = []
+        partial_queries: List[str] = []
 
         if not isinstance(expressions, list):
             raise InvalidOperator(f"Value of $all operator must be list, got {type(expressions)}")
 
         for expression in expressions:
-            match_query, where_query, parameters = self._build_nested_expressions(expressions=expression)
+            query, parameters = self._build_nested_expressions(expressions=expression)
 
-            if where_query is not None:
-                partial_where_queries.append(where_query)
+            if query is not None:
+                partial_queries.append(query)
 
-            if match_query is not None:
-                partial_match_queries.append(match_query)
             complete_parameters = {**complete_parameters, **parameters}
 
         self._variable_name_overwrite = None
 
-        complete_where_query = f"ALL(i IN {self._get_variable_name()} WHERE {' AND '.join(partial_where_queries)})"
-        complete_match_query = (
-            " AND ".join([query for query in partial_match_queries if query is not None])
-            if len(partial_match_queries) != 0
-            else None
-        )
-        return complete_match_query, complete_where_query, complete_parameters
+        complete_query = f"ALL(i IN {self._get_variable_name()} WHERE {' AND '.join(partial_queries)})"
+        return complete_query, complete_parameters
 
     def _build_logical_operator(
         self, operator: str, expressions: List[Dict[str, Any]]
@@ -609,26 +584,19 @@ class QueryBuilder:
             Tuple[str | None, str, Dict[str, Any]]: The query and parameters.
         """
         complete_parameters: Dict[str, Any] = {}
-        partial_match_queries: List[str] = []
-        partial_where_queries: List[str] = []
+        partial_queries: List[str] = []
 
         if not isinstance(expressions, list):
             raise InvalidOperator(f"Value of {operator} operator must be list, got {type(expressions)}")
 
         for expression in expressions:
-            match_query, where_query, parameters = self._build_nested_expressions(expressions=expression)
+            where_query, parameters = self._build_nested_expressions(expressions=expression)
 
-            partial_where_queries.append(where_query)
-            partial_match_queries.append(match_query)
+            partial_queries.append(where_query)
             complete_parameters = {**complete_parameters, **parameters}
 
-        complete_where_query = f"({f' {self.__logical_operators[operator]} '.join(partial_where_queries)})"
-        complete_match_query = (
-            " AND ".join([query for query in partial_match_queries if query is not None])
-            if len(partial_match_queries) != 0
-            else None
-        )
-        return complete_match_query, complete_where_query, complete_parameters
+        complete_query = f"({f' {self.__logical_operators[operator]} '.join(partial_queries)})"
+        return complete_query, complete_parameters
 
     def _build_element_operator(self, operator: str, value: Any) -> Tuple[str, Dict[str, Any]]:
         """

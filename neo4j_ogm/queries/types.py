@@ -75,9 +75,9 @@ TypedRelationshipElementExpression = TypedDict(
 TypedNodePatternExpression = TypedDict(
     "TypedNodePatternExpression",
     {
-        "$node": Optional[Union[TypedNodeExpression, Dict[str, "TypedCombinedExpression"]]],
+        "$node": Optional[Union[TypedNodeElementExpression, Dict[str, "TypedCombinedExpression"]]],
         "$direction": Optional[RelationshipDirection],
-        "$relationship": Optional[Union[TypedNodeExpression, Dict[str, "TypedCombinedExpression"]]],
+        "$relationship": Optional[Union[TypedRelationshipElementExpression, Dict[str, "TypedCombinedExpression"]]],
         "$negate": Optional[bool],
     },
 )
@@ -85,9 +85,9 @@ TypedNodePatternExpression = TypedDict(
 TypedRelationshipPatternExpression = TypedDict(
     "TypedRelationshipPatternExpression",
     {
-        "$startNode": Optional[Union[TypedNodeExpression, Dict[str, "TypedCombinedExpression"]]],
+        "$startNode": Optional[Union[TypedNodeElementExpression, Dict[str, "TypedCombinedExpression"]]],
         "$direction": Optional[RelationshipDirection],
-        "$endNode": Optional[Union[TypedNodeExpression, Dict[str, "TypedCombinedExpression"]]],
+        "$endNode": Optional[Union[TypedNodeElementExpression, Dict[str, "TypedCombinedExpression"]]],
         "$negate": Optional[bool],
     },
 )
