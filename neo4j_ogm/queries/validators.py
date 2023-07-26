@@ -201,6 +201,7 @@ class NodePatternValidator(BaseModel):
         alias="$direction", default=RelationshipDirection.BOTH
     )
     relationship_operator: Optional["RelationshipElementValidator"] = Field(alias="$relationship")
+    negate_operator: Optional[bool] = Field(default=False, alias="$negate")
 
 
 class RelationshipPatternValidator(BaseModel):
@@ -213,6 +214,7 @@ class RelationshipPatternValidator(BaseModel):
     direction_operator: Optional["RelationshipDirection"] = Field(
         alias="$direction", default=RelationshipDirection.BOTH
     )
+    negate_operator: Optional[bool] = Field(default=False, alias="$negate")
 
 
 # Update forward-refs

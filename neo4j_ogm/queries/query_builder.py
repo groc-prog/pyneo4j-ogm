@@ -275,6 +275,7 @@ class QueryBuilder:
         self.ref = old_ref
         complete_match_query = " AND ".join(match_queries) if len(match_queries) != 0 else None
         complete_where_query = " AND ".join(where_queries) if len(where_queries) != 0 else None
+
         return complete_match_query, complete_where_query, parameters
 
     def _build_relationship_pattern(
@@ -574,14 +575,21 @@ class QueryBuilder:
         for expression in expressions:
             match_query, where_query, parameters = self._build_nested_expressions(expressions=expression)
 
-            partial_where_queries.append(where_query)
-            partial_match_queries.append(match_query)
+            if where_query is not None:
+                partial_where_queries.append(where_query)
+
+            if match_query is not None:
+                partial_match_queries.append(match_query)
             complete_parameters = {**complete_parameters, **parameters}
 
         self._variable_name_overwrite = None
 
         complete_where_query = f"ALL(i IN {self._get_variable_name()} WHERE {' AND '.join(partial_where_queries)})"
-        complete_match_query = " AND ".join(partial_match_queries) if len(partial_match_queries) != 0 else None
+        complete_match_query = (
+            " AND ".join([query for query in partial_match_queries if query is not None])
+            if len(partial_match_queries) != 0
+            else None
+        )
         return complete_match_query, complete_where_query, complete_parameters
 
     def _build_logical_operator(
@@ -615,7 +623,11 @@ class QueryBuilder:
             complete_parameters = {**complete_parameters, **parameters}
 
         complete_where_query = f"({f' {self.__logical_operators[operator]} '.join(partial_where_queries)})"
-        complete_match_query = " AND ".join(partial_match_queries) if len(partial_match_queries) != 0 else None
+        complete_match_query = (
+            " AND ".join([query for query in partial_match_queries if query is not None])
+            if len(partial_match_queries) != 0
+            else None
+        )
         return complete_match_query, complete_where_query, complete_parameters
 
     def _build_element_operator(self, operator: str, value: Any) -> Tuple[str, Dict[str, Any]]:

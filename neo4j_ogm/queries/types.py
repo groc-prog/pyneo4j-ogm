@@ -66,7 +66,7 @@ TypedRelationshipElementExpression = TypedDict(
     {
         "$elementId": Optional[str],
         "$id": Optional[int],
-        "$types": Optional[str | List[str]],
+        "$type": Optional[str | List[str]],
         "$minHops": Optional[int],
         "$maxHops": Optional[int],
     },
@@ -75,18 +75,20 @@ TypedRelationshipElementExpression = TypedDict(
 TypedNodePatternExpression = TypedDict(
     "TypedNodePatternExpression",
     {
-        "$node": Optional["TypedNodeElementExpression"],
-        "$direction": Optional[str],
-        "$relationship": Optional["TypedRelationshipElementExpression"],
+        "$node": Optional[Union[TypedNodeExpression, Dict[str, "TypedCombinedExpression"]]],
+        "$direction": Optional[RelationshipDirection],
+        "$relationship": Optional[Union[TypedNodeExpression, Dict[str, "TypedCombinedExpression"]]],
+        "$negate": Optional[bool],
     },
 )
 
 TypedRelationshipPatternExpression = TypedDict(
     "TypedRelationshipPatternExpression",
     {
-        "$startNode": Optional["TypedNodeElementExpression"],
-        "$direction": Optional[str],
-        "$endNode": Optional["TypedRelationshipElementExpression"],
+        "$startNode": Optional[Union[TypedNodeExpression, Dict[str, "TypedCombinedExpression"]]],
+        "$direction": Optional[RelationshipDirection],
+        "$endNode": Optional[Union[TypedNodeExpression, Dict[str, "TypedCombinedExpression"]]],
+        "$negate": Optional[bool],
     },
 )
 
@@ -183,6 +185,6 @@ TypedCombinedExpression = TypedDict(
     },
 )
 
-TypedNodeExpressions = TypedNodeExpression | Dict[str, TypedCombinedExpression]
-TypedRelationshipExpressions = TypedRelationshipExpression | Dict[str, TypedCombinedExpression]
-TypedPropertyExpressions = TypedElementExpression | Dict[str, TypedCombinedExpression]
+TypedNodeExpressions = Union[TypedNodeExpression, Dict[str, TypedCombinedExpression]]
+TypedRelationshipExpressions = Union[TypedRelationshipExpression, Dict[str, TypedCombinedExpression]]
+TypedPropertyExpressions = Union[TypedElementExpression, Dict[str, TypedCombinedExpression]]
