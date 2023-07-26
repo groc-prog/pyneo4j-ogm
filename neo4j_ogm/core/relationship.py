@@ -338,14 +338,15 @@ class RelationshipModel(BaseModel):
             "Getting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
         )
         (
-            expression_query,
+            expression_match_query,
+            expression_where_query,
             expression_parameters,
         ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}
-                WHERE {expression_query if expression_query is not None else ""}
+                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 LIMIT 1
             """,
@@ -379,15 +380,16 @@ class RelationshipModel(BaseModel):
         """
         logging.info("Getting relationships of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_query,
+            expression_match_query,
+            expression_where_query,
             expression_parameters,
         ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
         options_query = cls._query_builder.build_query_options(options=options if options else {}, ref="r")
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}
-                WHERE {expression_query if expression_query is not None else ""}
+                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN r
                 {options_query}
             """,
@@ -439,14 +441,15 @@ class RelationshipModel(BaseModel):
             "Getting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
         )
         (
-            expression_query,
+            expression_match_query,
+            expression_where_query,
             expression_parameters,
         ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}
-                WHERE {expression_query if expression_query is not None else ""}
+                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN n
                 LIMIT 1
             """,
@@ -499,15 +502,16 @@ class RelationshipModel(BaseModel):
 
         logging.info("Updating all relationships of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_query,
+            expression_match_query,
+            expression_where_query,
             expression_parameters,
         ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         logging.debug("Getting all relationships of model %s matching expressions %s", cls.__name__, expressions)
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}
-                WHERE {expression_query if expression_query is not None else ""}
+                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN r
             """,
             parameters=expression_parameters,
@@ -540,8 +544,8 @@ class RelationshipModel(BaseModel):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}
-                WHERE {expression_query if expression_query is not None else ""}
+                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
             """,
@@ -590,14 +594,15 @@ class RelationshipModel(BaseModel):
         )
         relationship = await cls.find_one(expressions=expressions)
         (
-            expression_query,
+            expression_match_query,
+            expression_where_query,
             expression_parameters,
         ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}
-                WHERE {expression_query if expression_query is not None else ""}
+                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 DELETE r
             """,
             parameters={**expression_parameters},
@@ -620,14 +625,15 @@ class RelationshipModel(BaseModel):
         logging.info("Deleting all relationships of model %s matching expressions %s", cls.__name__, expressions)
         relationships = await cls.find_many(expressions=expressions)
         (
-            expression_query,
+            expression_match_query,
+            expression_where_query,
             expression_parameters,
         ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}
-                WHERE {expression_query if expression_query is not None else ""}
+                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 DELETE r
             """,
             parameters={**expression_parameters},
@@ -650,14 +656,15 @@ class RelationshipModel(BaseModel):
         """
         logging.info("Getting count of relationships of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_query,
+            expression_match_query,
+            expression_where_query,
             expression_parameters,
         ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}
-                WHERE {expression_query if expression_query is not None else ""}
+                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
+                WHERE {expression_where_query if expression_where_query is not None else ""}
                 RETURN count(r)
             """,
             parameters=expression_parameters,

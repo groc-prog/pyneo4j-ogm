@@ -187,8 +187,6 @@ class RelationshipElementValidator(ElementValidator):
     """
 
     type_operator: Optional[Union[str, List[str]]] = Field(alias="$type")
-    min_hops_operator: Optional[int] = Field(alias="$minHops", gt=0)
-    max_hops_operator: Optional[int] = Field(alias="$maxHops", gt=0)
 
 
 class NodePatternValidator(BaseModel):

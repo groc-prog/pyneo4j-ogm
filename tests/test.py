@@ -70,47 +70,14 @@ async def main():
 
     # await setup()
 
-    # adults = await Adult.find_one(
-    #     {
-    #         "$patterns": [
-    #             {
-    #                 "$direction": RelationshipDirection.OUTGOING,
-    #                 "$node": {"$labels": ["Adult"], "age": {"$gte": 20, "$lt": 28}},
-    #                 "$relationship": {
-    #                     "$type": "MARRIED",
-    #                 },
-    #             }
-    #         ]
-    #     }
-    # )
-    from neo4j_ogm.queries.query_builder import QueryBuilder
-
-    builder = QueryBuilder()
-    query, params = builder.build_node_expressions(
+    adults = await Adult.find_one(
         {
             "$patterns": [
                 {
                     "$direction": RelationshipDirection.OUTGOING,
-                    "$node": {"$labels": ["Adult"]},
-                    "$relationship": {
-                        "$type": "MARRIED",
-                    },
-                    "$negate": True,
-                },
-                {
-                    "$direction": RelationshipDirection.INCOMING,
-                    "$relationship": {
-                        "$type": "FRIENDS",
-                    },
-                    "$negate": False,
-                },
-                {
-                    "$direction": RelationshipDirection.BOTH,
-                    "$node": {"$labels": ["Child"]},
-                    "$relationship": {
-                        "$type": "SOMETHING",
-                    },
-                },
+                    "$node": {"$labels": ["Adult"], "age": {"$gte": 40}},
+                    "$relationship": {"$type": "MARRIED", "$minHops": 2, "$maxHops": 4},
+                }
             ]
         }
     )

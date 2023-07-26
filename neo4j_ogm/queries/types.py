@@ -63,13 +63,7 @@ TypedNodeElementExpression = TypedDict(
 
 TypedRelationshipElementExpression = TypedDict(
     "TypedRelationshipElementExpression",
-    {
-        "$elementId": Optional[str],
-        "$id": Optional[int],
-        "$type": Optional[str | List[str]],
-        "$minHops": Optional[int],
-        "$maxHops": Optional[int],
-    },
+    {"$elementId": Optional[str], "$id": Optional[int], "$type": Optional[str | List[str]]},
 )
 
 TypedNodePatternExpression = TypedDict(
