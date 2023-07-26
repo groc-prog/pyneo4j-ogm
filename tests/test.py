@@ -1,6 +1,8 @@
 # pylint: disable=missing-class-docstring missing-module-docstring
 import logging
 
+from neo4j_ogm.queries.types import RelationshipDirection
+
 logging.basicConfig(level=logging.INFO)
 
 import asyncio
@@ -17,17 +19,16 @@ client.connect(uri="neo4j://localhost:7687", auth=("neo4j", "password"))
 
 
 async def setup() -> None:
-    await client.register_models([Adult, Married, Friends, Child, HasChild, Toy, OwnsToy])
     await client.drop_constraints()
     await client.drop_indexes()
     await client.drop_nodes()
 
-    adult1 = await Adult(name="James", age=23).create()
-    adult2 = await Adult(name="Alice", age=30).create()
-    adult3 = await Adult(name="John", age=40).create()
-    adult4 = await Adult(name="Emma", age=28).create()
-    adult5 = await Adult(name="Michael", age=35).create()
-    adult6 = await Adult(name="Sophia", age=25).create()
+    adult1 = await Adult(name="James", favorite_numbers=[1, 4, 6], age=23).create()
+    adult2 = await Adult(name="Alice", favorite_numbers=[1, 7, 8], age=30).create()
+    adult3 = await Adult(name="John", favorite_numbers=[4, 6], age=40).create()
+    adult4 = await Adult(name="Emma", favorite_numbers=[9], age=28).create()
+    adult5 = await Adult(name="John", favorite_numbers=[11, 24], age=35).create()
+    adult6 = await Adult(name="Sophia", favorite_numbers=[15], age=25).create()
 
     child1 = await Child(name="Jamie").create()
     child2 = await Child(name="Emma").create()
@@ -65,7 +66,55 @@ async def setup() -> None:
 
 
 async def main():
-    await setup()
+    await client.register_models([Adult, Married, Friends, Child, HasChild, Toy, OwnsToy])
+
+    # await setup()
+
+    # adults = await Adult.find_one(
+    #     {
+    #         "$patterns": [
+    #             {
+    #                 "$direction": RelationshipDirection.OUTGOING,
+    #                 "$node": {"$labels": ["Adult"], "age": {"$gte": 20, "$lt": 28}},
+    #                 "$relationship": {
+    #                     "$type": "MARRIED",
+    #                 },
+    #             }
+    #         ]
+    #     }
+    # )
+    from neo4j_ogm.queries.query_builder import QueryBuilder
+
+    builder = QueryBuilder()
+    query, params = builder.build_node_expressions(
+        {
+            "$patterns": [
+                {
+                    "$direction": RelationshipDirection.OUTGOING,
+                    "$node": {"$labels": ["Adult"]},
+                    "$relationship": {
+                        "$type": "MARRIED",
+                    },
+                    "$negate": True,
+                },
+                {
+                    "$direction": RelationshipDirection.INCOMING,
+                    "$relationship": {
+                        "$type": "FRIENDS",
+                    },
+                    "$negate": False,
+                },
+                {
+                    "$direction": RelationshipDirection.BOTH,
+                    "$node": {"$labels": ["Child"]},
+                    "$relationship": {
+                        "$type": "SOMETHING",
+                    },
+                },
+            ]
+        }
+    )
+
     print("DONE")
 
 

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List
 from uuid import UUID, uuid4
 
 from pydantic import Field
@@ -29,6 +30,7 @@ class Adult(NodeModel):
     id: WithOptions(property_type=UUID, unique=True) = Field(default_factory=uuid4)
     name: str
     age: int
+    favorite_numbers: List[float] = []
 
     friends = RelationshipProperty(
         target_model="Adult",

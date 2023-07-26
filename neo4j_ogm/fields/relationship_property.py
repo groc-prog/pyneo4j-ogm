@@ -337,7 +337,6 @@ class RelationshipProperty:
         """
         logging.info("Getting connected nodes matching expressions %s", expressions)
         (
-            expression_match_query,
             expression_where_query,
             expression_parameters,
         ) = self._query_builder.build_node_expressions(
@@ -352,7 +351,7 @@ class RelationshipProperty:
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {match_query} {f', {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH {match_query}
                 {expression_where_query if expression_where_query is not None else ""}
                 RETURN end
                 {options_query}

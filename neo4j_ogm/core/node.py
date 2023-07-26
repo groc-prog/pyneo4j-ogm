@@ -329,20 +329,17 @@ class NodeModel(BaseModel):
             expressions,
         )
         (
-            expression_match_query,
-            expression_where_query,
+            expression_query,
             expression_parameters,
         ) = self._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
         options_query = self._query_builder.build_query_options(options=options if options else {})
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH
-                    (self:`{":".join(self.__model_settings__.labels)}`)-[rel*{min_hops}..{max_hops}]->(target:`{":".join(getattr(target_model.__model_settings__, "labels"))}`)
-                    {f', {expression_match_query}' if expression_match_query is not None else ""}
+                MATCH (self:`{":".join(self.__model_settings__.labels)}`)-[rel*{min_hops}..{max_hops}]->(target:`{":".join(getattr(target_model.__model_settings__, "labels"))}`)
                 WHERE
                     elementId(self) = $self_element_id
-                    {expression_where_query if expression_where_query is not None else ""}
+                    {expression_query if expression_query is not None else ""}
                 RETURN target
                 {options_query}
             """,
@@ -374,15 +371,14 @@ class NodeModel(BaseModel):
         """
         logging.info("Getting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_match_query,
-            expression_where_query,
+            expression_query,
             expression_parameters,
         ) = cls._query_builder.build_node_expressions(expressions=expressions)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`)
+                WHERE {expression_query if expression_query is not None else ""}
                 RETURN n
                 LIMIT 1
             """,
@@ -415,16 +411,15 @@ class NodeModel(BaseModel):
         """
         logging.info("Getting nodes of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_match_query,
-            expression_where_query,
+            expression_query,
             expression_parameters,
         ) = cls._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
         options_query = cls._query_builder.build_query_options(options=options if options else {})
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`)
+                WHERE {expression_query if expression_query is not None else ""}
                 RETURN n
                 {options_query}
             """,
@@ -472,15 +467,14 @@ class NodeModel(BaseModel):
         logging.info("Updating first encountered node of model %s matching expressions %s", cls.__name__, expressions)
         logging.debug("Getting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_match_query,
-            expression_where_query,
+            expression_query,
             expression_parameters,
         ) = cls._query_builder.build_node_expressions(expressions=expressions)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`)
+                WHERE {expression_query if expression_query is not None else ""}
                 RETURN n
                 LIMIT 1
             """,
@@ -529,16 +523,15 @@ class NodeModel(BaseModel):
 
         logging.info("Updating all nodes of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_match_query,
-            expression_where_query,
+            expression_query,
             expression_parameters,
         ) = cls._query_builder.build_node_expressions(expressions=expressions)
 
         logging.debug("Getting all nodes of model %s matching expressions %s", cls.__name__, expressions)
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`)
+                WHERE {expression_query if expression_query is not None else ""}
                 RETURN n
             """,
             parameters=expression_parameters,
@@ -571,8 +564,8 @@ class NodeModel(BaseModel):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`)
+                WHERE {expression_query if expression_query is not None else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
             """,
@@ -618,15 +611,14 @@ class NodeModel(BaseModel):
         """
         logging.info("Deleting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_match_query,
-            expression_where_query,
+            expression_query,
             expression_parameters,
         ) = cls._query_builder.build_node_expressions(expressions=expressions)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`)
+                WHERE {expression_query if expression_query is not None else ""}
                 DETACH DELETE n
                 RETURN n
             """,
@@ -653,15 +645,14 @@ class NodeModel(BaseModel):
         """
         logging.info("Deleting all nodes of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_match_query,
-            expression_where_query,
+            expression_query,
             expression_parameters,
         ) = cls._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`)
+                WHERE {expression_query if expression_query is not None else ""}
                 DETACH DELETE n
                 RETURN n
             """,
@@ -684,15 +675,14 @@ class NodeModel(BaseModel):
         """
         logging.info("Getting count of nodes of model %s matching expressions %s", cls.__name__, expressions)
         (
-            expression_match_query,
-            expression_where_query,
+            expression_query,
             expression_parameters,
         ) = cls._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`) {f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH (n:`{":".join(cls.__model_settings__.labels)}`)
+                WHERE {expression_query if expression_query is not None else ""}
                 RETURN count(n)
             """,
             parameters=expression_parameters,
