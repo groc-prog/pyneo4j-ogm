@@ -18,7 +18,7 @@ from neo4j_ogm.exceptions import (
 )
 from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import TypedNodeExpression, TypedQueryOptions
+from neo4j_ogm.queries.types import TypedNodeExpressions, TypedQueryOptions
 
 if TYPE_CHECKING:
     from neo4j_ogm.fields.relationship_property import RelationshipProperty
@@ -298,7 +298,7 @@ class NodeModel(BaseModel):
         target_model: Type[T] | str,
         min_hops: int = 1,
         max_hops: int = 1,
-        expressions: TypedNodeExpression | None = None,
+        expressions: TypedNodeExpressions | None = None,
         options: TypedQueryOptions | None = None,
     ) -> List[T]:
         """
@@ -308,7 +308,7 @@ class NodeModel(BaseModel):
             target_node (Type[T] | str): Model or model name of the target node.
             min_hops (int, optional): The lower hops limit when querying for nodes. Defaults to 1.
             max_hops (int, optional): The upper hops limit when querying for nodes. Defaults to 1.
-            expressions (TypedNodeExpression | None, optional): Expressions applied to the target nodes. Defaults to
+            expressions (TypedNodeExpressions | None, optional): Expressions applied to the target nodes. Defaults to
                 None.
             options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
@@ -361,13 +361,13 @@ class NodeModel(BaseModel):
         return instances
 
     @classmethod
-    async def find_one(cls: Type[T], expressions: TypedNodeExpression) -> T | None:
+    async def find_one(cls: Type[T], expressions: TypedNodeExpressions) -> T | None:
         """
         Finds the first node that matches `expressions` and returns it. If no matching node is found, `None`
         is returned instead.
 
         Args:
-            expressions (TypedNodeExpression): Expressions applied to the query.
+            expressions (TypedNodeExpressions): Expressions applied to the query.
 
         Returns:
             T | None: A instance of the model or None if no match is found.
@@ -401,13 +401,13 @@ class NodeModel(BaseModel):
 
     @classmethod
     async def find_many(
-        cls: Type[T], expressions: TypedNodeExpression | None = None, options: TypedQueryOptions | None = None
+        cls: Type[T], expressions: TypedNodeExpressions | None = None, options: TypedQueryOptions | None = None
     ) -> List[T]:
         """
         Finds the all nodes that matches `expressions` and returns them.
 
         Args:
-            expressions (TypedNodeExpression | None, optional): Expressions applied to the query. Defaults to None.
+            expressions (TypedNodeExpressions | None, optional): Expressions applied to the query. Defaults to None.
             options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
@@ -447,7 +447,7 @@ class NodeModel(BaseModel):
 
     @classmethod
     async def update_one(
-        cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpression, new: bool = False
+        cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpressions, new: bool = False
     ) -> T:
         """
         Finds the first node that matches `expressions` and updates it with the values defined by `update`. If no match
@@ -456,7 +456,7 @@ class NodeModel(BaseModel):
         Args:
             update (Dict[str, Any]): Values to update the node properties with. If `upsert` is set to `True`, all
                 required values defined on model must be present, else the model validation will fail.
-            expressions (TypedNodeExpression): Expressions applied to the query. Defaults to None.
+            expressions (TypedNodeExpressions): Expressions applied to the query. Defaults to None.
             new (bool, optional): Whether to return the updated node. By default, the old node is returned. Defaults to
                 False.
 
@@ -509,7 +509,7 @@ class NodeModel(BaseModel):
 
     @classmethod
     async def update_many(
-        cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpression | None = None, new: bool = False
+        cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpressions | None = None, new: bool = False
     ) -> List[T] | T | None:
         """
         Finds all nodes that match `expressions` and updates them with the values defined by `update`.
@@ -517,7 +517,7 @@ class NodeModel(BaseModel):
         Args:
             update (Dict[str, Any]): Values to update the node properties with. If `upsert` is set to `True`, all
                 required values defined on model must be present, else the model validation will fail.
-            expressions (TypedNodeExpression): Expressions applied to the query. Defaults to None.
+            expressions (TypedNodeExpressions): Expressions applied to the query. Defaults to None.
             new (bool, optional): Whether to return the updated nodes. By default, the old nodes is returned. Defaults
                 to False.
 
@@ -602,13 +602,13 @@ class NodeModel(BaseModel):
         return old_instances
 
     @classmethod
-    async def delete_one(cls: Type[T], expressions: TypedNodeExpression) -> int:
+    async def delete_one(cls: Type[T], expressions: TypedNodeExpressions) -> int:
         """
         Finds the first node that matches `expressions` and deletes it. If no match is found, a `NoResultsFound` is
         raised.
 
         Args:
-            expressions (TypedNodeExpression): Expressions applied to the query. Defaults to None.
+            expressions (TypedNodeExpressions): Expressions applied to the query. Defaults to None.
 
         Raises:
             NoResultsFound: Raised if the query did not return the node.
@@ -641,12 +641,12 @@ class NodeModel(BaseModel):
         return len(results)
 
     @classmethod
-    async def delete_many(cls: Type[T], expressions: TypedNodeExpression | None = None) -> int:
+    async def delete_many(cls: Type[T], expressions: TypedNodeExpressions | None = None) -> int:
         """
         Finds all nodes that match `expressions` and deletes them.
 
         Args:
-            expressions (TypedNodeExpression): Expressions applied to the query. Defaults to None.
+            expressions (TypedNodeExpressions): Expressions applied to the query. Defaults to None.
 
         Returns:
             int: The number of deleted nodes.
@@ -672,12 +672,12 @@ class NodeModel(BaseModel):
         return len(results)
 
     @classmethod
-    async def count(cls: Type[T], expressions: TypedNodeExpression | None = None) -> int:
+    async def count(cls: Type[T], expressions: TypedNodeExpressions | None = None) -> int:
         """
         Counts all nodes which match the provided `expressions` parameter.
 
         Args:
-            expressions (TypedNodeExpression | None, optional): Expressions applied to the query. Defaults to None.
+            expressions (TypedNodeExpressions | None, optional): Expressions applied to the query. Defaults to None.
 
         Returns:
             int: The number of nodes matched by the query.
