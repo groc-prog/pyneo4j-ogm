@@ -45,14 +45,6 @@ NumericLessThanEqualsOperator = TypedDict(
     },
 )
 
-QuerySizeOperator = Union[
-    NumericEqualsOperator,
-    NumericGreaterThanOperator,
-    NumericGreaterThanEqualsOperator,
-    NumericLessThanOperator,
-    NumericLessThanEqualsOperator,
-]
-
 QueryOperators = TypedDict(
     "QueryOperators",
     {
@@ -65,7 +57,14 @@ QueryOperators = TypedDict(
         "$in": Union[QueryDataTypes, List[QueryDataTypes]],
         "$nin": Union[QueryDataTypes, List[QueryDataTypes]],
         "$all": List[QueryDataTypes],
-        "$size": Union[QuerySizeOperator, NumericQueryDataType],
+        "$size": Union[
+            NumericEqualsOperator,
+            NumericGreaterThanOperator,
+            NumericGreaterThanEqualsOperator,
+            NumericLessThanOperator,
+            NumericLessThanEqualsOperator,
+            NumericQueryDataType,
+        ],
         "$contains": str,
         "$icontains": str,
         "$startsWith": str,

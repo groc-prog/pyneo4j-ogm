@@ -1,220 +1,142 @@
 """
-This module contains pydantic models for runtime validation of operators in query expressions
-and query options.
+This module contains pydantic models for validating and normalizing query filters.
 """
 import logging
 from copy import deepcopy
-from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator
 
-from neo4j_ogm.queries.types import RelationshipDirection, TAnyExcludeListDict
+from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes
 
 
-def _validate_properties(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-    validated_properties: Dict[str, Any] = deepcopy(values)
+def _normalize_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    validated_values: Dict[str, Any] = deepcopy(values)
 
     for property_name, property_value in values.items():
         if property_name not in cls.__fields__.keys():
             try:
-                validated = CombinedExpressionValidator.parse_obj(property_value)
-                validated_properties[property_name] = validated.dict(
-                    by_alias=True, exclude_none=True, exclude_unset=True
-                )
-                logging.debug("Validated property %s", property_name)
+                validated = QueryOperatorModel.parse_obj(property_value)
+                validated_values[property_name] = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
             except ValidationError:
-                validated_properties.pop(property_name)
-                logging.debug("Omitting %s", property_name)
+                validated_values.pop(property_name)
+                logging.debug("Invalid field %s found, omitting field", property_name)
 
-    return validated_properties
+    return validated_values
 
 
-class QueryOrder(str, Enum):
+class NumericEqualsOperatorModel(BaseModel):
     """
-    Available query orders.
-    """
-
-    ASC = "ASC"
-    DESC = "DESC"
-
-
-class QueryOptionsValidator(BaseModel):
-    """
-    Validation model for query options.
+    Validator for `$eq` operator in combined use with `$size` operator.
     """
 
-    limit: Optional[int] = Field(default=None, ge=1)
-    skip: Optional[int] = Field(default=None, ge=0)
-    sort: Optional[Union[str, List[str]]] = None
-    order: Optional[QueryOrder] = None
+    eq: QueryDataTypes = Field(alias="$eq")
+
+
+class NumericGreaterThanOperatorModel(BaseModel):
+    """
+    Validator for `$gt` operator in combined use with `$size` operator.
+    """
+
+    gt: QueryDataTypes = Field(alias="$gt")
+
+
+class NumericGreaterThanEqualsOperatorModel(BaseModel):
+    """
+    Validator for `$gte` operator in combined use with `$size` operator.
+    """
+
+    gte: QueryDataTypes = Field(alias="$gte")
+
+
+class NumericLessThanOperatorModel(BaseModel):
+    """
+    Validator for `$lt` operator in combined use with `$size` operator.
+    """
+
+    lt: QueryDataTypes = Field(alias="$lt")
+
+
+class NumericLessThanEqualsOperatorModel(BaseModel):
+    """
+    Validator for `$lte` operator in combined use with `$size` operator.
+    """
+
+    lte: QueryDataTypes = Field(alias="$lte")
+
+
+class QueryOperatorModel(BaseModel):
+    """
+    Validator for query operators defined in a property.
+    """
+
+    eq: Optional[QueryDataTypes] = Field(alias="$eq")
+    neq: Optional[QueryDataTypes] = Field(alias="$neq")
+    gt: Optional[NumericQueryDataType] = Field(alias="$gt")
+    gte: Optional[NumericQueryDataType] = Field(alias="$gte")
+    lt: Optional[NumericQueryDataType] = Field(alias="$lt")
+    lte: Optional[NumericQueryDataType] = Field(alias="$lte")
+    in_: Optional[Union[QueryDataTypes, List[QueryDataTypes]]] = Field(alias="$in")
+    nin: Optional[Union[QueryDataTypes, List[QueryDataTypes]]] = Field(alias="$nin")
+    all: Optional[List[QueryDataTypes]] = Field(alias="$all")
+    size: Optional[
+        Union[
+            NumericQueryDataType,
+            NumericEqualsOperatorModel,
+            NumericGreaterThanOperatorModel,
+            NumericGreaterThanEqualsOperatorModel,
+            NumericLessThanOperatorModel,
+            NumericLessThanEqualsOperatorModel,
+        ]
+    ] = Field(alias="$size")
+    contains: Optional[str] = Field(alias="$contains")
+    i_contains: Optional[str] = Field(alias="$icontains")
+    starts_with: Optional[str] = Field(alias="$startsWith")
+    i_starts_with: Optional[str] = Field(alias="$istartsWith")
+    ends_with: Optional[str] = Field(alias="$endsWith")
+    i_ends_with: Optional[str] = Field(alias="$iendsWith")
+    regex: Optional[str] = Field(alias="$regex")
+    not_: Optional["QueryOperatorModel"] = Field(alias="$not")
+    and_: Optional[List["QueryOperatorModel"]] = Field(alias="$and")
+    or_: Optional[List["QueryOperatorModel"]] = Field(alias="$or")
+    xor: Optional[List["QueryOperatorModel"]] = Field(alias="$xor")
+
+
+class NodeFiltersModel(BaseModel):
+    """
+    Validator model for node filters.
+    """
+
+    element_id: Optional[str] = Field(alias="$elementId")
+    id: Optional[int] = Field(alias="$id")
+    labels: Optional[Union[str, List[str]]] = Field(alias="$labels")
+
+    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
     class Config:
         """
-        Pydantic configuration options.
-        """
-
-        use_enum_values = True
-
-
-class StringComparisonValidator(BaseModel):
-    """
-    Validation model for string comparison operators defined in expressions.
-    """
-
-    contains_operator: Optional[str] = Field(alias="$contains", extra={"parser": "{property_name} CONTAINS ${value}"})
-    starts_with_operator: Optional[str] = Field(
-        alias="$startsWith", extra={"parser": "{property_name} STARTS WITH ${value}"}
-    )
-    ends_with_operator: Optional[str] = Field(alias="$endsWith", extra={"parser": "{property_name} ENDS WITH ${value}"})
-    regex_operator: Optional[str] = Field(alias="$regex", extra={"parser": "{property_name} =~ ${value}"})
-
-
-class ListComparisonValidator(BaseModel):
-    """
-    Validation model for list comparison operators defined in expressions.
-    """
-
-    in_operator: Optional[Union[List[TAnyExcludeListDict], TAnyExcludeListDict]] = Field(
-        alias="$in", extra={"parser": "{property_name} IN {value}"}
-    )
-
-
-class NumericComparisonValidator(BaseModel):
-    """
-    Validation model for numerical comparison operators defined in expressions.
-    """
-
-    gt_operator: Optional[Union[int, float]] = Field(alias="$gt", extra={"parser": "{property_name} > ${value}"})
-    gte_operator: Optional[Union[int, float]] = Field(alias="$gte", extra={"parser": "{property_name} >= ${value}"})
-    lt_operator: Optional[Union[int, float]] = Field(alias="$lt", extra={"parser": "{property_name} < ${value}"})
-    lte_operator: Optional[Union[int, float]] = Field(alias="$lte", extra={"parser": "{property_name} <= ${value}"})
-
-
-class BaseComparisonValidator(BaseModel):
-    """
-    Validation model for general comparison operators defined in expressions.
-    """
-
-    eq_operator: Optional[TAnyExcludeListDict] = Field(alias="$eq", extra={"parser": "{property_name} = ${value}"})
-    ne_operator: Optional[TAnyExcludeListDict] = Field(alias="$ne", extra={"parser": "NOT({property_name} = ${value})"})
-
-
-class ComparisonValidator(
-    NumericComparisonValidator,
-    StringComparisonValidator,
-    ListComparisonValidator,
-    BaseComparisonValidator,
-):
-    """
-    Validation model which combines all other comparison operators.
-    """
-
-
-class LogicalValidator(BaseModel):
-    """
-    Validation model for logical operators defined in expressions.
-    """
-
-    and_operator: Optional[List[Union["CombinedExpressionValidator", "LogicalValidator"]]] = Field(
-        alias="$and", extra={"parser": "AND"}
-    )
-    or_operator: Optional[List[Union["CombinedExpressionValidator", "LogicalValidator"]]] = Field(
-        alias="$or", extra={"parser": "OR"}
-    )
-    xor_operator: Optional[List[Union["CombinedExpressionValidator", "LogicalValidator"]]] = Field(
-        alias="$xor", extra={"parser": "XOR"}
-    )
-
-
-class ElementValidator(BaseModel):
-    """
-    Validation model for neo4j element operators defined in expressions.
-    """
-
-    element_id_operator: Optional[str] = Field(alias="$elementId", extra={"parser": "elementId({ref}) = ${value}"})
-    id_operator: Optional[int] = Field(alias="$id", extra={"parser": "ID({ref}) = ${value}"})
-
-    property_validator = root_validator(allow_reuse=True)(_validate_properties)
-
-    class Config:
-        """
-        Pydantic configurations.
+        Pydantic configuration
         """
 
         extra = Extra.allow
         use_enum_values = True
 
 
-class CombinedExpressionValidator(LogicalValidator, ComparisonValidator):
+class RelationshipFiltersModel(BaseModel):
     """
-    Validation model which combines all other validators.
-    """
-
-    not_operator: Optional["CombinedExpressionValidator"] = Field(alias="$not")
-    all_operator: Optional[List["CombinedExpressionValidator"]] = Field(alias="$all")
-    size_operator: Optional[Union["NumericComparisonValidator", "BaseComparisonValidator"]] = Field(alias="$size")
-    exists_operator: Optional[bool] = Field(alias="$exists")
-
-
-class NodeValidator(ElementValidator):
-    """
-    Validation model for node pattern expressions.
+    Validator model for relationship filters.
     """
 
-    pattern_operator: Optional[List["NodePatternValidator"]] = Field(alias="$patterns")
+    element_id: Optional[str] = Field(alias="$elementId")
+    id: Optional[int] = Field(alias="$id")
+    labels: Optional[Union[str, List[str]]] = Field(alias="$labels")
 
+    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
-class RelationshipValidator(ElementValidator):
-    """
-    Validation model for relationship pattern expressions.
-    """
+    class Config:
+        """
+        Pydantic configuration
+        """
 
-    pattern_operator: Optional[List["RelationshipPatternValidator"]] = Field(alias="$patterns")
-
-
-class NodeElementValidator(ElementValidator):
-    """
-    Validation model for neo4j node element operators defined in expressions.
-    """
-
-    labels_operator: Optional[List[str]] = Field(alias="$labels")
-
-
-class RelationshipElementValidator(ElementValidator):
-    """
-    Validation model for neo4j relationship element operators defined in expressions.
-    """
-
-    type_operator: Optional[Union[str, List[str]]] = Field(alias="$type")
-
-
-class NodePatternValidator(BaseModel):
-    """
-    Validation model for node patterns used in node queries.
-    """
-
-    node_operator: Optional["NodeElementValidator"] = Field(alias="$node")
-    direction_operator: Optional["RelationshipDirection"] = Field(
-        alias="$direction", default=RelationshipDirection.BOTH
-    )
-    relationship_operator: Optional["RelationshipElementValidator"] = Field(alias="$relationship")
-    negate_operator: Optional[bool] = Field(default=False, alias="$negate")
-
-
-class RelationshipPatternValidator(BaseModel):
-    """
-    Validation model for relationship patterns used in node queries.
-    """
-
-    start_node_operator: Optional["NodeElementValidator"] = Field(alias="$startNode")
-    end_node_operator: Optional["NodeElementValidator"] = Field(alias="$endNode")
-    direction_operator: Optional["RelationshipDirection"] = Field(
-        alias="$direction", default=RelationshipDirection.BOTH
-    )
-    negate_operator: Optional[bool] = Field(default=False, alias="$negate")
-
-
-# Update forward-refs
-NodeValidator.update_forward_refs()
-RelationshipValidator.update_forward_refs()
+        extra = Extra.allow
+        use_enum_values = True
