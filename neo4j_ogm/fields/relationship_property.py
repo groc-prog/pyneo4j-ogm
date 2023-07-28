@@ -3,6 +3,7 @@ This module holds the `RelationshipProperty` class which can be used to make rel
 on a `NodeModel` models field.
 """
 import logging
+from enum import Enum
 from typing import Any, Dict, List, Type, TypeVar
 
 from neo4j.graph import Node
@@ -23,6 +24,15 @@ from neo4j_ogm.queries.types import RelationshipPropertyDirection, TypedProperty
 
 T = TypeVar("T", bound=NodeModel)
 U = TypeVar("U", bound=RelationshipModel)
+
+
+class RelationshipPropertyDirection(str, Enum):
+    """
+    Available relationship directions for relationship properties.
+    """
+
+    INCOMING = "INCOMING"
+    OUTGOING = "OUTGOING"
 
 
 class RelationshipProperty:

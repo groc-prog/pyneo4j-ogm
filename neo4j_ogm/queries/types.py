@@ -1,184 +1,95 @@
 """
-This module contains types for options passed to the `QueryBuilder` class.
+This module contains type definitions for query options and filters.
 """
 from datetime import date, datetime, time, timedelta
-from enum import Enum
-from typing import Dict, List, Optional, TypedDict, Union
+from typing import Dict, List, TypedDict, Union
 
-TAnyExcludeListDict = bool | int | float | str | bytes | datetime | date | time | timedelta
+NumericQueryDataType = Union[int, float]
+QueryDataTypes = Union[NumericQueryDataType, bool, str, bytes, datetime, date, time, timedelta]
 
-
-class RelationshipDirection(str, Enum):
-    """
-    Available relationship directions for pattern expressions.
-    """
-
-    INCOMING = "INCOMING"
-    OUTGOING = "OUTGOING"
-    BOTH = "BOTH"
-
-
-class RelationshipPropertyDirection(str, Enum):
-    """
-    Available relationship directions for relationship properties.
-    """
-
-    INCOMING = "INCOMING"
-    OUTGOING = "OUTGOING"
-
-
-class TypedQueryOptions(TypedDict):
-    """
-    Type definition for query options.
-    """
-
-    limit: int | None
-    skip: int | None
-    sort: List[str] | str | None
-    order: str | None
-
-
-TypedNodeExpression = TypedDict(
-    "TypedNodeExpression",
-    {"$elementId": Optional[str], "$id": Optional[int], "$patterns": Optional[List["TypedNodePatternExpression"]]},
-)
-
-TypedRelationshipExpression = TypedDict(
-    "TypedRelationshipExpression",
+# We need to define 5 different typed dictionaries here because the `$size` operator can only be one of the following,
+# which means we have to create a Union of the five listed below to not get any more type hints if one has already been
+# used.
+NumericEqualsOperator = TypedDict(
+    "NumericEqualsOperator",
     {
-        "$elementId": Optional[str],
-        "$id": Optional[int],
-        "$patterns": Optional[List["TypedRelationshipPatternExpression"]],
+        "$eq": NumericQueryDataType,
     },
 )
 
-TypedNodeElementExpression = TypedDict(
-    "TypedNodeElementExpression",
+NumericGreaterThanOperator = TypedDict(
+    "NumericGreaterThanOperator",
     {
-        "$elementId": Optional[str],
-        "$id": Optional[int],
-        "$labels": Optional[List[str]],
+        "$gt": NumericQueryDataType,
     },
 )
 
-TypedRelationshipElementExpression = TypedDict(
-    "TypedRelationshipElementExpression",
-    {"$elementId": Optional[str], "$id": Optional[int], "$type": Optional[str | List[str]]},
-)
-
-TypedNodePatternExpression = TypedDict(
-    "TypedNodePatternExpression",
+NumericGreaterThanEqualsOperator = TypedDict(
+    "NumericGreaterThanEqualsOperator",
     {
-        "$node": Optional[Union[TypedNodeElementExpression, Dict[str, "TypedCombinedExpression"]]],
-        "$direction": Optional[RelationshipDirection],
-        "$relationship": Optional[Union[TypedRelationshipElementExpression, Dict[str, "TypedCombinedExpression"]]],
-        "$negate": Optional[bool],
+        "$gte": NumericQueryDataType,
     },
 )
 
-TypedRelationshipPatternExpression = TypedDict(
-    "TypedRelationshipPatternExpression",
+NumericLessThanOperator = TypedDict(
+    "NumericLessThanOperator",
     {
-        "$startNode": Optional[Union[TypedNodeElementExpression, Dict[str, "TypedCombinedExpression"]]],
-        "$direction": Optional[RelationshipDirection],
-        "$endNode": Optional[Union[TypedNodeElementExpression, Dict[str, "TypedCombinedExpression"]]],
-        "$negate": Optional[bool],
+        "$lt": NumericQueryDataType,
     },
 )
 
-
-TypedStringComparison = TypedDict(
-    "TypedStringComparison",
+NumericLessThanEqualsOperator = TypedDict(
+    "NumericLessThanEqualsOperator",
     {
-        "$contains": Optional[str],
-        "$startsWith": Optional[str],
-        "$endsWith": Optional[str],
-        "$regex": Optional[str],
+        "$lte": NumericQueryDataType,
     },
 )
 
-TypedListComparison = TypedDict(
-    "TypedListComparison",
+QuerySizeOperator = Union[
+    NumericEqualsOperator,
+    NumericGreaterThanOperator,
+    NumericGreaterThanEqualsOperator,
+    NumericLessThanOperator,
+    NumericLessThanEqualsOperator,
+]
+
+QueryOperators = TypedDict(
+    "QueryOperators",
     {
-        "$in": Optional[str | List[TAnyExcludeListDict]],
+        "$eq": QueryDataTypes,
+        "$neq": QueryDataTypes,
+        "$gt": NumericQueryDataType,
+        "$gte": NumericQueryDataType,
+        "$lt": NumericQueryDataType,
+        "$lte": NumericQueryDataType,
+        "$in": Union[QueryDataTypes, List[QueryDataTypes]],
+        "$nin": Union[QueryDataTypes, List[QueryDataTypes]],
+        "$all": List[QueryDataTypes],
+        "$size": Union[QuerySizeOperator, NumericQueryDataType],
+        "$contains": str,
+        "$icontains": str,
+        "$startsWith": str,
+        "$istartsWith": str,
+        "$endsWith": str,
+        "$iendsWith": str,
+        "$regex": str,
+        "$not": "QueryOperators",
+        "$and": List["QueryOperators"],
+        "$or": List["QueryOperators"],
+        "$xor": List["QueryOperators"],
     },
+    total=False,
 )
 
-TypedNumericComparison = TypedDict(
-    "TypedNumericComparison",
-    {
-        "$gt": Optional[int | float],
-        "$gte": Optional[int | float],
-        "$lt": Optional[int | float],
-        "$lte": Optional[int | float],
-    },
+# We need to define different interfaces for nodes and relationships to not show invalid operants for the model type.
+QueryNodeOperators = TypedDict(
+    "QueryNodeOperators", {"$elementId": str, "$id": int, "$labels": Union[str, List[str]]}, total=False
 )
 
-TypedBaseComparison = TypedDict(
-    "TypedBaseComparison",
-    {
-        "$eq": Optional[TAnyExcludeListDict],
-        "$ne": Optional[TAnyExcludeListDict],
-    },
+QueryRelationshipOperators = TypedDict(
+    "QueryRelationshipOperators", {"$elementId": str, "$id": int, "$type": Union[str, List[str]]}, total=False
 )
 
-
-TypedSizeComparisonExpression = TypedDict(
-    "TypedComparisonExpression",
-    {
-        "$eq": Optional[TAnyExcludeListDict],
-        "$ne": Optional[TAnyExcludeListDict],
-        "$gt": Optional[int | float],
-        "$gte": Optional[int | float],
-        "$lt": Optional[int | float],
-        "$lte": Optional[int | float],
-    },
-)
-
-
-TypedLogicalExpression = TypedDict(
-    "TypedLogicalExpression",
-    {
-        "$and": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
-        "$or": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
-        "$xor": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
-    },
-)
-
-
-TypedElementExpression = TypedDict(
-    "TypedElementExpression",
-    {
-        "$elementId": Optional[str],
-        "$id": Optional[int],
-    },
-)
-
-
-TypedCombinedExpression = TypedDict(
-    "TypedCombinedExpression",
-    {
-        "$not": Optional["TypedCombinedExpression"],
-        "$all": Optional[List["TypedCombinedExpression"]],
-        "$size": Optional["TypedSizeComparisonExpression"],
-        "$exists": Optional[bool],
-        "$eq": Optional[TAnyExcludeListDict],
-        "$ne": Optional[TAnyExcludeListDict],
-        "$gt": Optional[int | float],
-        "$gte": Optional[int | float],
-        "$lt": Optional[int | float],
-        "$lte": Optional[int | float],
-        "$in": Optional[List[TAnyExcludeListDict] | TAnyExcludeListDict],
-        "$contains": Optional[str],
-        "$startsWith": Optional[str],
-        "$endsWith": Optional[str],
-        "$regex": Optional[str],
-        "$and": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
-        "$or": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
-        "$xor": Optional[List[Union["TypedCombinedExpression", "TypedLogicalExpression"]]],
-    },
-)
-
-TypedNodeExpressions = Union[TypedNodeExpression, Dict[str, TypedCombinedExpression]]
-TypedRelationshipExpressions = Union[TypedRelationshipExpression, Dict[str, TypedCombinedExpression]]
-TypedPropertyExpressions = Union[TypedElementExpression, Dict[str, TypedCombinedExpression]]
+# The actual interfaces used to describe query filters
+NodeFilters = Union[Dict[str, QueryOperators], QueryNodeOperators]
+RelationshipFilters = Union[Dict[str, QueryOperators], QueryRelationshipOperators]
