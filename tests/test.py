@@ -88,18 +88,9 @@
 # asyncio.run(main())
 
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.validators import QueryOptionsOrder
 
 builder = QueryBuilder()
 
-match_ = builder.relationship_match(
-    ref="rel",
-    type_="FRIENDS",
-    direction="OUTGOING",
-    start_node_labels=["Adult", "Child"],
-    start_node_ref="adult",
-    end_node_labels=["Adult", "Child"],
-    end_node_ref="adult2",
-)
+builder.node_filters({})
 
 print("DONE")

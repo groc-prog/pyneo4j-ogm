@@ -1,18 +1,26 @@
 """
 This module holds the base node class `NodeModel` which is used to define database models for nodes.
+It provides base functionality like de-/inflation and validation and methods for interacting with
+the database for CRUD operations on nodes.
 """
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Set, Type, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Set, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
+from neo4j_ogm.exceptions import (
+    InflationFailure,
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    MissingFilters,
+    NoResultsFound,
+)
 from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import TypedNodeExpressions, TypedQueryOptions
+from neo4j_ogm.queries.types import NodeFilters, QueryOptions
 
 if TYPE_CHECKING:
     from neo4j_ogm.fields.relationship_property import RelationshipProperty
@@ -24,11 +32,13 @@ T = TypeVar("T", bound="NodeModel")
 
 def ensure_alive(func: Callable):
     """
-    Decorator which ensures that a instance has not been destroyed and has been hydrated before running any queries.
+    Decorator which ensures that a instance has not been destroyed and has been hydrated before
+    running any queries.
 
     Raises:
-        InstanceDestroyed: Raised if the method is called on a instance which has been destroyed
-        InstanceNotHydrated: Raised if the method is called on a instance which has been saved to the database
+        InstanceDestroyed: Raised if the method is called on a instance which has been destroyed.
+        InstanceNotHydrated: Raised if the method is called on a instance which has been saved to
+            the database.
     """
 
     async def decorator(self, *args, **kwargs):
@@ -46,8 +56,8 @@ def ensure_alive(func: Callable):
 
 class NodeModel(BaseModel):
     """
-    Base model for all node models. Every node model should inherit from this class to have needed base
-    functionality like de-/inflation and validation.
+    Base model for all node models. Every node model should inherit from this class to define a
+    model.
     """
 
     __model_settings__: ClassVar[NodeModelSettings]
@@ -58,19 +68,17 @@ class NodeModel(BaseModel):
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: Set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
-    _element_id: str | None = PrivateAttr(default=None)
+    _element_id: Union[str, None] = PrivateAttr(default=None)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+        # Build relationship properties
         for _, property_name in self.__dict__.items():
             if hasattr(property_name, "_build_property"):
                 cast(RelationshipProperty, property_name)._build_property(self)
 
     def __init_subclass__(cls) -> None:
-        """
-        Filters BaseModel and dict instances in the models properties for serialization.
-        """
         cls._client = Neo4jClient()
         cls._query_builder = QueryBuilder()
 
@@ -82,7 +90,7 @@ class NodeModel(BaseModel):
             logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
             cls.__model_settings__.labels = (cls.__name__.capitalize(),)
         elif hasattr(cls.__model_settings__, "labels") and isinstance(cls.__model_settings__.labels, str):
-            logging.debug("str class provided as labels, converting to tuple")
+            logging.debug("str class %s provided as labels, converting to tuple", cls.__model_settings__.labels)
             setattr(cls.__model_settings__, "labels", tuple(cls.__model_settings__.labels))
 
         logging.debug("Collecting dict and model fields")
@@ -105,12 +113,16 @@ class NodeModel(BaseModel):
 
         return super().__setattr__(name, value)
 
+    def __str__(self) -> str:
+        hydration_msg = self._element_id if self._element_id is not None else "not hydrated"
+        return f"{self.__class__.__name__}({hydration_msg})"
+
     def deflate(self) -> Dict[str, Any]:
         """
         Deflates the current model instance into a python dictionary which can be stored in Neo4j.
 
         Returns:
-            Dict[str, Any]: The deflated model instance
+            Dict[str, Any]: The deflated model instance.
         """
         logging.debug("Deflating model to storable dictionary")
         deflated: Dict[str, Any] = json.loads(self.json(exclude=self.__relationships_properties))
@@ -135,13 +147,13 @@ class NodeModel(BaseModel):
         Inflates a node instance into a instance of the current model.
 
         Args:
-            node (Node): Node to inflate
+            node (Node): Node to inflate.
 
         Raises:
-            InflationFailure: Raised if inflating the node fails
+            InflationFailure: Raised if inflating the node fails.
 
         Returns:
-            T: A new instance of the current model with the properties from the node instance
+            T: A new instance of the current model with the properties from the node instance.
         """
         inflated: Dict[str, Any] = {}
 
@@ -151,6 +163,7 @@ class NodeModel(BaseModel):
 
             if property_name in cls.__dict_properties or property_name in cls.__model_properties:
                 try:
+                    logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
                     inflated[property_name] = json.loads(property_value)
                 except Exception as exc:
                     logging.error("Failed to inflate property %s of model %s", property_name, cls.__name__)
@@ -165,7 +178,7 @@ class NodeModel(BaseModel):
     async def create(self: T) -> T:
         """
         Creates a new node from the current instance. After the method is finished, a newly created
-        instance is seen as `alive`.
+        instance is seen as `alive` and any methods can be called on it.
 
         Raises:
             NoResultsFound: Raised if the query did not return the created node.
@@ -235,8 +248,8 @@ class NodeModel(BaseModel):
     @ensure_alive
     async def delete(self) -> None:
         """
-        Deletes the corresponding node in the database and marks this instance as destroyed. If another
-        method is called on this instance, an `InstanceDestroyed` will be raised.
+        Deletes the corresponding node in the database and marks this instance as destroyed. If
+        another method is called on this instance, an `InstanceDestroyed` will be raised.
 
         Raises:
             NoResultsFound: Raised if the query did not return the updated node.
@@ -287,32 +300,31 @@ class NodeModel(BaseModel):
         logging.info("Refreshed node %s", self._element_id)
 
     @classmethod
-    async def find_one(cls: Type[T], expressions: TypedNodeExpressions) -> T | None:
+    async def find_one(cls: Type[T], filters: NodeFilters) -> Union[T, None]:
         """
-        Finds the first node that matches `expressions` and returns it. If no matching node is found, `None`
-        is returned instead.
+        Finds the first node that matches `filters` and returns it. If no matching node is found,
+        `None` is returned instead.
 
         Args:
-            expressions (TypedNodeExpressions): Expressions applied to the query.
+            filters (NodeFilters): The filters to apply to the query.
 
         Returns:
             T | None: A instance of the model or None if no match is found.
         """
-        logging.info("Getting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_node_expressions(expressions=expressions)
+        logging.info("Getting first encountered node of model %s matching filters %s", cls.__name__, filters)
+        cls._query_builder.node_filters(filters=filters)
+
+        if cls._query_builder.query["where"] == "":
+            raise MissingFilters()
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`){f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.node_match(cls.__model_settings__.labels)}
+                WHERE {cls._query_builder.query['where']}
                 RETURN n
                 LIMIT 1
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         logging.debug("Checking if query returned a result")
@@ -327,34 +339,36 @@ class NodeModel(BaseModel):
 
     @classmethod
     async def find_many(
-        cls: Type[T], expressions: TypedNodeExpressions | None = None, options: TypedQueryOptions | None = None
+        cls: Type[T], filters: Union[NodeFilters, None] = None, options: Union[QueryOptions, None] = None
     ) -> List[T]:
         """
-        Finds the all nodes that matches `expressions` and returns them.
+        Finds the all nodes that matches `filters` and returns them. If no matches are found, an
+        empty list is returned instead.
 
         Args:
-            expressions (TypedNodeExpressions | None, optional): Expressions applied to the query. Defaults to None.
-            options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
+            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
+            options (QueryOptions, optional): The options to apply to the query. Defaults to None.
+
+        Raises:
+            MissingFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
             List[T]: A list of model instances.
         """
-        logging.info("Getting nodes of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
-        options_query = cls._query_builder.build_query_options(options=options if options else {})
+        logging.info("Getting nodes of model %s matching filters %s", cls.__name__, filters)
+        if filters is not None:
+            cls._query_builder.node_filters(filters=filters)
+        if options is not None:
+            cls._query_builder.query_options(options=options)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`){f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.node_match(cls.__model_settings__.labels)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN n
-                {options_query}
+                {cls._query_builder.query['options']}
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         instances: List[T] = []
@@ -372,45 +386,42 @@ class NodeModel(BaseModel):
         return instances
 
     @classmethod
-    async def update_one(
-        cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpressions, new: bool = False
-    ) -> T:
+    async def update_one(cls: Type[T], update: Dict[str, Any], filters: NodeFilters, new: bool = False) -> T:
         """
-        Finds the first node that matches `expressions` and updates it with the values defined by `update`. If no match
-        is found, a `NoResultsFound` is raised.
+        Finds the first node that matches `filters` and updates it with the values defined by
+        `update`. If no match is found, a `NoResultsFound` is raised.
 
         Args:
-            update (Dict[str, Any]): Values to update the node properties with. If `upsert` is set to `True`, all
-                required values defined on model must be present, else the model validation will fail.
-            expressions (TypedNodeExpressions): Expressions applied to the query. Defaults to None.
-            new (bool, optional): Whether to return the updated node. By default, the old node is returned. Defaults to
-                False.
+            update (Dict[str, Any]): Values to update the node properties with.
+            filters (NodeFilters): The filters to apply to the query.
+            new (bool, optional): Whether to return the updated node. By default, the old node is
+                returned. Defaults to False.
 
         Raises:
             NoResultsFound: Raised if the query did not return the node.
+            MissingFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
-            T: By default, the old node instance is returned. If `new` is set to `True`, the result will be the
-                `updated/created instance`.
+            T: By default, the old node instance is returned. If `new` is set to `True`, the result
+                will be the `updated` instance.
         """
         new_instance: T
 
-        logging.info("Updating first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        logging.debug("Getting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_node_expressions(expressions=expressions)
+        logging.info("Updating first encountered node of model %s matching filters %s", cls.__name__, filters)
+        logging.debug("Getting first encountered node of model %s matching filters %s", cls.__name__, filters)
+        cls._query_builder.node_filters(filters=filters)
+
+        if cls._query_builder.query["where"] == "":
+            raise MissingFilters()
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`){f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.node_match(cls.__model_settings__.labels)}
+                WHERE {cls._query_builder.query['where']}
                 RETURN n
                 LIMIT 1
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         logging.debug("Checking if query returned a result")
@@ -435,39 +446,38 @@ class NodeModel(BaseModel):
 
     @classmethod
     async def update_many(
-        cls: Type[T], update: Dict[str, Any], expressions: TypedNodeExpressions | None = None, new: bool = False
-    ) -> List[T] | T | None:
+        cls: Type[T], update: Dict[str, Any], filters: Union[NodeFilters, None] = None, new: bool = False
+    ) -> [List[T], T]:
         """
-        Finds all nodes that match `expressions` and updates them with the values defined by `update`.
+        Finds all nodes that match `filters` and updates them with the values defined by `update`.
 
         Args:
-            update (Dict[str, Any]): Values to update the node properties with. If `upsert` is set to `True`, all
-                required values defined on model must be present, else the model validation will fail.
-            expressions (TypedNodeExpressions): Expressions applied to the query. Defaults to None.
-            new (bool, optional): Whether to return the updated nodes. By default, the old nodes is returned. Defaults
-                to False.
+            update (Dict[str, Any]): Values to update the node properties with.
+            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
+            new (bool, optional): Whether to return the updated nodes. By default, the old nodes
+                is returned. Defaults to False.
+
+        Raises:
+            MissingFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
-            List[T] | T: By default, the old node instances are returned. If `new` is set to `True`, the result
-                will be the `updated/created instance`.
+            List[T] | T: By default, the old node instances are returned. If `new` is set to `True`,
+                the result will be the `updated/created instance`.
         """
         new_instance: T
 
-        logging.info("Updating all nodes of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_node_expressions(expressions=expressions)
+        logging.info("Updating all nodes of model %s matching filters %s", cls.__name__, filters)
+        if filters is not None:
+            cls._query_builder.node_filters(filters=filters)
 
-        logging.debug("Getting all nodes of model %s matching expressions %s", cls.__name__, expressions)
+        logging.debug("Getting all nodes of model %s matching filters %s", cls.__name__, filters)
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`){f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.node_match(cls.__model_settings__.labels)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN n
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         old_instances: List[T] = []
@@ -497,14 +507,19 @@ class NodeModel(BaseModel):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`){f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.node_match(cls.__model_settings__.labels)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
             """,
-            parameters={**deflated_properties, **expression_parameters},
+            parameters={**deflated_properties, **cls._query_builder.parameters},
         )
 
+        logging.info(
+            "Successfully updated %s nodes %s",
+            len(old_instances),
+            [getattr(instance, "_element_id") for instance in old_instances],
+        )
         if new:
             instances: List[T] = []
 
@@ -512,51 +527,39 @@ class NodeModel(BaseModel):
                 for result in result_list:
                     if result is not None:
                         instances.append(result)
-
-            logging.info(
-                "Successfully updated %s nodes %s",
-                len(instances),
-                [getattr(instance, "_element_id") for instance in instances],
-            )
             return instances
-
-        logging.info(
-            "Successfully updated %s nodes %s",
-            len(old_instances),
-            [getattr(instance, "_element_id") for instance in old_instances],
-        )
         return old_instances
 
     @classmethod
-    async def delete_one(cls: Type[T], expressions: TypedNodeExpressions) -> int:
+    async def delete_one(cls: Type[T], filters: NodeFilters) -> int:
         """
-        Finds the first node that matches `expressions` and deletes it. If no match is found, a `NoResultsFound` is
-        raised.
+        Finds the first node that matches `filters` and deletes it. If no match is found, a
+        `NoResultsFound` is raised.
 
         Args:
-            expressions (TypedNodeExpressions): Expressions applied to the query. Defaults to None.
+            filters (NodeFilters): The filters to apply to the query.
 
         Raises:
             NoResultsFound: Raised if the query did not return the node.
+            MissingFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
             int: The number of deleted nodes.
         """
-        logging.info("Deleting first encountered node of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_node_expressions(expressions=expressions)
+        logging.info("Deleting first encountered node of model %s matching filters %s", cls.__name__, filters)
+        cls._query_builder.node_filters(filters=filters)
+
+        if cls._query_builder.query["where"] == "":
+            raise MissingFilters()
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`){f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.node_match(cls.__model_settings__.labels)}
+                WHERE {cls._query_builder.query['where']}
                 DETACH DELETE n
                 RETURN n
             """,
-            parameters={**expression_parameters},
+            parameters=cls._query_builder.parameters,
         )
 
         logging.debug("Checking if query returned a result")
@@ -567,61 +570,55 @@ class NodeModel(BaseModel):
         return len(results)
 
     @classmethod
-    async def delete_many(cls: Type[T], expressions: TypedNodeExpressions | None = None) -> int:
+    async def delete_many(cls: Type[T], filters: Union[NodeFilters, None] = None) -> int:
         """
-        Finds all nodes that match `expressions` and deletes them.
+        Finds all nodes that match `filters` and deletes them.
 
         Args:
-            expressions (TypedNodeExpressions): Expressions applied to the query. Defaults to None.
+            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
 
         Returns:
             int: The number of deleted nodes.
         """
-        logging.info("Deleting all nodes of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
+        logging.info("Deleting all nodes of model %s matching filters %s", cls.__name__, filters)
+        if filters is not None:
+            cls._query_builder.node_filters(filters=filters)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`){f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.node_match(cls.__model_settings__.labels)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 DETACH DELETE n
                 RETURN n
             """,
-            parameters={**expression_parameters},
+            parameters=cls._query_builder.parameters,
         )
 
         logging.info("Deleted %s nodes", len(results))
         return len(results)
 
     @classmethod
-    async def count(cls: Type[T], expressions: TypedNodeExpressions | None = None) -> int:
+    async def count(cls: Type[T], filters: Union[NodeFilters, None] = None) -> int:
         """
-        Counts all nodes which match the provided `expressions` parameter.
+        Counts all nodes which match the provided `filters` parameter.
 
         Args:
-            expressions (TypedNodeExpressions | None, optional): Expressions applied to the query. Defaults to None.
+            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
 
         Returns:
             int: The number of nodes matched by the query.
         """
-        logging.info("Getting count of nodes of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_node_expressions(expressions=expressions if expressions is not None else {})
+        logging.info("Getting count of nodes of model %s matching filters %s", cls.__name__, filters)
+        if filters is not None:
+            cls._query_builder.node_filters(filters=filters)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(cls.__model_settings__.labels)}`){f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.node_match(cls.__model_settings__.labels)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN count(n)
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         logging.debug("Checking if query returned a result")

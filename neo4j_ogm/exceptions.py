@@ -45,7 +45,8 @@ class InvalidEntityType(Neo4jOGMException):
 
 class InvalidIndexType(Neo4jOGMException):
     """
-    Exception which gets raised if the client provides a invalid index type when creating a new index.
+    Exception which gets raised if the client provides a invalid index type when creating a new
+    index.
     """
 
     def __init__(self, available_types: List[str], index_type: str, *args: object) -> None:
@@ -54,7 +55,8 @@ class InvalidIndexType(Neo4jOGMException):
 
 class InflationFailure(Neo4jOGMException):
     """
-    Exception which gets raised when the inflation from a Neo4j node or relationship to a model instance fails.
+    Exception which gets raised when the inflation from a Neo4j node or relationship to a model
+    instance fails.
     """
 
     def __init__(self, model: str, *args: object) -> None:
@@ -88,15 +90,6 @@ class NoResultsFound(Neo4jOGMException):
         super().__init__("The query was expected to return a result, but did not", *args)
 
 
-class UnknownRelationshipDirection(Neo4jOGMException):
-    """
-    Exception which gets raised when a invalid relationship direction is provided.
-    """
-
-    def __init__(self, expected_directions: List[str], actual_direction: str, *args: object) -> None:
-        super().__init__(f"Expected one of {expected_directions}, got {actual_direction}", *args)
-
-
 class UnregisteredModel(Neo4jOGMException):
     """
     Exception which gets raised when a model, which has not been registered, gets used.
@@ -108,20 +101,12 @@ class UnregisteredModel(Neo4jOGMException):
 
 class InvalidTargetNode(Neo4jOGMException):
     """
-    Exception which gets raised when a relationship property receives a target node of the wrong model type.
+    Exception which gets raised when a relationship property receives a target node of the wrong
+    model type.
     """
 
     def __init__(self, expected_type: str, actual_type: str, *args: object) -> None:
         super().__init__(f"Expected target node to be of type {expected_type}, but got {actual_type}", *args)
-
-
-class InvalidOperator(Neo4jOGMException):
-    """
-    Exception which gets raised when a operant is invalid.
-    """
-
-    def __init__(self, message: str, *args: object) -> None:
-        super().__init__(f"Invalid operant: {message}", *args)
 
 
 class InvalidLabelOrType(Neo4jOGMException):
@@ -144,9 +129,18 @@ class TransactionInProgress(Neo4jOGMException):
 
 class NotConnectedToSourceNode(Neo4jOGMException):
     """
-    Exception which gets raised when a node is to be replaced by another, but the node is not connected to the source
-    node.
+    Exception which gets raised when a node is to be replaced by another, but the node is not
+    connected to the source node.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Node not connected to source node.", *args)
+
+
+class MissingFilters(Neo4jOGMException):
+    """
+    Exception which gets raised when a filter is required, but none or a invalid one is provided.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Missing or invalid filters. Maybe you got a typo in the query operators?", *args)

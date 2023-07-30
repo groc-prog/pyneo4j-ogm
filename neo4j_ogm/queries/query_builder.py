@@ -56,6 +56,8 @@ class QueryBuilder:
             ref (str, optional): The reference to the node. Defaults to "n".
         """
         self.ref = ref
+        self.query = {"where": "", "options": ""}
+        self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
         # Validate filters with pydantic model
@@ -76,6 +78,8 @@ class QueryBuilder:
             ref (str, optional): The reference to the relationship. Defaults to "r".
         """
         self.ref = ref
+        self.query = {"where": "", "options": ""}
+        self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
         # Validate filters with pydantic model
@@ -95,6 +99,8 @@ class QueryBuilder:
             options (Dict[str, Any]): The options to build.
             ref (str, optional): The reference to the node or relationship. Defaults to "n".
         """
+        self.query["options"] = ""
+
         # Validate options with pydantic model
         validated_options = QueryOptionModel(**options)
         validated_options = validated_options.dict(exclude_none=True, exclude_unset=True)
