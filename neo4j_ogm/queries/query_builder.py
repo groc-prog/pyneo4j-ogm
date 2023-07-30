@@ -120,7 +120,7 @@ class QueryBuilder:
             if sort_query != "":
                 sort_query = f"{sort_query} {validated_options['order']}"
             else:
-                sort_query = f"ORDER BY {validated_options['order']}"
+                sort_query = f"ORDER BY {ref} {validated_options['order']}"
 
         if "limit" in validated_options:
             limit_query = f"LIMIT {validated_options['limit']}"
