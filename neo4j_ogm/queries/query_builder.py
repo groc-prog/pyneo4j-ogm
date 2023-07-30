@@ -45,7 +45,10 @@ class QueryBuilder:
     _property_var_overwrite: Optional[str] = None
     ref: str
     parameters: Dict[str, QueryDataTypes] = {}
-    query: FilterQueries = {}
+    query: FilterQueries = {
+        "where": "",
+        "options": "",
+    }
 
     def node_filters(self, filters: NodeFilters, ref: str = "n") -> None:
         """
