@@ -30,7 +30,7 @@ class NumericEqualsOperatorModel(BaseModel):
     Validator for `$eq` operator in combined use with `$size` operator.
     """
 
-    eq: QueryDataTypes = Field(alias="$eq")
+    eq_: QueryDataTypes = Field(alias="$eq")
 
 
 class NumericGreaterThanOperatorModel(BaseModel):
@@ -38,7 +38,7 @@ class NumericGreaterThanOperatorModel(BaseModel):
     Validator for `$gt` operator in combined use with `$size` operator.
     """
 
-    gt: QueryDataTypes = Field(alias="$gt")
+    gt_: QueryDataTypes = Field(alias="$gt")
 
 
 class NumericGreaterThanEqualsOperatorModel(BaseModel):
@@ -46,7 +46,7 @@ class NumericGreaterThanEqualsOperatorModel(BaseModel):
     Validator for `$gte` operator in combined use with `$size` operator.
     """
 
-    gte: QueryDataTypes = Field(alias="$gte")
+    gte_: QueryDataTypes = Field(alias="$gte")
 
 
 class NumericLessThanOperatorModel(BaseModel):
@@ -54,7 +54,7 @@ class NumericLessThanOperatorModel(BaseModel):
     Validator for `$lt` operator in combined use with `$size` operator.
     """
 
-    lt: QueryDataTypes = Field(alias="$lt")
+    lt_: QueryDataTypes = Field(alias="$lt")
 
 
 class NumericLessThanEqualsOperatorModel(BaseModel):
@@ -62,7 +62,7 @@ class NumericLessThanEqualsOperatorModel(BaseModel):
     Validator for `$lte` operator in combined use with `$size` operator.
     """
 
-    lte: QueryDataTypes = Field(alias="$lte")
+    lte_: QueryDataTypes = Field(alias="$lte")
 
 
 class QueryOperatorModel(BaseModel):
@@ -70,16 +70,16 @@ class QueryOperatorModel(BaseModel):
     Validator for query operators defined in a property.
     """
 
-    eq: Optional[QueryDataTypes] = Field(alias="$eq")
-    neq: Optional[QueryDataTypes] = Field(alias="$neq")
-    gt: Optional[NumericQueryDataType] = Field(alias="$gt")
-    gte: Optional[NumericQueryDataType] = Field(alias="$gte")
-    lt: Optional[NumericQueryDataType] = Field(alias="$lt")
-    lte: Optional[NumericQueryDataType] = Field(alias="$lte")
-    in_: Optional[Union[QueryDataTypes, List[QueryDataTypes]]] = Field(alias="$in")
-    nin: Optional[Union[QueryDataTypes, List[QueryDataTypes]]] = Field(alias="$nin")
-    all: Optional[List[QueryDataTypes]] = Field(alias="$all")
-    size: Optional[
+    eq_: Optional[QueryDataTypes] = Field(alias="$eq")
+    neq_: Optional[QueryDataTypes] = Field(alias="$neq")
+    gt_: Optional[NumericQueryDataType] = Field(alias="$gt")
+    gte_: Optional[NumericQueryDataType] = Field(alias="$gte")
+    lt_: Optional[NumericQueryDataType] = Field(alias="$lt")
+    lte_: Optional[NumericQueryDataType] = Field(alias="$lte")
+    in__: Optional[Union[QueryDataTypes, List[QueryDataTypes]]] = Field(alias="$in")
+    nin_: Optional[Union[QueryDataTypes, List[QueryDataTypes]]] = Field(alias="$nin")
+    all_: Optional[List[QueryDataTypes]] = Field(alias="$all")
+    size_: Optional[
         Union[
             NumericQueryDataType,
             NumericEqualsOperatorModel,
@@ -89,18 +89,18 @@ class QueryOperatorModel(BaseModel):
             NumericLessThanEqualsOperatorModel,
         ]
     ] = Field(alias="$size")
-    contains: Optional[str] = Field(alias="$contains")
-    exists: Optional[bool] = Field(alias="$exists")
-    i_contains: Optional[str] = Field(alias="$icontains")
-    starts_with: Optional[str] = Field(alias="$startsWith")
-    i_starts_with: Optional[str] = Field(alias="$istartsWith")
-    ends_with: Optional[str] = Field(alias="$endsWith")
-    i_ends_with: Optional[str] = Field(alias="$iendsWith")
-    regex: Optional[str] = Field(alias="$regex")
+    contains_: Optional[str] = Field(alias="$contains")
+    exists_: Optional[bool] = Field(alias="$exists")
+    i_contains_: Optional[str] = Field(alias="$icontains")
+    starts_with_: Optional[str] = Field(alias="$startsWith")
+    i_starts_with_: Optional[str] = Field(alias="$istartsWith")
+    ends_with_: Optional[str] = Field(alias="$endsWith")
+    i_ends_with_: Optional[str] = Field(alias="$iendsWith")
+    regex_: Optional[str] = Field(alias="$regex")
     not_: Optional["QueryOperatorModel"] = Field(alias="$not")
     and_: Optional[List["QueryOperatorModel"]] = Field(alias="$and")
     or_: Optional[List["QueryOperatorModel"]] = Field(alias="$or")
-    xor: Optional[List["QueryOperatorModel"]] = Field(alias="$xor")
+    xor_: Optional[List["QueryOperatorModel"]] = Field(alias="$xor")
 
 
 class NodeFiltersModel(BaseModel):
@@ -108,8 +108,8 @@ class NodeFiltersModel(BaseModel):
     Validator model for node filters.
     """
 
-    element_id: Optional[str] = Field(alias="$elementId")
-    id: Optional[int] = Field(alias="$id")
+    element_id_: Optional[str] = Field(alias="$elementId")
+    id_: Optional[int] = Field(alias="$id")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -127,8 +127,8 @@ class RelationshipFiltersModel(BaseModel):
     Validator model for relationship filters.
     """
 
-    element_id: Optional[str] = Field(alias="$elementId")
-    id: Optional[int] = Field(alias="$id")
+    element_id_: Optional[str] = Field(alias="$elementId")
+    id_: Optional[int] = Field(alias="$id")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
