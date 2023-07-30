@@ -7,8 +7,7 @@ from pydantic import Field
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
 from neo4j_ogm.fields.node_options import WithOptions
-from neo4j_ogm.fields.relationship_property import RelationshipProperty
-from neo4j_ogm.queries.types import RelationshipPropertyDirection
+from neo4j_ogm.fields.relationship_property import RelationshipProperty, RelationshipPropertyDirection
 
 
 class Married(RelationshipModel):
