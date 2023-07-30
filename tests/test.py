@@ -69,11 +69,17 @@ async def main():
     # await setup()
 
     found_adult = await Adult.find_one({"id": "a55e521f-ff68-4944-9012-4a27915be572"})
-    found_child_new = await Child.find_one({"id": "92bb2b93-d46a-4012-a851-95223be950a5"})
-    found_child_old = await Child.find_one({"id": "893fdb23-4d64-40a4-b5e0-6a9e793d683f"})
 
-    # await found_adult.children.connect(found_child_old)
-    children = await found_adult.children.replace(found_child_old, found_child_new)
+    if found_adult is None:
+        return
+
+    exported = found_adult.export_model()
+    # found_child_new = await Child.find_one({"id": "92bb2b93-d46a-4012-a851-95223be950a5"})
+    # found_child_old = await Child.find_one({"id": "893fdb23-4d64-40a4-b5e0-6a9e793d683f"})
+
+    # children = await found_adult.children.replace(found_child_old, found_child_new)
+
+    # adult = Adult.parse_obj({"_element_id": "a55e521f-ff68-4944-9012-4a27915be572", "name": "James", "age": 23})
 
     print("DONE")
 

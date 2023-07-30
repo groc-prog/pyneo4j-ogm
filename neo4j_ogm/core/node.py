@@ -61,9 +61,9 @@ class NodeModel(BaseModel):
     """
 
     __model_settings__: ClassVar[NodeModelSettings]
-    __dict_properties = set()
-    __model_properties = set()
-    __relationships_properties = set()
+    _dict_properties = set()
+    _model_properties = set()
+    _relationships_properties = set()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: Set[str] = PrivateAttr(default=set())
@@ -98,11 +98,11 @@ class NodeModel(BaseModel):
             # Check if value is None here to prevent breaking logic if property_name is of type None
             if value.type_ is not None:
                 if isinstance(value.default, dict):
-                    cls.__dict_properties.add(property_name)
+                    cls._dict_properties.add(property_name)
                 elif issubclass(value.type_, BaseModel):
-                    cls.__model_properties.add(property_name)
+                    cls._model_properties.add(property_name)
                 elif hasattr(value.type_, "_build_property"):
-                    cls.__relationships_properties.add(property_name)
+                    cls._relationships_properties.add(property_name)
 
         return super().__init_subclass__()
 
@@ -132,15 +132,15 @@ class NodeModel(BaseModel):
             Dict[str, Any]: The deflated model instance.
         """
         logging.debug("Deflating model to storable dictionary")
-        deflated: Dict[str, Any] = json.loads(self.json(exclude=self.__relationships_properties))
+        deflated: Dict[str, Any] = json.loads(self.json(exclude=self._relationships_properties))
 
         # Serialize nested BaseModel or dict instances to JSON strings
         logging.debug("Serializing nested dictionaries to JSON strings")
-        for property_name in self.__dict_properties:
+        for property_name in self._dict_properties:
             deflated[property_name] = json.dumps(deflated[property_name])
 
         logging.debug("Serializing nested models to JSON strings")
-        for property_name in self.__model_properties:
+        for property_name in self._model_properties:
             if isinstance(getattr(self, property_name), BaseModel):
                 deflated[property_name] = self.__dict__[property_name].json()
             else:
@@ -168,7 +168,7 @@ class NodeModel(BaseModel):
         for node_property in node.items():
             property_name, property_value = node_property
 
-            if property_name in cls.__dict_properties or property_name in cls.__model_properties:
+            if property_name in cls._dict_properties or property_name in cls._model_properties:
                 try:
                     logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
                     inflated[property_name] = json.loads(property_value)

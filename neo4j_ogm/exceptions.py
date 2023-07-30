@@ -144,3 +144,21 @@ class MissingFilters(Neo4jOGMException):
 
     def __init__(self, *args: object) -> None:
         super().__init__("Missing or invalid filters. Maybe you got a typo in the query operators?", *args)
+
+
+class ModelImportFailure(Neo4jOGMException):
+    """
+    Exception which gets raised when a model dict is imported, but does not have a element_id key.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Missing 'element_id' key in model dict.", *args)
+
+
+class ReservedPropertyName(Neo4jOGMException):
+    """
+    Exception which gets raised when a model defined a property name which is reserved.
+    """
+
+    def __init__(self, property_name: str, *args: object) -> None:
+        super().__init__(f"{property_name} is reserved for internal use.", *args)
