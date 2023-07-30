@@ -2,7 +2,28 @@
 This module contains type definitions for query options and filters.
 """
 from datetime import date, datetime, time, timedelta
+from enum import Enum
 from typing import Dict, List, TypedDict, Union
+
+
+class QueryOptionsOrder(str, Enum):
+    """
+    Enum for ordering options in a query.
+    """
+
+    ASCENDING = "ASC"
+    DESCENDING = "DESC"
+
+
+class RelationshipMatchDirection(str, Enum):
+    """
+    Enum for ordering options in a query.
+    """
+
+    INCOMING = "INCOMING"
+    OUTGOING = "OUTGOING"
+    BOTH = "BOTH"
+
 
 NumericQueryDataType = Union[int, float]
 QueryDataTypes = Union[NumericQueryDataType, bool, str, bytes, datetime, date, time, timedelta]

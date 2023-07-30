@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
 
-from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes
+from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes, QueryOptionsOrder
 
 
 def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -24,15 +24,6 @@ def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
                 logging.debug("Invalid field %s found, omitting field", property_name)
 
     return validated_values
-
-
-class QueryOptionsOrder(str, Enum):
-    """
-    Enum for ordering options in a query.
-    """
-
-    ASCENDING = "ASC"
-    DESCENDING = "DESC"
 
 
 class NumericEqualsOperatorModel(BaseModel):

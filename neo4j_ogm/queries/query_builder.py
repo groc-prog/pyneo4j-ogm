@@ -4,7 +4,7 @@ This module contains a class for building parts of the database query.
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, TypedDict
 
-from neo4j_ogm.queries.types import NodeFilters, QueryDataTypes, RelationshipFilters
+from neo4j_ogm.queries.types import NodeFilters, QueryDataTypes, RelationshipFilters, RelationshipMatchDirection
 from neo4j_ogm.queries.validators import NodeFiltersModel, QueryOptionModel, RelationshipFiltersModel
 
 
@@ -120,6 +120,61 @@ class QueryBuilder:
             skip_query = f"SKIP {validated_options['skip']}"
 
         self.query["options"] = f"{sort_query} {skip_query} {limit_query}".strip()
+
+    def node_match(self, labels: Optional[List[str]] = None, ref: Optional[str] = "n") -> str:
+        """
+        Builds a node to match in the query.
+
+        Args:
+            labels (List[str]): The labels to build.
+            ref (str, optional): The reference to the node. Defaults to "n".
+
+        Returns:
+            str: The node to match.
+        """
+        node_ref = ref if ref is not None else ""
+        node_labels = f":`{':'.join(labels)}`" if labels is not None else ""
+
+        return f"({node_ref}{node_labels})"
+
+    def relationship_match(
+        self,
+        ref: str = "r",
+        type_: Optional[str] = None,
+        direction: RelationshipMatchDirection = RelationshipMatchDirection.BOTH,
+        start_node_ref: Optional[str] = None,
+        start_node_labels: Optional[List[str]] = None,
+        end_node_ref: Optional[str] = None,
+        end_node_labels: Optional[List[str]] = None,
+    ) -> str:
+        """
+        Builds a relationship to match in the query.
+
+        Args:
+            type_ (str): The type of the relationship.
+            ref (str, optional): The reference to the relationship. Defaults to "r".
+            start_node_ref (Optional[str], optional): The reference to the start node. Defaults to None.
+            start_node_labels (Optional[List[str]], optional): The labels of the start node. Defaults to None.
+            end_node_ref (Optional[str], optional): The reference to the end node. Defaults to None.
+            end_node_labels (Optional[List[str]], optional): The labels of the end node. Defaults to None.
+
+        Returns:
+            str: The relationship to match.
+        """
+        start_node_match = self.node_match(labels=start_node_labels, ref=start_node_ref)
+        end_node_match = self.node_match(labels=end_node_labels, ref=end_node_ref)
+
+        relationship_ref = ref if ref is not None else ""
+        relationship_type = f":`{type_}`" if type_ is not None else ""
+        relationship_match = f"[{relationship_ref}{relationship_type}]"
+
+        match direction:
+            case RelationshipMatchDirection.INCOMING:
+                return f"{start_node_match}<-{relationship_match}-{end_node_match}"
+            case RelationshipMatchDirection.OUTGOING:
+                return f"{start_node_match}-{relationship_match}->{end_node_match}"
+            case RelationshipMatchDirection.BOTH:
+                return f"{start_node_match}-{relationship_match}-{end_node_match}"
 
     def _build_query(self, filters: Dict[str, Any]) -> str:
         where_queries: List[str] = []

@@ -92,6 +92,14 @@ from neo4j_ogm.queries.validators import QueryOptionsOrder
 
 builder = QueryBuilder()
 
-builder.query_options({"limit": 12, "skip": 12, "sort": ["name", "age"], "order": QueryOptionsOrder.ASCENDING})
+match_ = builder.relationship_match(
+    ref="rel",
+    type_="FRIENDS",
+    direction="OUTGOING",
+    start_node_labels=["Adult", "Child"],
+    start_node_ref="adult",
+    end_node_labels=["Adult", "Child"],
+    end_node_ref="adult2",
+)
 
 print("DONE")
