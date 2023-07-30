@@ -3,7 +3,6 @@ This module contains pydantic models for validating and normalizing query filter
 """
 import logging
 from copy import deepcopy
-from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator

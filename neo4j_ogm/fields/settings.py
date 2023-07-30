@@ -1,7 +1,7 @@
 """
 This module contains possible settings for NodeModels and RelationshipModels
 """
-from typing import List, Optional
+from typing import List, Optional, Union
 
 
 class NodeModelSettings:
@@ -9,7 +9,7 @@ class NodeModelSettings:
     Settings for a NodeModel class or subclass.
     """
 
-    labels: Optional[List[str] | str]
+    labels: Optional[Union[List[str], str]]
 
 
 class RelationshipModelSettings:

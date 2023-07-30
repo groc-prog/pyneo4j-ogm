@@ -327,7 +327,7 @@ class RelationshipModel(BaseModel):
         return results[0][0]
 
     @classmethod
-    async def find_one(cls: Type[T], filters: RelationshipFilters) -> T | None:
+    async def find_one(cls: Type[T], filters: RelationshipFilters) -> Union[T, None]:
         """
         Finds the first relationship that matches `filters` and returns it. If no matching relationship is found,
         `None` is returned instead.
@@ -369,7 +369,7 @@ class RelationshipModel(BaseModel):
 
     @classmethod
     async def find_many(
-        cls: Type[T], filters: RelationshipFilters | None = None, options: QueryOptions | None = None
+        cls: Type[T], filters: Union[RelationshipFilters, None] = None, options: Union[QueryOptions, None] = None
     ) -> List[T]:
         """
         Finds the all relationships that matches `filters` and returns them.
@@ -413,9 +413,7 @@ class RelationshipModel(BaseModel):
         return instances
 
     @classmethod
-    async def update_one(
-        cls: Type[T], update: Dict[str, Any], filters: RelationshipFilters, new: bool = False
-    ) -> T | None:
+    async def update_one(cls: Type[T], update: Dict[str, Any], filters: RelationshipFilters, new: bool = False) -> T:
         """
         Finds the first relationship that matches `filters` and updates it with the values defined by `update`. If
         no match is found, a `NoResultsFound` is raised.
@@ -430,7 +428,7 @@ class RelationshipModel(BaseModel):
             NoResultsFound: Raised if the query did not return the relationship.
 
         Returns:
-            T | None: By default, the old relationship instance is returned. If `new` is set to `True`, the result
+            T: By default, the old relationship instance is returned. If `new` is set to `True`, the result
                 will be the `updated instance`.
         """
         new_instance: T
@@ -477,21 +475,20 @@ class RelationshipModel(BaseModel):
     async def update_many(
         cls: Type[T],
         update: Dict[str, Any],
-        filters: RelationshipFilters | None = None,
+        filters: Union[RelationshipFilters, None] = None,
         new: bool = False,
-    ) -> List[T] | T | None:
+    ) -> Union[List[T], T]:
         """
         Finds all relationships that match `filters` and updates them with the values defined by `update`.
 
         Args:
-            update (Dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
-                all required values defined on model must be present, else the model validation will fail.
+            update (Dict[str, Any]): Values to update the relationship properties with.
             filters (RelationshipFilters): Expressions applied to the query. Defaults to None.
             new (bool, optional): Whether to return the updated relationships. By default, the old relationships is
                 returned. Defaults to False.
 
         Returns:
-            List[T] | T | None: By default, the old relationship instances are returned. If `new` is set to `True`, the
+            List[T] | T: By default, the old relationship instances are returned. If `new` is set to `True`, the
                 result will be the `updated instance`.
         """
         new_instance: T
@@ -593,7 +590,7 @@ class RelationshipModel(BaseModel):
         return 1
 
     @classmethod
-    async def delete_many(cls: Type[T], filters: RelationshipFilters | None = None) -> int:
+    async def delete_many(cls: Type[T], filters: Union[RelationshipFilters, None] = None) -> int:
         """
         Finds all relationships that match `filters` and deletes them.
 
@@ -636,7 +633,7 @@ class RelationshipModel(BaseModel):
         return len(results[0][0])
 
     @classmethod
-    async def count(cls: Type[T], filters: RelationshipFilters | None = None) -> int:
+    async def count(cls: Type[T], filters: Union[RelationshipFilters, None] = None) -> int:
         """
         Counts all relationships which match the provided `filters` parameter.
 

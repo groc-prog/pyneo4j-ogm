@@ -4,7 +4,7 @@ on a `NodeModel` models field.
 """
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Type, TypeVar
+from typing import Any, Dict, List, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
 
@@ -20,7 +20,7 @@ from neo4j_ogm.exceptions import (
     UnregisteredModel,
 )
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import RelationshipPropertyDirection, TypedPropertyExpressions, TypedQueryOptions
+from neo4j_ogm.queries.types import NodeFilters, QueryOptions
 
 T = TypeVar("T", bound=NodeModel)
 U = TypeVar("U", bound=RelationshipModel)
@@ -53,8 +53,8 @@ class RelationshipProperty:
 
     def __init__(
         self,
-        target_model: Type[T] | str,
-        relationship_model: Type[U] | str,
+        target_model: Union[Type[T], str],
+        relationship_model: Union[Type[U], str],
         direction: RelationshipPropertyDirection,
         allow_multiple: bool = False,
     ) -> None:
@@ -81,7 +81,7 @@ class RelationshipProperty:
         )
         self._target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
 
-    async def relationship(self, node: T) -> U | Dict[str, Any] | None:
+    async def relationship(self, node: T) -> Union[U, Dict[str, Any], None]:
         """
         Gets the relationship between the current node instance and the provided node. If the nodes are not connected
         the defined relationship, `None` will be returned.
@@ -101,11 +101,11 @@ class RelationshipProperty:
             getattr(node, "_element_id", None),
             getattr(self._source_node, "_element_id", None),
         )
-        match_query = self._query_builder.build_relationship_query(
+        match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
-            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
-            end_node_labels=getattr(node.__model_settings__, "labels"),
+            type_=self._relationship_model.__model_settings__.type,
+            start_node_labels=self._source_node.__model_settings__.labels,
+            end_node_labels=node.__model_settings__.labels,
         )
         results, _ = await self._client.cypher(
             query=f"""
@@ -123,7 +123,7 @@ class RelationshipProperty:
             return None
         return results[0][0]
 
-    async def connect(self, node: T, properties: Dict[str, Any] | None = None) -> U | Dict[str, Any]:
+    async def connect(self, node: T, properties: Union[Dict[str, Any], None] = None) -> Union[U, Dict[str, Any]]:
         """
         Connects the given node to the source node. By default only one relationship will be created between nodes.
         If `allow_multiple` has been set to `True` and a relationship already exists between the nodes, a duplicate
@@ -151,9 +151,9 @@ class RelationshipProperty:
         relationship_instance = self._relationship_model.validate(properties if properties is not None else {})
         deflated_properties: Dict[str, Any] = relationship_instance.deflate()
 
-        relationship_query = self._query_builder.build_relationship_query(
+        relationship_query = self._query_builder.relationship_match(
             direction=self._direction,
-            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
+            type_=self._relationship_model.__model_settings__.type,
         )
 
         # Build MERGE/CREATE part of query depending on if duplicate relationships are allowed or not
@@ -208,11 +208,11 @@ class RelationshipProperty:
             getattr(node, "_element_id", None),
             getattr(self._source_node, "_element_id", None),
         )
-        match_query = self._query_builder.build_relationship_query(
+        match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
-            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
-            end_node_labels=getattr(node.__model_settings__, "labels"),
+            type_=self._relationship_model.__model_settings__.type,
+            start_node_labels=self._source_node.__model_settings__.labels,
+            end_node_labels=node.__model_settings__.labels,
         )
 
         logging.debug("Getting relationship count between source and target node")
@@ -262,10 +262,11 @@ class RelationshipProperty:
         logging.info(
             "Deleting all relationships associated with source node %s", getattr(self._source_node, "_element_id", None)
         )
-        match_query = self._query_builder.build_relationship_query(
+        match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
-            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
+            type_=self._relationship_model.__model_settings__.type,
+            start_node_labels=self._source_node.__model_settings__.labels,
+            end_node_labels=self._target_model.__model_settings__.labels,
         )
 
         logging.debug("Getting relationship count for source node")
@@ -318,55 +319,109 @@ class RelationshipProperty:
             getattr(old_node, "_element_id", None),
             getattr(new_node, "_element_id", None),
         )
-        relationship = await self.relationship(node=old_node)
-
-        if relationship is None:
-            raise NotConnectedToSourceNode()
-
-        deflated_properties = (
-            relationship if not issubclass(relationship, RelationshipModel) else relationship.deflate()
+        match_query = self._query_builder.relationship_match(
+            direction=self._direction,
+            type_=self._relationship_model.__model_settings__.type,
+            start_node_ref="start",
+            start_node_labels=self._source_node.__model_settings__.labels,
+            end_node_ref="end",
+            end_node_labels=old_node.__model_settings__.labels,
         )
 
-        await self.disconnect(node=old_node)
-        new_relationship = await self.connect(node=new_node, properties=deflated_properties)
+        logging.debug("Getting relationship between source node and old node")
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH {match_query}
+                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                RETURN r
+            """,
+            parameters={
+                "startId": getattr(self._source_node, "_element_id", None),
+                "endId": getattr(old_node, "_element_id", None),
+            },
+        )
 
-        return new_relationship
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NotConnectedToSourceNode()
+
+        deflated_properties = cast(U, results[0][0]).deflate()
+
+        logging.debug("Deleting relationship between source node and old node")
+        await self._client.cypher(
+            query=f"""
+                MATCH {match_query}
+                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                DELETE r
+            """,
+            parameters={
+                "startId": getattr(self._source_node, "_element_id", None),
+                "endId": getattr(old_node, "_element_id", None),
+            },
+        )
+
+        logging.debug("Creating relationship between source node and new node")
+        set_query = (
+            f"SET {', '.join([f'r.{property_name} = ${property_name}' for property_name in deflated_properties])}"
+            if len(deflated_properties.keys()) != 0
+            else ""
+        )
+
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH
+                    (start:`{":".join(self._source_node.__model_settings__.labels)}`),
+                    (end:`{":".join(self._target_model.__model_settings__.labels)}`)
+                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                CREATE {match_query}
+                {set_query}
+                RETURN r
+            """,
+            parameters={
+                "startId": getattr(self._source_node, "_element_id", None),
+                "endId": getattr(new_node, "_element_id", None),
+                **deflated_properties,
+            },
+        )
+
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
+        return results[0][0]
 
     async def find_connected_nodes(
-        self, expressions: TypedPropertyExpressions | None = None, options: TypedQueryOptions | None = None
+        self, filters: Union[NodeFilters, None] = None, options: Union[QueryOptions, None] = None
     ) -> List[T]:
         """
-        Finds the all nodes that matches `expressions` and are connected to the source node.
+        Finds the all nodes that matches `filters` and are connected to the source node.
 
         Args:
-            expressions (TypedPropertyExpressions | None, optional): Expressions applied to the query. Defaults to None.
-            options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
+            filters (NodeFilters | None, optional): Expressions applied to the query. Defaults to None.
+            options (QueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
             List[T]: A list of model instances.
         """
-        logging.info("Getting connected nodes matching expressions %s", expressions)
-        (
-            expression_where_query,
-            expression_parameters,
-        ) = self._query_builder.build_node_expressions(
-            expressions=expressions if expressions is not None else {}, ref="end"
-        )
-        match_query = self._query_builder.build_relationship_query(
+        logging.info("Getting connected nodes matching filters %s", filters)
+        if filters is not None:
+            self._query_builder.node_filters(filters=filters, ref="end")
+        if options is not None:
+            self._query_builder.query_options(options=options)
+
+        match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            relationship_type=getattr(self._relationship_model.__model_settings__, "type"),
-            start_node_labels=getattr(self._source_node.__model_settings__, "labels"),
+            type_=self._relationship_model.__model_settings__.type,
+            start_node_labels=self._source_node.__model_settings__.labels,
+            end_node_ref="end",
+            end_node_labels=self._target_model.__model_settings__.labels,
         )
-        options_query = self._query_builder.build_query_options(options=options if options else {}, ref="end")
 
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
-                {expression_where_query if expression_where_query is not None else ""}
+                {f"WHERE {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
                 RETURN end
-                {options_query}
+                {self._query_builder.query['options']}
             """,
-            parameters=expression_parameters,
+            parameters=self._query_builder.parameters,
         )
 
         instances: List[T] = []
@@ -424,7 +479,7 @@ class RelationshipProperty:
 
         return self
 
-    def _ensure_alive(self, nodes: T | List[T]) -> None:
+    def _ensure_alive(self, nodes: Union[T, List[T]]) -> None:
         """
         Ensures that the provided nodes are alive.
 

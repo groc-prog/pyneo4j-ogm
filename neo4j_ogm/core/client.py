@@ -4,7 +4,7 @@ Database client for running queries against the connected database.
 import logging
 import os
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type, Union
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.graph import Node, Relationship
@@ -85,7 +85,7 @@ class Neo4jClient:
             cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def connect(self, uri: str | None = None, auth: Tuple[str, str] | None = None) -> None:
+    def connect(self, uri: Union[str, None] = None, auth: Union[Tuple[str, str], None] = None, *args, **kwargs) -> None:
         """
         Establish a connection to a database.
 
@@ -109,11 +109,11 @@ class Neo4jClient:
         self.auth = db_auth
 
         logging.info("Connecting to database %s", self.uri)
-        self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth)
+        self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth, *args, **kwargs)
         logging.info("Connected to database")
 
     @ensure_connection
-    async def register_models(self, models: List[Type[NodeModel | RelationshipModel]]) -> None:
+    async def register_models(self, models: List[Type[Union[NodeModel, RelationshipModel]]]) -> None:
         """
         Registers models which are used with the client to resolve query results to their
         corresponding model instances.
@@ -179,7 +179,7 @@ class Neo4jClient:
 
     @ensure_connection
     async def cypher(
-        self, query: str, parameters: Dict[str, Any] | None = None, resolve_models: bool = True
+        self, query: str, parameters: Union[Dict[str, Any], None] = None, resolve_models: bool = True
     ) -> Tuple[List[List[Any]], List[str]]:
         """
         Runs the provided cypher query with given parameters against the database.
@@ -231,7 +231,7 @@ class Neo4jClient:
 
     @ensure_connection
     async def create_constraint(
-        self, name: str, entity_type: str, properties: List[str], labels_or_type: List[str] | str
+        self, name: str, entity_type: str, properties: List[str], labels_or_type: Union[List[str], str]
     ) -> None:
         """
         Creates a constraint on nodes or relationships in the Neo4j database. Currently only
@@ -466,7 +466,9 @@ class Neo4jClient:
         """
         return BatchManager(self)
 
-    def _resolve_database_model(self, query_result: Node | Relationship) -> Type[NodeModel | RelationshipModel]:
+    def _resolve_database_model(
+        self, query_result: Union[Node, Relationship]
+    ) -> Type[Union[NodeModel, RelationshipModel]]:
         """
         Resolves a query result to the corresponding database model, if one is registered.
 
