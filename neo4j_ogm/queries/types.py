@@ -26,7 +26,7 @@ class RelationshipMatchDirection(str, Enum):
 
 
 NumericQueryDataType = Union[int, float]
-QueryDataTypes = Union[NumericQueryDataType, bool, str, bytes, datetime, date, time, timedelta]
+QueryDataTypes = Union[bool, NumericQueryDataType, str, bytes, datetime, date, time, timedelta]
 
 # We need to define 5 different typed dictionaries here because the `$size` operator can only be
 # one of the following, which means we have to create a Union of the five listed below to not get

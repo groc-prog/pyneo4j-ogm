@@ -113,6 +113,13 @@ class NodeModel(BaseModel):
 
         return super().__setattr__(name, value)
 
+    def __setitem__(self, key: str, value: Any) -> None:
+        if key in self.__fields__ and not key.startswith("_"):
+            logging.debug("Adding %s to modified properties", key)
+            self._modified_properties.add(key)
+
+        return super().__setattr__(key, value)
+
     def __str__(self) -> str:
         hydration_msg = self._element_id if self._element_id is not None else "not hydrated"
         return f"{self.__class__.__name__}({hydration_msg})"
@@ -227,11 +234,19 @@ class NodeModel(BaseModel):
             self.__class__.__name__,
             deflated,
         )
+        set_query = ", ".join(
+            [
+                f"n.{property_name} = ${property_name}"
+                for property_name in deflated
+                if property_name in self._modified_properties
+            ]
+        )
+
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.node_match(self.__model_settings__.labels)}
                 WHERE elementId(n) = $element_id
-                SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated if property_name in self._modified_properties])}
+                {f"SET {set_query}" if set_query != "" else ""}
                 RETURN n
             """,
             parameters={"element_id": self._element_id, **deflated},
@@ -432,9 +447,10 @@ class NodeModel(BaseModel):
 
         # Update existing instance with values and save
         logging.debug("Creating instance copy with new values %s", update)
-        new_instance = cls(**old_instance.dict())
+        new_instance = cls(**cast(T, old_instance).dict())
 
-        new_instance.__dict__.update(update)
+        for key, value in update.items():
+            setattr(new_instance, key, value)
         setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
 
         await new_instance.update()
@@ -554,6 +570,7 @@ class NodeModel(BaseModel):
             query=f"""
                 MATCH {cls._query_builder.node_match(cls.__model_settings__.labels)}
                 WHERE {cls._query_builder.query['where']}
+                WITH n LIMIT 1
                 DETACH DELETE n
                 RETURN n
             """,
