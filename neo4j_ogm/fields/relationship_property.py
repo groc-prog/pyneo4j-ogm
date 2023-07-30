@@ -104,18 +104,20 @@ class RelationshipProperty:
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
             type_=self._relationship_model.__model_settings__.type,
+            start_node_ref="start",
             start_node_labels=self._source_node.__model_settings__.labels,
-            end_node_labels=node.__model_settings__.labels,
+            end_node_ref="end",
+            end_node_labels=self._target_model.__model_settings__.labels,
         )
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
-                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 RETURN r
             """,
             parameters={
-                "startId": getattr(self._source_node, "_element_id", None),
-                "endId": getattr(node, "_element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(node, "_element_id", None),
             },
         )
 
@@ -174,16 +176,16 @@ class RelationshipProperty:
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH
-                    {self._query_builder.node_match(self._source_node.__model_settings__.labels, "start")},
-                    {self._query_builder.node_match(self._target_model.__model_settings__.labels, "end")}
-                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                    {self._query_builder.node_match(ref="start")},
+                    {self._query_builder.node_match(ref="end")}
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 {build_query}
                 {set_query}
                 RETURN r
             """,
             parameters={
-                "startId": getattr(self._source_node, "_element_id", None),
-                "endId": getattr(node, "_element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(node, "_element_id", None),
                 **deflated_properties,
             },
         )
@@ -213,20 +215,22 @@ class RelationshipProperty:
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
             type_=self._relationship_model.__model_settings__.type,
+            start_node_ref="start",
             start_node_labels=self._source_node.__model_settings__.labels,
-            end_node_labels=node.__model_settings__.labels,
+            end_node_ref="end",
+            end_node_labels=self._target_model.__model_settings__.labels,
         )
 
         logging.debug("Getting relationship count between source and target node")
         count_results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
-                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 RETURN count(r)
             """,
             parameters={
-                "startId": getattr(self._source_node, "_element_id", None),
-                "endId": getattr(node, "_element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(node, "_element_id", None),
             },
             resolve_models=False,
         )
@@ -243,12 +247,12 @@ class RelationshipProperty:
         await self._client.cypher(
             query=f"""
                 MATCH {match_query}
-                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 DELETE r
             """,
             parameters={
-                "startId": getattr(self._source_node, "_element_id", None),
-                "endId": getattr(node, "_element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(node, "_element_id", None),
             },
         )
 
@@ -267,7 +271,9 @@ class RelationshipProperty:
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
             type_=self._relationship_model.__model_settings__.type,
+            start_node_ref="start",
             start_node_labels=self._source_node.__model_settings__.labels,
+            end_node_ref="end",
             end_node_labels=self._target_model.__model_settings__.labels,
         )
 
@@ -275,11 +281,11 @@ class RelationshipProperty:
         count_results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
-                WHERE elementId(start) = $startId
+                WHERE elementId(start) = $start_element_id
                 RETURN count(r)
             """,
             parameters={
-                "startId": getattr(self._source_node, "_element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
             },
             resolve_models=False,
         )
@@ -292,11 +298,11 @@ class RelationshipProperty:
         await self._client.cypher(
             query=f"""
                 MATCH {match_query}
-                WHERE elementId(start) = $startId
+                WHERE elementId(start) = $start_element_id
                 DELETE r
             """,
             parameters={
-                "startId": getattr(self._source_node, "_element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
             },
         )
 
@@ -327,19 +333,19 @@ class RelationshipProperty:
             start_node_ref="start",
             start_node_labels=self._source_node.__model_settings__.labels,
             end_node_ref="end",
-            end_node_labels=old_node.__model_settings__.labels,
+            end_node_labels=self._target_model.__model_settings__.labels,
         )
 
         logging.debug("Getting relationship between source node and old node")
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
-                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 RETURN r
             """,
             parameters={
-                "startId": getattr(self._source_node, "_element_id", None),
-                "endId": getattr(old_node, "_element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(old_node, "_element_id", None),
             },
         )
 
@@ -352,16 +358,23 @@ class RelationshipProperty:
         await self._client.cypher(
             query=f"""
                 MATCH {match_query}
-                WHERE elementId(start) = $startId AND elementId(end) = $endId
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 DELETE r
             """,
             parameters={
-                "startId": getattr(self._source_node, "_element_id", None),
-                "endId": getattr(old_node, "_element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(old_node, "_element_id", None),
             },
         )
 
         logging.debug("Creating relationship between source node and new node")
+        create_query = self._query_builder.relationship_match(
+            direction=self._direction,
+            type_=self._relationship_model.__model_settings__.type,
+            start_node_ref="start",
+            end_node_ref="end",
+        )
+
         set_query = (
             f"SET {', '.join([f'r.{property_name} = ${property_name}' for property_name in deflated_properties])}"
             if len(deflated_properties.keys()) != 0
@@ -371,16 +384,16 @@ class RelationshipProperty:
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH
-                    (start:`{":".join(self._source_node.__model_settings__.labels)}`),
-                    (end:`{":".join(self._target_model.__model_settings__.labels)}`)
-                WHERE elementId(start) = $startId AND elementId(end) = $endId
-                CREATE {match_query}
+                    {self._query_builder.node_match(labels=self._source_node.__model_settings__.labels, ref="start")},
+                    {self._query_builder.node_match(labels=self._target_model.__model_settings__.labels, ref="end")}
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
+                CREATE {create_query}
                 {set_query}
                 RETURN r
             """,
             parameters={
-                "startId": getattr(self._source_node, "_element_id", None),
-                "endId": getattr(new_node, "_element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(new_node, "_element_id", None),
                 **deflated_properties,
             },
         )
@@ -406,11 +419,12 @@ class RelationshipProperty:
         if filters is not None:
             self._query_builder.node_filters(filters=filters, ref="end")
         if options is not None:
-            self._query_builder.query_options(options=options)
+            self._query_builder.query_options(options=options, ref="end")
 
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
             type_=self._relationship_model.__model_settings__.type,
+            start_node_ref="start",
             start_node_labels=self._source_node.__model_settings__.labels,
             end_node_ref="end",
             end_node_labels=self._target_model.__model_settings__.labels,
@@ -419,11 +433,16 @@ class RelationshipProperty:
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
-                {f"WHERE {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
+                WHERE
+                    elementId(start) = $start_element_id
+                    {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
                 RETURN end
                 {self._query_builder.query['options']}
             """,
-            parameters=self._query_builder.parameters,
+            parameters={
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                **self._query_builder.parameters,
+            },
         )
 
         instances: List[T] = []

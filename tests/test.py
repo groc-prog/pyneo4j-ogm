@@ -66,9 +66,14 @@ async def setup() -> None:
 async def main():
     await client.register_models([Adult, Married, Friends, Child, HasChild, Toy, OwnsToy])
 
-    await setup()
+    # await setup()
 
-    found_adult = await Friends.delete_many({"best_friends": True})
+    found_adult = await Adult.find_one({"id": "a55e521f-ff68-4944-9012-4a27915be572"})
+    found_child_new = await Child.find_one({"id": "92bb2b93-d46a-4012-a851-95223be950a5"})
+    found_child_old = await Child.find_one({"id": "893fdb23-4d64-40a4-b5e0-6a9e793d683f"})
+
+    # await found_adult.children.connect(found_child_old)
+    children = await found_adult.children.replace(found_child_old, found_child_new)
 
     print("DONE")
 
