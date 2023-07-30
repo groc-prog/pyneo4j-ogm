@@ -73,13 +73,17 @@ async def main():
     if found_adult is None:
         return
 
-    exported = found_adult.export_model()
+    exported = found_adult.export_model(convert_to_camel_case=True)
     # found_child_new = await Child.find_one({"id": "92bb2b93-d46a-4012-a851-95223be950a5"})
     # found_child_old = await Child.find_one({"id": "893fdb23-4d64-40a4-b5e0-6a9e793d683f"})
 
     # children = await found_adult.children.replace(found_child_old, found_child_new)
 
     # adult = Adult.parse_obj({"_element_id": "a55e521f-ff68-4944-9012-4a27915be572", "name": "James", "age": 23})
+
+    imported = Adult.import_model(exported, from_camel_case=True)
+
+    await imported.delete()
 
     print("DONE")
 
