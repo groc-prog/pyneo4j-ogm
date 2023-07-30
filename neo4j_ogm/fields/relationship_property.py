@@ -154,6 +154,8 @@ class RelationshipProperty:
         relationship_query = self._query_builder.relationship_match(
             direction=self._direction,
             type_=self._relationship_model.__model_settings__.type,
+            start_node_ref="start",
+            end_node_ref="end",
         )
 
         # Build MERGE/CREATE part of query depending on if duplicate relationships are allowed or not
@@ -172,8 +174,8 @@ class RelationshipProperty:
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH
-                    (start:`{":".join(self._source_node.__model_settings__.labels)}`),
-                    (end:`{":".join(self._target_model.__model_settings__.labels)}`)
+                    {self._query_builder.node_match(self._source_node.__model_settings__.labels, "start")},
+                    {self._query_builder.node_match(self._target_model.__model_settings__.labels, "end")}
                 WHERE elementId(start) = $startId AND elementId(end) = $endId
                 {build_query}
                 {set_query}
