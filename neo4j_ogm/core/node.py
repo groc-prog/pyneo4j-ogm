@@ -5,12 +5,12 @@ the database for CRUD operations on nodes.
 """
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Set, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel
 
-from neo4j_ogm.core.client import Neo4jClient
+from neo4j_ogm.core.base import ModelBase
 from neo4j_ogm.exceptions import (
     InflationFailure,
     InstanceDestroyed,
@@ -19,7 +19,6 @@ from neo4j_ogm.exceptions import (
     NoResultsFound,
 )
 from neo4j_ogm.fields.settings import NodeModelSettings
-from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import NodeFilters, QueryOptions
 
 if TYPE_CHECKING:
@@ -54,21 +53,14 @@ def ensure_alive(func: Callable):
     return decorator
 
 
-class NodeModel(BaseModel):
+class NodeModel(ModelBase):
     """
     Base model for all node models. Every node model should inherit from this class to define a
     model.
     """
 
     __model_settings__: ClassVar[NodeModelSettings]
-    _dict_properties = set()
-    _model_properties = set()
     _relationships_properties = set()
-    _client: Neo4jClient = PrivateAttr()
-    _query_builder: QueryBuilder = PrivateAttr()
-    _modified_properties: Set[str] = PrivateAttr(default=set())
-    _destroyed: bool = PrivateAttr(default=False)
-    _element_id: Union[str, None] = PrivateAttr(default=None)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -79,9 +71,6 @@ class NodeModel(BaseModel):
                 cast(RelationshipProperty, property_name)._build_property(self)
 
     def __init_subclass__(cls) -> None:
-        cls._client = Neo4jClient()
-        cls._query_builder = QueryBuilder()
-
         if not hasattr(cls, "__model_settings__"):
             setattr(cls, "__model_settings__", NodeModelSettings())
 
@@ -93,16 +82,11 @@ class NodeModel(BaseModel):
             logging.debug("str class %s provided as labels, converting to tuple", cls.__model_settings__.labels)
             setattr(cls.__model_settings__, "labels", tuple(cls.__model_settings__.labels))
 
-        logging.debug("Collecting dict and model fields")
         for property_name, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if property_name is of type None
-            if value.type_ is not None:
-                if isinstance(value.default, dict):
-                    cls._dict_properties.add(property_name)
-                elif issubclass(value.type_, BaseModel):
-                    cls._model_properties.add(property_name)
-                elif hasattr(value.type_, "_build_property"):
-                    cls._relationships_properties.add(property_name)
+            if value.type_ is not None and hasattr(value.type_, "_build_property"):
+                cls._relationships_properties.add(property_name)
+                cls.__model_settings__.exclude_from_export.add(property_name)
 
         return super().__init_subclass__()
 

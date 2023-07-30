@@ -11,7 +11,7 @@ from typing import Any, Callable, ClassVar, Dict, List, Type, TypeVar, Union, ca
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.client import Neo4jClient
+from neo4j_ogm.core.base import ModelBase
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.exceptions import (
     InflationFailure,
@@ -21,7 +21,6 @@ from neo4j_ogm.exceptions import (
     NoResultsFound,
 )
 from neo4j_ogm.fields.settings import RelationshipModelSettings
-from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import QueryOptions, RelationshipFilters, RelationshipMatchDirection
 
 T = TypeVar("T", bound="RelationshipModel")
@@ -56,27 +55,17 @@ def ensure_alive(func: Callable):
     return decorator
 
 
-class RelationshipModel(BaseModel):
+class RelationshipModel(ModelBase):
     """
     Base model for all relationship models. Every relationship model should inherit from this class to have needed base
     functionality like de-/inflation and validation.
     """
 
     __model_settings__: ClassVar[RelationshipModelSettings]
-    _dict_properties = set()
-    _model_properties = set()
-    _client: Neo4jClient = PrivateAttr()
-    _query_builder: QueryBuilder = PrivateAttr()
-    _modified_properties: set[str] = PrivateAttr(default=set())
-    _destroyed: bool = PrivateAttr(default=False)
-    _element_id: Union[str, None] = PrivateAttr(default=None)
     _start_node_id: Union[str, None] = PrivateAttr(default=None)
     _end_node_id: Union[str, None] = PrivateAttr(default=None)
 
     def __init_subclass__(cls) -> None:
-        cls._client = Neo4jClient()
-        cls._query_builder = QueryBuilder()
-
         if not hasattr(cls, "__model_settings__"):
             setattr(cls, "__model_settings__", RelationshipModelSettings())
 
@@ -86,15 +75,6 @@ class RelationshipModel(BaseModel):
             # Convert class name to upper snake case
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
             setattr(cls.__model_settings__, "type", relationship_type.upper())
-
-        logging.debug("Collecting dict and model fields")
-        for property_name, value in cls.__fields__.items():
-            # Check if value is None here to prevent breaking logic if property_name is of type None
-            if value.type_ is not None:
-                if isinstance(value.default, dict):
-                    cls._dict_properties.add(property_name)
-                elif issubclass(value.type_, BaseModel):
-                    cls._model_properties.add(property_name)
 
         return super().__init_subclass__()
 

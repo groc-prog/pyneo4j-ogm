@@ -2,6 +2,7 @@
 This module contains a modified version of Pydantic's BaseModel class adjusted to the needs of the library.
 It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
 """
+import json
 import logging
 from typing import Any, ClassVar, Dict, Set, TypeVar, Union, cast
 
@@ -26,14 +27,16 @@ class ModelBase(BaseModel):
     _model_properties = set()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
-    _modified_properties: set[str] = PrivateAttr(default=set())
+    _modified_properties: Set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: Union[str, None] = PrivateAttr(default=None)
 
-    @root_validator(pre=True)
-    def _validate_reserved_fields(cls, _: Dict[str, Any]) -> Dict[str, Any]:
-        if "element_id" in cls.__fields__.keys():
+    @root_validator()
+    def _validate_reserved_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if "element_id" in values:
             raise ReservedPropertyName("element_id")
+
+        return values
 
     def __init_subclass__(cls) -> None:
         cls._client = Neo4jClient()
@@ -60,9 +63,11 @@ class ModelBase(BaseModel):
         """
         # Check if additional fields should be excluded
         if "exclude" in kwargs:
-            kwargs["exclude"] = cast(Set, kwargs["exclude"]).union({"a"})
+            kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self.__model_settings__.exclude_from_export)
+        else:
+            kwargs["exclude"] = self.__model_settings__.exclude_from_export
 
-        model_dict = self.json(*args, **kwargs)
+        model_dict = json.loads(self.json(*args, **kwargs))
         model_dict["element_id"] = self._element_id
         return model_dict
 
