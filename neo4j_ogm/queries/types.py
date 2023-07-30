@@ -90,3 +90,15 @@ QueryRelationshipOperators = TypedDict("QueryRelationshipOperators", {"$elementI
 # The actual interfaces used to describe query filters
 NodeFilters = Union[Dict[str, QueryOperators], QueryNodeOperators]
 RelationshipFilters = Union[Dict[str, QueryOperators], QueryRelationshipOperators]
+
+
+# Interface to describe query options
+class QueryOptions(TypedDict, total=False):
+    """
+    Interface to describe query options.
+    """
+
+    limit: int
+    skip: int
+    sort: Union[List[str], str]
+    order: str

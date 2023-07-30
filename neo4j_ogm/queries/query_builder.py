@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional, TypedDict
 
 from neo4j_ogm.queries.types import NodeFilters, QueryDataTypes, RelationshipFilters
-from neo4j_ogm.queries.validators import NodeFiltersModel, RelationshipFiltersModel
+from neo4j_ogm.queries.validators import NodeFiltersModel, QueryOptionModel, RelationshipFiltersModel
 
 
 class FilterQueries(TypedDict):
@@ -13,7 +13,8 @@ class FilterQueries(TypedDict):
     Type definition for `query` attribute.
     """
 
-    where: List[str]
+    where: str
+    options: str
 
 
 class QueryBuilder:
@@ -52,6 +53,7 @@ class QueryBuilder:
 
         Args:
             filters (Dict[str, Any]): The filters to build.
+            ref (str, optional): The reference to the node. Defaults to "n".
         """
         self.ref = ref
         normalized_filters = self._normalize_expressions(filters)
@@ -71,6 +73,7 @@ class QueryBuilder:
 
         Args:
             filters (Dict[str, Any]): The filters to build.
+            ref (str, optional): The reference to the relationship. Defaults to "r".
         """
         self.ref = ref
         normalized_filters = self._normalize_expressions(filters)
@@ -83,6 +86,40 @@ class QueryBuilder:
         self._remove_invalid_expressions(validated_filters)
 
         self.query["where"] = self._build_query(filters=validated_filters)
+
+    def query_options(self, options: Dict[str, Any], ref: str = "n") -> None:
+        """
+        Builds the query options for the query.
+
+        Args:
+            options (Dict[str, Any]): The options to build.
+            ref (str, optional): The reference to the node or relationship. Defaults to "n".
+        """
+        # Validate options with pydantic model
+        validated_options = QueryOptionModel(**options)
+        validated_options = validated_options.dict(exclude_none=True, exclude_unset=True)
+
+        sort_query: str = ""
+        limit_query: str = ""
+        skip_query: str = ""
+
+        if "sort" in validated_options:
+            sorted_properties = [f"{ref}.{property_name}" for property_name in validated_options["sort"]]
+            sort_query = f"ORDER BY {', '.join(sorted_properties)}"
+
+        if "order" in validated_options:
+            if sort_query != "":
+                sort_query = f"{sort_query} {validated_options['order']}"
+            else:
+                sort_query = f"ORDER BY {validated_options['order']}"
+
+        if "limit" in validated_options:
+            limit_query = f"LIMIT {validated_options['limit']}"
+
+        if "skip" in validated_options:
+            skip_query = f"SKIP {validated_options['skip']}"
+
+        self.query["options"] = f"{sort_query} {skip_query} {limit_query}".strip()
 
     def _build_query(self, filters: Dict[str, Any]) -> str:
         where_queries: List[str] = []

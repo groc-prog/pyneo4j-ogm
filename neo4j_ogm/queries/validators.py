@@ -3,9 +3,10 @@ This module contains pydantic models for validating and normalizing query filter
 """
 import logging
 from copy import deepcopy
+from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Extra, Field, ValidationError, root_validator
+from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
 
 from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes
 
@@ -23,6 +24,15 @@ def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
                 logging.debug("Invalid field %s found, omitting field", property_name)
 
     return validated_values
+
+
+class QueryOptionsOrder(str, Enum):
+    """
+    Enum for ordering options in a query.
+    """
+
+    ASCENDING = "ASC"
+    DESCENDING = "DESC"
 
 
 class NumericEqualsOperatorModel(BaseModel):
@@ -138,4 +148,37 @@ class RelationshipFiltersModel(BaseModel):
         """
 
         extra = Extra.allow
+        use_enum_values = True
+
+
+class QueryOptionModel(BaseModel):
+    """
+    Validator model for query options.
+    """
+
+    limit: Optional[int]
+    skip: Optional[int]
+    sort: Optional[List[str]]
+    order: Optional[QueryOptionsOrder]
+
+    @validator("sort", pre=True)
+    def sort_to_list(cls, value: Optional[Union[str, List[str]]]) -> Optional[List[str]]:
+        """
+        Validator for `sort` option. If a string is passed, it will be converted to a list.
+
+        Args:
+            v (Optional[Union[str, List[str]]]): The value to validate.
+
+        Returns:
+            Optional[List[str]]: Validated value.
+        """
+        if isinstance(value, str):
+            return [value]
+        return value
+
+    class Config:
+        """
+        Pydantic configuration.
+        """
+
         use_enum_values = True

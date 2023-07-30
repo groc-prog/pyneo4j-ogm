@@ -88,16 +88,10 @@
 # asyncio.run(main())
 
 from neo4j_ogm.queries.query_builder import QueryBuilder
+from neo4j_ogm.queries.validators import QueryOptionsOrder
 
 builder = QueryBuilder()
 
-builder.node_filters(
-    {
-        "foo": {
-            "$eq": 21,
-            "$gt": 21,
-        },
-    }
-)
+builder.query_options({"limit": 12, "skip": 12, "sort": ["name", "age"], "order": QueryOptionsOrder.ASCENDING})
 
 print("DONE")
