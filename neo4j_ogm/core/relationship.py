@@ -1,20 +1,28 @@
 """
 This module holds the base relationship class `RelationshipModel` which is used to define database models for relationships.
+It provides base functionality like de-/inflation and validation and methods for interacting with
+the database for CRUD operations on relationships.
 """
 import json
 import logging
 import re
-from typing import Any, Callable, ClassVar, Dict, List, Type, TypeVar, cast
+from typing import Any, Callable, ClassVar, Dict, List, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.exceptions import InflationFailure, InstanceDestroyed, InstanceNotHydrated, NoResultsFound
+from neo4j_ogm.exceptions import (
+    InflationFailure,
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    MissingFilters,
+    NoResultsFound,
+)
 from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import TypedQueryOptions, TypedRelationshipExpressions
+from neo4j_ogm.queries.types import QueryOptions, RelationshipFilters
 
 T = TypeVar("T", bound="RelationshipModel")
 
@@ -57,19 +65,15 @@ class RelationshipModel(BaseModel):
     __model_settings__: ClassVar[RelationshipModelSettings]
     __dict_properties = set()
     __model_properties = set()
-    _relationship_match: str = PrivateAttr()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
-    _element_id: str | None = PrivateAttr(default=None)
-    _start_node_id: str | None = PrivateAttr(default=None)
-    _end_node_id: str | None = PrivateAttr(default=None)
+    _element_id: Union[str, None] = PrivateAttr(default=None)
+    _start_node_id: Union[str, None] = PrivateAttr(default=None)
+    _end_node_id: Union[str, None] = PrivateAttr(default=None)
 
     def __init_subclass__(cls) -> None:
-        """
-        Filters BaseModel and dict instances in the models properties for serialization.
-        """
         cls._client = Neo4jClient()
         cls._query_builder = QueryBuilder()
 
@@ -92,11 +96,6 @@ class RelationshipModel(BaseModel):
                 elif issubclass(value.type_, BaseModel):
                     cls.__model_properties.add(property_name)
 
-        # Build relationship match query
-        cls._relationship_match = cls._query_builder.build_relationship_query(
-            relationship_type=cls.__model_settings__.type
-        )
-
         return super().__init_subclass__()
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -105,6 +104,10 @@ class RelationshipModel(BaseModel):
             self._modified_properties.add(name)
 
         return super().__setattr__(name, value)
+
+    def __str__(self) -> str:
+        hydration_msg = self._element_id if self._element_id is not None else "not hydrated"
+        return f"{self.__class__.__name__}({hydration_msg})"
 
     def deflate(self) -> Dict[str, Any]:
         """
@@ -152,6 +155,7 @@ class RelationshipModel(BaseModel):
 
             if property_name in cls.__dict_properties or property_name in cls.__model_properties:
                 try:
+                    logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
                     inflated[property_name] = json.loads(property_value)
                 except Exception as exc:
                     logging.error("Failed to inflate property %s of model %s", property_name, cls.__name__)
@@ -183,7 +187,7 @@ class RelationshipModel(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._relationship_match}
+                MATCH {self._query_builder.relationship_match(type_=self.__model_settings__.type)}
                 WHERE elementId(r) = $element_id
                 SET {", ".join([f"r.{property_name} = ${property_name}" for property_name in deflated])}
                 RETURN r
@@ -215,7 +219,7 @@ class RelationshipModel(BaseModel):
         logging.info("Deleting relationship %s of model %s", self._element_id, self.__class__.__name__)
         await self._client.cypher(
             query=f"""
-                MATCH {self._relationship_match}
+                MATCH {self._query_builder.relationship_match(type_=self.__model_settings__.type)}
                 WHERE elementId(r) = $element_id
                 DELETE r
             """,
@@ -239,7 +243,7 @@ class RelationshipModel(BaseModel):
         logging.info("Refreshing relationship %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._relationship_match}
+                MATCH {self._query_builder.relationship_match(type_=self.__model_settings__.type)}
                 WHERE elementId(r) = $element_id
                 RETURN r
             """,
@@ -273,7 +277,7 @@ class RelationshipModel(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._relationship_match}
+                MATCH {self._query_builder.relationship_match(type_=self.__model_settings__.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
                 RETURN start
             """,
@@ -307,7 +311,7 @@ class RelationshipModel(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._relationship_match}
+                MATCH {self._query_builder.relationship_match(type_=self.__model_settings__.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
                 RETURN end
             """,
@@ -323,34 +327,34 @@ class RelationshipModel(BaseModel):
         return results[0][0]
 
     @classmethod
-    async def find_one(cls: Type[T], expressions: TypedRelationshipExpressions) -> T | None:
+    async def find_one(cls: Type[T], filters: RelationshipFilters) -> T | None:
         """
-        Finds the first relationship that matches `expressions` and returns it. If no matching relationship is found,
+        Finds the first relationship that matches `filters` and returns it. If no matching relationship is found,
         `None` is returned instead.
 
         Args:
-            expressions (TypedRelationshipExpressions): Expressions applied to the query.
+            filters (RelationshipFilters): Expressions applied to the query.
+
+        Raises:
+            MissingFilters: Raised if no filters are provided.
 
         Returns:
             T | None: A instance of the model or None if no match is found.
         """
-        logging.info(
-            "Getting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
-        )
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
+        logging.info("Getting first encountered relationship of model %s matching filters %s", cls.__name__, filters)
+        cls._query_builder.relationship_filters(filters=filters)
+
+        if cls._query_builder.query["where"] == "":
+            raise MissingFilters()
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.relationship_match(type_=cls.__model_settings__.type)}
+                WHERE {cls._query_builder.query['where']}
                 RETURN n
                 LIMIT 1
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         logging.debug("Checking if query returned a result")
@@ -365,35 +369,33 @@ class RelationshipModel(BaseModel):
 
     @classmethod
     async def find_many(
-        cls: Type[T], expressions: TypedRelationshipExpressions | None = None, options: TypedQueryOptions | None = None
+        cls: Type[T], filters: RelationshipFilters | None = None, options: QueryOptions | None = None
     ) -> List[T]:
         """
-        Finds the all relationships that matches `expressions` and returns them.
+        Finds the all relationships that matches `filters` and returns them.
 
         Args:
-            expressions (TypedRelationshipExpressions | None, optional): Expressions applied to the query. Defaults to
+            filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults to
                 None.
-            options (TypedQueryOptions | None, optional): Options for modifying the query result. Defaults to None.
+            options (QueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
             List[T]: A list of model instances.
         """
-        logging.info("Getting relationships of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
-        options_query = cls._query_builder.build_query_options(options=options if options else {}, ref="r")
+        logging.info("Getting relationships of model %s matching filters %s", cls.__name__, filters)
+        if filters is not None:
+            cls._query_builder.relationship_filters(filters=filters)
+        if options is not None:
+            cls._query_builder.query_options(options=options, ref="r")
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.relationship_match(type_=cls.__model_settings__.type)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN r
-                {options_query}
+                {cls._query_builder.query['options']}
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         instances: List[T] = []
@@ -412,16 +414,15 @@ class RelationshipModel(BaseModel):
 
     @classmethod
     async def update_one(
-        cls: Type[T], update: Dict[str, Any], expressions: TypedRelationshipExpressions, new: bool = False
+        cls: Type[T], update: Dict[str, Any], filters: RelationshipFilters, new: bool = False
     ) -> T | None:
         """
-        Finds the first relationship that matches `expressions` and updates it with the values defined by `update`. If
+        Finds the first relationship that matches `filters` and updates it with the values defined by `update`. If
         no match is found, a `NoResultsFound` is raised.
 
         Args:
-            update (Dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
-                all required values defined on model must be present, else the model validation will fail.
-            expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
+            update (Dict[str, Any]): Values to update the relationship properties with.
+            filters (RelationshipFilters): Expressions applied to the query. Defaults to None.
             new (bool, optional): Whether to return the updated relationship. By default, the old relationship is
                 returned. Defaults to False.
 
@@ -434,26 +435,21 @@ class RelationshipModel(BaseModel):
         """
         new_instance: T
 
-        logging.info(
-            "Updating first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
-        )
-        logging.debug(
-            "Getting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
-        )
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
+        logging.info("Updating first encountered relationship of model %s matching filters %s", cls.__name__, filters)
+        logging.debug("Getting first encountered relationship of model %s matching filters %s", cls.__name__, filters)
+        cls._query_builder.relationship_filters(filters=filters)
+
+        if cls._query_builder.query["where"] == "":
+            raise MissingFilters()
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
-                RETURN n
+                MATCH {cls._query_builder.relationship_match(type_=cls.__model_settings__.type)}
+                WHERE {cls._query_builder.query['where']}
+                RETURN r
                 LIMIT 1
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         logging.debug("Checking if query returned a result")
@@ -481,16 +477,16 @@ class RelationshipModel(BaseModel):
     async def update_many(
         cls: Type[T],
         update: Dict[str, Any],
-        expressions: TypedRelationshipExpressions | None = None,
+        filters: RelationshipFilters | None = None,
         new: bool = False,
     ) -> List[T] | T | None:
         """
-        Finds all relationships that match `expressions` and updates them with the values defined by `update`.
+        Finds all relationships that match `filters` and updates them with the values defined by `update`.
 
         Args:
             update (Dict[str, Any]): Values to update the relationship properties with. If `upsert` is set to `True`,
                 all required values defined on model must be present, else the model validation will fail.
-            expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
+            filters (RelationshipFilters): Expressions applied to the query. Defaults to None.
             new (bool, optional): Whether to return the updated relationships. By default, the old relationships is
                 returned. Defaults to False.
 
@@ -500,21 +496,18 @@ class RelationshipModel(BaseModel):
         """
         new_instance: T
 
-        logging.info("Updating all relationships of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
+        logging.info("Updating all relationships of model %s matching filters %s", cls.__name__, filters)
+        if filters is not None:
+            cls._query_builder.relationship_filters(filters=filters)
 
-        logging.debug("Getting all relationships of model %s matching expressions %s", cls.__name__, expressions)
+        logging.debug("Getting all relationships of model %s matching filters %s", cls.__name__, filters)
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.relationship_match(type_=cls.__model_settings__.type)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN r
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         old_instances: List[T] = []
@@ -544,14 +537,19 @@ class RelationshipModel(BaseModel):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.relationship_match(type_=cls.__model_settings__.type)}
+                WHERE {cls._query_builder.query['where']}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
-                RETURN n
+                RETURN r
             """,
-            parameters={**deflated_properties, **expression_parameters},
+            parameters={**deflated_properties, **cls._query_builder.parameters},
         )
 
+        logging.info(
+            "Successfully updated %s relationships %s",
+            len(old_instances),
+            [getattr(instance, "_element_id") for instance in old_instances],
+        )
         if new:
             instances: List[T] = []
 
@@ -560,28 +558,17 @@ class RelationshipModel(BaseModel):
                     if result is not None:
                         instances.append(result)
 
-            logging.info(
-                "Successfully updated %s relationships %s",
-                len(instances),
-                [getattr(instance, "_element_id") for instance in instances],
-            )
             return instances
-
-        logging.info(
-            "Successfully updated %s relationships %s",
-            len(old_instances),
-            [getattr(instance, "_element_id") for instance in old_instances],
-        )
         return old_instances
 
     @classmethod
-    async def delete_one(cls: Type[T], expressions: TypedRelationshipExpressions) -> int:
+    async def delete_one(cls: Type[T], filters: RelationshipFilters) -> int:
         """
-        Finds the first relationship that matches `expressions` and deletes it. If no match is found, a
+        Finds the first relationship that matches `filters` and deletes it. If no match is found, a
         `NoResultsFound` is raised.
 
         Args:
-            expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
+            filters (RelationshipFilters): Expressions applied to the query. Defaults to None.
 
         Raises:
             NoResultsFound: Raised if the query did not return the relationship.
@@ -589,85 +576,88 @@ class RelationshipModel(BaseModel):
         Returns:
             int: The number of deleted relationships.
         """
-        logging.info(
-            "Deleting first encountered relationship of model %s matching expressions %s", cls.__name__, expressions
-        )
-        relationship = await cls.find_one(expressions=expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
+        logging.info("Deleting first encountered relationship of model %s matching filters %s", cls.__name__, filters)
+        if cls._query_builder.query["where"] == "":
+            raise MissingFilters()
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.relationship_match(type_=cls.__model_settings__.type)}
+                WHERE {cls._query_builder.query['where']}
                 DELETE r
             """,
-            parameters={**expression_parameters},
+            parameters=cls._query_builder.parameters,
         )
 
-        logging.info("Deleted relationship %s", getattr(relationship, "_element_id"))
-        return len(relationship)
+        logging.info("Deleted relationship matching filters %s", filters)
+        return 1
 
     @classmethod
-    async def delete_many(cls: Type[T], expressions: TypedRelationshipExpressions | None = None) -> int:
+    async def delete_many(cls: Type[T], filters: RelationshipFilters | None = None) -> int:
         """
-        Finds all relationships that match `expressions` and deletes them.
+        Finds all relationships that match `filters` and deletes them.
 
         Args:
-            expressions (TypedRelationshipExpressions): Expressions applied to the query. Defaults to None.
+            filters (RelationshipFilters): Expressions applied to the query. Defaults to None.
 
         Returns:
             int: The number of deleted relationships.
         """
-        logging.info("Deleting all relationships of model %s matching expressions %s", cls.__name__, expressions)
-        relationships = await cls.find_many(expressions=expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
+        logging.info("Deleting all relationships of model %s matching filters %s", cls.__name__, filters)
+        if filters is not None:
+            cls._query_builder.relationship_filters(filters=filters)
 
-        await cls._client.cypher(
+        logging.debug("Getting relationship count matching filters %s", filters)
+        results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
-                DELETE r
+                MATCH {cls._query_builder.relationship_match(type_=cls.__model_settings__.type)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
+                RETURN count(r)
             """,
-            parameters={**expression_parameters},
+            parameters=cls._query_builder.parameters,
+            resolve_models=False,
         )
 
-        logging.info("Deleted %s relationships", len(relationships))
-        return len(relationships)
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
+
+        logging.debug("Deleting relationships")
+        await cls._client.cypher(
+            query=f"""
+                MATCH {cls._query_builder.relationship_match(type_=cls.__model_settings__.type)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
+                DELETE r
+            """,
+            parameters=cls._query_builder.parameters,
+        )
+
+        logging.info("Deleted %s relationships", len(results[0][0]))
+        return len(results[0][0])
 
     @classmethod
-    async def count(cls: Type[T], expressions: TypedRelationshipExpressions | None = None) -> int:
+    async def count(cls: Type[T], filters: RelationshipFilters | None = None) -> int:
         """
-        Counts all relationships which match the provided `expressions` parameter.
+        Counts all relationships which match the provided `filters` parameter.
 
         Args:
-            expressions (TypedRelationshipExpressions | None, optional): Expressions applied to the query. Defaults
+            filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults
                 to None.
 
         Returns:
             int: The number of relationships matched by the query.
         """
-        logging.info("Getting count of relationships of model %s matching expressions %s", cls.__name__, expressions)
-        (
-            expression_match_query,
-            expression_where_query,
-            expression_parameters,
-        ) = cls._query_builder.build_relationship_expressions(expressions=expressions, ref="r")
+        logging.info("Getting count of relationships of model %s matching filters %s", cls.__name__, filters)
+        if filters is not None:
+            cls._query_builder.relationship_filters(filters=filters)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._relationship_match}{f', {expression_match_query}' if expression_match_query is not None else ""}
-                WHERE {expression_where_query if expression_where_query is not None else ""}
+                MATCH {cls._query_builder.relationship_match(type_=cls.__model_settings__.type)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN count(r)
             """,
-            parameters=expression_parameters,
+            parameters=cls._query_builder.parameters,
         )
 
         logging.debug("Checking if query returned a result")

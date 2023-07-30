@@ -189,7 +189,8 @@ class NodeModel(BaseModel):
         logging.info("Creating new node from model instance %s", self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                CREATE (n:`{":".join(self.__model_settings__.labels)}` $properties)
+                CREATE {self._query_builder.node_match(self.__model_settings__.labels)}
+                SET {', '.join(f"n.{property_name} = ${property_name}" for property_name in self.__fields__.keys())}
                 RETURN n
             """,
             parameters={
@@ -228,7 +229,7 @@ class NodeModel(BaseModel):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(self.__model_settings__.labels)}`)
+                MATCH {self._query_builder.node_match(self.__model_settings__.labels)}
                 WHERE elementId(n) = $element_id
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated if property_name in self._modified_properties])}
                 RETURN n
@@ -257,7 +258,7 @@ class NodeModel(BaseModel):
         logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(self.__model_settings__.labels)}`)
+                MATCH {self._query_builder.node_match(self.__model_settings__.labels)}
                 WHERE elementId(n) = $element_id
                 DETACH DELETE n
                 RETURN count(n)
@@ -284,7 +285,7 @@ class NodeModel(BaseModel):
         logging.info("Refreshing node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH (n:`{":".join(self.__model_settings__.labels)}`)
+                MATCH {self._query_builder.node_match(self.__model_settings__.labels)}
                 WHERE elementId(n) = $element_id
                 RETURN n
             """,
@@ -307,6 +308,9 @@ class NodeModel(BaseModel):
 
         Args:
             filters (NodeFilters): The filters to apply to the query.
+
+        Raises:
+            MissingFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
             T | None: A instance of the model or None if no match is found.
@@ -348,9 +352,6 @@ class NodeModel(BaseModel):
         Args:
             filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
             options (QueryOptions, optional): The options to apply to the query. Defaults to None.
-
-        Raises:
-            MissingFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
             List[T]: A list of model instances.
@@ -456,9 +457,6 @@ class NodeModel(BaseModel):
             filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
             new (bool, optional): Whether to return the updated nodes. By default, the old nodes
                 is returned. Defaults to False.
-
-        Raises:
-            MissingFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
             List[T] | T: By default, the old node instances are returned. If `new` is set to `True`,

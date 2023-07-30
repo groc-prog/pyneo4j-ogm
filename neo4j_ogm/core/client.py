@@ -115,8 +115,8 @@ class Neo4jClient:
     @ensure_connection
     async def register_models(self, models: List[Type[NodeModel | RelationshipModel]]) -> None:
         """
-        Registers models which are used with the client to resolve query results to their corresponding model
-        instances.
+        Registers models which are used with the client to resolve query results to their
+        corresponding model instances.
 
         Args:
             models (List[Type[NodeModel | RelationshipModel]]): A list of models to register.
@@ -187,8 +187,8 @@ class Neo4jClient:
         Args:
             query (str): Query to run.
             parameters (Dict[str, Any]): Parameters passed to the transaction.
-            resolve_models (bool, optional): Whether to try and resolve query results to their corresponding database
-                models or not. Defaults to True.
+            resolve_models (bool, optional): Whether to try and resolve query results to their
+                corresponding database models or not. Defaults to True.
 
         Returns:
             Tuple[List[List[Any]], List[str]]: A tuple containing the query result and the names
@@ -234,16 +234,17 @@ class Neo4jClient:
         self, name: str, entity_type: str, properties: List[str], labels_or_type: List[str] | str
     ) -> None:
         """
-        Creates a constraint on nodes or relationships in the Neo4j database. Currently only `UNIQUENESS`
-        constraints are supported.
+        Creates a constraint on nodes or relationships in the Neo4j database. Currently only
+        `UNIQUENESS` constraints are supported.
 
         Args:
             name (str): The name of the constraint.
-            entity_type (str): The type of entity the constraint is applied to. Must be either "NODE" or "RELATIONSHIP".
-            properties (List[str]): A list of properties that should be unique for nodes/relationships satisfying
-                the constraint.
-            labels_or_type (List[str]): For nodes, a list of labels to which the constraint should be applied.
-                For relationships, a string representing the relationship type.
+            entity_type (str): The type of entity the constraint is applied to. Must be either
+                `NODE` or `RELATIONSHIP`.
+            properties (List[str]): A list of properties that should be unique for
+                nodes/relationships satisfying the constraint.
+            labels_or_type (List[str]): For nodes, a list of labels to which the constraint should
+                be applied. For relationships, a string representing the relationship type.
 
         Raises:
             InvalidEntityType: If an invalid entity_type is provided.
@@ -290,12 +291,13 @@ class Neo4jClient:
 
         Args:
             name (str): The name of the constraint.
-            entity_type (str): The type of entity the constraint is applied to. Must be either "NODE" or "RELATIONSHIP".
+            entity_type (str): The type of entity the constraint is applied to. Must be either
+                `NODE` or `RELATIONSHIP`.
             index_type (str): The type of index to apply.
-            properties (List[str]): A list of properties that should be unique for nodes/relationships satisfying
-                the constraint.
-            labels_or_type (List[str]): For nodes, a list of labels to which the constraint should be applied.
-                For relationships, a string representing the relationship type.
+            properties (List[str]): A list of properties that should be unique for
+                nodes/relationships satisfying the constraint.
+            labels_or_type (List[str]): For nodes, a list of labels to which the constraint should
+                be applied. For relationships, a string representing the relationship type.
 
         Raises:
             InvalidEntityType: If an invalid entity_type is provided.
@@ -459,7 +461,8 @@ class Neo4jClient:
         Combine multiple transactions into a batch transaction.
 
         Returns:
-            BatchManager: A class for managing batch transaction which can be used with a `with` statement.
+            BatchManager: A class for managing batch transaction which can be used with a `with`
+                statement.
         """
         return BatchManager(self)
 
