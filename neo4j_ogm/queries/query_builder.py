@@ -74,6 +74,9 @@ class QueryBuilder:
 
         return " AND ".join(where_queries)
 
+    def _normalize_filters(self, filters: Dict[str, Any]) -> Dict[str, Any]:
+        pass
+
     def _size_operator(self, expression: Dict[str, Any]) -> str:
         """
         Builds the query for the `$size` operator.

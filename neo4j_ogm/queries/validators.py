@@ -10,7 +10,7 @@ from pydantic import BaseModel, Extra, Field, ValidationError, root_validator
 from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes
 
 
-def _normalize_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
     validated_values: Dict[str, Any] = deepcopy(values)
 
     for property_name, property_value in values.items():
