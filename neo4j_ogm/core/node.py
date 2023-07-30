@@ -187,15 +187,15 @@ class NodeModel(BaseModel):
             T: The current model instance.
         """
         logging.info("Creating new node from model instance %s", self.__class__.__name__)
+        deflated_properties = self.deflate()
+
         results, _ = await self._client.cypher(
             query=f"""
                 CREATE {self._query_builder.node_match(self.__model_settings__.labels)}
-                SET {', '.join(f"n.{property_name} = ${property_name}" for property_name in self.__fields__.keys())}
+                SET {', '.join(f"n.{property_name} = ${property_name}" for property_name in deflated_properties.keys())}
                 RETURN n
             """,
-            parameters={
-                "properties": self.deflate(),
-            },
+            parameters=deflated_properties,
         )
 
         logging.debug("Checking if query returned a result")
