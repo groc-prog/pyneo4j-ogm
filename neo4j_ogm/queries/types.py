@@ -7,9 +7,9 @@ from typing import Dict, List, TypedDict, Union
 NumericQueryDataType = Union[int, float]
 QueryDataTypes = Union[NumericQueryDataType, bool, str, bytes, datetime, date, time, timedelta]
 
-# We need to define 5 different typed dictionaries here because the `$size` operator can only be one of the following,
-# which means we have to create a Union of the five listed below to not get any more type hints if one has already been
-# used.
+# We need to define 5 different typed dictionaries here because the `$size` operator can only be
+# one of the following, which means we have to create a Union of the five listed below to not get
+# any more type hints if one has already been used.
 NumericEqualsOperator = TypedDict(
     "NumericEqualsOperator",
     {
@@ -66,6 +66,7 @@ QueryOperators = TypedDict(
             NumericQueryDataType,
         ],
         "$contains": str,
+        "$exists": bool,
         "$icontains": str,
         "$startsWith": str,
         "$istartsWith": str,
@@ -80,14 +81,11 @@ QueryOperators = TypedDict(
     total=False,
 )
 
-# We need to define different interfaces for nodes and relationships to not show invalid operants for the model type.
-QueryNodeOperators = TypedDict(
-    "QueryNodeOperators", {"$elementId": str, "$id": int, "$labels": Union[str, List[str]]}, total=False
-)
+# We need to define different interfaces for nodes and relationships to not show invalid operants
+# for the model type.
+QueryNodeOperators = TypedDict("QueryNodeOperators", {"$elementId": str, "$id": int}, total=False)
 
-QueryRelationshipOperators = TypedDict(
-    "QueryRelationshipOperators", {"$elementId": str, "$id": int, "$type": Union[str, List[str]]}, total=False
-)
+QueryRelationshipOperators = TypedDict("QueryRelationshipOperators", {"$elementId": str, "$id": int}, total=False)
 
 # The actual interfaces used to describe query filters
 NodeFilters = Union[Dict[str, QueryOperators], QueryNodeOperators]

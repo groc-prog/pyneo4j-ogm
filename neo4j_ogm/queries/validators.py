@@ -90,6 +90,7 @@ class QueryOperatorModel(BaseModel):
         ]
     ] = Field(alias="$size")
     contains: Optional[str] = Field(alias="$contains")
+    exists: Optional[bool] = Field(alias="$exists")
     i_contains: Optional[str] = Field(alias="$icontains")
     starts_with: Optional[str] = Field(alias="$startsWith")
     i_starts_with: Optional[str] = Field(alias="$istartsWith")
@@ -109,7 +110,6 @@ class NodeFiltersModel(BaseModel):
 
     element_id: Optional[str] = Field(alias="$elementId")
     id: Optional[int] = Field(alias="$id")
-    labels: Optional[Union[str, List[str]]] = Field(alias="$labels")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -129,7 +129,6 @@ class RelationshipFiltersModel(BaseModel):
 
     element_id: Optional[str] = Field(alias="$elementId")
     id: Optional[int] = Field(alias="$id")
-    labels: Optional[Union[str, List[str]]] = Field(alias="$labels")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
