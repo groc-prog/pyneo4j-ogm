@@ -5,7 +5,8 @@ It adds additional methods for exporting the model to a dictionary and importing
 import json
 import logging
 import re
-from typing import Any, ClassVar, Dict, Set, Type, TypeVar, Union, cast
+from asyncio import iscoroutinefunction
+from typing import Any, Callable, ClassVar, Dict, List, Set, Type, TypeVar, Union, cast
 
 from pydantic import BaseModel, PrivateAttr, root_validator
 
@@ -15,6 +16,36 @@ from neo4j_ogm.fields.settings import BaseModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
 
 T = TypeVar("T", bound="ModelBase")
+
+
+def hooks(func: Callable):
+    """
+    Decorator which runs defined pre- and post hooks for the decorated method. The decorator expects the
+    hooks to have the name of the decorated method.
+    """
+
+    async def decorator(self: T, *args, **kwargs):
+        # Run pre hooks if defined
+        if func.__name__ in self.__model_settings__.pre_hooks:
+            for hook_function in self.__model_settings__.pre_hooks[func.__name__]:
+                if iscoroutinefunction(hook_function):
+                    await hook_function(self, *args, **kwargs)
+                else:
+                    hook_function(self, *args, **kwargs)
+
+        result = await func(self, *args, **kwargs)
+
+        # Run post hooks if defined
+        if func.__name__ in self.__model_settings__.post_hooks:
+            for hook_function in self.__model_settings__.post_hooks[func.__name__]:
+                if iscoroutinefunction(hook_function):
+                    await hook_function(self, result, *args, **kwargs)
+                else:
+                    hook_function(self, result, *args, **kwargs)
+
+        return result
+
+    return decorator
 
 
 class ModelBase(BaseModel):
@@ -107,6 +138,70 @@ class ModelBase(BaseModel):
         instance = cls(**model)
         instance._element_id = model["element_id"]
         return instance
+
+    @classmethod
+    def register_pre_hooks(
+        cls, hook_name: str, hook_functions: Union[List[Callable], Callable], overwrite: bool = False
+    ) -> None:
+        """
+        Register one or multiple pre-hooks for a method.
+
+        Args:
+            hook_name (str): Name of the hook to register the function for.
+            hook_functions (Union[List[Callable], Callable]): References of the functions to call if the hook is triggered.
+            overwrite (bool, optional): Whether to overwrite all defined hook functions if a new hooks function for the same hook
+                is registered. Defaults to False.
+        """
+        valid_hook_functions: List[Callable] = []
+
+        if isinstance(hook_functions, list):
+            for hook_function in hook_functions:
+                if callable(hook_function):
+                    valid_hook_functions.append(hook_function)
+        elif callable(hook_functions):
+            valid_hook_functions.append(hook_functions)
+
+        # Create key if it does not exist
+        if hook_name not in cls.__model_settings__.pre_hooks:
+            cls.__model_settings__.pre_hooks[hook_name] = []
+
+        if overwrite:
+            cls.__model_settings__.pre_hooks[hook_name] = valid_hook_functions
+        else:
+            for hook_function in valid_hook_functions:
+                cls.__model_settings__.pre_hooks[hook_name].append(hook_function)
+
+    @classmethod
+    def register_post_hooks(
+        cls, hook_name: str, hook_functions: Union[List[Callable], Callable], overwrite: bool = False
+    ) -> None:
+        """
+        Register one or multiple post-hooks for a method.
+
+        Args:
+            hook_name (str): Name of the hook to register the function for.
+            hook_functions (Union[List[Callable], Callable]): References of the functions to call if the hook is triggered.
+            overwrite (bool, optional): Whether to overwrite all defined hook functions if a new hooks function for the same hook
+                is registered. Defaults to False.
+        """
+        valid_hook_functions: List[Callable] = []
+
+        if isinstance(hook_functions, list):
+            for hook_function in hook_functions:
+                if callable(hook_function):
+                    valid_hook_functions.append(hook_function)
+        elif callable(hook_functions):
+            valid_hook_functions.append(hook_functions)
+
+        # Create key if it does not exist
+        if hook_name not in cls.__model_settings__.post_hooks:
+            cls.__model_settings__.post_hooks[hook_name] = []
+
+        if overwrite:
+            cls.__model_settings__.post_hooks[hook_name] = valid_hook_functions
+        else:
+            for hook_function in valid_hook_functions:
+                cls.__model_settings__.post_hooks[hook_name].append(hook_function)
 
     @classmethod
     def _convert_to_camel_case(cls, model_dict: Dict[str, Any]) -> Dict[str, Any]:

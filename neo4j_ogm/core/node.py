@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Type, Typ
 from neo4j.graph import Node
 from pydantic import BaseModel
 
-from neo4j_ogm.core.base import ModelBase
+from neo4j_ogm.core.base import ModelBase, hooks
 from neo4j_ogm.exceptions import (
     InflationFailure,
     InstanceDestroyed,
@@ -300,6 +300,7 @@ class NodeModel(ModelBase):
         logging.info("Refreshed node %s", self._element_id)
 
     @classmethod
+    @hooks
     async def find_one(cls: Type[T], filters: NodeFilters) -> Union[T, None]:
         """
         Finds the first node that matches `filters` and returns it. If no matching node is found,

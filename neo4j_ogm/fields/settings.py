@@ -1,7 +1,7 @@
 """
 This module contains possible settings for NodeModels and RelationshipModels
 """
-from typing import List, Optional, Set, Union
+from typing import Callable, Dict, List, Optional, Set, Union
 
 
 class BaseModelSettings:
@@ -10,6 +10,8 @@ class BaseModelSettings:
     """
 
     exclude_from_export: Set[str] = set()
+    pre_hooks: Dict[str, Union[List[Callable], Callable]] = {}
+    post_hooks: Dict[str, Union[List[Callable], Callable]] = {}
 
 
 class NodeModelSettings(BaseModelSettings):

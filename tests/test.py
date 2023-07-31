@@ -63,10 +63,29 @@ async def setup() -> None:
     await child1.toys.connect(toy4)
 
 
+async def async_post(*args, **kwargs) -> None:
+    print("Post hook called", args, kwargs)
+    await asyncio.sleep(1)
+
+
+async def async_pre(*args, **kwargs) -> None:
+    print("Pre hook called", args, kwargs)
+    await asyncio.sleep(1)
+
+
+def sync_pre(*args, **kwargs) -> None:
+    print("Pre hook called", args, kwargs)
+
+
 async def main():
     await client.register_models([Adult, Married, Friends, Child, HasChild, Toy, OwnsToy])
 
     # await setup()
+
+    Adult.register_pre_hooks("find_one", ["afaf", async_pre, sync_pre])
+    Adult.register_post_hooks("find_one", async_post)
+
+    # TODO - WHEN USING HOOKS DECORATOR TYPINGS ARE LOST!!!!!!
 
     found_adult = await Adult.find_one({"id": "5040d04b-2757-4b0b-8bd9-026c4f1a6eb6"})
 
