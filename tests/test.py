@@ -68,7 +68,7 @@ async def main():
 
     # await setup()
 
-    found_adult = await Adult.find_one({"id": "a55e521f-ff68-4944-9012-4a27915be572"})
+    found_adult = await Adult.find_one({"id": "5040d04b-2757-4b0b-8bd9-026c4f1a6eb6"})
 
     if found_adult is None:
         return
@@ -83,7 +83,7 @@ async def main():
 
     imported = Adult.import_model(exported, from_camel_case=True)
 
-    await imported.delete()
+    # await imported.delete()
 
     print("DONE")
 

@@ -625,13 +625,3 @@ class NodeModel(ModelBase):
             raise NoResultsFound()
 
         return results[0][0]
-
-    class Config:
-        """
-        Pydantic configuration options.
-        """
-
-        validate_all = True
-        validate_assignment = True
-        revalidate_instances = "always"
-        arbitrary_types_allowed = True

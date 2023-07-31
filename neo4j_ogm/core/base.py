@@ -151,3 +151,13 @@ class ModelBase(BaseModel):
             return [cls._convert_keys_to_snake_case(item) for item in model_dict]
 
         return model_dict
+
+    class Config:
+        """
+        Pydantic configuration options.
+        """
+
+        validate_all = True
+        validate_assignment = True
+        revalidate_instances = "always"
+        arbitrary_types_allowed = True
