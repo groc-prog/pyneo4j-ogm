@@ -6,7 +6,6 @@ import json
 import logging
 import re
 from asyncio import iscoroutinefunction
-from functools import wraps
 from typing import Any, Callable, ClassVar, Dict, List, ParamSpec, Set, Type, TypeVar, Union, cast
 
 from pydantic import BaseModel, PrivateAttr, root_validator
@@ -27,7 +26,6 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
     hooks to have the name of the decorated method.
     """
 
-    @wraps(func)
     async def decorator(self: T, *args, **kwargs) -> U:
         # Run pre hooks if defined
         if func.__name__ in self.__model_settings__.pre_hooks:
