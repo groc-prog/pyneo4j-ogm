@@ -80,7 +80,7 @@ def sync_pre(*args, **kwargs) -> None:
 async def main():
     await client.register_models([Adult, Married, Friends, Child, HasChild, Toy, OwnsToy])
 
-    # await setup()
+    await setup()
 
     Adult.register_pre_hooks("find_one", ["afaf", async_pre, sync_pre])
     Adult.register_post_hooks("find_one", async_post)

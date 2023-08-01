@@ -6,7 +6,8 @@ import json
 import logging
 import re
 from asyncio import iscoroutinefunction
-from typing import Any, Callable, ClassVar, Dict, List, Set, Type, TypeVar, Union, cast
+from functools import wraps
+from typing import Any, Callable, ClassVar, Dict, List, ParamSpec, Set, Type, TypeVar, Union, cast
 
 from pydantic import BaseModel, PrivateAttr, root_validator
 
@@ -15,16 +16,19 @@ from neo4j_ogm.exceptions import ModelImportFailure, ReservedPropertyName
 from neo4j_ogm.fields.settings import BaseModelSettings
 from neo4j_ogm.queries.query_builder import QueryBuilder
 
+P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
+U = TypeVar("U")
 
 
-def hooks(func: Callable):
+def hooks(func: Callable[P, U]) -> Callable[P, U]:
     """
     Decorator which runs defined pre- and post hooks for the decorated method. The decorator expects the
     hooks to have the name of the decorated method.
     """
 
-    async def decorator(self: T, *args, **kwargs):
+    @wraps(func)
+    async def decorator(self: T, *args, **kwargs) -> U:
         # Run pre hooks if defined
         if func.__name__ in self.__model_settings__.pre_hooks:
             for hook_function in self.__model_settings__.pre_hooks[func.__name__]:
