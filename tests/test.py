@@ -1,5 +1,6 @@
 # pylint: disable=missing-class-docstring missing-module-docstring
 import logging
+from uuid import uuid4
 
 logging.basicConfig(level=logging.INFO)
 
@@ -15,13 +16,15 @@ from tests.toy_model import OwnsToy, Toy
 client = Neo4jClient()
 client.connect(uri="neo4j://localhost:7687", auth=("neo4j", "password"))
 
+adult1_id = uuid4()
+
 
 async def setup() -> None:
     await client.drop_constraints()
     await client.drop_indexes()
     await client.drop_nodes()
 
-    adult1 = await Adult(name="James", favorite_numbers=[1, 4, 6], age=23).create()
+    adult1 = await Adult(id=adult1_id, name="James", favorite_numbers=[1, 4, 6], age=23).create()
     adult2 = await Adult(name="Alice", favorite_numbers=[1, 7, 8], age=30).create()
     adult3 = await Adult(name="John", favorite_numbers=[4, 6], age=40).create()
     adult4 = await Adult(name="Emma", favorite_numbers=[9], age=28).create()
@@ -64,17 +67,17 @@ async def setup() -> None:
 
 
 async def async_post(*args, **kwargs) -> None:
-    print("Post hook called", args, kwargs)
+    print("Post async hook called", args, kwargs)
     await asyncio.sleep(1)
 
 
 async def async_pre(*args, **kwargs) -> None:
-    print("Pre hook called", args, kwargs)
+    print("Pre async hook called", args, kwargs)
     await asyncio.sleep(1)
 
 
 def sync_pre(*args, **kwargs) -> None:
-    print("Pre hook called", args, kwargs)
+    print("Pre sync hook called", args, kwargs)
 
 
 async def main():
@@ -84,10 +87,11 @@ async def main():
 
     Adult.register_pre_hooks("find_one", ["afaf", async_pre, sync_pre])
     Adult.register_post_hooks("find_one", async_post)
+    Adult.register_pre_hooks("delete", async_pre)
+    Adult.register_pre_hooks("delete", sync_pre, overwrite=True)
+    Adult.register_post_hooks("delete", [1, async_post])
 
-    # TODO - WHEN USING HOOKS DECORATOR TYPINGS ARE LOST!!!!!!
-
-    found_adult = await Adult.find_one({"id": "5040d04b-2757-4b0b-8bd9-026c4f1a6eb6"})
+    found_adult = await Adult.find_one({"id": str(adult1_id)})
 
     if found_adult is None:
         return
@@ -102,7 +106,7 @@ async def main():
 
     imported = Adult.import_model(exported, from_camel_case=True)
 
-    # await imported.delete()
+    await imported.delete()
 
     print("DONE")
 

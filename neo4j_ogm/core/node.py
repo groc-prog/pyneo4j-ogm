@@ -5,7 +5,7 @@ the database for CRUD operations on nodes.
 """
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel
@@ -27,30 +27,6 @@ else:
     RelationshipProperty = object
 
 T = TypeVar("T", bound="NodeModel")
-
-
-def ensure_alive(func: Callable):
-    """
-    Decorator which ensures that a instance has not been destroyed and has been hydrated before
-    running any queries.
-
-    Raises:
-        InstanceDestroyed: Raised if the method is called on a instance which has been destroyed.
-        InstanceNotHydrated: Raised if the method is called on a instance which has been saved to
-            the database.
-    """
-
-    async def decorator(self, *args, **kwargs):
-        if getattr(self, "_destroyed", True):
-            raise InstanceDestroyed()
-
-        if getattr(self, "_element_id", None) is None:
-            raise InstanceNotHydrated()
-
-        result = await func(self, *args, **kwargs)
-        return result
-
-    return decorator
 
 
 class NodeModel(ModelBase):
@@ -202,7 +178,7 @@ class NodeModel(ModelBase):
 
         return self
 
-    @ensure_alive
+    @hooks
     async def update(self) -> None:
         """
         Updates the corresponding node in the database with the current instance values.
@@ -210,6 +186,7 @@ class NodeModel(ModelBase):
         Raises:
             NoResultsFound: Raised if the query did not return the updated node.
         """
+        self._ensure_alive()
         deflated = self.deflate()
 
         logging.info(
@@ -245,7 +222,7 @@ class NodeModel(ModelBase):
         self._modified_properties.clear()
         logging.info("Updated node %s", self._element_id)
 
-    @ensure_alive
+    @hooks
     async def delete(self) -> None:
         """
         Deletes the corresponding node in the database and marks this instance as destroyed. If
@@ -254,6 +231,8 @@ class NodeModel(ModelBase):
         Raises:
             NoResultsFound: Raised if the query did not return the updated node.
         """
+        self._ensure_alive()
+
         logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
@@ -273,7 +252,7 @@ class NodeModel(ModelBase):
         setattr(self, "_destroyed", True)
         logging.info("Deleted node %s", self._element_id)
 
-    @ensure_alive
+    @hooks
     async def refresh(self) -> None:
         """
         Refreshes the current instance with the values from the database.
@@ -281,6 +260,8 @@ class NodeModel(ModelBase):
         Raises:
             NoResultsFound: Raised if the query did not return the current node.
         """
+        self._ensure_alive()
+
         logging.info("Refreshing node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
@@ -342,6 +323,7 @@ class NodeModel(ModelBase):
         return results[0][0]
 
     @classmethod
+    @hooks
     async def find_many(
         cls: Type[T], filters: Union[NodeFilters, None] = None, options: Union[QueryOptions, None] = None
     ) -> List[T]:
@@ -387,6 +369,7 @@ class NodeModel(ModelBase):
         return instances
 
     @classmethod
+    @hooks
     async def update_one(cls: Type[T], update: Dict[str, Any], filters: NodeFilters, new: bool = False) -> T:
         """
         Finds the first node that matches `filters` and updates it with the values defined by
@@ -447,6 +430,7 @@ class NodeModel(ModelBase):
         return old_instance
 
     @classmethod
+    @hooks
     async def update_many(
         cls: Type[T], update: Dict[str, Any], filters: Union[NodeFilters, None] = None, new: bool = False
     ) -> [List[T], T]:
@@ -530,6 +514,7 @@ class NodeModel(ModelBase):
         return old_instances
 
     @classmethod
+    @hooks
     async def delete_one(cls: Type[T], filters: NodeFilters) -> int:
         """
         Finds the first node that matches `filters` and deletes it. If no match is found, a
@@ -570,6 +555,7 @@ class NodeModel(ModelBase):
         return len(results)
 
     @classmethod
+    @hooks
     async def delete_many(cls: Type[T], filters: Union[NodeFilters, None] = None) -> int:
         """
         Finds all nodes that match `filters` and deletes them.
@@ -626,3 +612,13 @@ class NodeModel(ModelBase):
             raise NoResultsFound()
 
         return results[0][0]
+
+    def _ensure_alive(self) -> None:
+        """
+        Ensures that the instance is alive and not deleted.
+        """
+        if self._destroyed is True:
+            raise InstanceDestroyed()
+
+        if self._element_id is None:
+            raise InstanceNotHydrated()

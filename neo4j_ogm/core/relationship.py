@@ -6,12 +6,12 @@ the database for CRUD operations on relationships.
 import json
 import logging
 import re
-from typing import Any, Callable, ClassVar, Dict, List, Type, TypeVar, Union, cast
+from typing import Any, ClassVar, Dict, List, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.base import ModelBase
+from neo4j_ogm.core.base import ModelBase, hooks
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.exceptions import (
     InflationFailure,
@@ -24,35 +24,6 @@ from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.queries.types import QueryOptions, RelationshipFilters, RelationshipMatchDirection
 
 T = TypeVar("T", bound="RelationshipModel")
-
-
-def ensure_alive(func: Callable):
-    """
-    Decorator which ensures that a instance has not been destroyed and has been hydrated before running any queries.
-
-    Raises:
-        InstanceDestroyed: Raised if the method is called on a instance which has been destroyed
-        InstanceNotHydrated: Raised if the method is called on a instance which has been saved to the database
-    """
-
-    async def decorator(self, *args, **kwargs):
-        if getattr(self, "_destroyed", True):
-            raise InstanceDestroyed()
-
-        if any(
-            attribute is None
-            for attribute in [
-                getattr(self, "_element_id", None),
-                getattr(self, "_end_node_id", None),
-                getattr(self, "_start_node_id", None),
-            ]
-        ):
-            raise InstanceNotHydrated()
-
-        result = await func(self, *args, **kwargs)
-        return result
-
-    return decorator
 
 
 class RelationshipModel(ModelBase):
@@ -156,7 +127,7 @@ class RelationshipModel(ModelBase):
         setattr(instance, "_end_node_id", cast(Node, relationship.end_node).element_id)
         return instance
 
-    @ensure_alive
+    @hooks
     async def update(self) -> None:
         """
         Updates the corresponding relationship in the database with the current instance values.
@@ -164,6 +135,7 @@ class RelationshipModel(ModelBase):
         Raises:
             NoResultsFound: Raised if the query did not return the updated relationship.
         """
+        self._ensure_alive()
         deflated = self.deflate()
 
         logging.info(
@@ -194,7 +166,7 @@ class RelationshipModel(ModelBase):
         self._modified_properties.clear()
         logging.info("Updated relationship %s", self._element_id)
 
-    @ensure_alive
+    @hooks
     async def delete(self) -> None:
         """
         Deletes the corresponding relationship in the database and marks this instance as destroyed. If another
@@ -203,6 +175,8 @@ class RelationshipModel(ModelBase):
         Raises:
             NoResultsFound: Raised if the query did not return the updated relationship.
         """
+        self._ensure_alive()
+
         logging.info("Deleting relationship %s of model %s", self._element_id, self.__class__.__name__)
         await self._client.cypher(
             query=f"""
@@ -219,7 +193,7 @@ class RelationshipModel(ModelBase):
         setattr(self, "_destroyed", True)
         logging.info("Deleted relationship %s", self._element_id)
 
-    @ensure_alive
+    @hooks
     async def refresh(self) -> None:
         """
         Refreshes the current instance with the values from the database.
@@ -227,6 +201,8 @@ class RelationshipModel(ModelBase):
         Raises:
             NoResultsFound: Raised if the query did not return the current relationship.
         """
+        self._ensure_alive()
+
         logging.info("Refreshing relationship %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
@@ -245,7 +221,7 @@ class RelationshipModel(ModelBase):
         self.__dict__.update(cast(T, results[0][0]).__dict__)
         logging.info("Refreshed relationship %s", self._element_id)
 
-    @ensure_alive
+    @hooks
     async def start_node(self) -> Type[NodeModel]:
         """
         Returns the start node the relationship belongs to.
@@ -256,6 +232,8 @@ class RelationshipModel(ModelBase):
         Returns:
             Type[NodeModel]: A instance of the start node model.
         """
+        self._ensure_alive()
+
         logging.info(
             "Getting start node %s relationship %s of model %s",
             self._start_node_id,
@@ -279,7 +257,7 @@ class RelationshipModel(ModelBase):
 
         return results[0][0]
 
-    @ensure_alive
+    @hooks
     async def end_node(self) -> Type[NodeModel]:
         """
         Returns the end node the relationship belongs to.
@@ -290,6 +268,8 @@ class RelationshipModel(ModelBase):
         Returns:
             Type[NodeModel]: A instance of the end node model.
         """
+        self._ensure_alive()
+
         logging.info(
             "Getting end node %s relationship %s of model %s",
             self._end_node_id,
@@ -314,6 +294,7 @@ class RelationshipModel(ModelBase):
         return results[0][0]
 
     @classmethod
+    @hooks
     async def find_one(cls: Type[T], filters: RelationshipFilters) -> Union[T, None]:
         """
         Finds the first relationship that matches `filters` and returns it. If no matching relationship is found,
@@ -359,6 +340,7 @@ class RelationshipModel(ModelBase):
         return results[0][0]
 
     @classmethod
+    @hooks
     async def find_many(
         cls: Type[T], filters: Union[RelationshipFilters, None] = None, options: Union[QueryOptions, None] = None
     ) -> List[T]:
@@ -408,6 +390,7 @@ class RelationshipModel(ModelBase):
         return instances
 
     @classmethod
+    @hooks
     async def update_one(cls: Type[T], update: Dict[str, Any], filters: RelationshipFilters, new: bool = False) -> T:
         """
         Finds the first relationship that matches `filters` and updates it with the values defined by `update`. If
@@ -472,6 +455,7 @@ class RelationshipModel(ModelBase):
         return old_instance
 
     @classmethod
+    @hooks
     async def update_many(
         cls: Type[T],
         update: Dict[str, Any],
@@ -563,6 +547,7 @@ class RelationshipModel(ModelBase):
         return old_instances
 
     @classmethod
+    @hooks
     async def delete_one(cls: Type[T], filters: RelationshipFilters) -> int:
         """
         Finds the first relationship that matches `filters` and deletes it. If no match is found, a
@@ -605,6 +590,7 @@ class RelationshipModel(ModelBase):
         return results[0][0]
 
     @classmethod
+    @hooks
     async def delete_many(cls: Type[T], filters: Union[RelationshipFilters, None] = None) -> int:
         """
         Finds all relationships that match `filters` and deletes them.
@@ -686,3 +672,17 @@ class RelationshipModel(ModelBase):
             raise NoResultsFound()
 
         return results[0][0]
+
+    def _ensure_alive(self) -> None:
+        """
+        Ensures that the instance is alive and not deleted.
+        """
+        if self._destroyed is True:
+            raise InstanceDestroyed()
+
+        if any(
+            self._element_id is None,
+            self._start_node_id is None,
+            self._end_node_id is None,
+        ):
+            raise InstanceNotHydrated()
