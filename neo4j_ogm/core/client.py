@@ -131,9 +131,9 @@ class Neo4jClient:
                 for property_name, property_definition in model.__fields__.items():
                     entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
                     labels_or_type = (
-                        list(getattr(model.__model_settings__, "labels"))
+                        list(getattr(model.__settings__, "labels"))
                         if issubclass(model, NodeModel)
-                        else getattr(model.__model_settings__, "type")
+                        else getattr(model.__settings__, "type")
                     )
 
                     if getattr(property_definition.type_, "_unique", False):
@@ -490,9 +490,9 @@ class Neo4jClient:
             model_labels: set[str] = set()
 
             if issubclass(model, NodeModel):
-                model_labels = set(getattr(model.__model_settings__, "labels"))
+                model_labels = set(getattr(model.__settings__, "labels"))
             elif issubclass(model, RelationshipModel):
-                model_labels = set(getattr(model.__model_settings__, "type"))
+                model_labels = set(getattr(model.__settings__, "type"))
 
             if labels == model_labels:
                 return model

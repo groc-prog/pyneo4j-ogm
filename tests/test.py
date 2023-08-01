@@ -2,7 +2,7 @@
 import logging
 from uuid import uuid4
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 import asyncio
 import random
