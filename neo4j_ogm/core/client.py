@@ -7,7 +7,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type, Union
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
-from neo4j.graph import Node, Relationship
+from neo4j.graph import Node, Path, Relationship
 
 from neo4j_ogm.exceptions import (
     InvalidEntityType,
@@ -85,7 +85,7 @@ class Neo4jClient:
             cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def connect(self, uri: Union[str, None] = None, auth: Union[Tuple[str, str], None] = None, *args, **kwargs) -> None:
+    def connect(self, *args, uri: Union[str, None] = None, auth: Union[Tuple[str, str], None] = None, **kwargs) -> None:
         """
         Establish a connection to a database.
 
@@ -212,10 +212,10 @@ class Neo4jClient:
             if resolve_models:
                 for list_index, result_list in enumerate(results):
                     for result_index, result in enumerate(result_list):
-                        model = self._resolve_database_model(result)
+                        resolved = self._resolve_database_model(result)
 
-                        if model is not None:
-                            results[list_index][result_index] = model.inflate(result)
+                        if resolved is not None:
+                            results[list_index][result_index] = resolved
 
             if self._batch_enabled is False:
                 await self.commit_transaction()
@@ -467,22 +467,40 @@ class Neo4jClient:
         return BatchManager(self)
 
     def _resolve_database_model(
-        self, query_result: Union[Node, Relationship]
-    ) -> Type[Union[NodeModel, RelationshipModel]]:
+        self, query_result: Union[Node, Relationship, Path]
+    ) -> Type[Union[NodeModel, RelationshipModel, Path]]:
         """
         Resolves a query result to the corresponding database model, if one is registered.
 
         Args:
-            query_result (Node | Relationship): The query result to try to resolve.
+            query_result (Node | Relationship, Path): The query result to try to resolve.
 
         Returns:
-            Type: The type of the resolved database model.
+            Type[Union[NodeModel, RelationshipModel, Path]]: The database model, if one is registered. If a path is the result,
+                returns the `Path` class with `Path.nodes` and `Path.relationships` resolved to the database models.
         """
         from neo4j_ogm.core.node import NodeModel
         from neo4j_ogm.core.relationship import RelationshipModel
 
-        if not isinstance(query_result, (Node, Relationship)):
+        if not isinstance(query_result, (Node, Relationship, Path)):
             return None
+
+        if isinstance(query_result, Path):
+            nodes = []
+            relationships = []
+
+            for node in query_result.nodes:
+                resolved = self._resolve_database_model(node)
+                nodes.append(resolved if resolved is not None else node)
+
+            for relationship in query_result.relationships:
+                resolved = self._resolve_database_model(relationship)
+                relationships.append(resolved if resolved is not None else relationship)
+
+            setattr(query_result, "_nodes", tuple(nodes))
+            setattr(query_result, "_relationships", tuple(relationships))
+
+            return query_result
 
         labels = set(query_result.labels) if isinstance(query_result, Node) else set(query_result.type)
 
@@ -495,7 +513,7 @@ class Neo4jClient:
                 model_labels = set(getattr(model.__settings__, "type"))
 
             if labels == model_labels:
-                return model
+                return model.inflate(query_result)
 
         return None
 

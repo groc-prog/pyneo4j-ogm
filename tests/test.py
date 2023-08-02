@@ -83,30 +83,35 @@ def sync_pre(*args, **kwargs) -> None:
 async def main():
     await client.register_models([Adult, Married, Friends, Child, HasChild, Toy, OwnsToy])
 
-    await setup()
+    # await setup()
 
-    Adult.register_pre_hooks("find_one", ["afaf", async_pre, sync_pre])
-    Adult.register_post_hooks("find_one", async_post)
-    Adult.register_pre_hooks("delete", async_pre)
-    Adult.register_pre_hooks("delete", sync_pre, overwrite=True)
-    Adult.register_post_hooks("delete", [1, async_post])
+    # Adult.register_pre_hooks("find_one", ["afaf", async_pre, sync_pre])
+    # Adult.register_post_hooks("find_one", async_post)
+    # Adult.register_pre_hooks("delete", async_pre)
+    # Adult.register_pre_hooks("delete", sync_pre, overwrite=True)
+    # Adult.register_post_hooks("delete", [1, async_post])
 
-    found_adult = await Adult.find_one({"id": str(adult1_id)})
+    # found_adult = await Adult.find_one({"id": str(adult1_id)})
 
-    if found_adult is None:
-        return
+    # if found_adult is None:
+    #     return
 
-    exported = found_adult.export_model(convert_to_camel_case=True)
-    # found_child_new = await Child.find_one({"id": "92bb2b93-d46a-4012-a851-95223be950a5"})
-    # found_child_old = await Child.find_one({"id": "893fdb23-4d64-40a4-b5e0-6a9e793d683f"})
+    # exported = found_adult.export_model(convert_to_camel_case=True)
+    # # found_child_new = await Child.find_one({"id": "92bb2b93-d46a-4012-a851-95223be950a5"})
+    # # found_child_old = await Child.find_one({"id": "893fdb23-4d64-40a4-b5e0-6a9e793d683f"})
 
-    # children = await found_adult.children.replace(found_child_old, found_child_new)
+    # # children = await found_adult.children.replace(found_child_old, found_child_new)
 
-    # adult = Adult.parse_obj({"_element_id": "a55e521f-ff68-4944-9012-4a27915be572", "name": "James", "age": 23})
+    # # adult = Adult.parse_obj({"_element_id": "a55e521f-ff68-4944-9012-4a27915be572", "name": "James", "age": 23})
 
-    imported = Adult.import_model(exported, from_camel_case=True)
+    # imported = Adult.import_model(exported, from_camel_case=True)
 
-    await imported.delete()
+    # await imported.delete()
+
+    results, _ = await client.cypher(
+        f"MATCH path = (n:Person:Adult)-[*]->(m:Toy) WHERE n.name = $name AND m.id = $toy_id RETURN path",
+        {"name": "John", "toy_id": "d20440f9-5aba-4307-895a-5f9c3a0d06cb"},
+    )
 
     print("DONE")
 
