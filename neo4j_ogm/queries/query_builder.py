@@ -142,7 +142,7 @@ class QueryBuilder:
             str: The node to match.
         """
         node_ref = ref if ref is not None else ""
-        node_labels = f":`{':'.join(labels)}`" if labels is not None else ""
+        node_labels = f":{':'.join(labels)}" if labels is not None else ""
 
         return f"({node_ref}{node_labels})"
 
@@ -174,7 +174,7 @@ class QueryBuilder:
         end_node_match = self.node_match(labels=end_node_labels, ref=end_node_ref)
 
         relationship_ref = ref if ref is not None else ""
-        relationship_type = f":`{type_}`" if type_ is not None else ""
+        relationship_type = f":{type_}" if type_ is not None else ""
         relationship_match = f"[{relationship_ref}{relationship_type}]"
 
         match direction:
