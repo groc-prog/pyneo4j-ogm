@@ -19,7 +19,7 @@ class NodeModelSettings(BaseModelSettings):
     Settings for a NodeModel class or subclass.
     """
 
-    labels: Optional[Union[List[str], str]]
+    labels: Optional[Union[List[str], str]] = None
 
 
 class RelationshipModelSettings(BaseModelSettings):
@@ -27,7 +27,7 @@ class RelationshipModelSettings(BaseModelSettings):
     Settings for a RelationshipModel class or subclass.
     """
 
-    type: Optional[str]
+    type: Optional[str] = None
 
 
 class RelationshipPropertySettings:

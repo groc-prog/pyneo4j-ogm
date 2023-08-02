@@ -6,7 +6,7 @@ the database for CRUD operations on relationships.
 import json
 import logging
 import re
-from typing import Any, ClassVar, Dict, List, Type, TypeVar, Union, cast
+from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
@@ -32,16 +32,21 @@ class RelationshipModel(ModelBase):
     functionality like de-/inflation and validation.
     """
 
-    __settings__: ClassVar[RelationshipModelSettings]
+    __settings__: RelationshipModelSettings
     _start_node_id: Union[str, None] = PrivateAttr(default=None)
     _end_node_id: Union[str, None] = PrivateAttr(default=None)
+    Settings: ClassVar[Optional[Type[RelationshipModelSettings]]] = None
 
     def __init_subclass__(cls) -> None:
-        if not hasattr(cls, "__settings__"):
-            setattr(cls, "__settings__", RelationshipModelSettings())
+        cls.__settings__ = RelationshipModelSettings()
+
+        if cls.Settings is not None:
+            for setting, value in cls.Settings.__dict__.items():
+                if not setting.startswith("__"):
+                    setattr(cls.__settings__, setting, value)
 
         # Check if relationship type is set, else fall back to class name
-        if not hasattr(cls.__settings__, "type"):
+        if cls.__settings__.type is None:
             logging.warning("No type has been defined for model %s, using model name as type", cls.__name__)
             # Convert class name to upper snake case
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)

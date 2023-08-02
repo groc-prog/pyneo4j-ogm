@@ -5,7 +5,7 @@ the database for CRUD operations on nodes.
 """
 import json
 import logging
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel
@@ -35,8 +35,9 @@ class NodeModel(ModelBase):
     model.
     """
 
-    __settings__: ClassVar[NodeModelSettings]
+    __settings__: NodeModelSettings
     _relationships_properties = set()
+    Settings: ClassVar[Optional[Type[NodeModelSettings]]] = None
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -47,16 +48,20 @@ class NodeModel(ModelBase):
                 cast(RelationshipProperty, property_name)._build_property(self)
 
     def __init_subclass__(cls) -> None:
-        if not hasattr(cls, "__settings__"):
-            setattr(cls, "__settings__", NodeModelSettings())
+        cls.__settings__ = NodeModelSettings()
+
+        if cls.Settings is not None:
+            for setting, value in cls.Settings.__dict__.items():
+                if not setting.startswith("__"):
+                    setattr(cls.__settings__, setting, value)
 
         # Check if node labels is set, if not fall back to model name
-        if not hasattr(cls.__settings__, "labels"):
+        if cls.__settings__.labels is None:
             logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
             cls.__settings__.labels = (cls.__name__.capitalize(),)
-        elif hasattr(cls.__settings__, "labels") and isinstance(cls.__settings__.labels, str):
+        elif cls.__settings__.labels is not None and isinstance(cls.__settings__.labels, str):
             logging.debug("str class %s provided as labels, converting to tuple", cls.__settings__.labels)
-            setattr(cls.__settings__, "labels", tuple(cls.__settings__.labels))
+            setattr(cls.__settings__, "labels", (cls.__settings__.labels,))
 
         for property_name, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if property_name is of type None

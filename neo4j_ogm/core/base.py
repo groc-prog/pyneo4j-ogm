@@ -6,7 +6,7 @@ import json
 import logging
 import re
 from asyncio import iscoroutinefunction
-from typing import Any, Callable, ClassVar, Dict, List, ParamSpec, Set, Type, TypeVar, Union, cast
+from typing import Any, Callable, ClassVar, Dict, List, Optional, ParamSpec, Set, Type, TypeVar, Union, cast
 
 from pydantic import BaseModel, PrivateAttr, root_validator
 
@@ -56,7 +56,7 @@ class ModelBase(BaseModel):
     It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
     """
 
-    __settings__: ClassVar[BaseModelSettings]
+    __settings__: BaseModelSettings
     _dict_properties = set()
     _model_properties = set()
     _client: Neo4jClient = PrivateAttr()
@@ -64,6 +64,7 @@ class ModelBase(BaseModel):
     _modified_properties: Set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: Union[str, None] = PrivateAttr(default=None)
+    Settings: ClassVar[Optional[Type[BaseModelSettings]]] = None
 
     @root_validator()
     def _validate_reserved_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
