@@ -3,7 +3,7 @@ This module contains type definitions for query options and filters.
 """
 from datetime import date, datetime, time, timedelta
 from enum import Enum
-from typing import Dict, List, TypedDict, Union
+from typing import Dict, List, Literal, TypedDict, Union
 
 
 class QueryOptionsOrder(str, Enum):
@@ -135,6 +135,17 @@ QueryRelationshipOperators = TypedDict("QueryRelationshipOperators", {"$elementI
 # The actual interfaces used to describe query filters
 NodeFilters = Union[Dict[str, QueryOperators], QueryNodeOperators]
 RelationshipFilters = Union[Dict[str, QueryOperators], QueryRelationshipOperators]
+
+MultiHopFilters = TypedDict(
+    "MultiHopFilters",
+    {
+        "$minHops": Union[int, Literal["*"]],
+        "$maxHops": Union[int, Literal["*"]],
+        "$node": NodePattern,
+        "$relationships": List[RelationshipPattern],
+    },
+    total=False,
+)
 
 
 # Interface to describe query options

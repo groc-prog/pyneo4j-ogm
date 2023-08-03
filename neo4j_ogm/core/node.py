@@ -618,6 +618,36 @@ class NodeModel(ModelBase):
 
         return results[0][0]
 
+    @classmethod
+    async def find_connected_nodes(cls: Type[T], filters: Union[NodeFilters, None] = None) -> int:
+        """
+        Counts all nodes which match the provided `filters` parameter.
+
+        Args:
+            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
+
+        Returns:
+            int: The number of nodes matched by the query.
+        """
+        logging.info("Getting count of nodes of model %s matching filters %s", cls.__name__, filters)
+        if filters is not None:
+            cls._query_builder.node_filters(filters=filters)
+
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
+                RETURN count(n)
+            """,
+            parameters=cls._query_builder.parameters,
+        )
+
+        logging.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
+
+        return results[0][0]
+
     def _ensure_alive(self) -> None:
         """
         Ensures that the instance is alive and not deleted.

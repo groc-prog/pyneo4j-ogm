@@ -3,7 +3,7 @@ This module contains pydantic models for validating and normalizing query filter
 """
 import logging
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
 
@@ -208,6 +208,27 @@ class PatternOperatorModel(BaseModel):
     )
     node_: Optional[PatternNodeOperatorsModel] = Field(alias="$node")
     relationship_: Optional[PatternRelationshipOperatorsModel] = Field(alias="$relationship")
+
+
+class MultiHopFiltersModel(BaseModel):
+    """
+    Validator model for node and relationship filters with multiple hops between the nodes.
+    """
+
+    min_hops_: Optional[Union[int, Literal["*"]]] = Field(alias="$minHops")
+    id_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops")
+    node_: Optional[PatternNodeOperatorsModel] = Field(alias="$node")
+    relationships_: Optional[List[PatternRelationshipOperatorsModel]] = Field(alias="$relationships")
+
+    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+
+    class Config:
+        """
+        Pydantic configuration
+        """
+
+        extra = Extra.allow
+        use_enum_values = True
 
 
 class QueryOptionModel(BaseModel):
