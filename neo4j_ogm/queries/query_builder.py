@@ -262,7 +262,7 @@ class QueryBuilder:
         """
         start_node_match = self.node_match(labels=start_node_labels, ref=start_node_ref)
         end_node_match = self.node_match(labels=end_node_labels, ref=end_node_ref)
-        hops = "*"
+        hops = ""
 
         if any(
             [
@@ -273,7 +273,7 @@ class QueryBuilder:
         ):
             raise InvalidRelationshipHops()
 
-        if min_hops == 1 and max_hops == "*":
+        if min_hops is None and max_hops == "*":
             hops = "*"
         elif min_hops is not None and max_hops is not None and max_hops != "*":
             hops = f"*{min_hops}..{max_hops}"
