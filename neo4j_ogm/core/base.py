@@ -88,6 +88,10 @@ class ModelBase(BaseModel):
 
         return super().__init_subclass__()
 
+    def __str__(self) -> str:
+        hydration_msg = self._element_id if self._element_id is not None else "not hydrated"
+        return f"{self.__class__.__name__}({hydration_msg})"
+
     def export_model(self: T, *args, convert_to_camel_case: bool = False, **kwargs) -> Dict[str, Any]:
         """
         Export the model to a dictionary containing standard python types. This method accepts all

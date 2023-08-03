@@ -68,10 +68,6 @@ class RelationshipModel(ModelBase):
 
         return super().__setattr__(key, value)
 
-    def __str__(self) -> str:
-        hydration_msg = self._element_id if self._element_id is not None else "not hydrated"
-        return f"{self.__class__.__name__}({hydration_msg})"
-
     def deflate(self) -> Dict[str, Any]:
         """
         Deflates the current model instance into a python dictionary which can be stored in Neo4j.
