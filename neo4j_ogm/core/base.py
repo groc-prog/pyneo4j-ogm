@@ -28,8 +28,8 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
 
     async def decorator(self: T, *args, **kwargs) -> U:
         # Run pre hooks if defined
-        if func.__name__ in self.__settings__.pre_hooks:
-            for hook_function in self.__settings__.pre_hooks[func.__name__]:
+        if func.__name__ in self._settings.pre_hooks:
+            for hook_function in self._settings.pre_hooks[func.__name__]:
                 if iscoroutinefunction(hook_function):
                     await hook_function(self, *args, **kwargs)
                 else:
@@ -38,8 +38,8 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
         result = await func(self, *args, **kwargs)
 
         # Run post hooks if defined
-        if func.__name__ in self.__settings__.post_hooks:
-            for hook_function in self.__settings__.post_hooks[func.__name__]:
+        if func.__name__ in self._settings.post_hooks:
+            for hook_function in self._settings.post_hooks[func.__name__]:
                 if iscoroutinefunction(hook_function):
                     await hook_function(self, result, *args, **kwargs)
                 else:
@@ -56,7 +56,7 @@ class ModelBase(BaseModel):
     It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
     """
 
-    __settings__: BaseModelSettings
+    _settings: BaseModelSettings
     _dict_properties = set()
     _model_properties = set()
     _client: Neo4jClient = PrivateAttr()
@@ -106,9 +106,9 @@ class ModelBase(BaseModel):
         """
         # Check if additional fields should be excluded
         if "exclude" in kwargs:
-            kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self.__settings__.exclude_from_export)
+            kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self._settings.exclude_from_export)
         else:
-            kwargs["exclude"] = self.__settings__.exclude_from_export
+            kwargs["exclude"] = self._settings.exclude_from_export
 
         model_dict = json.loads(self.json(*args, **kwargs))
         model_dict["element_id"] = self._element_id
@@ -169,14 +169,14 @@ class ModelBase(BaseModel):
             valid_hook_functions.append(hook_functions)
 
         # Create key if it does not exist
-        if hook_name not in cls.__settings__.pre_hooks:
-            cls.__settings__.pre_hooks[hook_name] = []
+        if hook_name not in cls._settings.pre_hooks:
+            cls._settings.pre_hooks[hook_name] = []
 
         if overwrite:
-            cls.__settings__.pre_hooks[hook_name] = valid_hook_functions
+            cls._settings.pre_hooks[hook_name] = valid_hook_functions
         else:
             for hook_function in valid_hook_functions:
-                cls.__settings__.pre_hooks[hook_name].append(hook_function)
+                cls._settings.pre_hooks[hook_name].append(hook_function)
 
     @classmethod
     def register_post_hooks(
@@ -201,14 +201,14 @@ class ModelBase(BaseModel):
             valid_hook_functions.append(hook_functions)
 
         # Create key if it does not exist
-        if hook_name not in cls.__settings__.post_hooks:
-            cls.__settings__.post_hooks[hook_name] = []
+        if hook_name not in cls._settings.post_hooks:
+            cls._settings.post_hooks[hook_name] = []
 
         if overwrite:
-            cls.__settings__.post_hooks[hook_name] = valid_hook_functions
+            cls._settings.post_hooks[hook_name] = valid_hook_functions
         else:
             for hook_function in valid_hook_functions:
-                cls.__settings__.post_hooks[hook_name].append(hook_function)
+                cls._settings.post_hooks[hook_name].append(hook_function)
 
     @classmethod
     def _convert_to_camel_case(cls, model_dict: Dict[str, Any]) -> Dict[str, Any]:

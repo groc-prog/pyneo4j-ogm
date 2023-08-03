@@ -35,7 +35,7 @@ class NodeModel(ModelBase):
     model.
     """
 
-    __settings__: NodeModelSettings
+    _settings: NodeModelSettings
     _relationships_properties = set()
     Settings: ClassVar[Optional[Type[NodeModelSettings]]] = None
 
@@ -48,26 +48,26 @@ class NodeModel(ModelBase):
                 cast(RelationshipProperty, property_name)._build_property(self)
 
     def __init_subclass__(cls) -> None:
-        cls.__settings__ = NodeModelSettings()
+        cls._settings = NodeModelSettings()
 
         if cls.Settings is not None:
             for setting, value in cls.Settings.__dict__.items():
                 if not setting.startswith("__"):
-                    setattr(cls.__settings__, setting, value)
+                    setattr(cls._settings, setting, value)
 
         # Check if node labels is set, if not fall back to model name
-        if cls.__settings__.labels is None:
+        if cls._settings.labels is None:
             logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
-            cls.__settings__.labels = (cls.__name__.capitalize(),)
-        elif cls.__settings__.labels is not None and isinstance(cls.__settings__.labels, str):
-            logging.debug("str class %s provided as labels, converting to tuple", cls.__settings__.labels)
-            setattr(cls.__settings__, "labels", (cls.__settings__.labels,))
+            cls._settings.labels = (cls.__name__.capitalize(),)
+        elif cls._settings.labels is not None and isinstance(cls._settings.labels, str):
+            logging.debug("str class %s provided as labels, converting to tuple", cls._settings.labels)
+            setattr(cls._settings, "labels", (cls._settings.labels,))
 
         for property_name, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if property_name is of type None
             if value.type_ is not None and hasattr(value.type_, "_build_property"):
                 cls._relationships_properties.add(property_name)
-                cls.__settings__.exclude_from_export.add(property_name)
+                cls._settings.exclude_from_export.add(property_name)
 
         return super().__init_subclass__()
 
@@ -159,7 +159,7 @@ class NodeModel(ModelBase):
 
         results, _ = await self._client.cypher(
             query=f"""
-                CREATE {self._query_builder.node_match(self.__settings__.labels)}
+                CREATE {self._query_builder.node_match(self._settings.labels)}
                 SET {', '.join(f"n.{property_name} = ${property_name}" for property_name in deflated_properties.keys())}
                 RETURN n
             """,
@@ -206,7 +206,7 @@ class NodeModel(ModelBase):
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self.__settings__.labels)}
+                MATCH {self._query_builder.node_match(self._settings.labels)}
                 WHERE elementId(n) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
                 RETURN n
@@ -237,7 +237,7 @@ class NodeModel(ModelBase):
         logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self.__settings__.labels)}
+                MATCH {self._query_builder.node_match(self._settings.labels)}
                 WHERE elementId(n) = $element_id
                 DETACH DELETE n
                 RETURN count(n)
@@ -266,7 +266,7 @@ class NodeModel(ModelBase):
         logging.info("Refreshing node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self.__settings__.labels)}
+                MATCH {self._query_builder.node_match(self._settings.labels)}
                 WHERE elementId(n) = $element_id
                 RETURN n
             """,
@@ -304,7 +304,7 @@ class NodeModel(ModelBase):
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self.__settings__.labels)}{self._query_builder.query['match']}
+                MATCH {self._query_builder.node_match(self._settings.labels)}{self._query_builder.query['match']}
                 WHERE
                     elementId(n) = $element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
@@ -351,7 +351,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(cls._settings.labels)}
                 WHERE {cls._query_builder.query['where']}
                 RETURN n
                 LIMIT 1
@@ -393,7 +393,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(cls._settings.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN n
                 {cls._query_builder.query['options']}
@@ -447,7 +447,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(cls._settings.labels)}
                 WHERE {cls._query_builder.query['where']}
                 RETURN n
                 LIMIT 1
@@ -503,7 +503,7 @@ class NodeModel(ModelBase):
         logging.debug("Getting all nodes of model %s matching filters %s", cls.__name__, filters)
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(cls._settings.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN n
             """,
@@ -537,7 +537,7 @@ class NodeModel(ModelBase):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(cls._settings.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
@@ -585,7 +585,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(cls._settings.labels)}
                 WHERE {cls._query_builder.query['where']}
                 WITH n LIMIT 1
                 DETACH DELETE n
@@ -619,7 +619,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(cls._settings.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 DETACH DELETE n
                 RETURN n
@@ -647,7 +647,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(cls._settings.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN count(n)
             """,
