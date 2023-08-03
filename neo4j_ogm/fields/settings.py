@@ -28,11 +28,3 @@ class RelationshipModelSettings(BaseModelSettings):
     """
 
     type: Optional[str] = None
-
-
-class RelationshipPropertySettings:
-    """
-    Settings for a RelationshipProperty class or subclass.
-    """
-
-    allow_multiple: bool = False
