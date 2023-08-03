@@ -210,6 +210,26 @@ class PatternOperatorModel(BaseModel):
     relationship_: Optional[PatternRelationshipOperatorsModel] = Field(alias="$relationship")
 
 
+class MultiHopRelationshipOperatorsModel(NodeFiltersModel):
+    """
+    Validator model for a relationship operator in a multi hop filter.
+    """
+
+    element_id_: Optional[str] = Field(alias="$elementId")
+    id_: Optional[int] = Field(alias="$id")
+    type_: Union[str, List[str]] = Field(alias="$type")
+
+    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+
+    class Config:
+        """
+        Pydantic configuration
+        """
+
+        extra = Extra.allow
+        use_enum_values = True
+
+
 class MultiHopFiltersModel(BaseModel):
     """
     Validator model for node and relationship filters with multiple hops between the nodes.
@@ -218,7 +238,7 @@ class MultiHopFiltersModel(BaseModel):
     min_hops_: Optional[Union[int, Literal["*"]]] = Field(alias="$minHops")
     id_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops")
     node_: Optional[PatternNodeOperatorsModel] = Field(alias="$node")
-    relationships_: Optional[List[PatternRelationshipOperatorsModel]] = Field(alias="$relationships")
+    relationships_: Optional[List[MultiHopRelationshipOperatorsModel]] = Field(alias="$relationships")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 

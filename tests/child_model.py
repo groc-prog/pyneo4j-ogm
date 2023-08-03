@@ -10,7 +10,7 @@ from neo4j_ogm.fields.relationship_property import RelationshipProperty, Relatio
 
 
 class HasChild(RelationshipModel):
-    born: datetime = Field(default_factory=datetime.now)
+    born: bool = True
 
 
 class Child(NodeModel):

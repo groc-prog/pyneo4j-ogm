@@ -3,7 +3,7 @@ This module contains type definitions for query options and filters.
 """
 from datetime import date, datetime, time, timedelta
 from enum import Enum
-from typing import Dict, List, Literal, TypedDict, Union
+from typing import Dict, List, Literal, Optional, TypedDict, Union
 
 
 class QueryOptionsOrder(str, Enum):
@@ -124,6 +124,13 @@ PatternOperator = TypedDict(
     total=False,
 )
 
+
+MultiHopRelationshipOperators = TypedDict(
+    "MultiHopRelationshipOperators", {"$elementId": Optional[str], "$id": Optional[int], "$type": Union[str, List[str]]}
+)
+
+MultiHopRelationship = Union[Dict[str, QueryOperators], MultiHopRelationshipOperators]
+
 # We need to define different interfaces for nodes and relationships to not show invalid operants
 # for the model type.
 QueryNodeOperators = TypedDict(
@@ -142,7 +149,7 @@ MultiHopFilters = TypedDict(
         "$minHops": Union[int, Literal["*"]],
         "$maxHops": Union[int, Literal["*"]],
         "$node": NodePattern,
-        "$relationships": List[RelationshipPattern],
+        "$relationships": List[MultiHopRelationship],
     },
     total=False,
 )
