@@ -51,12 +51,12 @@ async def setup() -> None:
     await adult5.friends.connect(adult4, {"since": datetime.now(), "best_friends": False})
     await adult6.friends.connect(adult4, {"since": datetime.now(), "best_friends": False})
 
-    await adult1.children.connect(child1)
-    await adult2.children.connect(child1)
-    await adult5.children.connect(child2)
-    await adult5.children.connect(child3)
-    await adult6.children.connect(child2)
-    await adult6.children.connect(child3)
+    await adult1.children.connect(child1, {"born": True})
+    await adult2.children.connect(child1, {"born": True})
+    await adult5.children.connect(child2, {"born": False})
+    await adult5.children.connect(child3, {"born": True})
+    await adult6.children.connect(child2, {"born": False})
+    await adult6.children.connect(child3, {"born": True})
 
     await child3.toys.connect(toy1)
     await child3.toys.connect(toy2)
@@ -122,16 +122,14 @@ from neo4j_ogm.queries.query_builder import QueryBuilder
 
 builder = QueryBuilder()
 
-builder.node_filters(
+builder.multi_hop_filters(
     {
-        "$patterns": [
+        "$minHops": 2,
+        "$maxHops": 3,
+        "$node": {"$labels": ["Person", "Adult"], "name": "foo"},
+        "$relationships": [
             {
-                "$direction": "INCOMING",
-                "$not": False,
-                "$node": {"$labels": "Child", "name": "John"},
-                "$relationship": {
-                    "$type": "HAS_CHILD",
-                },
+                "$type": "FRIENDS",
             }
         ],
     }
