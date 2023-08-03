@@ -128,7 +128,6 @@ class QueryBuilder:
         # Remove invalid expressions
         self._remove_invalid_expressions(validated_filters)
 
-        where_queries: List[str] = []
         original_ref = deepcopy(self.ref)
         node_ref = self._build_param_var()
         relationship_ref = self._build_param_var()
@@ -138,40 +137,44 @@ class QueryBuilder:
             ref="_",
             start_node_ref=ref,
             end_node_ref=node_ref,
-            min_hops=validated_filters["$minHops"],
-            max_hops=validated_filters["$maxHops"],
+            min_hops=validated_filters["$minHops"] if "$minHops" in validated_filters else None,
+            max_hops=validated_filters["$maxHops"] if "$maxHops" in validated_filters else None,
         )
         self.query["match"] = f", path = {relationship_match}"
 
         # Build node filters
         self.ref = node_ref
-        where_node_query = self._build_query(filters=validated_filters["$node"])
+        where_node_query = self._build_query(filters=validated_filters["$node"]) if "$node" in validated_filters else ""
 
         # Build relationship filters
         where_relationship_queries: Dict[str, str] = {}
         self.ref = relationship_ref
-        for relationship in validated_filters["$relationships"]:
-            relationship_type = relationship["$type"]
 
-            relationship_filters = deepcopy(relationship)
-            relationship_filters.pop("$type")
-            build_filters = self._build_query(filters=relationship_filters)
+        if "$relationships" in validated_filters:
+            for relationship in validated_filters["$relationships"]:
+                relationship_type = relationship["$type"]
 
-            if build_filters != "":
-                where_relationship_queries[relationship_type] = build_filters
+                relationship_filters = deepcopy(relationship)
+                relationship_filters.pop("$type")
+                build_filters = self._build_query(filters=relationship_filters)
+
+                if build_filters != "":
+                    where_relationship_queries[relationship_type] = build_filters
 
         # Build WHERE query
-        complete_where_query = f"""
-            {where_node_query} AND
-            ALL({relationship_ref} IN relationships(path) WHERE
-                CASE type({relationship_ref})
-                    {"".join([f"WHEN '{relationship}' THEN {where_relationship_queries[relationship]}" for relationship in where_relationship_queries])}
-                    ELSE true
-                END
-            )"""
+        relationship_where_query = ""
+
+        if len(where_relationship_queries.keys()) > 0:
+            relationship_where_query = f"""
+                ALL({relationship_ref} IN relationships(path) WHERE
+                    CASE type({relationship_ref})
+                        {"".join([f"WHEN '{relationship}' THEN {where_relationship_queries[relationship]}" for relationship in where_relationship_queries])}
+                        ELSE true
+                    END
+                )"""
 
         self.ref = original_ref
-        self.query["where"] = complete_where_query
+        self.query["where"] = f"{where_node_query}{' AND ' if where_node_query != '' else ''}{relationship_where_query}"
 
     def query_options(self, options: Dict[str, Any], ref: str = "n") -> None:
         """

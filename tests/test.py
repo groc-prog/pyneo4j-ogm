@@ -122,13 +122,6 @@ from neo4j_ogm.queries.query_builder import QueryBuilder
 
 builder = QueryBuilder()
 
-builder.multi_hop_filters(
-    {
-        "$minHops": 2,
-        "$maxHops": 3,
-        "$node": {"$labels": ["Person", "Adult"], "name": "foo"},
-        "$relationships": [{"$type": "FRIENDS", "name": "foo"}, {"$type": "HAS_CHILD"}],
-    }
-)
+builder.multi_hop_filters({})
 
 print("DONE")
