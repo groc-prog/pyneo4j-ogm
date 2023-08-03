@@ -254,6 +254,9 @@ class QueryBuilder:
             min_hops (Optional[Union[int, str]], optional): The minimum number of hops. Defaults to None.
             max_hops (Optional[Union[int, str]], optional): The maximum number of hops. Defaults to None.
 
+        Raises:
+            InvalidRelationshipHops: Raised when the min_hops or max_hops are invalid.
+
         Returns:
             str: The relationship to match.
         """

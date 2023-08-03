@@ -2,7 +2,7 @@
 import logging
 from uuid import uuid4
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 
 import asyncio
 import random
@@ -113,14 +113,14 @@ async def main():
     #     {"name": "John", "toy_id": "d20440f9-5aba-4307-895a-5f9c3a0d06cb"},
     # )
 
-    connected_toys = await found_adult.find_connected_nodes(
-        {
-            "$node": {"$labels": "Toy"},
-            "$minHops": None,
-            "$maxHops": "*",
-            "$relationships": [{"$type": "HAS_CHILD", "born": True}],
-        }
-    )
+    # connected_toys = await found_adult.find_connected_nodes(
+    #     {
+    #         "$node": {"$labels": "Toy"},
+    #         "$minHops": None,
+    #         "$maxHops": "*",
+    #         "$relationships": [{"$type": "HAS_CHILD", "born": True}],
+    #     }
+    # )
 
     print("DONE")
 
