@@ -6,20 +6,14 @@ the database for CRUD operations on relationships.
 import json
 import logging
 import re
-from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
+from typing import Any, ClassVar, Dict, List, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.base import ModelBase, hooks
 from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.exceptions import (
-    InflationFailure,
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    MissingFilters,
-    NoResultsFound,
-)
+from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, MissingFilters, NoResultsFound
 from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.queries.types import QueryOptions, RelationshipFilters, RelationshipMatchDirection
 
@@ -32,27 +26,25 @@ class RelationshipModel(ModelBase):
     functionality like de-/inflation and validation.
     """
 
-    _settings: RelationshipModelSettings
+    _settings: RelationshipModelSettings = PrivateAttr()
     _start_node_id: Union[str, None] = PrivateAttr(default=None)
     _end_node_id: Union[str, None] = PrivateAttr(default=None)
-    Settings: ClassVar[Optional[Type[RelationshipModelSettings]]] = None
+    Settings: ClassVar[Type[RelationshipModelSettings]]
 
     def __init_subclass__(cls) -> None:
-        cls._settings = RelationshipModelSettings()
+        setattr(cls, "_settings", RelationshipModelSettings())
 
-        if cls.Settings is not None:
-            for setting, value in cls.Settings.__dict__.items():
-                if not setting.startswith("__"):
-                    setattr(cls._settings, setting, value)
+        super().__init_subclass__()
+
+        # Check if node labels is set, if not fall back to model name
+        type_ = getattr(cls._settings, "type", None)
 
         # Check if relationship type is set, else fall back to class name
-        if cls._settings.type is None:
+        if type_ is None:
             logging.warning("No type has been defined for model %s, using model name as type", cls.__name__)
             # Convert class name to upper snake case
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
             setattr(cls._settings, "type", relationship_type.upper())
-
-        return super().__init_subclass__()
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name in self.__fields__ and not name.startswith("_"):
@@ -112,14 +104,10 @@ class RelationshipModel(ModelBase):
         for node_property in relationship.items():
             property_name, property_value = node_property
 
-            if property_name in cls._dict_properties or property_name in cls._model_properties:
-                try:
-                    logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
-                    inflated[property_name] = json.loads(property_value)
-                except Exception as exc:
-                    logging.error("Failed to inflate property %s of model %s", property_name, cls.__name__)
-                    raise InflationFailure(cls.__name__) from exc
-            else:
+            try:
+                logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
+                inflated[property_name] = json.loads(property_value)
+            except:
                 inflated[property_name] = property_value
 
         instance = cls(**inflated)

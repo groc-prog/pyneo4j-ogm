@@ -53,16 +53,6 @@ class InvalidIndexType(Neo4jOGMException):
         super().__init__(f"Invalid index type. Expected index to be one of {available_types}, got {index_type}", *args)
 
 
-class InflationFailure(Neo4jOGMException):
-    """
-    Exception which gets raised when the inflation from a Neo4j node or relationship to a model
-    instance fails.
-    """
-
-    def __init__(self, model: str, *args: object) -> None:
-        super().__init__(f"Failed to inflate object to {model} instance", *args)
-
-
 class InstanceNotHydrated(Neo4jOGMException):
     """
     Exception which gets raised when a query is run with a instance which has not been hydrated yet.

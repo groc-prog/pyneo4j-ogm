@@ -1,12 +1,12 @@
 """
-This module contains a modified version of Pydantic's BaseModel class adjusted to the needs of the library.
-It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
+This module contains a modified version of Pydantic's BaseModel class adjusted to the needs of the
+library. It adds additional methods for exporting the model to a dictionary and importing from a
+dictionary.
 """
 import json
-import logging
 import re
 from asyncio import iscoroutinefunction
-from typing import Any, Callable, ClassVar, Dict, List, Optional, ParamSpec, Set, Type, TypeVar, Union, cast
+from typing import Any, Callable, ClassVar, Dict, List, ParamSpec, Set, Type, TypeVar, Union, cast
 
 from pydantic import BaseModel, PrivateAttr, root_validator
 
@@ -27,9 +27,11 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
     """
 
     async def decorator(self: T, *args, **kwargs) -> U:
+        settings: BaseModelSettings = getattr(self, "_settings")
+
         # Run pre hooks if defined
-        if func.__name__ in self._settings.pre_hooks:
-            for hook_function in self._settings.pre_hooks[func.__name__]:
+        if func.__name__ in settings.pre_hooks:
+            for hook_function in settings.pre_hooks[func.__name__]:
                 if iscoroutinefunction(hook_function):
                     await hook_function(self, *args, **kwargs)
                 else:
@@ -38,8 +40,8 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
         result = await func(self, *args, **kwargs)
 
         # Run post hooks if defined
-        if func.__name__ in self._settings.post_hooks:
-            for hook_function in self._settings.post_hooks[func.__name__]:
+        if func.__name__ in settings.post_hooks:
+            for hook_function in settings.post_hooks[func.__name__]:
                 if iscoroutinefunction(hook_function):
                     await hook_function(self, result, *args, **kwargs)
                 else:
@@ -56,15 +58,15 @@ class ModelBase(BaseModel):
     It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
     """
 
-    _settings: BaseModelSettings
-    _dict_properties = set()
-    _model_properties = set()
+    _settings: BaseModelSettings = PrivateAttr()
+    _dict_properties: Set[str] = PrivateAttr()
+    _model_properties: Set[str] = PrivateAttr()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: Set[str] = PrivateAttr(default=set())
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: Union[str, None] = PrivateAttr(default=None)
-    Settings: ClassVar[Optional[Type[BaseModelSettings]]] = None
+    Settings: ClassVar[Type[BaseModelSettings]]
 
     @root_validator()
     def _validate_reserved_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -74,17 +76,16 @@ class ModelBase(BaseModel):
         return values
 
     def __init_subclass__(cls) -> None:
-        cls._client = Neo4jClient()
-        cls._query_builder = QueryBuilder()
+        setattr(cls, "_client", Neo4jClient())
+        setattr(cls, "_query_builder", QueryBuilder())
 
-        logging.debug("Collecting dict and model fields")
-        for property_name, value in cls.__fields__.items():
-            # Check if value is None here to prevent breaking logic if property_name is of type None
-            if value.type_ is not None:
-                if isinstance(value.default, dict):
-                    cls._dict_properties.add(property_name)
-                elif issubclass(value.type_, BaseModel):
-                    cls._model_properties.add(property_name)
+        if hasattr(cls, "Settings"):
+            for setting, value in cls.Settings.__dict__.items():
+                if not setting.startswith("__"):
+                    if isinstance(value, set):
+                        setattr(cls._settings, setting, value.union(getattr(cls._settings, setting)))
+                    else:
+                        setattr(cls._settings, setting, value)
 
         return super().__init_subclass__()
 

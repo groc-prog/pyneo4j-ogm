@@ -3,8 +3,10 @@ This module contains possible settings for NodeModels and RelationshipModels
 """
 from typing import Callable, Dict, List, Optional, Set, Union
 
+from pydantic import BaseModel
 
-class BaseModelSettings:
+
+class BaseModelSettings(BaseModel):
     """
     Shared settings for NodeModel and RelationshipModel classes or subclasses.
     """
@@ -16,15 +18,15 @@ class BaseModelSettings:
 
 class NodeModelSettings(BaseModelSettings):
     """
-    Settings for a NodeModel class or subclass.
+    Settings for a NodeModel class.
     """
 
-    labels: Optional[Union[List[str], str]] = None
+    labels: Optional[Union[Set[str], str]] = None
 
 
 class RelationshipModelSettings(BaseModelSettings):
     """
-    Settings for a RelationshipModel class or subclass.
+    Settings for a RelationshipModel class.
     """
 
     type: Optional[str] = None

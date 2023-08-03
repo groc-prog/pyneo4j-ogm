@@ -5,19 +5,13 @@ the database for CRUD operations on nodes.
 """
 import json
 import logging
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Set, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
-from pydantic import BaseModel
+from pydantic import PrivateAttr
 
 from neo4j_ogm.core.base import ModelBase, hooks
-from neo4j_ogm.exceptions import (
-    InflationFailure,
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    MissingFilters,
-    NoResultsFound,
-)
+from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, MissingFilters, NoResultsFound
 from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
 
@@ -35,9 +29,9 @@ class NodeModel(ModelBase):
     model.
     """
 
-    _settings: NodeModelSettings
-    _relationships_properties = set()
-    Settings: ClassVar[Optional[Type[NodeModelSettings]]] = None
+    _settings: NodeModelSettings = PrivateAttr()
+    _relationships_properties: Set[str] = PrivateAttr()
+    Settings: ClassVar[Type[NodeModelSettings]]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -48,28 +42,26 @@ class NodeModel(ModelBase):
                 cast(RelationshipProperty, property_name)._build_property(self)
 
     def __init_subclass__(cls) -> None:
-        cls._settings = NodeModelSettings()
+        setattr(cls, "_relationships_properties", set())
+        setattr(cls, "_settings", NodeModelSettings())
 
-        if cls.Settings is not None:
-            for setting, value in cls.Settings.__dict__.items():
-                if not setting.startswith("__"):
-                    setattr(cls._settings, setting, value)
+        super().__init_subclass__()
 
         # Check if node labels is set, if not fall back to model name
-        if cls._settings.labels is None:
+        labels = getattr(cls._settings, "labels", None)
+
+        if labels is None:
             logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
-            cls._settings.labels = (cls.__name__.capitalize(),)
-        elif cls._settings.labels is not None and isinstance(cls._settings.labels, str):
-            logging.debug("str class %s provided as labels, converting to tuple", cls._settings.labels)
-            setattr(cls._settings, "labels", (cls._settings.labels,))
+            setattr(cls._settings, "labels", (cls.__name__.capitalize(),))
+        elif labels is not None and isinstance(labels, str):
+            logging.debug("str class %s provided as labels, converting to tuple", labels)
+            setattr(cls._settings, "labels", (labels,))
 
         for property_name, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if property_name is of type None
             if value.type_ is not None and hasattr(value.type_, "_build_property"):
                 cls._relationships_properties.add(property_name)
                 cls._settings.exclude_from_export.add(property_name)
-
-        return super().__init_subclass__()
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name in self.__fields__ and not name.startswith("_"):
@@ -96,16 +88,9 @@ class NodeModel(ModelBase):
         deflated: Dict[str, Any] = json.loads(self.json(exclude=self._relationships_properties))
 
         # Serialize nested BaseModel or dict instances to JSON strings
-        logging.debug("Serializing nested dictionaries to JSON strings")
-        for property_name in self._dict_properties:
-            deflated[property_name] = json.dumps(deflated[property_name])
-
-        logging.debug("Serializing nested models to JSON strings")
-        for property_name in self._model_properties:
-            if isinstance(getattr(self, property_name), BaseModel):
-                deflated[property_name] = self.__dict__[property_name].json()
-            else:
-                deflated[property_name] = json.dumps(deflated[property_name])
+        for key, value in deflated.items():
+            if isinstance(value, dict):
+                deflated[key] = json.dumps(value)
 
         return deflated
 
@@ -129,14 +114,10 @@ class NodeModel(ModelBase):
         for node_property in node.items():
             property_name, property_value = node_property
 
-            if property_name in cls._dict_properties or property_name in cls._model_properties:
-                try:
-                    logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
-                    inflated[property_name] = json.loads(property_value)
-                except Exception as exc:
-                    logging.error("Failed to inflate property %s of model %s", property_name, cls.__name__)
-                    raise InflationFailure(cls.__name__) from exc
-            else:
+            try:
+                logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
+                inflated[property_name] = json.loads(property_value)
+            except:
                 inflated[property_name] = property_value
 
         instance = cls(**inflated)
