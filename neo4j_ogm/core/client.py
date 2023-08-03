@@ -7,6 +7,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type, Union
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
+from neo4j.exceptions import DatabaseError
 from neo4j.graph import Node, Path, Relationship
 
 from neo4j_ogm.exceptions import (
@@ -131,9 +132,9 @@ class Neo4jClient:
                 for property_name, property_definition in model.__fields__.items():
                     entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
                     labels_or_type = (
-                        list(getattr(model.__settings__, "labels"))
+                        list(getattr(model._settings, "labels"))
                         if issubclass(model, NodeModel)
-                        else getattr(model.__settings__, "type")
+                        else getattr(model._settings, "type")
                     )
 
                     if getattr(property_definition.type_, "_unique", False):
@@ -413,8 +414,11 @@ class Neo4jClient:
 
         logging.warning("Dropping %s indexes", len(results))
         for index in results:
-            logging.debug("Dropping index %s", index[1])
-            await self.cypher(f"DROP INDEX {index[1]}")
+            try:
+                logging.debug("Dropping index %s", index[1])
+                await self.cypher(f"DROP INDEX {index[1]}")
+            except DatabaseError as exc:
+                logging.warning("Failed to drop index %s: %s", index[1], exc)
 
     @ensure_connection
     async def begin_transaction(self) -> None:
@@ -508,9 +512,9 @@ class Neo4jClient:
             model_labels: set[str] = set()
 
             if issubclass(model, NodeModel):
-                model_labels = set(getattr(model.__settings__, "labels"))
+                model_labels = set(getattr(model._settings, "labels"))
             elif issubclass(model, RelationshipModel):
-                model_labels = set(getattr(model.__settings__, "type"))
+                model_labels = set(getattr(model._settings, "type"))
 
             if labels == model_labels:
                 return model.inflate(query_result)
