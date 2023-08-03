@@ -2,7 +2,7 @@
 This module contains a class for building parts of the database query.
 """
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional, TypedDict, Union
 
 from neo4j_ogm.queries.types import NodeFilters, QueryDataTypes, RelationshipFilters, RelationshipMatchDirection
 from neo4j_ogm.queries.validators import NodeFiltersModel, QueryOptionModel, RelationshipFiltersModel
@@ -202,6 +202,9 @@ class QueryBuilder:
                         property_var=self._build_property_var(), param_var=param_var
                     )
                     where_queries.append(where_query)
+                case "$patterns":
+                    for pattern in expression_or_value:
+                        where_queries.append(self._patterns_operator(expression=pattern))
                 case "$and":
                     where_queries.append(self._and_operator(expressions=expression_or_value))
                 case "$or":
@@ -258,10 +261,23 @@ class QueryBuilder:
         # Normalize nested operators
         if isinstance(normalized, list):
             for index, expression in enumerate(normalized):
-                normalized[index] = self._normalize_expressions(expression, level + 1)
+                normalized[index] = self._normalize_expressions(expressions=expression, level=level + 1)
         elif isinstance(normalized, dict):
             for operator, expression in normalized.items():
-                normalized[operator] = self._normalize_expressions(expression, level + 1)
+                # Handle $patterns operator
+                if operator == "$patterns":
+                    for index, pattern in enumerate(expression):
+                        if "$node" in pattern:
+                            normalized[operator][index]["$node"] = self._normalize_expressions(
+                                expressions=pattern["$node"], level=0
+                            )
+
+                        if "$relationship" in pattern:
+                            normalized[operator][index]["$relationship"] = self._normalize_expressions(
+                                expressions=pattern["$relationship"], level=0
+                            )
+                else:
+                    normalized[operator] = self._normalize_expressions(expressions=expression, level=level + 1)
 
         return normalized
 
@@ -364,20 +380,23 @@ class QueryBuilder:
         param_var = self._build_param_var()
         self.parameters[param_var] = labels
 
-        return f"ANY(i IN labels({self.ref}) WHERE i IN ${param_var})"
+        return f"ALL(i IN labels({self.ref}) WHERE i IN ${param_var})"
 
-    def _type_operator(self, types: List[str]) -> str:
+    def _type_operator(self, types: Union[str, List[str]]) -> str:
         """
         Builds the query for the `$type` operator.
 
         Args:
-            types (List[str]): Relationship types to match by.
+            types (Union[str, List[str]]): Relationship types to match by.
 
         Returns:
             str: The operator query.
         """
         param_var = self._build_param_var()
         self.parameters[param_var] = types
+
+        if isinstance(types, str):
+            return f"type({self.ref}) = ${param_var}"
 
         return f"type({self.ref}) IN ${param_var}"
 
@@ -413,7 +432,7 @@ class QueryBuilder:
 
     def _and_operator(self, expressions: Dict[str, Any]) -> str:
         """
-        Builds the query for the `$and`  operator.
+        Builds the query for the `$and` operator.
 
         Args:
             expressions (Dict[str, Any]): The provided expression for the operator.
@@ -430,7 +449,7 @@ class QueryBuilder:
 
     def _or_operator(self, expressions: Dict[str, Any]) -> str:
         """
-        Builds the query for the `$or`  operator.
+        Builds the query for the `$or` operator.
 
         Args:
             expressions (Dict[str, Any]): The provided expression for the operator.
@@ -447,7 +466,7 @@ class QueryBuilder:
 
     def _xor_operator(self, expressions: Dict[str, Any]) -> str:
         """
-        Builds the query for the `$xor`  operator.
+        Builds the query for the `$xor` operator.
 
         Args:
             expressions (Dict[str, Any]): The provided expression for the operator.
@@ -461,6 +480,47 @@ class QueryBuilder:
             xor_queries.append(self._build_query(filters=expression))
 
         return f"({' XOR '.join(xor_queries)})"
+
+    def _patterns_operator(self, expression: Dict[str, Any]) -> str:
+        """
+        Builds the query for the `$patterns` operator.
+
+        Args:
+            expression (Dict[str, Any]): The provided expression for the operator.
+
+        Returns:
+            str: The operator query.
+        """
+        original_ref = deepcopy(self.ref)
+        where_queries: List[str] = []
+
+        relationship_ref = self._build_param_var()
+        node_ref = self._build_param_var()
+
+        # Build node queries
+        self.ref = node_ref
+        node_queries = self._build_query(filters=expression["$node"])
+
+        if node_queries != "":
+            where_queries.append(node_queries)
+
+        # Build relationship queries
+        self.ref = relationship_ref
+        relationship_queries = self._build_query(filters=expression["$relationship"])
+
+        if relationship_queries != "":
+            where_queries.append(relationship_queries)
+
+        self.ref = original_ref
+
+        # Build final queries
+        match_query = self.relationship_match(
+            ref=relationship_ref, start_node_ref=self.ref, end_node_ref=node_ref, direction=expression["$direction"]
+        )
+        exists_query = "NOT EXISTS" if expression["$not"] else "EXISTS"
+        where_query = " AND ".join(where_queries) if len(where_queries) > 0 else ""
+
+        return f"{exists_query} {{MATCH {match_query} {where_query}}}"
 
     def _build_param_var(self) -> str:
         """

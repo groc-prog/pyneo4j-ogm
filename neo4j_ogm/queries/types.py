@@ -102,9 +102,33 @@ QueryOperators = TypedDict(
     total=False,
 )
 
+PatternNodeOperators = TypedDict(
+    "PatternNodeElementOperators", {"$elementId": str, "$id": int, "$labels": List[str]}, total=True
+)
+
+PatternRelationshipOperators = TypedDict(
+    "PatternRelationshipElementOperators", {"$elementId": str, "$id": int, "$type": Union[str, List[str]]}, total=True
+)
+
+NodePattern = Union[Dict[str, QueryOperators], PatternNodeOperators]
+RelationshipPattern = Union[Dict[str, QueryOperators], PatternRelationshipOperators]
+
+PatternOperator = TypedDict(
+    "PatternOperator",
+    {
+        "$not": bool,
+        "$direction": RelationshipMatchDirection,
+        "$relationship": RelationshipPattern,
+        "$node": NodePattern,
+    },
+    total=False,
+)
+
 # We need to define different interfaces for nodes and relationships to not show invalid operants
 # for the model type.
-QueryNodeOperators = TypedDict("QueryNodeOperators", {"$elementId": str, "$id": int}, total=False)
+QueryNodeOperators = TypedDict(
+    "QueryNodeOperators", {"$elementId": str, "$id": int, "$patterns": List[PatternOperator]}, total=False
+)
 
 QueryRelationshipOperators = TypedDict("QueryRelationshipOperators", {"$elementId": str, "$id": int}, total=False)
 

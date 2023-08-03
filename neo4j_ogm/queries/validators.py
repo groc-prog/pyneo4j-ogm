@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
 
-from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes, QueryOptionsOrder
+from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes, QueryOptionsOrder, RelationshipMatchDirection
 
 
 def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -110,6 +110,7 @@ class NodeFiltersModel(BaseModel):
 
     element_id_: Optional[str] = Field(alias="$elementId")
     id_: Optional[int] = Field(alias="$id")
+    patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -139,6 +140,74 @@ class RelationshipFiltersModel(BaseModel):
 
         extra = Extra.allow
         use_enum_values = True
+
+
+class PatternNodeOperatorsModel(BaseModel):
+    """
+    Validator model for node pattern operators.
+    """
+
+    element_id_: Optional[str] = Field(alias="$elementId")
+    id_: Optional[int] = Field(alias="$id")
+    labels_: Optional[Union[List[str], str]] = Field(alias="$labels")
+
+    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+
+    @validator("labels_", pre=True)
+    def normalize_labels(cls, value: Optional[Union[str, List[str]]]) -> Optional[List[str]]:
+        """
+        Validator for `$labels` operator. If a string is passed, it will be converted to a list.
+
+        Args:
+            v (Optional[Union[str, List[str]]]): The value to validate.
+
+        Returns:
+            Optional[List[str]]: Validated value.
+        """
+        if isinstance(value, str):
+            return [value]
+        return value
+
+    class Config:
+        """
+        Pydantic configuration
+        """
+
+        extra = Extra.allow
+        use_enum_values = True
+
+
+class PatternRelationshipOperatorsModel(NodeFiltersModel):
+    """
+    Validator model for relationship pattern operators.
+    """
+
+    element_id_: Optional[str] = Field(alias="$elementId")
+    id_: Optional[int] = Field(alias="$id")
+    type_: Optional[Union[str, List[str]]] = Field(alias="$type")
+
+    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+
+    class Config:
+        """
+        Pydantic configuration
+        """
+
+        extra = Extra.allow
+        use_enum_values = True
+
+
+class PatternOperatorModel(BaseModel):
+    """
+    Validator for pattern operators defined in a property.
+    """
+
+    not_: Optional[bool] = Field(default=False, alias="$not")
+    direction_: Optional[RelationshipMatchDirection] = Field(
+        default=RelationshipMatchDirection.OUTGOING, alias="$direction"
+    )
+    node_: Optional[PatternNodeOperatorsModel] = Field(alias="$node")
+    relationship_: Optional[PatternRelationshipOperatorsModel] = Field(alias="$relationship")
 
 
 class QueryOptionModel(BaseModel):
@@ -172,3 +241,6 @@ class QueryOptionModel(BaseModel):
         """
 
         use_enum_values = True
+
+
+NodeFiltersModel.update_forward_refs()

@@ -83,7 +83,7 @@ def sync_pre(*args, **kwargs) -> None:
 async def main():
     await client.register_models([Adult, Married, Friends, Child, HasChild, Toy, OwnsToy])
 
-    # await setup()
+    await setup()
 
     # Adult.register_pre_hooks("find_one", ["afaf", async_pre, sync_pre])
     # Adult.register_post_hooks("find_one", async_post)
@@ -108,12 +108,33 @@ async def main():
 
     # await imported.delete()
 
-    results, _ = await client.cypher(
-        f"MATCH path = (n:Person:Adult)-[*]->(m:Toy) WHERE n.name = $name AND m.id = $toy_id RETURN path",
-        {"name": "John", "toy_id": "d20440f9-5aba-4307-895a-5f9c3a0d06cb"},
-    )
+    # results, _ = await client.cypher(
+    #     f"MATCH path = (n:Person:Adult)-[*]->(m:Toy) WHERE n.name = $name AND m.id = $toy_id RETURN path",
+    #     {"name": "John", "toy_id": "d20440f9-5aba-4307-895a-5f9c3a0d06cb"},
+    # )
 
     print("DONE")
 
 
-asyncio.run(main())
+# asyncio.run(main())
+
+from neo4j_ogm.queries.query_builder import QueryBuilder
+
+builder = QueryBuilder()
+
+builder.node_filters(
+    {
+        "$patterns": [
+            {
+                "$direction": "INCOMING",
+                "$not": False,
+                "$node": {"$labels": "Child", "name": "John"},
+                "$relationship": {
+                    "$type": "HAS_CHILD",
+                },
+            }
+        ],
+    }
+)
+
+print("DONE")
