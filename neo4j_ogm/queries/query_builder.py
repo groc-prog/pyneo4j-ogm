@@ -2,11 +2,12 @@
 This module contains a class for building parts of the database query.
 """
 from copy import deepcopy
-from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
+from typing import Any, Dict, List, Literal, Optional, TypedDict, Union, cast
 
 from neo4j_ogm.exceptions import InvalidRelationshipHops
 from neo4j_ogm.queries.types import (
     MultiHopFilters,
+    MultiHopRelationship,
     NodeFilters,
     QueryDataTypes,
     RelationshipFilters,
@@ -108,15 +109,16 @@ class QueryBuilder:
 
         self.query["where"] = self._build_query(filters=validated_filters)
 
-    def multi_hop_filters(self, filters: MultiHopFilters, ref: str = "n") -> None:
+    def multi_hop_filters(self, filters: MultiHopFilters, start_ref: str = "n", end_ref: str = "m") -> None:
         """
         Builds the filters for a multi hop query.
 
         Args:
             filters (Dict[str, Any]): The filters to build.
-            ref (str, optional): The reference to the node. Defaults to "n".
+            start_ref (str, optional): The reference to the start node. Defaults to "n".
+            end_ref (str, optional): The reference to the end node. Defaults to "m".
         """
-        self.ref = ref
+        self.ref = start_ref
         self.query = {"match": "", "where": "", "options": ""}
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
@@ -129,21 +131,20 @@ class QueryBuilder:
         self._remove_invalid_expressions(validated_filters)
 
         original_ref = deepcopy(self.ref)
-        node_ref = self._build_param_var()
         relationship_ref = self._build_param_var()
 
         # Build path match
         relationship_match = self.relationship_match(
-            ref="_",
-            start_node_ref=ref,
-            end_node_ref=node_ref,
+            direction=RelationshipMatchDirection.OUTGOING,
+            start_node_ref=start_ref,
+            end_node_ref=end_ref,
             min_hops=validated_filters["$minHops"] if "$minHops" in validated_filters else None,
             max_hops=validated_filters["$maxHops"] if "$maxHops" in validated_filters else None,
         )
         self.query["match"] = f", path = {relationship_match}"
 
         # Build node filters
-        self.ref = node_ref
+        self.ref = end_ref
         where_node_query = self._build_query(filters=validated_filters["$node"]) if "$node" in validated_filters else ""
 
         # Build relationship filters
@@ -154,7 +155,7 @@ class QueryBuilder:
             for relationship in validated_filters["$relationships"]:
                 relationship_type = relationship["$type"]
 
-                relationship_filters = deepcopy(relationship)
+                relationship_filters = deepcopy(cast(MultiHopRelationship, relationship))
                 relationship_filters.pop("$type")
                 build_filters = self._build_query(filters=relationship_filters)
 
@@ -258,7 +259,7 @@ class QueryBuilder:
         """
         start_node_match = self.node_match(labels=start_node_labels, ref=start_node_ref)
         end_node_match = self.node_match(labels=end_node_labels, ref=end_node_ref)
-        hops = ""
+        hops = "*"
 
         if any(
             [
@@ -269,11 +270,13 @@ class QueryBuilder:
         ):
             raise InvalidRelationshipHops()
 
-        if min_hops is not None and max_hops is not None:
+        if min_hops == 1 and max_hops == "*":
+            hops = "*"
+        elif min_hops is not None and max_hops is not None and max_hops != "*":
             hops = f"*{min_hops}..{max_hops}"
         elif min_hops is not None:
             hops = f"*{min_hops}.."
-        elif max_hops is not None:
+        elif max_hops is not None and max_hops != "*":
             hops = f"*..{max_hops}"
 
         relationship_ref = ref if ref is not None else ""

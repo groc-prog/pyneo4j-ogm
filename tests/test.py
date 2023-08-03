@@ -2,7 +2,7 @@
 import logging
 from uuid import uuid4
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 
 import asyncio
 import random
@@ -83,7 +83,7 @@ def sync_pre(*args, **kwargs) -> None:
 async def main():
     await client.register_models([Adult, Married, Friends, Child, HasChild, Toy, OwnsToy])
 
-    await setup()
+    # await setup()
 
     # Adult.register_pre_hooks("find_one", ["afaf", async_pre, sync_pre])
     # Adult.register_post_hooks("find_one", async_post)
@@ -91,10 +91,10 @@ async def main():
     # Adult.register_pre_hooks("delete", sync_pre, overwrite=True)
     # Adult.register_post_hooks("delete", [1, async_post])
 
-    # found_adult = await Adult.find_one({"id": str(adult1_id)})
+    found_adult = await Adult.find_one({"id": "1812ebfc-24eb-437d-81cb-e7fe375b3690"})
 
-    # if found_adult is None:
-    #     return
+    if found_adult is None:
+        return
 
     # exported = found_adult.export_model(convert_to_camel_case=True)
     # # found_child_new = await Child.find_one({"id": "92bb2b93-d46a-4012-a851-95223be950a5"})
@@ -113,15 +113,24 @@ async def main():
     #     {"name": "John", "toy_id": "d20440f9-5aba-4307-895a-5f9c3a0d06cb"},
     # )
 
+    connected_toys = await found_adult.find_connected_nodes(
+        {
+            "$node": {"$labels": "Toy"},
+            "$minHops": None,
+            "$maxHops": "*",
+            "$relationships": [{"$type": "HAS_CHILD", "born": True}],
+        }
+    )
+
     print("DONE")
 
 
-# asyncio.run(main())
+asyncio.run(main())
 
-from neo4j_ogm.queries.query_builder import QueryBuilder
+# from neo4j_ogm.queries.query_builder import QueryBuilder
 
-builder = QueryBuilder()
+# builder = QueryBuilder()
 
-builder.multi_hop_filters({})
+# builder.multi_hop_filters({})
 
-print("DONE")
+# print("DONE")
