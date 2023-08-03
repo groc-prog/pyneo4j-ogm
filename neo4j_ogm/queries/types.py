@@ -126,7 +126,7 @@ PatternOperator = TypedDict(
 
 
 MultiHopRelationshipOperators = TypedDict(
-    "MultiHopRelationshipOperators", {"$elementId": Optional[str], "$id": Optional[int], "$type": Union[str, List[str]]}
+    "MultiHopRelationshipOperators", {"$elementId": Optional[str], "$id": Optional[int], "$type": str}
 )
 
 MultiHopRelationship = Union[Dict[str, QueryOperators], MultiHopRelationshipOperators]
@@ -146,7 +146,7 @@ RelationshipFilters = Union[Dict[str, QueryOperators], QueryRelationshipOperator
 MultiHopFilters = TypedDict(
     "MultiHopFilters",
     {
-        "$minHops": Union[int, Literal["*"]],
+        "$minHops": int,
         "$maxHops": Union[int, Literal["*"]],
         "$node": NodePattern,
         "$relationships": List[MultiHopRelationship],

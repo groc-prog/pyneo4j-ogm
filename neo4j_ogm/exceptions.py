@@ -162,3 +162,12 @@ class ReservedPropertyName(Neo4jOGMException):
 
     def __init__(self, property_name: str, *args: object) -> None:
         super().__init__(f"{property_name} is reserved for internal use.", *args)
+
+
+class InvalidRelationshipHops(Neo4jOGMException):
+    """
+    Exception which gets raised when a relationship hop is invalid.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Invalid relationship hop. Hop must be positive integer or '*'.", *args)

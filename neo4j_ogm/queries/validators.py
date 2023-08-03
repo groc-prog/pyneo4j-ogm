@@ -217,7 +217,7 @@ class MultiHopRelationshipOperatorsModel(NodeFiltersModel):
 
     element_id_: Optional[str] = Field(alias="$elementId")
     id_: Optional[int] = Field(alias="$id")
-    type_: Union[str, List[str]] = Field(alias="$type")
+    type_: str = Field(alias="$type")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -235,7 +235,7 @@ class MultiHopFiltersModel(BaseModel):
     Validator model for node and relationship filters with multiple hops between the nodes.
     """
 
-    min_hops_: Optional[Union[int, Literal["*"]]] = Field(alias="$minHops")
+    min_hops_: Optional[int] = Field(alias="$minHops")
     id_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops")
     node_: Optional[PatternNodeOperatorsModel] = Field(alias="$node")
     relationships_: Optional[List[MultiHopRelationshipOperatorsModel]] = Field(alias="$relationships")

@@ -127,11 +127,7 @@ builder.multi_hop_filters(
         "$minHops": 2,
         "$maxHops": 3,
         "$node": {"$labels": ["Person", "Adult"], "name": "foo"},
-        "$relationships": [
-            {
-                "$type": "FRIENDS",
-            }
-        ],
+        "$relationships": [{"$type": "FRIENDS", "name": "foo"}, {"$type": "HAS_CHILD"}],
     }
 )
 

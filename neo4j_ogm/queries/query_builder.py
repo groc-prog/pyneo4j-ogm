@@ -2,10 +2,22 @@
 This module contains a class for building parts of the database query.
 """
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, TypedDict, Union
+from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
 
-from neo4j_ogm.queries.types import NodeFilters, QueryDataTypes, RelationshipFilters, RelationshipMatchDirection
-from neo4j_ogm.queries.validators import NodeFiltersModel, QueryOptionModel, RelationshipFiltersModel
+from neo4j_ogm.exceptions import InvalidRelationshipHops
+from neo4j_ogm.queries.types import (
+    MultiHopFilters,
+    NodeFilters,
+    QueryDataTypes,
+    RelationshipFilters,
+    RelationshipMatchDirection,
+)
+from neo4j_ogm.queries.validators import (
+    MultiHopFiltersModel,
+    NodeFiltersModel,
+    QueryOptionModel,
+    RelationshipFiltersModel,
+)
 
 
 class FilterQueries(TypedDict):
@@ -13,6 +25,7 @@ class FilterQueries(TypedDict):
     Type definition for `query` attribute.
     """
 
+    match: str
     where: str
     options: str
 
@@ -46,6 +59,7 @@ class QueryBuilder:
     ref: str
     parameters: Dict[str, QueryDataTypes] = {}
     query: FilterQueries = {
+        "match": "",
         "where": "",
         "options": "",
     }
@@ -93,6 +107,71 @@ class QueryBuilder:
         self._remove_invalid_expressions(validated_filters)
 
         self.query["where"] = self._build_query(filters=validated_filters)
+
+    def multi_hop_filters(self, filters: MultiHopFilters, ref: str = "n") -> None:
+        """
+        Builds the filters for a multi hop query.
+
+        Args:
+            filters (Dict[str, Any]): The filters to build.
+            ref (str, optional): The reference to the node. Defaults to "n".
+        """
+        self.ref = ref
+        self.query = {"match": "", "where": "", "options": ""}
+        self.parameters = {}
+        normalized_filters = self._normalize_expressions(filters)
+
+        # Validate filters with pydantic model
+        validated_filters = MultiHopFiltersModel(**normalized_filters)
+        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+
+        # Remove invalid expressions
+        self._remove_invalid_expressions(validated_filters)
+
+        where_queries: List[str] = []
+        original_ref = deepcopy(self.ref)
+        node_ref = self._build_param_var()
+        relationship_ref = self._build_param_var()
+
+        # Build path match
+        relationship_match = self.relationship_match(
+            ref="_",
+            start_node_ref=ref,
+            end_node_ref=node_ref,
+            min_hops=validated_filters["$minHops"],
+            max_hops=validated_filters["$maxHops"],
+        )
+        self.query["match"] = f", path = {relationship_match}"
+
+        # Build node filters
+        self.ref = node_ref
+        where_node_query = self._build_query(filters=validated_filters["$node"])
+
+        # Build relationship filters
+        where_relationship_queries: Dict[str, str] = {}
+        self.ref = relationship_ref
+        for relationship in validated_filters["$relationships"]:
+            relationship_type = relationship["$type"]
+
+            relationship_filters = deepcopy(relationship)
+            relationship_filters.pop("$type")
+            build_filters = self._build_query(filters=relationship_filters)
+
+            if build_filters != "":
+                where_relationship_queries[relationship_type] = build_filters
+
+        # Build WHERE query
+        complete_where_query = f"""
+            {where_node_query} AND
+            ALL({relationship_ref} IN relationships(path) WHERE
+                CASE type({relationship_ref})
+                    {"".join([f"WHEN '{relationship}' THEN {where_relationship_queries[relationship]}" for relationship in where_relationship_queries])}
+                    ELSE true
+                END
+            )"""
+
+        self.ref = original_ref
+        self.query["where"] = complete_where_query
 
     def query_options(self, options: Dict[str, Any], ref: str = "n") -> None:
         """
@@ -155,6 +234,8 @@ class QueryBuilder:
         start_node_labels: Optional[List[str]] = None,
         end_node_ref: Optional[str] = None,
         end_node_labels: Optional[List[str]] = None,
+        min_hops: Optional[int] = None,
+        max_hops: Optional[Union[int, Literal["*"]]] = None,
     ) -> str:
         """
         Builds a relationship to match in the query.
@@ -166,16 +247,35 @@ class QueryBuilder:
             start_node_labels (Optional[List[str]], optional): The labels of the start node. Defaults to None.
             end_node_ref (Optional[str], optional): The reference to the end node. Defaults to None.
             end_node_labels (Optional[List[str]], optional): The labels of the end node. Defaults to None.
+            min_hops (Optional[Union[int, str]], optional): The minimum number of hops. Defaults to None.
+            max_hops (Optional[Union[int, str]], optional): The maximum number of hops. Defaults to None.
 
         Returns:
             str: The relationship to match.
         """
         start_node_match = self.node_match(labels=start_node_labels, ref=start_node_ref)
         end_node_match = self.node_match(labels=end_node_labels, ref=end_node_ref)
+        hops = ""
+
+        if any(
+            [
+                (isinstance(min_hops, int) and min_hops < 0),
+                (isinstance(max_hops, str) and max_hops != "*"),
+                (isinstance(max_hops, int) and max_hops < 0),
+            ]
+        ):
+            raise InvalidRelationshipHops()
+
+        if min_hops is not None and max_hops is not None:
+            hops = f"*{min_hops}..{max_hops}"
+        elif min_hops is not None:
+            hops = f"*{min_hops}.."
+        elif max_hops is not None:
+            hops = f"*..{max_hops}"
 
         relationship_ref = ref if ref is not None else ""
         relationship_type = f":{type_}" if type_ is not None else ""
-        relationship_match = f"[{relationship_ref}{relationship_type}]"
+        relationship_match = f"[{relationship_ref}{relationship_type}{hops}]"
 
         match direction:
             case RelationshipMatchDirection.INCOMING:
@@ -264,8 +364,17 @@ class QueryBuilder:
                 normalized[index] = self._normalize_expressions(expressions=expression, level=level + 1)
         elif isinstance(normalized, dict):
             for operator, expression in normalized.items():
+                # Handle $relationships operators
+                if operator == "$relationships":
+                    for index, relationship_expression in enumerate(expression):
+                        normalized[operator][index] = self._normalize_expressions(
+                            expressions=relationship_expression, level=0
+                        )
+                # Handle $node operator
+                elif operator == "$node":
+                    normalized[operator] = self._normalize_expressions(expressions=expression, level=0)
                 # Handle $patterns operator
-                if operator == "$patterns":
+                elif operator == "$patterns":
                     for index, pattern in enumerate(expression):
                         if "$node" in pattern:
                             normalized[operator][index]["$node"] = self._normalize_expressions(
@@ -530,7 +639,7 @@ class QueryBuilder:
         Returns:
             str: The unique variable name.
         """
-        param_var = f"n_{self._parameter_indent}"
+        param_var = f"_n_{self._parameter_indent}"
 
         self._parameter_indent += 1
         return param_var
