@@ -114,7 +114,7 @@ value. If the validation fails, a `ValidationError` will be raised. The followin
 If this sounds familiar to you, it is because this library makes heavy use of `pydantic's BaseModel` and validation
 under the hood. If you want to learn more about pydantic, please refer to the [pydantic documentation](https://docs.pydantic.dev/1.10/).
 
-> **Note:** Since Neo4j does not support nested properties, all dictionaries and nested models will be flattened when defining them
+> ❗️ **Note:** Since Neo4j does not support nested properties, all dictionaries and nested models will be flattened when defining them
 > as properties. This means that all dictionaries and nested models will be converted to a string and stored as a string property.
 > This also means that you can not define indexes or constraints on nested properties. When inflating the model, the string will be
 > converted back to a dictionary or model.
@@ -170,12 +170,12 @@ class Developer(NodeModel):
 
 Available node settings:
 
-| Setting name          | Type                                         | Description                                                                                                                                |
-| --------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `exclude_from_export` | `Set[str]`                                   | A set of property names that should be excluded model exports (see [`Importing and exporting models`](#importing-and-exporting-models))    |
-| `pre_hooks`           | `Dict[str, Union[List[Callable], Callable]]` | A dictionary of pre hooks that should be executed before a certain action (see [`Pre hooks`](#pre-hooks))                                  |
-| `post_hooks`          | `Dict[str, Union[List[Callable], Callable]]` | A dictionary of post hooks that should be executed after a certain action (see [`Post hooks`](#post-hooks))                                |
-| `labels`              | `Union[str, Set[str]]`                       | The labels that should be used for the node. If no labels are defined before the model is registered, the class name will be used instead. |
+| Setting name        | Type                                           | Description                                                                                                                                |
+| ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| exclude_from_export | **Set[str]**                                   | A set of property names that should be excluded model exports (see [`Importing and exporting models`](#importing-and-exporting-models))    |
+| pre_hooks           | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of pre hooks that should be executed before a certain action (see [`Pre hooks`](#pre-hooks))                                  |
+| post_hooks          | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of post hooks that should be executed after a certain action (see [`Post hooks`](#post-hooks))                                |
+| labels`             | **Union[str, Set[str]]**                       | The labels that should be used for the node. If no labels are defined before the model is registered, the class name will be used instead. |
 <br />
 
 #### Working with model methods <a name="working-with-node-models-methods"></a>
