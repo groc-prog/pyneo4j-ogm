@@ -61,7 +61,7 @@ class ModelBase(BaseModel):
     __settings__: BaseModelSettings
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
-    _db_properties: Dict[str, Any] = PrivateAttr()
+    _db_properties: Dict[str, Any] = PrivateAttr(default_factory=dict)
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: Union[str, None] = PrivateAttr(default=None)
     Settings: ClassVar[Type[BaseModelSettings]]
@@ -72,6 +72,11 @@ class ModelBase(BaseModel):
             raise ReservedPropertyName("element_id")
 
         return values
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._db_properties = self.dict()
 
     def __init_subclass__(cls) -> None:
         setattr(cls, "_client", Neo4jClient())
