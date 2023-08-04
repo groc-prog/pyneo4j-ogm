@@ -69,20 +69,6 @@ class NodeModel(ModelBase):
                 cls._relationships_properties.add(property_name)
                 cls.__settings__.exclude_from_export.add(property_name)
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name in self.__fields__ and not name.startswith("_"):
-            logging.debug("Adding %s to modified properties", name)
-            self._modified_properties.add(name)
-
-        return super().__setattr__(name, value)
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        if key in self.__fields__ and not key.startswith("_"):
-            logging.debug("Adding %s to modified properties", key)
-            self._modified_properties.add(key)
-
-        return super().__setattr__(key, value)
-
     def deflate(self) -> Dict[str, Any]:
         """
         Deflates the current model instance into a python dictionary which can be stored in Neo4j.
@@ -171,7 +157,7 @@ class NodeModel(ModelBase):
         setattr(self, "_element_id", getattr(cast(T, results[0][0]), "_element_id"))
 
         logging.debug("Resetting modified properties")
-        self._modified_properties.clear()
+        self._db_properties = self.dict()
         logging.info("Created new node %s", self._element_id)
 
         return self
@@ -197,7 +183,7 @@ class NodeModel(ModelBase):
             [
                 f"n.{property_name} = ${property_name}"
                 for property_name in deflated
-                if property_name in self._modified_properties
+                if property_name in self.get_modified_properties
             ]
         )
 
@@ -215,9 +201,8 @@ class NodeModel(ModelBase):
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        # Reset _modified_properties
         logging.debug("Resetting modified properties")
-        self._modified_properties.clear()
+        self._db_properties = self.dict()
         logging.info("Updated node %s", self._element_id)
 
     @hooks

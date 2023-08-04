@@ -52,20 +52,6 @@ class RelationshipModel(ModelBase):
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
             setattr(cls.__settings__, "type", relationship_type.upper())
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name in self.__fields__ and not name.startswith("_"):
-            logging.debug("Adding %s to modified properties", name)
-            self._modified_properties.add(name)
-
-        return super().__setattr__(name, value)
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        if key in self.__fields__ and not key.startswith("_"):
-            logging.debug("Adding %s to modified properties", key)
-            self._modified_properties.add(key)
-
-        return super().__setattr__(key, value)
-
     def deflate(self) -> Dict[str, Any]:
         """
         Deflates the current model instance into a python dictionary which can be stored in Neo4j.
@@ -141,11 +127,19 @@ class RelationshipModel(ModelBase):
             self.__class__.__name__,
             deflated,
         )
+        set_query = ", ".join(
+            [
+                f"r.{property_name} = ${property_name}"
+                for property_name in deflated
+                if property_name in self.get_modified_properties
+            ]
+        )
+
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
                 WHERE elementId(r) = $element_id
-                SET {", ".join([f"r.{property_name} = ${property_name}" for property_name in deflated])}
+                {f"SET {set_query}" if set_query != "" else ""}
                 RETURN r
             """,
             parameters={
@@ -158,9 +152,8 @@ class RelationshipModel(ModelBase):
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        # Reset _modified_properties
         logging.debug("Resetting modified properties")
-        self._modified_properties.clear()
+        self._db_properties = self.dict()
         logging.info("Updated relationship %s", self._element_id)
 
     @hooks

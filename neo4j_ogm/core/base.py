@@ -61,7 +61,7 @@ class ModelBase(BaseModel):
     __settings__: BaseModelSettings
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
-    _modified_properties: Set[str] = PrivateAttr(default=set())
+    _db_properties: Dict[str, Any] = PrivateAttr()
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: Union[str, None] = PrivateAttr(default=None)
     Settings: ClassVar[Type[BaseModelSettings]]
@@ -264,6 +264,23 @@ class ModelBase(BaseModel):
             return [cls._convert_keys_to_snake_case(item) for item in model_dict]
 
         return model_dict
+
+    @property
+    def get_modified_properties(self) -> List[str]:
+        """
+        Returns a list of properties which have been modified since the instance was hydrated.
+
+        Returns:
+            List[str]: A list of properties which have been modified.
+        """
+        modified_properties = []
+        current_properties = self.dict()
+
+        for property_name, property_value in self._db_properties.items():
+            if current_properties[property_name] != property_value:
+                modified_properties.append(property_name)
+
+        return modified_properties
 
     class Config:
         """
