@@ -31,6 +31,8 @@ async def main():
 
     result = await Actor.find_one({"name": "Arnold Schwarzenegger"})
 
+    results, _ = await client.cypher("MATCH (n) RETURN n")
+
     print("DONE")
 
 

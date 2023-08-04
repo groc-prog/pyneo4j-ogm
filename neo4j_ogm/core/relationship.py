@@ -29,18 +29,18 @@ class RelationshipModel(ModelBase):
     functionality like de-/inflation and validation.
     """
 
-    _settings: RelationshipModelSettings
+    __settings__: RelationshipModelSettings
     _start_node_id: Union[str, None] = PrivateAttr(default=None)
     _end_node_id: Union[str, None] = PrivateAttr(default=None)
     Settings: ClassVar[Type[RelationshipModelSettings]]
 
     def __init_subclass__(cls) -> None:
-        setattr(cls, "_settings", RelationshipModelSettings())
+        setattr(cls, "__settings__", RelationshipModelSettings())
 
         super().__init_subclass__()
 
         # Check if node labels is set, if not fall back to model name
-        type_ = getattr(cls._settings, "type", None)
+        type_ = getattr(cls.__settings__, "type", None)
 
         # Check if relationship type is set, else fall back to class name
         if type_ is None:
@@ -50,7 +50,7 @@ class RelationshipModel(ModelBase):
             )
             # Convert class name to upper snake case
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
-            setattr(cls._settings, "type", relationship_type.upper())
+            setattr(cls.__settings__, "type", relationship_type.upper())
 
     def deflate(self) -> Dict[str, Any]:
         """
@@ -137,7 +137,7 @@ class RelationshipModel(ModelBase):
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type)}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
                 WHERE elementId(r) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
                 RETURN r
@@ -174,7 +174,7 @@ class RelationshipModel(ModelBase):
         )
         await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type)}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
                 WHERE elementId(r) = $element_id
                 DELETE r
             """,
@@ -204,7 +204,7 @@ class RelationshipModel(ModelBase):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type)}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
                 WHERE elementId(r) = $element_id
                 RETURN DISTINCT r
             """,
@@ -240,7 +240,7 @@ class RelationshipModel(ModelBase):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type, start_node_ref="start")}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
                 RETURN DISTINCT start
             """,
@@ -276,7 +276,7 @@ class RelationshipModel(ModelBase):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type, start_node_ref="start")}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
                 RETURN DISTINCT end
             """,
@@ -318,7 +318,7 @@ class RelationshipModel(ModelBase):
             raise MissingFilters()
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -370,7 +370,7 @@ class RelationshipModel(ModelBase):
             cls._query_builder.query_options(options=options, ref="r")
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -440,7 +440,7 @@ class RelationshipModel(ModelBase):
             raise MissingFilters()
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -507,7 +507,7 @@ class RelationshipModel(ModelBase):
             cls._query_builder.relationship_filters(filters=filters)
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         logging.debug(
@@ -602,7 +602,7 @@ class RelationshipModel(ModelBase):
             raise MissingFilters()
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -643,7 +643,7 @@ class RelationshipModel(ModelBase):
             cls._query_builder.relationship_filters(filters=filters)
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         logging.debug("Getting relationship count matching filters %s", filters)
@@ -696,7 +696,7 @@ class RelationshipModel(ModelBase):
             cls._query_builder.relationship_filters(filters=filters)
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
