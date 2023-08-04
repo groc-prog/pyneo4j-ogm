@@ -16,18 +16,9 @@ from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.base import ModelBase, hooks
 from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.exceptions import (
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    MissingFilters,
-    NoResultsFound,
-)
+from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, MissingFilters, NoResultsFound
 from neo4j_ogm.fields.settings import RelationshipModelSettings
-from neo4j_ogm.queries.types import (
-    QueryOptions,
-    RelationshipFilters,
-    RelationshipMatchDirection,
-)
+from neo4j_ogm.queries.types import QueryOptions, RelationshipFilters, RelationshipMatchDirection
 
 T = TypeVar("T", bound="RelationshipModel")
 
@@ -82,20 +73,15 @@ class RelationshipModel(ModelBase):
         Returns:
             Dict[str, Any]: The deflated model instance
         """
-        logging.debug("Deflating model to storable dictionary")
+        logging.debug("Deflating model %s to storable dictionary", self._element_id)
         deflated: Dict[str, Any] = json.loads(self.json())
 
         # Serialize nested BaseModel or dict instances to JSON strings
-        logging.debug("Serializing nested dictionaries to JSON strings")
-        for property_name in self._dict_properties:
-            deflated[property_name] = json.dumps(deflated[property_name])
-
-        logging.debug("Serializing nested models to JSON strings")
-        for property_name in self._model_properties:
-            if isinstance(getattr(self, property_name), BaseModel):
-                deflated[property_name] = self.__dict__[property_name].json()
-            else:
-                deflated[property_name] = json.dumps(deflated[property_name])
+        for key, value in deflated.items():
+            if isinstance(value, (dict, BaseModel)):
+                deflated[key] = json.dumps(value)
+            if isinstance(value, list):
+                deflated[key] = [json.dumps(item) for item in value if isinstance(item, (dict, BaseModel))]
 
         return deflated
 
@@ -115,16 +101,20 @@ class RelationshipModel(ModelBase):
         """
         inflated: Dict[str, Any] = {}
 
+        def try_property_parsing(property: str) -> Union[str, Dict[str, Any], BaseModel]:
+            try:
+                return json.loads(property)
+            except:
+                return property
+
         logging.debug("Inflating relationship %s to model instance", relationship.element_id)
         for node_property in relationship.items():
             property_name, property_value = node_property
 
             if isinstance(property_value, str):
-                try:
-                    logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
-                    inflated[property_name] = json.loads(property_value)
-                except:
-                    inflated[property_name] = property_value
+                inflated[property_name] = try_property_parsing(property_value)
+            elif isinstance(property_value, list):
+                inflated[property_name] = [try_property_parsing(item) for item in property_value]
             else:
                 inflated[property_name] = property_value
 

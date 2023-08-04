@@ -8,29 +8,13 @@ the database for CRUD operations on nodes.
 
 import json
 import logging
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Dict,
-    List,
-    Set,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Set, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
-from pydantic import PrivateAttr
+from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.base import ModelBase, hooks
-from neo4j_ogm.exceptions import (
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    MissingFilters,
-    NoResultsFound,
-)
+from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, MissingFilters, NoResultsFound
 from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
 
@@ -106,13 +90,15 @@ class NodeModel(ModelBase):
         Returns:
             Dict[str, Any]: The deflated model instance.
         """
-        logging.debug("Deflating model to storable dictionary")
+        logging.debug("Deflating model %s to storable dictionary", self._element_id)
         deflated: Dict[str, Any] = json.loads(self.json(exclude=self._relationships_properties))
 
         # Serialize nested BaseModel or dict instances to JSON strings
         for key, value in deflated.items():
-            if isinstance(value, dict):
+            if isinstance(value, (dict, BaseModel)):
                 deflated[key] = json.dumps(value)
+            if isinstance(value, list):
+                deflated[key] = [json.dumps(item) for item in value if isinstance(item, (dict, BaseModel))]
 
         return deflated
 
@@ -132,16 +118,20 @@ class NodeModel(ModelBase):
         """
         inflated: Dict[str, Any] = {}
 
+        def try_property_parsing(property: str) -> Union[str, Dict[str, Any], BaseModel]:
+            try:
+                return json.loads(property)
+            except:
+                return property
+
         logging.debug("Inflating node %s to model instance", node.element_id)
         for node_property in node.items():
             property_name, property_value = node_property
 
             if isinstance(property_value, str):
-                try:
-                    logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
-                    inflated[property_name] = json.loads(property_value)
-                except:
-                    inflated[property_name] = property_value
+                inflated[property_name] = try_property_parsing(property_value)
+            elif isinstance(property_value, list):
+                inflated[property_name] = [try_property_parsing(item) for item in property_value]
             else:
                 inflated[property_name] = property_value
 

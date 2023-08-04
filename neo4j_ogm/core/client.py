@@ -88,9 +88,9 @@ class Neo4jClient:
 
     def connect(
         self,
-        *args,
         uri: Union[str, None] = None,
         auth: Union[Tuple[str, str], None] = None,
+        *args,
         **kwargs,
     ) -> None:
         """

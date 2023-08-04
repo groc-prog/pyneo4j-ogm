@@ -6,19 +6,7 @@ dictionary.
 import json
 import re
 from asyncio import iscoroutinefunction
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Dict,
-    List,
-    ParamSpec,
-    Set,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import Any, Callable, ClassVar, Dict, List, ParamSpec, Set, Type, TypeVar, Union, cast
 
 from pydantic import BaseModel, PrivateAttr, root_validator
 
@@ -71,8 +59,6 @@ class ModelBase(BaseModel):
     """
 
     __settings__: BaseModelSettings
-    _dict_properties: Set[str] = PrivateAttr()
-    _model_properties: Set[str] = PrivateAttr()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _modified_properties: Set[str] = PrivateAttr(default=set())
@@ -109,7 +95,7 @@ class ModelBase(BaseModel):
         hydration_msg = self._element_id if self._element_id is not None else "not hydrated"
         return f"{self.__class__.__name__}({hydration_msg})"
 
-    def export_model(self: T, *args, convert_to_camel_case: bool = False, **kwargs) -> Dict[str, Any]:
+    def export_model(self: T, convert_to_camel_case: bool = False, *args, **kwargs) -> Dict[str, Any]:
         """
         Export the model to a dictionary containing standard python types. This method accepts all
         arguments of `pydantic.BaseModel.dict()`.
