@@ -722,8 +722,10 @@ class RelationshipModel(ModelBase):
             raise InstanceDestroyed()
 
         if any(
-            self._element_id is None,
-            self._start_node_id is None,
-            self._end_node_id is None,
+            [
+                self._element_id is None,
+                self._start_node_id is None,
+                self._end_node_id is None,
+            ]
         ):
             raise InstanceNotHydrated()
