@@ -68,7 +68,7 @@ class ModelBase(BaseModel):
 
     @root_validator()
     def _validate_reserved_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        for value in ["element_id", "__settings__", "modified_properties"]:
+        for value in ["element_id", "modified_properties"]:
             if value in values:
                 raise ReservedPropertyName(value)
 
