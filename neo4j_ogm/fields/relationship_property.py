@@ -103,11 +103,11 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model._settings.type,
+            type_=self._relationship_model.__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node._settings.labels,
+            start_node_labels=self._source_node.__settings__.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model._settings.labels,
+            end_node_labels=self._target_model.__settings__.labels,
         )
         results, _ = await self._client.cypher(
             query=f"""
@@ -155,7 +155,7 @@ class RelationshipProperty:
 
         relationship_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model._settings.type,
+            type_=self._relationship_model.__settings__.type,
             start_node_ref="start",
             end_node_ref="end",
         )
@@ -214,11 +214,11 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model._settings.type,
+            type_=self._relationship_model.__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node._settings.labels,
+            start_node_labels=self._source_node.__settings__.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model._settings.labels,
+            end_node_labels=self._target_model.__settings__.labels,
         )
 
         logging.debug("Getting relationship count between source and target node")
@@ -266,15 +266,16 @@ class RelationshipProperty:
             int: The number of disconnected nodes.
         """
         logging.info(
-            "Deleting all relationships associated with source node %s", getattr(self._source_node, "_element_id", None)
+            "Deleting all relationships associated with source node %s",
+            getattr(self._source_node, "_element_id", None),
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model._settings.type,
+            type_=self._relationship_model.__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node._settings.labels,
+            start_node_labels=self._source_node.__settings__.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model._settings.labels,
+            end_node_labels=self._target_model.__settings__.labels,
         )
 
         logging.debug("Getting relationship count for source node")
@@ -291,7 +292,10 @@ class RelationshipProperty:
         )
 
         if len(count_results) == 0 or len(count_results[0]) == 0 or count_results[0][0] is None:
-            logging.debug("No relationships found for source node %s", getattr(self._source_node, "_element_id", None))
+            logging.debug(
+                "No relationships found for source node %s",
+                getattr(self._source_node, "_element_id", None),
+            )
             return 0
 
         logging.debug("Found %s, deleting relationships", count_results[0][0])
@@ -329,11 +333,11 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model._settings.type,
+            type_=self._relationship_model.__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node._settings.labels,
+            start_node_labels=self._source_node.__settings__.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model._settings.labels,
+            end_node_labels=self._target_model.__settings__.labels,
         )
 
         logging.debug("Getting relationship between source node and old node")
@@ -370,7 +374,7 @@ class RelationshipProperty:
         logging.debug("Creating relationship between source node and new node")
         create_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model._settings.type,
+            type_=self._relationship_model.__settings__.type,
             start_node_ref="start",
             end_node_ref="end",
         )
@@ -384,8 +388,8 @@ class RelationshipProperty:
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH
-                    {self._query_builder.node_match(labels=self._source_node._settings.labels, ref="start")},
-                    {self._query_builder.node_match(labels=self._target_model._settings.labels, ref="end")}
+                    {self._query_builder.node_match(labels=self._source_node.__settings__.labels, ref="start")},
+                    {self._query_builder.node_match(labels=self._target_model.__settings__.labels, ref="end")}
                 WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 CREATE {create_query}
                 {set_query}
@@ -403,7 +407,9 @@ class RelationshipProperty:
         return results[0][0]
 
     async def find_connected_nodes(
-        self, filters: Union[NodeFilters, None] = None, options: Union[QueryOptions, None] = None
+        self,
+        filters: Union[NodeFilters, None] = None,
+        options: Union[QueryOptions, None] = None,
     ) -> List[T]:
         """
         Finds the all nodes that matches `filters` and are connected to the source node.
@@ -423,11 +429,11 @@ class RelationshipProperty:
 
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model._settings.type,
+            type_=self._relationship_model.__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node._settings.labels,
+            start_node_labels=self._source_node.__settings__.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model._settings.labels,
+            end_node_labels=self._target_model.__settings__.labels,
         )
 
         results, _ = await self._client.cypher(
@@ -472,13 +478,19 @@ class RelationshipProperty:
         self._client = Neo4jClient()
         self._query_builder = QueryBuilder()
 
-        logging.debug("Checking if source model %s has been registered with client", source_model.__class__.__name__)
+        logging.debug(
+            "Checking if source model %s has been registered with client",
+            source_model.__class__.__name__,
+        )
         if source_model.__class__ not in self._client.models:
             raise UnregisteredModel(unregistered_model=source_model.__class__.__name__)
 
         self._source_node = source_model
 
-        logging.debug("Checking if target model %s has been registered with client", self._target_model_name)
+        logging.debug(
+            "Checking if target model %s has been registered with client",
+            self._target_model_name,
+        )
         registered_relationship_model = [
             model for model in self._client.models if model.__name__ == self._target_model_name
         ]
@@ -488,7 +500,8 @@ class RelationshipProperty:
         self._target_model = registered_relationship_model[0]
 
         logging.debug(
-            "Checking if relationship model %s has been registered with client", self._relationship_model_name
+            "Checking if relationship model %s has been registered with client",
+            self._relationship_model_name,
         )
         registered_relationship_model = [
             model for model in self._client.models if model.__name__ == self._relationship_model_name
@@ -514,7 +527,10 @@ class RelationshipProperty:
         nodes_to_check = nodes if isinstance(nodes, list) else [nodes]
 
         for node in nodes_to_check:
-            logging.debug("Checking if node %s is alive and of correct type", getattr(node, "_element_id", None))
+            logging.debug(
+                "Checking if node %s is alive and of correct type",
+                getattr(node, "_element_id", None),
+            )
             if getattr(node, "_element_id", None) is None:
                 raise InstanceNotHydrated()
 
@@ -522,4 +538,7 @@ class RelationshipProperty:
                 raise InstanceDestroyed()
 
             if self._target_model.__name__ != node.__class__.__name__:
-                raise InvalidTargetNode(expected_type=self._target_model.__name__, actual_type=node.__class__.__name__)
+                raise InvalidTargetNode(
+                    expected_type=self._target_model.__name__,
+                    actual_type=node.__class__.__name__,
+                )

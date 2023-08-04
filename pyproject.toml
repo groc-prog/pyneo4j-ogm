@@ -6,6 +6,7 @@ authors = ["groc-prog <marc.troisner@gmail.com>"]
 readme = "README.md"
 packages = [{include = "neo4j_ogm"}]
 
+
 [tool.poetry.dependencies]
 python = "^3.10"
 pydantic = "^1.10.9"
@@ -14,19 +15,15 @@ neo4j = "^5.9.0"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^2.17.5"
+black = "^23.7.0"
+
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+workers = 4
+
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-
-[tool.pylint.'MESSAGES CONTROL']
-extension-pkg-whitelist = "pydantic"
-
-
-[tool.pyright]
-reportGeneralTypeIssues = false
-
-
-[tool.pylint.messages_control]
-disable = "no-self-argument, bare-except"

@@ -103,11 +103,15 @@ QueryOperators = TypedDict(
 )
 
 PatternNodeOperators = TypedDict(
-    "PatternNodeElementOperators", {"$elementId": str, "$id": int, "$labels": List[str]}, total=True
+    "PatternNodeElementOperators",
+    {"$elementId": str, "$id": int, "$labels": List[str]},
+    total=True,
 )
 
 PatternRelationshipOperators = TypedDict(
-    "PatternRelationshipElementOperators", {"$elementId": str, "$id": int, "$type": Union[str, List[str]]}, total=True
+    "PatternRelationshipElementOperators",
+    {"$elementId": str, "$id": int, "$type": Union[str, List[str]]},
+    total=True,
 )
 
 NodePattern = Union[Dict[str, QueryOperators], PatternNodeOperators]
@@ -126,7 +130,8 @@ PatternOperator = TypedDict(
 
 
 MultiHopRelationshipOperators = TypedDict(
-    "MultiHopRelationshipOperators", {"$elementId": Optional[str], "$id": Optional[int], "$type": str}
+    "MultiHopRelationshipOperators",
+    {"$elementId": Optional[str], "$id": Optional[int], "$type": str},
 )
 
 MultiHopRelationship = Union[Dict[str, QueryOperators], MultiHopRelationshipOperators]
@@ -134,7 +139,9 @@ MultiHopRelationship = Union[Dict[str, QueryOperators], MultiHopRelationshipOper
 # We need to define different interfaces for nodes and relationships to not show invalid operants
 # for the model type.
 QueryNodeOperators = TypedDict(
-    "QueryNodeOperators", {"$elementId": str, "$id": int, "$patterns": List[PatternOperator]}, total=False
+    "QueryNodeOperators",
+    {"$elementId": str, "$id": int, "$patterns": List[PatternOperator]},
+    total=False,
 )
 
 QueryRelationshipOperators = TypedDict("QueryRelationshipOperators", {"$elementId": str, "$id": int}, total=False)

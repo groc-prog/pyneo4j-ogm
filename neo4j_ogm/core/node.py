@@ -3,15 +3,34 @@ This module holds the base node class `NodeModel` which is used to define databa
 It provides base functionality like de-/inflation and validation and methods for interacting with
 the database for CRUD operations on nodes.
 """
+
+# pylint: disable=bare-except
+
 import json
 import logging
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Set, Type, TypeVar, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from neo4j.graph import Node
 from pydantic import PrivateAttr
 
 from neo4j_ogm.core.base import ModelBase, hooks
-from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, MissingFilters, NoResultsFound
+from neo4j_ogm.exceptions import (
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    MissingFilters,
+    NoResultsFound,
+)
 from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
 
@@ -29,7 +48,7 @@ class NodeModel(ModelBase):
     model.
     """
 
-    _settings: NodeModelSettings = PrivateAttr()
+    __settings__: NodeModelSettings
     _relationships_properties: Set[str] = PrivateAttr()
     Settings: ClassVar[Type[NodeModelSettings]]
 
@@ -43,25 +62,28 @@ class NodeModel(ModelBase):
 
     def __init_subclass__(cls) -> None:
         setattr(cls, "_relationships_properties", set())
-        setattr(cls, "_settings", NodeModelSettings())
+        setattr(cls, "__settings__", NodeModelSettings())
 
         super().__init_subclass__()
 
         # Check if node labels is set, if not fall back to model name
-        labels = getattr(cls._settings, "labels", None)
+        labels = getattr(cls.__settings__, "labels", None)
 
         if labels is None:
-            logging.warning("No labels have been defined for model %s, using model name as label", cls.__name__)
-            setattr(cls._settings, "labels", (cls.__name__.capitalize(),))
+            logging.warning(
+                "No labels have been defined for model %s, using model name as label",
+                cls.__name__,
+            )
+            setattr(cls.__settings__, "labels", (cls.__name__.capitalize(),))
         elif labels is not None and isinstance(labels, str):
             logging.debug("str class %s provided as labels, converting to tuple", labels)
-            setattr(cls._settings, "labels", (labels,))
+            setattr(cls.__settings__, "labels", (labels,))
 
         for property_name, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if property_name is of type None
             if value.type_ is not None and hasattr(value.type_, "_build_property"):
                 cls._relationships_properties.add(property_name)
-                cls._settings.exclude_from_export.add(property_name)
+                cls.__settings__.exclude_from_export.add(property_name)
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name in self.__fields__ and not name.startswith("_"):
@@ -114,10 +136,13 @@ class NodeModel(ModelBase):
         for node_property in node.items():
             property_name, property_value = node_property
 
-            try:
-                logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
-                inflated[property_name] = json.loads(property_value)
-            except:
+            if isinstance(property_value, str):
+                try:
+                    logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
+                    inflated[property_name] = json.loads(property_value)
+                except:
+                    inflated[property_name] = property_value
+            else:
                 inflated[property_name] = property_value
 
         instance = cls(**inflated)
@@ -140,7 +165,7 @@ class NodeModel(ModelBase):
 
         results, _ = await self._client.cypher(
             query=f"""
-                CREATE {self._query_builder.node_match(self._settings.labels)}
+                CREATE {self._query_builder.node_match(self.__settings__.labels)}
                 SET {', '.join(f"n.{property_name} = ${property_name}" for property_name in deflated_properties.keys())}
                 RETURN n
             """,
@@ -187,7 +212,7 @@ class NodeModel(ModelBase):
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self._settings.labels)}
+                MATCH {self._query_builder.node_match(self.__settings__.labels)}
                 WHERE elementId(n) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
                 RETURN n
@@ -218,7 +243,7 @@ class NodeModel(ModelBase):
         logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self._settings.labels)}
+                MATCH {self._query_builder.node_match(self.__settings__.labels)}
                 WHERE elementId(n) = $element_id
                 DETACH DELETE n
                 RETURN count(n)
@@ -247,7 +272,7 @@ class NodeModel(ModelBase):
         logging.info("Refreshing node %s of model %s", self._element_id, self.__class__.__name__)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self._settings.labels)}
+                MATCH {self._query_builder.node_match(self.__settings__.labels)}
                 WHERE elementId(n) = $element_id
                 RETURN n
             """,
@@ -285,13 +310,16 @@ class NodeModel(ModelBase):
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self._settings.labels)}{self._query_builder.query['match']}
+                MATCH {self._query_builder.node_match(self.__settings__.labels)}{self._query_builder.query['match']}
                 WHERE
                     elementId(n) = $element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
                 RETURN DISTINCT m
             """,
-            parameters={"element_id": self._element_id, **self._query_builder.parameters},
+            parameters={
+                "element_id": self._element_id,
+                **self._query_builder.parameters,
+            },
         )
 
         instances: List[T] = []
@@ -324,7 +352,11 @@ class NodeModel(ModelBase):
         Returns:
             T | None: A instance of the model or None if no match is found.
         """
-        logging.info("Getting first encountered node of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Getting first encountered node of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         cls._query_builder.node_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
@@ -332,7 +364,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls._settings.labels)}
+                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 WHERE {cls._query_builder.query['where']}
                 RETURN n
                 LIMIT 1
@@ -353,7 +385,9 @@ class NodeModel(ModelBase):
     @classmethod
     @hooks
     async def find_many(
-        cls: Type[T], filters: Union[NodeFilters, None] = None, options: Union[QueryOptions, None] = None
+        cls: Type[T],
+        filters: Union[NodeFilters, None] = None,
+        options: Union[QueryOptions, None] = None,
     ) -> List[T]:
         """
         Finds the all nodes that matches `filters` and returns them. If no matches are found, an
@@ -374,7 +408,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls._settings.labels)}
+                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN n
                 {cls._query_builder.query['options']}
@@ -419,8 +453,16 @@ class NodeModel(ModelBase):
         """
         new_instance: T
 
-        logging.info("Updating first encountered node of model %s matching filters %s", cls.__name__, filters)
-        logging.debug("Getting first encountered node of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Updating first encountered node of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
+        logging.debug(
+            "Getting first encountered node of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         cls._query_builder.node_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
@@ -428,7 +470,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls._settings.labels)}
+                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 WHERE {cls._query_builder.query['where']}
                 RETURN n
                 LIMIT 1
@@ -460,7 +502,10 @@ class NodeModel(ModelBase):
     @classmethod
     @hooks
     async def update_many(
-        cls: Type[T], update: Dict[str, Any], filters: Union[NodeFilters, None] = None, new: bool = False
+        cls: Type[T],
+        update: Dict[str, Any],
+        filters: Union[NodeFilters, None] = None,
+        new: bool = False,
     ) -> [List[T], T]:
         """
         Finds all nodes that match `filters` and updates them with the values defined by `update`.
@@ -484,7 +529,7 @@ class NodeModel(ModelBase):
         logging.debug("Getting all nodes of model %s matching filters %s", cls.__name__, filters)
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls._settings.labels)}
+                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN n
             """,
@@ -518,7 +563,7 @@ class NodeModel(ModelBase):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls._settings.labels)}
+                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN n
@@ -558,7 +603,11 @@ class NodeModel(ModelBase):
         Returns:
             int: The number of deleted nodes.
         """
-        logging.info("Deleting first encountered node of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Deleting first encountered node of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         cls._query_builder.node_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
@@ -566,7 +615,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls._settings.labels)}
+                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 WHERE {cls._query_builder.query['where']}
                 WITH n LIMIT 1
                 DETACH DELETE n
@@ -600,7 +649,7 @@ class NodeModel(ModelBase):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls._settings.labels)}
+                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 DETACH DELETE n
                 RETURN n
@@ -622,13 +671,17 @@ class NodeModel(ModelBase):
         Returns:
             int: The number of nodes matched by the query.
         """
-        logging.info("Getting count of nodes of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Getting count of nodes of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls._settings.labels)}
+                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN count(n)
             """,

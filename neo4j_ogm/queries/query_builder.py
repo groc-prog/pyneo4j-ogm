@@ -169,7 +169,7 @@ class QueryBuilder:
             relationship_where_query = f"""
                 ALL({relationship_ref} IN relationships(path) WHERE
                     CASE type({relationship_ref})
-                        {"".join([f"WHEN '{relationship}' THEN {where_relationship_queries[relationship]}" for relationship in where_relationship_queries])}
+                        {"".join([f"WHEN '{relationship_name}' THEN {relationship_query}" for relationship_name, relationship_query in where_relationship_queries.items()])}
                         ELSE true
                     END
                 )"""
@@ -633,7 +633,10 @@ class QueryBuilder:
 
         # Build final queries
         match_query = self.relationship_match(
-            ref=relationship_ref, start_node_ref=self.ref, end_node_ref=node_ref, direction=expression["$direction"]
+            ref=relationship_ref,
+            start_node_ref=self.ref,
+            end_node_ref=node_ref,
+            direction=expression["$direction"],
         )
         exists_query = "NOT EXISTS" if expression["$not"] else "EXISTS"
         where_query = " AND ".join(where_queries) if len(where_queries) > 0 else ""

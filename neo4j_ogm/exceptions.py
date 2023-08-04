@@ -39,7 +39,8 @@ class InvalidEntityType(Neo4jOGMException):
 
     def __init__(self, available_types: List[str], entity_type: str, *args: object) -> None:
         super().__init__(
-            f"Invalid entity type. Expected entity type to be one of {available_types}, got {entity_type}", *args
+            f"Invalid entity type. Expected entity type to be one of {available_types}, got {entity_type}",
+            *args,
         )
 
 
@@ -50,7 +51,10 @@ class InvalidIndexType(Neo4jOGMException):
     """
 
     def __init__(self, available_types: List[str], index_type: str, *args: object) -> None:
-        super().__init__(f"Invalid index type. Expected index to be one of {available_types}, got {index_type}", *args)
+        super().__init__(
+            f"Invalid index type. Expected index to be one of {available_types}, got {index_type}",
+            *args,
+        )
 
 
 class InstanceNotHydrated(Neo4jOGMException):
@@ -86,7 +90,10 @@ class UnregisteredModel(Neo4jOGMException):
     """
 
     def __init__(self, unregistered_model: str, *args: object) -> None:
-        super().__init__(f"Model {unregistered_model} was not registered, but another model is using it", *args)
+        super().__init__(
+            f"Model {unregistered_model} was not registered, but another model is using it",
+            *args,
+        )
 
 
 class InvalidTargetNode(Neo4jOGMException):
@@ -96,7 +103,10 @@ class InvalidTargetNode(Neo4jOGMException):
     """
 
     def __init__(self, expected_type: str, actual_type: str, *args: object) -> None:
-        super().__init__(f"Expected target node to be of type {expected_type}, but got {actual_type}", *args)
+        super().__init__(
+            f"Expected target node to be of type {expected_type}, but got {actual_type}",
+            *args,
+        )
 
 
 class InvalidLabelOrType(Neo4jOGMException):
@@ -133,7 +143,10 @@ class MissingFilters(Neo4jOGMException):
     """
 
     def __init__(self, *args: object) -> None:
-        super().__init__("Missing or invalid filters. Maybe you got a typo in the query operators?", *args)
+        super().__init__(
+            "Missing or invalid filters. Maybe you got a typo in the query operators?",
+            *args,
+        )
 
 
 class ModelImportFailure(Neo4jOGMException):

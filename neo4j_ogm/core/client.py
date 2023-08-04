@@ -86,7 +86,13 @@ class Neo4jClient:
             cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
-    def connect(self, *args, uri: Union[str, None] = None, auth: Union[Tuple[str, str], None] = None, **kwargs) -> None:
+    def connect(
+        self,
+        *args,
+        uri: Union[str, None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        **kwargs,
+    ) -> None:
         """
         Establish a connection to a database.
 
@@ -132,9 +138,9 @@ class Neo4jClient:
                 for property_name, property_definition in model.__fields__.items():
                     entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
                     labels_or_type = (
-                        list(getattr(model._settings, "labels"))
+                        list(getattr(model.__settings__, "labels"))
                         if issubclass(model, NodeModel)
-                        else getattr(model._settings, "type")
+                        else getattr(model.__settings__, "type")
                     )
 
                     if getattr(property_definition.type_, "_unique", False):
@@ -180,7 +186,10 @@ class Neo4jClient:
 
     @ensure_connection
     async def cypher(
-        self, query: str, parameters: Union[Dict[str, Any], None] = None, resolve_models: bool = True
+        self,
+        query: str,
+        parameters: Union[Dict[str, Any], None] = None,
+        resolve_models: bool = True,
     ) -> Tuple[List[List[Any]], List[str]]:
         """
         Runs the provided cypher query with given parameters against the database.
@@ -232,7 +241,11 @@ class Neo4jClient:
 
     @ensure_connection
     async def create_constraint(
-        self, name: str, entity_type: str, properties: List[str], labels_or_type: Union[List[str], str]
+        self,
+        name: str,
+        entity_type: str,
+        properties: List[str],
+        labels_or_type: Union[List[str], str],
     ) -> None:
         """
         Creates a constraint on nodes or relationships in the Neo4j database. Currently only
@@ -280,12 +293,18 @@ class Neo4jClient:
                 )
             case _:
                 raise InvalidEntityType(
-                    available_types=[option.value for option in EntityType], entity_type=entity_type
+                    available_types=[option.value for option in EntityType],
+                    entity_type=entity_type,
                 )
 
     @ensure_connection
     async def create_index(
-        self, name: str, entity_type: str, index_type: str, properties: List[str], labels_or_type: List[str]
+        self,
+        name: str,
+        entity_type: str,
+        index_type: str,
+        properties: List[str],
+        labels_or_type: List[str],
     ) -> None:
         """
         Creates a index on nodes or relationships in the Neo4j database.
@@ -304,7 +323,10 @@ class Neo4jClient:
             InvalidEntityType: If an invalid entity_type is provided.
         """
         if index_type not in [index.value for index in IndexType]:
-            raise InvalidIndexType(available_types=[option.value for option in IndexType], index_type=index_type)
+            raise InvalidIndexType(
+                available_types=[option.value for option in IndexType],
+                index_type=index_type,
+            )
 
         match entity_type:
             case EntityType.NODE:
@@ -314,7 +336,12 @@ class Neo4jClient:
                 for label in labels_or_type:
                     match index_type:
                         case IndexType.TOKEN:
-                            logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                            logging.info(
+                                "Creating %s index %s with labels %s",
+                                index_type,
+                                name,
+                                labels_or_type,
+                            )
                             await self.cypher(
                                 query=f"""
                                     CREATE LOOKUP INDEX {name} IF NOT EXISTS
@@ -324,7 +351,12 @@ class Neo4jClient:
                                 resolve_models=False,
                             )
                         case IndexType.RANGE:
-                            logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                            logging.info(
+                                "Creating %s index %s with labels %s",
+                                index_type,
+                                name,
+                                labels_or_type,
+                            )
                             await self.cypher(
                                 query=f"""
                                     CREATE {index_type} INDEX {name} IF NOT EXISTS
@@ -334,7 +366,12 @@ class Neo4jClient:
                                 resolve_models=False,
                             )
                         case _:
-                            logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                            logging.info(
+                                "Creating %s index %s with labels %s",
+                                index_type,
+                                name,
+                                labels_or_type,
+                            )
                             await self.cypher(
                                 query=f"""
                                     CREATE {index_type} INDEX {name} IF NOT EXISTS
@@ -349,7 +386,12 @@ class Neo4jClient:
 
                 match index_type:
                     case IndexType.TOKEN:
-                        logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                        logging.info(
+                            "Creating %s index %s with labels %s",
+                            index_type,
+                            name,
+                            labels_or_type,
+                        )
                         await self.cypher(
                             query=f"""
                                 CREATE LOOKUP INDEX {name} IF NOT EXISTS
@@ -359,7 +401,12 @@ class Neo4jClient:
                             resolve_models=False,
                         )
                     case IndexType.RANGE:
-                        logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                        logging.info(
+                            "Creating %s index %s with labels %s",
+                            index_type,
+                            name,
+                            labels_or_type,
+                        )
                         await self.cypher(
                             query=f"""
                                 CREATE {index_type} INDEX {name} IF NOT EXISTS
@@ -369,7 +416,12 @@ class Neo4jClient:
                             resolve_models=False,
                         )
                     case _:
-                        logging.info("Creating %s index %s with labels %s", index_type, name, labels_or_type)
+                        logging.info(
+                            "Creating %s index %s with labels %s",
+                            index_type,
+                            name,
+                            labels_or_type,
+                        )
                         await self.cypher(
                             query=f"""
                                 CREATE {index_type} INDEX {name} IF NOT EXISTS
@@ -380,7 +432,8 @@ class Neo4jClient:
                         )
             case _:
                 raise InvalidEntityType(
-                    available_types=[option.value for option in EntityType], entity_type=entity_type
+                    available_types=[option.value for option in EntityType],
+                    entity_type=entity_type,
                 )
 
     @ensure_connection
@@ -480,8 +533,9 @@ class Neo4jClient:
             query_result (Node | Relationship, Path): The query result to try to resolve.
 
         Returns:
-            Type[Union[NodeModel, RelationshipModel, Path]]: The database model, if one is registered. If a path is the result,
-                returns the `Path` class with `Path.nodes` and `Path.relationships` resolved to the database models.
+            Type[Union[NodeModel, RelationshipModel, Path]]: The database model, if one is registered. If a path is the
+                result, returns the `Path` class with `Path.nodes` and `Path.relationships` resolved to the database
+                models.
         """
         from neo4j_ogm.core.node import NodeModel
         from neo4j_ogm.core.relationship import RelationshipModel
@@ -512,9 +566,9 @@ class Neo4jClient:
             model_labels: set[str] = set()
 
             if issubclass(model, NodeModel):
-                model_labels = set(getattr(model._settings, "labels"))
+                model_labels = set(getattr(model.__settings__, "labels"))
             elif issubclass(model, RelationshipModel):
-                model_labels = set(getattr(model._settings, "type"))
+                model_labels = set(getattr(model.__settings__, "type"))
 
             if labels == model_labels:
                 return model.inflate(query_result)

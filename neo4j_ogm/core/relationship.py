@@ -1,8 +1,11 @@
 """
-This module holds the base relationship class `RelationshipModel` which is used to define database models for relationships.
-It provides base functionality like de-/inflation and validation and methods for interacting with
+This module holds the base relationship class `RelationshipModel` which is used to define database models for
+relationships. It provides base functionality like de-/inflation and validation and methods for interacting with
 the database for CRUD operations on relationships.
 """
+
+# pylint: disable=bare-except
+
 import json
 import logging
 import re
@@ -13,9 +16,18 @@ from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.base import ModelBase, hooks
 from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, MissingFilters, NoResultsFound
+from neo4j_ogm.exceptions import (
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    MissingFilters,
+    NoResultsFound,
+)
 from neo4j_ogm.fields.settings import RelationshipModelSettings
-from neo4j_ogm.queries.types import QueryOptions, RelationshipFilters, RelationshipMatchDirection
+from neo4j_ogm.queries.types import (
+    QueryOptions,
+    RelationshipFilters,
+    RelationshipMatchDirection,
+)
 
 T = TypeVar("T", bound="RelationshipModel")
 
@@ -26,25 +38,28 @@ class RelationshipModel(ModelBase):
     functionality like de-/inflation and validation.
     """
 
-    _settings: RelationshipModelSettings = PrivateAttr()
+    __settings__: RelationshipModelSettings
     _start_node_id: Union[str, None] = PrivateAttr(default=None)
     _end_node_id: Union[str, None] = PrivateAttr(default=None)
     Settings: ClassVar[Type[RelationshipModelSettings]]
 
     def __init_subclass__(cls) -> None:
-        setattr(cls, "_settings", RelationshipModelSettings())
+        setattr(cls, "__settings__", RelationshipModelSettings())
 
         super().__init_subclass__()
 
         # Check if node labels is set, if not fall back to model name
-        type_ = getattr(cls._settings, "type", None)
+        type_ = getattr(cls.__settings__, "type", None)
 
         # Check if relationship type is set, else fall back to class name
         if type_ is None:
-            logging.warning("No type has been defined for model %s, using model name as type", cls.__name__)
+            logging.warning(
+                "No type has been defined for model %s, using model name as type",
+                cls.__name__,
+            )
             # Convert class name to upper snake case
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
-            setattr(cls._settings, "type", relationship_type.upper())
+            setattr(cls.__settings__, "type", relationship_type.upper())
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name in self.__fields__ and not name.startswith("_"):
@@ -104,10 +119,13 @@ class RelationshipModel(ModelBase):
         for node_property in relationship.items():
             property_name, property_value = node_property
 
-            try:
-                logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
-                inflated[property_name] = json.loads(property_value)
-            except:
+            if isinstance(property_value, str):
+                try:
+                    logging.debug("Inflating property %s of model %s", property_name, cls.__name__)
+                    inflated[property_name] = json.loads(property_value)
+                except:
+                    inflated[property_name] = property_value
+            else:
                 inflated[property_name] = property_value
 
         instance = cls(**inflated)
@@ -135,7 +153,7 @@ class RelationshipModel(ModelBase):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type)}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
                 WHERE elementId(r) = $element_id
                 SET {", ".join([f"r.{property_name} = ${property_name}" for property_name in deflated])}
                 RETURN r
@@ -166,10 +184,14 @@ class RelationshipModel(ModelBase):
         """
         self._ensure_alive()
 
-        logging.info("Deleting relationship %s of model %s", self._element_id, self.__class__.__name__)
+        logging.info(
+            "Deleting relationship %s of model %s",
+            self._element_id,
+            self.__class__.__name__,
+        )
         await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type)}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
                 WHERE elementId(r) = $element_id
                 DELETE r
             """,
@@ -192,10 +214,14 @@ class RelationshipModel(ModelBase):
         """
         self._ensure_alive()
 
-        logging.info("Refreshing relationship %s of model %s", self._element_id, self.__class__.__name__)
+        logging.info(
+            "Refreshing relationship %s of model %s",
+            self._element_id,
+            self.__class__.__name__,
+        )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type)}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
                 WHERE elementId(r) = $element_id
                 RETURN r
             """,
@@ -231,7 +257,7 @@ class RelationshipModel(ModelBase):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type, start_node_ref="start")}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
                 RETURN start
             """,
@@ -267,7 +293,7 @@ class RelationshipModel(ModelBase):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self._settings.type, start_node_ref="start")}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
                 RETURN end
             """,
@@ -298,14 +324,18 @@ class RelationshipModel(ModelBase):
         Returns:
             T | None: A instance of the model or None if no match is found.
         """
-        logging.info("Getting first encountered relationship of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Getting first encountered relationship of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         cls._query_builder.relationship_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
             raise MissingFilters()
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -331,7 +361,9 @@ class RelationshipModel(ModelBase):
     @classmethod
     @hooks
     async def find_many(
-        cls: Type[T], filters: Union[RelationshipFilters, None] = None, options: Union[QueryOptions, None] = None
+        cls: Type[T],
+        filters: Union[RelationshipFilters, None] = None,
+        options: Union[QueryOptions, None] = None,
     ) -> List[T]:
         """
         Finds the all relationships that matches `filters` and returns them.
@@ -344,14 +376,18 @@ class RelationshipModel(ModelBase):
         Returns:
             List[T]: A list of model instances.
         """
-        logging.info("Getting relationships of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Getting relationships of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         if filters is not None:
             cls._query_builder.relationship_filters(filters=filters)
         if options is not None:
             cls._query_builder.query_options(options=options, ref="r")
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -380,7 +416,12 @@ class RelationshipModel(ModelBase):
 
     @classmethod
     @hooks
-    async def update_one(cls: Type[T], update: Dict[str, Any], filters: RelationshipFilters, new: bool = False) -> T:
+    async def update_one(
+        cls: Type[T],
+        update: Dict[str, Any],
+        filters: RelationshipFilters,
+        new: bool = False,
+    ) -> T:
         """
         Finds the first relationship that matches `filters` and updates it with the values defined by `update`. If
         no match is found, a `NoResultsFound` is raised.
@@ -400,15 +441,23 @@ class RelationshipModel(ModelBase):
         """
         new_instance: T
 
-        logging.info("Updating first encountered relationship of model %s matching filters %s", cls.__name__, filters)
-        logging.debug("Getting first encountered relationship of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Updating first encountered relationship of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
+        logging.debug(
+            "Getting first encountered relationship of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         cls._query_builder.relationship_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
             raise MissingFilters()
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -466,15 +515,23 @@ class RelationshipModel(ModelBase):
         """
         new_instance: T
 
-        logging.info("Updating all relationships of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Updating all relationships of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         if filters is not None:
             cls._query_builder.relationship_filters(filters=filters)
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
-        logging.debug("Getting all relationships of model %s matching filters %s", cls.__name__, filters)
+        logging.debug(
+            "Getting all relationships of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -551,14 +608,18 @@ class RelationshipModel(ModelBase):
         Returns:
             int: The number of deleted relationships.
         """
-        logging.info("Deleting first encountered relationship of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Deleting first encountered relationship of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         cls._query_builder.relationship_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
             raise MissingFilters()
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -590,12 +651,16 @@ class RelationshipModel(ModelBase):
         Returns:
             int: The number of deleted relationships.
         """
-        logging.info("Deleting all relationships of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Deleting all relationships of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         if filters is not None:
             cls._query_builder.relationship_filters(filters=filters)
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         logging.debug("Getting relationship count matching filters %s", filters)
@@ -639,12 +704,16 @@ class RelationshipModel(ModelBase):
         Returns:
             int: The number of relationships matched by the query.
         """
-        logging.info("Getting count of relationships of model %s matching filters %s", cls.__name__, filters)
+        logging.info(
+            "Getting count of relationships of model %s matching filters %s",
+            cls.__name__,
+            filters,
+        )
         if filters is not None:
             cls._query_builder.relationship_filters(filters=filters)
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
