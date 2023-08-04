@@ -4,7 +4,7 @@ on a `NodeModel` models field.
 """
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Type, TypeVar, Union, cast
+from typing import Any, Dict, Generic, List, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
 
@@ -35,7 +35,7 @@ class RelationshipPropertyDirection(str, Enum):
     OUTGOING = "OUTGOING"
 
 
-class RelationshipProperty:
+class RelationshipProperty(Generic[T, U]):
     """
     Class used to define relationships between the model this class is used on and a target node, which defines the
     other end of the relationship.
@@ -81,7 +81,7 @@ class RelationshipProperty:
         )
         self._target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
 
-    async def relationship(self, node: T) -> Union[U, Dict[str, Any], None]:
+    async def relationship(self, node: T) -> Union[U, None]:
         """
         Gets the relationship between the current node instance and the provided node. If the nodes are not connected
         the defined relationship, `None` will be returned.
@@ -90,9 +90,8 @@ class RelationshipProperty:
             node (T): The node to which to get the relationship.
 
         Returns:
-            (U | Dict[str, Any] | None): Returns a `relationship model instance` describing relationship between
-                the nodes or a `dictionary` if the relationship model has not been registered or `None` if no
-                relationship exists between the two.
+            (U | None): Returns a `relationship model instance` describing relationship between
+                the nodes  or `None` if no relationship exists between the two.
         """
         self._ensure_alive(node)
 
@@ -125,7 +124,7 @@ class RelationshipProperty:
             return None
         return results[0][0]
 
-    async def connect(self, node: T, properties: Union[Dict[str, Any], None] = None) -> Union[U, Dict[str, Any]]:
+    async def connect(self, node: T, properties: Union[Dict[str, Any], None] = None) -> U:
         """
         Connects the given node to the source node. By default only one relationship will be created between nodes.
         If `allow_multiple` has been set to `True` and a relationship already exists between the nodes, a duplicate
@@ -139,7 +138,7 @@ class RelationshipProperty:
             NoResultsFound: Raised if the query did not return the new relationship.
 
         Returns:
-            U | Dict[str, Any]: The created relationship.
+            U: The created relationship.
         """
         self._ensure_alive(node)
 
@@ -404,7 +403,7 @@ class RelationshipProperty:
 
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
-        return results[0][0]
+        return cast(U, results[0][0])
 
     async def find_connected_nodes(
         self,
@@ -491,13 +490,11 @@ class RelationshipProperty:
             "Checking if target model %s has been registered with client",
             self._target_model_name,
         )
-        registered_relationship_model = [
-            model for model in self._client.models if model.__name__ == self._target_model_name
-        ]
-        if len(registered_relationship_model) == 0:
+        registered_node_model = [model for model in self._client.models if model.__name__ == self._target_model_name]
+        if len(registered_node_model) == 0:
             raise UnregisteredModel(unregistered_model=self._target_model_name)
 
-        self._target_model = registered_relationship_model[0]
+        self._target_model = registered_node_model[0]
 
         logging.debug(
             "Checking if relationship model %s has been registered with client",
