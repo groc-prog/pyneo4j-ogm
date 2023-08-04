@@ -3,12 +3,12 @@ ignore=third_party
 persistent=no
 jobs=4
 unsafe-load-any-extension=no
-exclude=tests
 
 
 [MESSAGES CONTROL]
 disable=abstract-method,
         no-self-argument,
+        keyword-arg-before-vararg,
         bar-except,
         apply-builtin,
         arguments-differ,

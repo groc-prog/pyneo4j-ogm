@@ -87,11 +87,11 @@ class RelationshipModel(ModelBase):
         """
         inflated: Dict[str, Any] = {}
 
-        def try_property_parsing(property: str) -> Union[str, Dict[str, Any], BaseModel]:
+        def try_property_parsing(property_value: str) -> Union[str, Dict[str, Any], BaseModel]:
             try:
-                return json.loads(property)
+                return json.loads(property_value)
             except:
-                return property
+                return property_value
 
         logging.debug("Inflating relationship %s to model instance", relationship.element_id)
         for node_property in relationship.items():
