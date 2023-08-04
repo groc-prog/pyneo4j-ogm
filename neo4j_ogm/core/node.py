@@ -139,6 +139,7 @@ class NodeModel(ModelBase):
         setattr(instance, "_element_id", node.element_id)
         return instance
 
+    @hooks
     async def create(self: T) -> T:
         """
         Creates a new node from the current instance. After the method is finished, a newly created
