@@ -206,7 +206,7 @@ class RelationshipModel(ModelBase):
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
                 WHERE elementId(r) = $element_id
-                RETURN r
+                RETURN DISTINCT r
             """,
             parameters={"element_id": self._element_id},
         )
@@ -242,7 +242,7 @@ class RelationshipModel(ModelBase):
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
-                RETURN start
+                RETURN DISTINCT start
             """,
             parameters={
                 "element_id": self._element_id,
@@ -278,7 +278,7 @@ class RelationshipModel(ModelBase):
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
-                RETURN end
+                RETURN DISTINCT end
             """,
             parameters={
                 "element_id": self._element_id,
@@ -325,7 +325,7 @@ class RelationshipModel(ModelBase):
             query=f"""
                 MATCH {match_query}
                 WHERE {cls._query_builder.query['where']}
-                RETURN r
+                RETURN DISTINCT r
                 LIMIT 1
             """,
             parameters=cls._query_builder.parameters,
@@ -377,7 +377,7 @@ class RelationshipModel(ModelBase):
             query=f"""
                 MATCH {match_query}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                RETURN r
+                RETURN DISTINCT r
                 {cls._query_builder.query['options']}
             """,
             parameters=cls._query_builder.parameters,
@@ -447,7 +447,7 @@ class RelationshipModel(ModelBase):
             query=f"""
                 MATCH {match_query}
                 WHERE {cls._query_builder.query['where']}
-                RETURN r
+                RETURN DISTINCT r
                 LIMIT 1
             """,
             parameters=cls._query_builder.parameters,
@@ -519,7 +519,7 @@ class RelationshipModel(ModelBase):
             query=f"""
                 MATCH {match_query}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                RETURN r
+                RETURN DISTINCT r
             """,
             parameters=cls._query_builder.parameters,
         )
@@ -554,7 +554,7 @@ class RelationshipModel(ModelBase):
                 MATCH {match_query}
                 WHERE {cls._query_builder.query['where']}
                 SET {", ".join([f"r.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
-                RETURN r
+                RETURN DISTINCT r
             """,
             parameters={**deflated_properties, **cls._query_builder.parameters},
         )

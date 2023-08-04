@@ -250,7 +250,7 @@ class NodeModel(ModelBase):
             query=f"""
                 MATCH {self._query_builder.node_match(self.__settings__.labels)}
                 WHERE elementId(n) = $element_id
-                RETURN n
+                RETURN DISTINCT n
             """,
             parameters={"element_id": self._element_id},
         )
@@ -342,7 +342,7 @@ class NodeModel(ModelBase):
             query=f"""
                 MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 WHERE {cls._query_builder.query['where']}
-                RETURN n
+                RETURN DISTINCT n
                 LIMIT 1
             """,
             parameters=cls._query_builder.parameters,
@@ -386,7 +386,7 @@ class NodeModel(ModelBase):
             query=f"""
                 MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                RETURN n
+                RETURN DISTINCT n
                 {cls._query_builder.query['options']}
             """,
             parameters=cls._query_builder.parameters,
@@ -448,7 +448,7 @@ class NodeModel(ModelBase):
             query=f"""
                 MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 WHERE {cls._query_builder.query['where']}
-                RETURN n
+                RETURN DISTINCT n
                 LIMIT 1
             """,
             parameters=cls._query_builder.parameters,
@@ -507,7 +507,7 @@ class NodeModel(ModelBase):
             query=f"""
                 MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                RETURN n
+                RETURN DISTINCT n
             """,
             parameters=cls._query_builder.parameters,
         )
@@ -542,7 +542,7 @@ class NodeModel(ModelBase):
                 MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
-                RETURN n
+                RETURN DISTINCT n
             """,
             parameters={**deflated_properties, **cls._query_builder.parameters},
         )
@@ -595,7 +595,7 @@ class NodeModel(ModelBase):
                 WHERE {cls._query_builder.query['where']}
                 WITH n LIMIT 1
                 DETACH DELETE n
-                RETURN n
+                RETURN DISTINCT n
             """,
             parameters=cls._query_builder.parameters,
         )
@@ -628,7 +628,7 @@ class NodeModel(ModelBase):
                 MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 DETACH DELETE n
-                RETURN n
+                RETURN DISTINCT n
             """,
             parameters=cls._query_builder.parameters,
         )
