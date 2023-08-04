@@ -1,14 +1,14 @@
 import asyncio
 import logging
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 
 from neo4j_ogm.core.client import Neo4jClient
-from tests.models import Actor, Actress, Role
+from tests.models import Actor, Actress, Friends, WorkedTogether
 
 
 def hook(*args, **kwargs):
-    print(args, kwargs)
+    print("HOOK")
 
 
 async def main():
@@ -18,20 +18,17 @@ async def main():
     await client.drop_indexes()
     await client.drop_constraints()
     await client.drop_nodes()
-    await client.register_models([Actress])
+    await client.register_models([Actress, Actor, WorkedTogether, Friends])
 
     Actress.register_post_hooks("create", hook)
 
-    await Actress(name="Scarlett Johansson", age=35).create()
-    await Actress(name="Gal Gadot", age=29).create()
-    await Actress(name="Margot Robbie", age=39).create()
-    await Actress(name="Jennifer Lawrence", age=30).create()
-    await Actress(name="Angelina Jolie", age=45).create()
-    await Actor(name="Arnold Schwarzenegger", age=31).create()
-
-    result = await Actor.find_one({"name": "Arnold Schwarzenegger"})
-
-    results, _ = await client.cypher("MATCH (n) RETURN n")
+    async with client.batch():
+        scarlett = await Actress(name="Scarlett Johansson", age=35).create()
+        gal = await Actress(name="Gal Gadot", age=29).create()
+        margot = await Actress(name="Margot Robbie", age=39).create()
+        arnold = await Actor(name="Arnold Schwarzenegger", age=31).create()
+        robert = await Actor(name="Robert Downey Jr", age=34).create()
+        henry = await Actor(name="Henry Cavil", age=41).create()
 
     print("DONE")
 

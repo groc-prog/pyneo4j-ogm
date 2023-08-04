@@ -276,7 +276,7 @@ class RelationshipModel(ModelBase):
         )
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
+                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start", end_node_ref="end")}
                 WHERE elementId(r) = $element_id
                 RETURN DISTINCT end
             """,
@@ -456,7 +456,7 @@ class RelationshipModel(ModelBase):
         logging.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
-        old_instance = results[0][0]
+        old_instance = cast(T, results[0][0])
 
         # Update existing instance with values and save
         logging.debug("Creating instance copy with new values %s", update)
@@ -465,9 +465,30 @@ class RelationshipModel(ModelBase):
         for key, value in update.items():
             setattr(new_instance, key, value)
         setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
+        setattr(new_instance, "_start_node_id", getattr(old_instance, "_start_node_id", None))
+        setattr(new_instance, "_end_node_id", getattr(old_instance, "_end_node_id", None))
 
-        # Create query depending on whether upsert is active or not
-        await new_instance.update()
+        deflated = new_instance.deflate()
+        set_query = ", ".join(
+            [
+                f"r.{property_name} = ${property_name}"
+                for property_name in deflated
+                if property_name in new_instance.modified_properties
+            ]
+        )
+
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH {cls._query_builder.relationship_match(type_=new_instance.__settings__.type)}
+                WHERE elementId(r) = $element_id
+                {f"SET {set_query}" if set_query != "" else ""}
+                RETURN r
+            """,
+            parameters={
+                "element_id": new_instance._element_id,
+                **deflated,
+            },
+        )
         logging.info("Successfully updated relationship %s", getattr(new_instance, "_element_id"))
 
         if new:

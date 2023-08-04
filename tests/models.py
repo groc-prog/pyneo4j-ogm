@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
 from neo4j_ogm.fields.node_options import WithOptions
-from neo4j_ogm.fields.relationship_property import RelationshipProperty
+from neo4j_ogm.fields.relationship_property import RelationshipProperty, RelationshipPropertyDirection
 
 
 class Role(BaseModel):
@@ -15,16 +15,14 @@ class Role(BaseModel):
     year: int = 2020
 
 
-class Actress(NodeModel):
-    id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
-    name: WithOptions(str, text_index=True)
-    age: int
-    latest_role: Dict[str, Any] = dict(Role(name="No Emmies", year=2020))
-    all_roles: List[Role] = [Role()]
+class WorkedTogether(RelationshipModel):
+    had_fun: bool = True
+    fun_level: int = 5
 
+
+class Friends(RelationshipModel):
     class Settings:
-        exclude_from_export = {"latest_role"}
-        labels = ["Actress", "Female"]
+        type = "FRIENDS_WITH"
 
 
 class Actor(NodeModel):
@@ -37,3 +35,20 @@ class Actor(NodeModel):
     class Settings:
         exclude_from_export = {"latest_role"}
         labels = ["Actor", "Male"]
+
+
+class Actress(NodeModel):
+    id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
+    name: WithOptions(str, text_index=True)
+    age: int
+    latest_role: Dict[str, Any] = dict(Role(name="No Emmies", year=2020))
+    all_roles: List[Role] = [Role()]
+
+    colleagues = RelationshipProperty(
+        target_model=Actor, relationship_model="WorkedTogether", direction=RelationshipPropertyDirection.OUTGOING
+    )
+    friends = RelationshipProperty("Actress", Friends, RelationshipPropertyDirection.INCOMING, True)
+
+    class Settings:
+        exclude_from_export = {"latest_role"}
+        labels = ["Actress", "Female"]

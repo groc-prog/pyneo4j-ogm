@@ -467,7 +467,24 @@ class NodeModel(ModelBase):
             setattr(new_instance, key, value)
         setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
 
-        await new_instance.update()
+        deflated = new_instance.deflate()
+        set_query = ", ".join(
+            [
+                f"n.{property_name} = ${property_name}"
+                for property_name in deflated
+                if property_name in new_instance.modified_properties
+            ]
+        )
+
+        results, _ = await cls._client.cypher(
+            query=f"""
+                MATCH {cls._query_builder.node_match(new_instance.__settings__.labels)}
+                WHERE elementId(n) = $element_id
+                {f"SET {set_query}" if set_query != "" else ""}
+                RETURN n
+            """,
+            parameters={"element_id": cls._element_id, **deflated},
+        )
         logging.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
 
         if new:
