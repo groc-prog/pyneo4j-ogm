@@ -27,7 +27,7 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
     """
 
     async def decorator(self: T, *args, **kwargs) -> U:
-        settings: BaseModelSettings = getattr(self, "__settings__")
+        settings: BaseModelSettings = getattr(self, "_settings")
 
         # Run pre hooks if defined
         if func.__name__ in settings.pre_hooks:
@@ -58,7 +58,7 @@ class ModelBase(BaseModel):
     It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
     """
 
-    __settings__: BaseModelSettings
+    _settings: BaseModelSettings
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _db_properties: Dict[str, Any] = PrivateAttr(default_factory=dict)
@@ -68,8 +68,9 @@ class ModelBase(BaseModel):
 
     @root_validator()
     def _validate_reserved_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        if "element_id" in values:
-            raise ReservedPropertyName("element_id")
+        for value in ["element_id", "model_settings", "modified_properties"]:
+            if value in values:
+                raise ReservedPropertyName(value)
 
         return values
 
@@ -87,12 +88,12 @@ class ModelBase(BaseModel):
                 if not setting.startswith("__"):
                     if isinstance(value, set):
                         setattr(
-                            cls.__settings__,
+                            cls._settings,
                             setting,
-                            value.union(getattr(cls.__settings__, setting)),
+                            value.union(getattr(cls._settings, setting)),
                         )
                     else:
-                        setattr(cls.__settings__, setting, value)
+                        setattr(cls._settings, setting, value)
 
         return super().__init_subclass__()
 
@@ -114,9 +115,9 @@ class ModelBase(BaseModel):
         """
         # Check if additional fields should be excluded
         if "exclude" in kwargs:
-            kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self.__settings__.exclude_from_export)
+            kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self._settings.exclude_from_export)
         else:
-            kwargs["exclude"] = self.__settings__.exclude_from_export
+            kwargs["exclude"] = self._settings.exclude_from_export
 
         model_dict = json.loads(self.json(*args, **kwargs))
         model_dict["element_id"] = self._element_id
@@ -181,14 +182,14 @@ class ModelBase(BaseModel):
             valid_hook_functions.append(hook_functions)
 
         # Create key if it does not exist
-        if hook_name not in cls.__settings__.pre_hooks:
-            cls.__settings__.pre_hooks[hook_name] = []
+        if hook_name not in cls._settings.pre_hooks:
+            cls._settings.pre_hooks[hook_name] = []
 
         if overwrite:
-            cls.__settings__.pre_hooks[hook_name] = valid_hook_functions
+            cls._settings.pre_hooks[hook_name] = valid_hook_functions
         else:
             for hook_function in valid_hook_functions:
-                cls.__settings__.pre_hooks[hook_name].append(hook_function)
+                cls._settings.pre_hooks[hook_name].append(hook_function)
 
     @classmethod
     def register_post_hooks(
@@ -217,14 +218,14 @@ class ModelBase(BaseModel):
             valid_hook_functions.append(hook_functions)
 
         # Create key if it does not exist
-        if hook_name not in cls.__settings__.post_hooks:
-            cls.__settings__.post_hooks[hook_name] = []
+        if hook_name not in cls._settings.post_hooks:
+            cls._settings.post_hooks[hook_name] = []
 
         if overwrite:
-            cls.__settings__.post_hooks[hook_name] = valid_hook_functions
+            cls._settings.post_hooks[hook_name] = valid_hook_functions
         else:
             for hook_function in valid_hook_functions:
-                cls.__settings__.post_hooks[hook_name].append(hook_function)
+                cls._settings.post_hooks[hook_name].append(hook_function)
 
     @classmethod
     def _convert_to_camel_case(cls, model_dict: Dict[str, Any]) -> Dict[str, Any]:
@@ -271,7 +272,7 @@ class ModelBase(BaseModel):
         return model_dict
 
     @property
-    def get_modified_properties(self) -> List[str]:
+    def modified_properties(self) -> List[str]:
         """
         Returns a list of properties which have been modified since the instance was hydrated.
 
@@ -286,6 +287,13 @@ class ModelBase(BaseModel):
                 modified_properties.append(property_name)
 
         return modified_properties
+
+    @property
+    def model_settings(self) -> List[str]:
+        """
+        Returns the settings defined for the model.
+        """
+        return self._settings
 
     class Config:
         """

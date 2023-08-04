@@ -103,11 +103,11 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=self._relationship_model.model_settings.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=self._source_node.model_settings.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=self._target_model.model_settings.labels,
         )
         results, _ = await self._client.cypher(
             query=f"""
@@ -155,7 +155,7 @@ class RelationshipProperty:
 
         relationship_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=self._relationship_model.model_settings.type,
             start_node_ref="start",
             end_node_ref="end",
         )
@@ -214,11 +214,11 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=self._relationship_model.model_settings.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=self._source_node.model_settings.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=self._target_model.model_settings.labels,
         )
 
         logging.debug("Getting relationship count between source and target node")
@@ -271,11 +271,11 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=self._relationship_model.model_settings.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=self._source_node.model_settings.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=self._target_model.model_settings.labels,
         )
 
         logging.debug("Getting relationship count for source node")
@@ -333,11 +333,11 @@ class RelationshipProperty:
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=self._relationship_model.model_settings.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=self._source_node.model_settings.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=self._target_model.model_settings.labels,
         )
 
         logging.debug("Getting relationship between source node and old node")
@@ -374,7 +374,7 @@ class RelationshipProperty:
         logging.debug("Creating relationship between source node and new node")
         create_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=self._relationship_model.model_settings.type,
             start_node_ref="start",
             end_node_ref="end",
         )
@@ -388,8 +388,8 @@ class RelationshipProperty:
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH
-                    {self._query_builder.node_match(labels=self._source_node.__settings__.labels, ref="start")},
-                    {self._query_builder.node_match(labels=self._target_model.__settings__.labels, ref="end")}
+                    {self._query_builder.node_match(labels=self._source_node.model_settings.labels, ref="start")},
+                    {self._query_builder.node_match(labels=self._target_model.model_settings.labels, ref="end")}
                 WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 CREATE {create_query}
                 {set_query}
@@ -429,11 +429,11 @@ class RelationshipProperty:
 
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=self._relationship_model.model_settings.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=self._source_node.model_settings.labels,
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=self._target_model.model_settings.labels,
         )
 
         results, _ = await self._client.cypher(

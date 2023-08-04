@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Dict, List
 from uuid import UUID, uuid4
 
@@ -18,8 +19,21 @@ class Actress(NodeModel):
     id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
     name: WithOptions(str, text_index=True)
     age: int
-    latest_role: Dict[str, Any] = dict(Role())
+    latest_role: Dict[str, Any] = dict(Role(name="No Emmies", year=2020))
     all_roles: List[Role] = [Role()]
 
     class Settings:
+        exclude_from_export = {"latest_role"}
         labels = ["Actress", "Female"]
+
+
+class Actor(NodeModel):
+    id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
+    name: WithOptions(str, text_index=True)
+    age: int
+    latest_role: Dict[str, Any] = dict(Role(name="No Emmies", year=2020))
+    all_roles: List[Role] = [Role()]
+
+    class Settings:
+        exclude_from_export = {"latest_role"}
+        labels = ["Actor", "Male"]
