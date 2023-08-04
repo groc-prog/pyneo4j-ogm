@@ -114,6 +114,11 @@ value. If the validation fails, a `ValidationError` will be raised. The followin
 If this sounds familiar to you, it is because this library makes heavy use of `pydantic's BaseModel` and validation
 under the hood. If you want to learn more about pydantic, please refer to the [pydantic documentation](https://docs.pydantic.dev/1.10/).
 
+> **Note:** Since Neo4j does not support nested properties, all dictionaries and nested models will be flattened when defining them
+> as properties. This means that all dictionaries and nested models will be converted to a string and stored as a string property.
+> This also means that you can not define indexes or constraints on nested properties. When inflating the model, the string will be
+> converted back to a dictionary or model.
+
 ```python
 from neo4j_ogm import NodeModel
 from pydantic import Field, validator
@@ -138,10 +143,10 @@ class Developer(NodeModel):
 <br />
 
 
-You can define whatever properties you want, but you can not use the following property names, as they are reserved for
-internal use and to prevent conflicts when exporting models:
-- `element_id`
-- `modified_properties`
+> You can define whatever properties you want, but you can not use the following property names, as they are reserved for
+> internal use and to prevent conflicts when exporting models:
+> - `element_id`
+> - `modified_properties`
 
 <br />
 
@@ -175,9 +180,221 @@ Available node settings:
 
 #### Working with model methods <a name="working-with-node-models-methods"></a>
 Node models offer a variety of methods to interact with the database. In this section we will cover all of them.
+> All of the following examples will use the `Developer` model defined in the [`Defining node properties`](#defining-node-properties)
+
+#### **`Instance.create()`**
+Creates a new node in the database with the values of the model instance. Here is an example
+of how to use it:
+
+```python
+async def main() -> None:
+  developer = Developer(
+    name="John",
+    age=24,
+    likes_his_job=True
+  )
+
+  print(developer)  # Not yet hydrated
+
+  await developer.create()  # New node with the defined properties on `developer` is created
+  print(developer)  # You can keep using the instance like normal
+```
 <br />
 
-`NodeModel.create()` - Creates a new node in the database with the values of the model instance. If the model instance
+After creating the node in the database, the instance will be marked as `alive` (This can be seen by running the above code). This means you
+can now call other methods on the instance like `.delete()` or `.update()`. If you were to try the same on a instance which has not been saved to
+the database, neo4j-ogm kindly reminds you of your mistake with a `InstanceNotHydrated` exception.
+
+#### **`Instance.update()`**
+Updates an existing node in the database which corresponds to your local instance. The updated values defined in the instance will overwrite any
+properties in the database.
+
+```python
+async def main() -> None:
+  developer = await Developer(
+    name="John",
+    age=24,
+    likes_his_job=True
+  ).create()
+
+  # Update instance with new values
+  developer.age = 27
+  await developer.update()  # Updates node in database and syncs local instance
+```
+
+#### **`Instance.delete()`**
+Deletes the node linked to your local instance.
+
+```python
+async def main() -> None:
+  developer = await Developer(
+    name="John",
+    age=24,
+    likes_his_job=True
+  ).create()
+
+  await developer.delete()  # Deletes node in database
+```
+<br />
+
+After deleting the node in the database, the instance will be marked as `destroyed`. This means you can no longer call any methods on the instance
+except for `.create()`, which will create a new node with the same properties as the instance. Still, if you were to try and call any other method
+on the instance, you will get a `InstanceDestroyed` exception.
+
+#### **`Instance.refresh()`**
+Updates the local instance with the values from the database. This is useful if you want to make sure that the instance is up to date with the
+database.
+
+```python
+async def main() -> None:
+  developer = await Developer(
+    name="John",
+    age=24,
+    likes_his_job=True
+  ).create()
+
+  # Something on the local instance changes (Maybe for no apparent reason)
+  developer.age = 27
+  await developer.refresh()
+
+  print(developer.age)  # 24
+```
+
+#### **`Instance.find_connected_nodes()`**
+Returns all nodes connected to the instance over multiple hops. The method takes a single argument, `filters`, which is a special multi-hop
+filter (see [`Filters on relationships with multiple hops`](#filters-on-relationships-with-multiple-hops)). This method gives you the ability to
+use the same filters as you would with other methods, but with the added benefit of being able to filter on the relationships between the nodes.
+
+```python
+async def main() -> None:
+  developer = await Developer(
+    name="John",
+    age=24,
+    likes_his_job=True
+  ).create()
+
+  # Find all company nodes that the developer works at where all relationships of type `PAYMENT` have
+  # the property `pays_well` set to `True`
+  developer.find_connected_nodes({
+    "$minHops": 2,
+    "$maxHops": 7,
+    "$relationships": [
+      {
+        "$type": "PAYMENT",
+        "pays_well": True
+      }
+    ],
+    "$node": {
+      "$labels": ["Company"],
+    }
+  })
+```
+<br />
+
+The above example will return all company nodes that the developer works at where all relationships of type `PAYMENT` have the property `pays_well`
+set to `True`. The returned value will be a list of instances of the model `Company`. For more complex examples, multiple filters for multiple relationships
+can be defined.
+
+#### **`Model.find_one()`**
+Finds and returns a single node from the database. If no node is found, `None` is returned. The method takes a single argument, `filters`, which
+are filters which determine which node should be returned. For more information on filters, see [`Filters`](#filters). The following example shows how to use it:
+
+```python
+async def main() -> None:
+  developer = await Developer.find_one({"name": "John"})  # Return the first encountered node where the name property equals `John`
+
+  if developer is None:
+    # No developer with the name "John" was found
+    ...
+```
+
+#### **`Model.find_many()`**
+A similar method to `Model.find_one()`, but instead of returning a single node, it returns a list of nodes. If no nodes are found, an empty list is returned. The method takes two arguments:
+
+- `filters`: Filters which determine which nodes should be returned. For more information on filters, see [`Filters and options`](#filters-and-options). Can be
+  omitted to return all nodes.
+- `options`: Options which determine how the nodes should be returned. For more information on options, see [`Filter options`](#filter-options).
+
+```python
+async def main() -> None:
+  # Return the first 20 encountered nodes where the name property equals `John`
+  developers = await Developer.find_many({"name": "John"}, {"limit": 20})
+```
+
+#### **`Model.update_one()`**
+Updates a single node in the database. The method takes three arguments:
+
+- `update`: The properties which should be updated on the node. Properties which are not defined in the model will be ignored.
+- `filters`: Filters which determine which node should be updated. For more information on filters, see [`Filters and options`](#filters-and-options).
+- `new`: Whether or not the updated node should be returned. Defaults to `False`.
+
+```python
+async def main() -> None:
+  # Update the first encountered node where the name property equals `John`
+  developer = await Developer.update_one({"name": "Johnny"}, {"name": "John"}, new=True)
+
+  print(developer.name)  # Prints `Johnny` since new=True was defined
+```
+
+#### **`Model.update_many()`**
+Updates multiple nodes in the database. The method takes three arguments:
+
+- `update`: The properties which should be updated on the nodes. Properties which are not defined in the model will be ignored.
+- `filters`: Filters which determine which nodes should be updated. For more information on filters, see [`Filters and options`](#filters-and-options).
+- `new`: Whether or not the updated nodes should be returned. Defaults to `False`.
+
+```python
+async def main() -> None:
+  # Update all encountered nodes where the name property equals `John`
+  developers = await Developer.update_many({"name": "Johnny"}, {"name": "John"})
+
+  print(type(developers)) # Prints `list`
+  print(developers[0].name)  # Prints `John` since new was not defined and defaults to false
+```
+
+#### **`Model.delete_one()`**
+Deletes a single node in the database. The method takes one argument:
+
+- `filters`: Filters which determine which nodes should be deleted. For more information on filters, see [`Filters and options`](#filters-and-options).
+
+Unlike the other methods, this method does not return a instance of the model. Instead, it returns the amount of nodes which were deleted.
+
+```python
+async def main() -> None:
+  # Delete the first encountered node where the name property equals `John`
+  developer_count = await Developer.delete_one({"name": "John"})
+
+  print(developer_count) # 1
+```
+
+#### **`Model.delete_many()`**
+Deletes multiple nodes in the database. The method one argument:
+
+- `filters`: Filters which determine which nodes should be deleted. For more information on filters, see [`Filters and options`](#filters-and-options).
+
+When deleting multiple nodes, the method returns the amount of nodes which were deleted.
+
+```python
+async def main() -> None:
+  # Delete all encountered nodes where the name property equals `John`
+  developer_count = await Developer.delete_many({"name": "John"})
+
+  print(developer_count) # However many nodes were deleted
+```
+
+#### **`Model.count()`**
+Returns the count of nodes matched by the filters. The method takes one argument:
+
+- `filters`: Filters which determine which nodes are matched. For more information on filters, see [`Filters and options`](#filters-and-options).
+
+
+```python
+async def main() -> None:
+  # Counts all encountered nodes where the name property equals `John`
+  developer_count = await Developer.count({"name": "John"})
+
+  print(developer_count) # However many nodes were deleted
+```
 
 ### Relationship models <a name="relationship-models"></a>
 
@@ -193,10 +410,11 @@ Node models offer a variety of methods to interact with the database. In this se
 #### Working with connections between node models <a name="working-with-connections-between-node-models"></a>
 
 
-### Filtering <a name="filtering"></a>
+### Filters and options <a name="filters-and-options"></a>
 #### Basic filters <a name="available-filters"></a>
 #### Pattern matching <a name="pattern-matching"></a>
 #### Filters on relationships with multiple hops <a name="filters-on-relationships-with-multiple-hops"></a>
+#### Filter options <a name="filter-options"></a>
 
 
 ### Hooks <a name="hooks"></a>
