@@ -7,12 +7,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
 
-from neo4j_ogm.queries.types import (
-    NumericQueryDataType,
-    QueryDataTypes,
-    QueryOptionsOrder,
-    RelationshipMatchDirection,
-)
+from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes, QueryOptionsOrder, RelationshipMatchDirection
 
 
 def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -261,8 +256,8 @@ class QueryOptionModel(BaseModel):
     Validator model for query options.
     """
 
-    limit: Optional[int]
-    skip: Optional[int]
+    limit: Optional[int] = Field(gt=0)
+    skip: Optional[int] = Field(ge=0)
     sort: Optional[List[str]]
     order: Optional[QueryOptionsOrder]
 

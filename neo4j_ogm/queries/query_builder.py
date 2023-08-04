@@ -80,7 +80,7 @@ class QueryBuilder:
 
         # Validate filters with pydantic model
         validated_filters = NodeFiltersModel(**normalized_filters)
-        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
         self._remove_invalid_expressions(validated_filters)
@@ -102,7 +102,7 @@ class QueryBuilder:
 
         # Validate filters with pydantic model
         validated_filters = RelationshipFiltersModel(**normalized_filters)
-        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
         self._remove_invalid_expressions(validated_filters)
@@ -125,7 +125,7 @@ class QueryBuilder:
 
         # Validate filters with pydantic model
         validated_filters = MultiHopFiltersModel(**normalized_filters)
-        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
         self._remove_invalid_expressions(validated_filters)
@@ -189,7 +189,7 @@ class QueryBuilder:
 
         # Validate options with pydantic model
         validated_options = QueryOptionModel(**options)
-        validated_options = validated_options.dict(exclude_none=True, exclude_unset=True)
+        validated_options = validated_options.dict(exclude_none=True)
 
         sort_query: str = ""
         limit_query: str = ""
@@ -641,7 +641,9 @@ class QueryBuilder:
         exists_query = "NOT EXISTS" if expression["$not"] else "EXISTS"
         where_query = " AND ".join(where_queries) if len(where_queries) > 0 else ""
 
-        return f"{exists_query} {{MATCH {match_query} {where_query}}}"
+        return (
+            f"{exists_query} {{MATCH {match_query} {f'WHERE {where_query}' if where_query != '' else where_queries}}}"
+        )
 
     def _build_param_var(self) -> str:
         """
