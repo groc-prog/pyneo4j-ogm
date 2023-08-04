@@ -92,7 +92,7 @@ class Neo4jClient:
         auth: Union[Tuple[str, str], None] = None,
         *args,
         **kwargs,
-    ) -> None:
+    ) -> "Neo4jClient":
         """
         Establish a connection to a database.
 
@@ -105,6 +105,9 @@ class Neo4jClient:
         Raises:
             MissingDatabaseURI: Raised if no uri is provided and the NEO4J_URI env variable is
                 not set
+
+        Returns:
+            Neo4jClient: The client.
         """
         db_uri = uri if uri is not None else os.environ.get("NEO4J_URI", None)
         db_auth = auth if auth is not None else os.environ.get("NEO4J_AUTH", None)
@@ -118,6 +121,8 @@ class Neo4jClient:
         logging.info("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth, *args, **kwargs)
         logging.info("Connected to database")
+
+        return self
 
     @ensure_connection
     async def register_models(self, models: List[Type[Union[NodeModel, RelationshipModel]]]) -> None:
