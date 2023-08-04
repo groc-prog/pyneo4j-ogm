@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
-from neo4j_ogm.fields.node_options import WithOptions
+from neo4j_ogm.fields.property_options import WithOptions
 from neo4j_ogm.fields.relationship_property import RelationshipProperty, RelationshipPropertyDirection
 
 
@@ -34,7 +34,7 @@ class Actor(NodeModel):
 
     class Settings:
         exclude_from_export = {"latest_role"}
-        labels = ["Actor", "Male"]
+        labels = "Actor"
 
 
 class Actress(NodeModel):
@@ -51,4 +51,4 @@ class Actress(NodeModel):
 
     class Settings:
         exclude_from_export = {"latest_role"}
-        labels = ["Actress", "Female"]
+        labels = {"Actress", "Female"}

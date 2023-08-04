@@ -3,7 +3,7 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-from neo4j_ogm.core.client import Neo4jClient
+from neo4j_ogm import Neo4jClient
 from tests.models import Actor, Actress, Friends, WorkedTogether
 
 
@@ -12,9 +12,8 @@ def hook(*args, **kwargs):
 
 
 async def main():
-    client = Neo4jClient()
+    client = Neo4jClient().connect("bolt://localhost:7687", ("neo4j", "password"))
 
-    client.connect("bolt://localhost:7687", ("neo4j", "password"))
     await client.drop_indexes()
     await client.drop_constraints()
     await client.drop_nodes()
