@@ -142,6 +142,27 @@ class RelationshipFiltersModel(BaseModel):
         use_enum_values = True
 
 
+class RelationshipPropertyFiltersModel(BaseModel):
+    """
+    Validator model for relationship filters.
+    """
+
+    element_id_: Optional[str] = Field(alias="$elementId")
+    id_: Optional[int] = Field(alias="$id")
+    patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns")
+    relationship_: Optional[RelationshipFiltersModel] = Field(alias="$relationship")
+
+    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+
+    class Config:
+        """
+        Pydantic configuration
+        """
+
+        extra = Extra.allow
+        use_enum_values = True
+
+
 class PatternNodeOperatorsModel(BaseModel):
     """
     Validator model for node pattern operators.

@@ -146,9 +146,21 @@ QueryNodeOperators = TypedDict(
 
 QueryRelationshipOperators = TypedDict("QueryRelationshipOperators", {"$elementId": str, "$id": int}, total=False)
 
+QueryRelationshipPropertyOperators = TypedDict(
+    "QueryRelationshipPropertyOperators",
+    {
+        "$elementId": str,
+        "$id": int,
+        "$patterns": List[PatternOperator],
+        "$relationship": Union[Dict[str, QueryOperators], QueryRelationshipOperators],
+    },
+    total=False,
+)
+
 # The actual interfaces used to describe query filters
 NodeFilters = Union[Dict[str, QueryOperators], QueryNodeOperators]
 RelationshipFilters = Union[Dict[str, QueryOperators], QueryRelationshipOperators]
+RelationshipPropertyFilters = Union[Dict[str, QueryOperators], QueryRelationshipPropertyOperators]
 
 MultiHopFilters = TypedDict(
     "MultiHopFilters",

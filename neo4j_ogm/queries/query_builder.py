@@ -12,12 +12,14 @@ from neo4j_ogm.queries.types import (
     QueryDataTypes,
     RelationshipFilters,
     RelationshipMatchDirection,
+    RelationshipPropertyFilters,
 )
 from neo4j_ogm.queries.validators import (
     MultiHopFiltersModel,
     NodeFiltersModel,
     QueryOptionModel,
     RelationshipFiltersModel,
+    RelationshipPropertyFiltersModel,
 )
 
 
@@ -108,6 +110,42 @@ class QueryBuilder:
         self._remove_invalid_expressions(validated_filters)
 
         self.query["where"] = self._build_query(filters=validated_filters)
+
+    def relationship_property_filters(
+        self, filters: RelationshipPropertyFilters, ref: str = "r", node_ref: str = "end"
+    ) -> None:
+        """
+        Builds the relationship and node filters for relationship property queries.
+
+        Args:
+            filters (Dict[str, Any]): The filters to build.
+            ref (str, optional): The reference to the relationship. Defaults to "r".
+            node_ref (str, optional): The reference to the node. Defaults to "end".
+        """
+        self.query = {"where": "", "options": ""}
+        self.parameters = {}
+        normalized_filters = self._normalize_expressions(filters)
+
+        # Validate filters with pydantic model
+        validated_filters = RelationshipPropertyFiltersModel(**normalized_filters)
+        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
+
+        # Remove invalid expressions
+        self._remove_invalid_expressions(validated_filters)
+
+        where_queries = []
+
+        if "$relationship" in validated_filters:
+            self.ref = ref
+            where_queries.append(self._build_query(filters=validated_filters["$relationship"]))
+
+            # Remove relationship filters from validated filters before building node filters
+            validated_filters.pop("$relationship")
+
+        self.ref = node_ref
+        where_queries.append(self._build_query(filters=validated_filters))
+
+        self.query["where"] = " AND ".join([query for query in where_queries if query is not ""])
 
     def multi_hop_filters(self, filters: MultiHopFilters, start_ref: str = "n", end_ref: str = "m") -> None:
         """

@@ -20,7 +20,7 @@ from neo4j_ogm.exceptions import (
     UnregisteredModel,
 )
 from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import NodeFilters, QueryOptions
+from neo4j_ogm.queries.types import QueryOptions, RelationshipPropertyFilters
 
 T = TypeVar("T", bound=NodeModel)
 U = TypeVar("U", bound=RelationshipModel)
@@ -407,14 +407,14 @@ class RelationshipProperty(Generic[T, U]):
 
     async def find_connected_nodes(
         self,
-        filters: Union[NodeFilters, None] = None,
+        filters: Union[RelationshipPropertyFilters, None] = None,
         options: Union[QueryOptions, None] = None,
     ) -> List[T]:
         """
         Finds the all nodes that matches `filters` and are connected to the source node.
 
         Args:
-            filters (NodeFilters | None, optional): Expressions applied to the query. Defaults to None.
+            filters (RelationshipPropertyFilters | None, optional): Expressions applied to the query. Defaults to None.
             options (QueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
@@ -422,11 +422,12 @@ class RelationshipProperty(Generic[T, U]):
         """
         logging.info("Getting connected nodes matching filters %s", filters)
         if filters is not None:
-            self._query_builder.node_filters(filters=filters, ref="end")
+            self._query_builder.relationship_property_filters(filters=filters, ref="r", node_ref="end")
         if options is not None:
             self._query_builder.query_options(options=options, ref="end")
 
         match_query = self._query_builder.relationship_match(
+            ref="r",
             direction=self._direction,
             type_=self._relationship_model.__settings__.type,
             start_node_ref="start",
