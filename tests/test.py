@@ -1,10 +1,12 @@
 import asyncio
 import logging
 
+from neo4j_ogm.queries.query_builder import QueryBuilder
+
 logging.basicConfig(level=logging.WARNING)
 
 from neo4j_ogm.core.client import Neo4jClient
-from tests.models import Actor, Actress, Role
+from tests.models import Actor, Actress, Friends, WorkedTogether
 
 
 def hook(*args, **kwargs):
@@ -18,7 +20,7 @@ async def main():
     await client.drop_indexes()
     await client.drop_constraints()
     await client.drop_nodes()
-    await client.register_models([Actress])
+    await client.register_models([Actress, Actor, WorkedTogether, Friends])
 
     Actress.register_post_hooks("create", hook)
 

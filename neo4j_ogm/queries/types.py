@@ -38,6 +38,13 @@ NumericEqualsOperator = TypedDict(
     },
 )
 
+NumericNotEqualsOperator = TypedDict(
+    "NumericEqualsOperator",
+    {
+        "$neq": NumericQueryDataType,
+    },
+)
+
 NumericGreaterThanOperator = TypedDict(
     "NumericGreaterThanOperator",
     {
@@ -80,6 +87,7 @@ QueryOperators = TypedDict(
         "$all": List[QueryDataTypes],
         "$size": Union[
             NumericEqualsOperator,
+            NumericNotEqualsOperator,
             NumericGreaterThanOperator,
             NumericGreaterThanEqualsOperator,
             NumericLessThanOperator,

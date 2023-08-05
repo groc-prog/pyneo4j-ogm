@@ -33,6 +33,14 @@ class NumericEqualsOperatorModel(BaseModel):
     eq_: QueryDataTypes = Field(alias="$eq")
 
 
+class NumericNotEqualsOperatorModel(BaseModel):
+    """
+    Validator for `$neq` operator in combined use with `$size` operator.
+    """
+
+    neq_: QueryDataTypes = Field(alias="$neq")
+
+
 class NumericGreaterThanOperatorModel(BaseModel):
     """
     Validator for `$gt` operator in combined use with `$size` operator.
@@ -82,6 +90,7 @@ class QueryOperatorModel(BaseModel):
     size_: Optional[
         Union[
             NumericQueryDataType,
+            NumericNotEqualsOperatorModel,
             NumericEqualsOperatorModel,
             NumericGreaterThanOperatorModel,
             NumericGreaterThanEqualsOperatorModel,
