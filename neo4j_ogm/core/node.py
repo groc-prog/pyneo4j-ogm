@@ -58,7 +58,9 @@ class NodeModel(ModelBase):
                 "No labels have been defined for model %s, using model name as label",
                 cls.__name__,
             )
-            setattr(cls.__settings__, "labels", (cls.__name__.capitalize(),))
+            words = cls.__name__.split("_")
+            pascal_str = "".join(word.capitalize() for word in words)
+            setattr(cls.__settings__, "labels", (pascal_str,))
         elif labels is not None and isinstance(labels, str):
             logging.debug("str class %s provided as labels, converting to tuple", labels)
             setattr(cls.__settings__, "labels", (labels,))
