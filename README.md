@@ -271,7 +271,7 @@ Returns all nodes connected to the instance over multiple hops. This method give
 other methods, but with the added benefit of being able to filter on the relationships between the nodes. The method takes two arguments:
 
 - `filters`: A dictionary of filters that should be applied to the query. This filter is a special multi-hop filter (see [`Filters on relationships with multiple hops`](#filters-on-relationships-with-multiple-hops))
-- `options`: Options which determine how the nodes should be returned. For more information on options, see [`Filter options`](#filter-options).
+- `options`: Options which determine how the nodes should be returned. For more information on options, see [`Query options`](#query-options).
 
 ```python
 async def main() -> None:
@@ -326,7 +326,7 @@ A similar method to `NodeModel.find_one()`, but instead of returning a single no
 
 - `filters`: Filters which determine which nodes should be returned. For more information on filters, see [`Filters and options`](#filters-and-options). Can be
   omitted to return all nodes.
-- `options`: Options which determine how the nodes should be returned. For more information on options, see [`Filter options`](#filter-options).
+- `options`: Options which determine how the nodes should be returned. For more information on options, see [`Query options`](#query-options).
 
 ```python
 async def main() -> None:
@@ -655,7 +655,7 @@ async def main() -> None:
 
 
 #### **`RelationshipProperty.find_connected_nodes()`**
-Similar to the `NodeModel.find_many()` and `RelationshipModel.find_many()` methods, this method queries nodes connected to the target node with the defined relationship. This method accepts special `RelationshipPropertyFilters` (see [Basic filters](#basic-filters)) as the first argument and query options (see [Filter options](#filter-options)). The method returns a list of hydrated node models.
+Similar to the `NodeModel.find_many()` and `RelationshipModel.find_many()` methods, this method queries nodes connected to the target node with the defined relationship. This method accepts special `RelationshipPropertyFilters` (see [Basic filters](#basic-filters)) as the first argument and query options (see [Query options](#query-options)). The method returns a list of hydrated node models.
 
 ```python
 async def main() -> None:
@@ -732,8 +732,8 @@ Basic filters are the building blocks of more complex filters. They are used to 
 | `$exists`         | Matches all nodes or relationships where the property exists. Useful for models with dynamic fields | `{ "name": { "$exists": True } }`                                           |
 | `$elementId`      | Matches the node or relationship with the provided element-id                                       | `{ "$elementId": "4:704eea2c-3c2c-42a7-a774-8fb962a93f38:0" }`              |
 | `$id`             | Matches the node or relationship with the provided id                                               | `{ "$id": 1 }`                                                              |
-| `$labels`         | Matches all nodes with the given label(s)                                                           | `{ "$labels": "Developer" }`<br /> `{ "$labels": ["Developer", "Senior"] }` |
-| `$type`           | Matches all relationships with the given type                                                       | `{ "$type": "IMPLEMENTED" }`                                                |
+| `$labels`         | Matches all nodes with the given label(s). Only available for node filters                          | `{ "$labels": "Developer" }`<br /> `{ "$labels": ["Developer", "Senior"] }` |
+| `$type`           | Matches all relationships with the given type. Only available for relationship filters              | `{ "$type": "IMPLEMENTED" }`                                                |
 
 <br />
 
@@ -743,19 +743,19 @@ Basic filters are the building blocks of more complex filters. They are used to 
 
 
 #### Pattern matching <a name="pattern-matching"></a>
-Sometimes just filtering nodes based on their properties is not enough, or sometimes we might want to exclude nodes with connections to specific nodes with a specific relationship. In this case you can use the `$patterns` operator. Pattern filters allow you to specify a pattern of nodes and relationships that must be matched in order for the node to be matched. This is useful for filtering on nodes based on their relationships to other nodes.
+Sometimes just filtering nodes based on their properties is not enough, or sometimes we might want to exclude nodes with connections to specific nodes with a specific relationship. In this case you can use the `$patterns` operator. Pattern filters allow you to specify a pattern of nodes and relationships that must be met in order for the node to be matched. This is useful for filtering on nodes based on their relationships to other nodes.
 
 Pattern filters are specified as a list of dictionaries, where each dictionary represents a pattern. Each pattern can specify the following keys:
 
 - `$node`: Filters applied to the target node. Expects a dictionary containing basic filters.
 - `$relationship`: Filters applied to the relationship between the source node and the target node. Expects a dictionary containing basic filters.
-- `$direction`: The direction of the pattern. Can be either **INCOMING**,**OUTGOING** or **BOTH**
-- `$not`: A boolean value indicating whether the pattern should be negated. Defaults to **False**
+- `$direction`: The direction of the pattern. Can be either **INCOMING**,**OUTGOING** or **BOTH**.
+- `$not`: A boolean value indicating whether the pattern should be negated. Defaults to **False**.
 
 To make the power of this feature clear, let's look at an example. Let's say we want to find all developers who have worked on the neo4j-ogm project and have not implemented bugs which killed production. Additionally, we want to exclude developers who drink coffee. We can do this by specifying the following pattern:
 
 ```python
-developer = Developer.find_one({
+developer = await Developer.find_one({
   "$patterns": [
     {
       "$node": {
@@ -788,7 +788,45 @@ developer = Developer.find_one({
 
 
 #### Filters on relationships with multiple hops <a name="filters-on-relationships-with-multiple-hops"></a>
-#### Filter options <a name="filter-options"></a>
+Multi-hop filters are a special type of filter only available for `NodeInstance.find_connected_nodes()`. It allows you to specify filter parameters on the target node and **all** relationships between them. To define this filter, you have a few operators you can define:
+
+- `$node`: Filters applied to the target node. Expects a dictionary containing basic filters. Can not contain pattern **yet**.
+- `$minHops`: The minimum number of hops between the source node and the target node. Must be greater than **0**.
+- `$maxHops`: The maximum number of hops between the source node and the target node. You can pass `"*"` as a value to define no upper limit. Must be greater than **1**.
+- `$relationships`: A list of relationship filters. Each filter is a dictionary containing basic filters and **must** define a `$type` operator.
+
+You guessed it, we shall do an example once more! Let's say we want to find all projects for a given coffee type where the developers who drank the coffee liked it and have not implement a bug which broke production. We can do this by specifying the following filter:
+
+```python
+# Assume coffee instance has been defined above
+projects = await coffee.find_connected_nodes({
+  "$node": {
+    "$labels": ["Project"]
+  },
+  "$maxHops": "*",
+  "$relationships": [
+    {
+      "$type": "IMPLEMENTED",
+      "killed_production": False
+    },
+    {
+      "$type": "IS_CRITICIZED_BY",
+      "liked": True
+    }
+  ]
+})
+```
+
+
+#### Query options <a name="query-options"></a>
+As you may have seen by now, some methods allow you to define options which change the way results are returned. Methods who implement these options are usually ones that return multiple results, such as `NodeModel.find_many()`, `RelationshipModel.find_many()` and so on. The following options are available:
+
+- `limit`: Limits the number of results returned. Must be greater than **0**.
+- `skip`: Skips the first `n` results. Must be greater than or equal to **0**.
+- `sort`: Sorts the results based on the given properties in combination with the defined `order`. Can be a single property name or a list of property names.
+- `order`: How the results are ordered. Can be either **ASCENDING** or **DESCENDING**. Defaults to **ASCENDING**.
+
+With these options, you can do things like pagination, sorting and so on.
 
 
 ### Hooks <a name="hooks"></a>

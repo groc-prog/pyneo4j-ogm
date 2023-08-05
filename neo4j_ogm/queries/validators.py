@@ -265,8 +265,8 @@ class MultiHopFiltersModel(BaseModel):
     Validator model for node and relationship filters with multiple hops between the nodes.
     """
 
-    min_hops_: Optional[int] = Field(alias="$minHops")
-    id_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops")
+    min_hops_: Optional[int] = Field(alias="$minHops", ge=0)
+    max_hops_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops", ge=1)
     node_: Optional[PatternNodeOperatorsModel] = Field(alias="$node")
     relationships_: Optional[List[MultiHopRelationshipOperatorsModel]] = Field(alias="$relationships")
 
