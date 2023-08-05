@@ -76,8 +76,8 @@ class QueryOperatorModel(BaseModel):
     gte_: Optional[NumericQueryDataType] = Field(alias="$gte")
     lt_: Optional[NumericQueryDataType] = Field(alias="$lt")
     lte_: Optional[NumericQueryDataType] = Field(alias="$lte")
-    in__: Optional[Union[QueryDataTypes, List[QueryDataTypes]]] = Field(alias="$in")
-    nin_: Optional[Union[QueryDataTypes, List[QueryDataTypes]]] = Field(alias="$nin")
+    in__: Optional[List[QueryDataTypes]] = Field(alias="$in")
+    nin_: Optional[List[QueryDataTypes]] = Field(alias="$nin")
     all_: Optional[List[QueryDataTypes]] = Field(alias="$all")
     size_: Optional[
         Union[

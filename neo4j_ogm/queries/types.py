@@ -75,8 +75,8 @@ QueryOperators = TypedDict(
         "$gte": NumericQueryDataType,
         "$lt": NumericQueryDataType,
         "$lte": NumericQueryDataType,
-        "$in": Union[QueryDataTypes, List[QueryDataTypes]],
-        "$nin": Union[QueryDataTypes, List[QueryDataTypes]],
+        "$in": List[QueryDataTypes],
+        "$nin": List[QueryDataTypes],
         "$all": List[QueryDataTypes],
         "$size": Union[
             NumericEqualsOperator,
