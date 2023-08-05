@@ -264,12 +264,15 @@ class NodeModel(ModelBase):
         logging.info("Refreshed node %s", self._element_id)
 
     @hooks
-    async def find_connected_nodes(self: T, filters: Union[MultiHopFilters, None] = None) -> List[T]:
+    async def find_connected_nodes(
+        self: T, filters: Union[MultiHopFilters, None] = None, options: Union[QueryOptions, None] = None
+    ) -> List[T]:
         """
         Gets all connected nodes which match the provided `filters` parameter over multiple hops.
 
         Args:
-            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
+            filters (MultiHopFilters, optional): The filters to apply to the query. Defaults to None.
+            options (QueryOptions, optional): The options to apply to the query. Defaults to None.
 
         Returns:
             List[T]: The nodes matched by the query.
@@ -283,6 +286,8 @@ class NodeModel(ModelBase):
         )
         if filters is not None:
             self._query_builder.multi_hop_filters(filters=filters)
+        if options is not None:
+            self._query_builder.query_options(options=options)
 
         results, _ = await self._client.cypher(
             query=f"""
@@ -291,6 +296,7 @@ class NodeModel(ModelBase):
                     elementId(n) = $element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
                 RETURN DISTINCT m
+                {self._query_builder.query['options']}
             """,
             parameters={
                 "element_id": self._element_id,
