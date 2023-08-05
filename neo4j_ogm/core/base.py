@@ -86,7 +86,7 @@ class ModelBase(BaseModel):
         if hasattr(cls, "Settings"):
             for setting, value in cls.Settings.__dict__.items():
                 if not setting.startswith("__"):
-                    if isinstance(value, set):
+                    if isinstance(value, set) and getattr(cls.__settings__, setting, None) is not None:
                         setattr(
                             cls.__settings__,
                             setting,
