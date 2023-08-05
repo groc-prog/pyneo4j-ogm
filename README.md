@@ -167,12 +167,12 @@ class Developer(NodeModel):
 
 **Available node settings**:
 
-| Setting name        | Type                                           | Description                                                                                                                                                                                                                                       |
-| ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| exclude_from_export | **Set[str]**                                   | A set of property names that should be excluded model exports (see [`Importing and exporting models`](#importing-and-exporting-models))                                                                                                           |
-| pre_hooks           | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of pre hooks that should be executed before a certain action (see [`Pre hooks`](#pre-hooks))                                                                                                                                         |
-| post_hooks          | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of post hooks that should be executed after a certain action (see [`Post hooks`](#post-hooks))                                                                                                                                       |
-| labels              | **Union[str, Set[str]]**                       | The labels that should be used for the node in the database. If a string is provided, it will be converted to a set with one element. If no labels are defined, the class name will be used as the label, converted to `PascalCase` if necessary. |
+| Setting name          | Type                                           | Description                                                                                                                                                                                                                                       |
+| --------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `exclude_from_export` | **Set[str]**                                   | A set of property names that should be excluded model exports (see [`Importing and exporting models`](#importing-and-exporting-models))                                                                                                           |
+| `pre_hooks`           | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of pre hooks that should be executed before a certain action (see [`Pre hooks`](#pre-hooks))                                                                                                                                         |
+| `post_hooks`          | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of post hooks that should be executed after a certain action (see [`Post hooks`](#post-hooks))                                                                                                                                       |
+| `labels`              | **Union[str, Set[str]]**                       | The labels that should be used for the node in the database. If a string is provided, it will be converted to a set with one element. If no labels are defined, the class name will be used as the label, converted to `PascalCase` if necessary. |
 
 
 #### Working with model methods <a name="working-with-node-models-methods"></a>
@@ -457,12 +457,12 @@ class Implemented(RelationshipModel):
 
 **Available relationship settings**:
 
-| Setting name        | Type                                           | Description                                                                                                                                                                    |
-| ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| exclude_from_export | **Set[str]**                                   | A set of property names that should be excluded model exports (see [`Importing and exporting models`](#importing-and-exporting-models))                                        |
-| pre_hooks           | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of pre hooks that should be executed before a certain action (see [`Pre hooks`](#pre-hooks))                                                                      |
-| post_hooks          | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of post hooks that should be executed after a certain action (see [`Post hooks`](#post-hooks))                                                                    |
-| type                | **str**                                        | The type of the relationship. Defaults to the name of the class converted to `SCREAMING_SNAKE_CASE`. For example, `MyCoolRelationship` is converted to `MY_COOL_RELATIONSHIP`. |
+| Setting name          | Type                                           | Description                                                                                                                                                                    |
+| --------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `exclude_from_export` | **Set[str]**                                   | A set of property names that should be excluded model exports (see [`Importing and exporting models`](#importing-and-exporting-models))                                        |
+| `pre_hooks`           | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of pre hooks that should be executed before a certain action (see [`Pre hooks`](#pre-hooks))                                                                      |
+| `post_hooks`          | **Dict[str, Union[List[Callable], Callable]]** | A dictionary of post hooks that should be executed after a certain action (see [`Post hooks`](#post-hooks))                                                                    |
+| `type`                | **str**                                        | The type of the relationship. Defaults to the name of the class converted to `SCREAMING_SNAKE_CASE`. For example, `MyCoolRelationship` is converted to `MY_COOL_RELATIONSHIP`. |
 
 
 #### Working with model methods <a name="working-with-relationship-models-methods"></a>
@@ -680,7 +680,62 @@ The above example will return a list of projects that are not finished and the d
 
 
 ### Filters and options <a name="filters-and-options"></a>
+As you have seen in the previous examples, many methods accept filters and options as arguments. Filters are used to filter the results of the query, while options are used to modify the query results. Both filters and options are defined as dictionaries. The following sections will explain how to use filters and options.
+
+
 #### Basic filters <a name="basic-filters"></a>
+Basic filters are the building blocks of more complex filters. They are used to filter nodes and relationships based on their properties. There is a number of basic filters that can be used to filter nodes and relationships. If you used **MongoDB's query language** before, you will find these filters very familiar. The following table lists all basic filters and their usage:
+
+| Comparison operators | Description                                                                                                                                | Example                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| `$eq`                | Matches any property where the value is equal to a specified value. If a filter specifies no operator, neo4j-ogm will assume a this filter | `{ "name": { "$eq": "John" } }`            |
+| `$neq`               | Matches any property where the value is not equal to a specified value                                                                     | `{ "name": { "$neq": "John" } }`           |
+| `$gt`                | Matches any property where the value is greater than a specified value                                                                     | `{ "age": { "$gt": 18 } }`                 |
+| `$gte`               | Matches any property where the value is greater than or equal to a specified value                                                         | `{ "age": { "$gte": 18 } }`                |
+| `$lt`                | Matches any property where the value is less than a specified value                                                                        | `{ "age": { "$lt": 18 } }`                 |
+| `$lte`               | Matches any property where the value is less than or equal to a specified value                                                            | `{ "age": { "$lte": 18 } }`                |
+| `$in`                | Matches any property where the value is in the list of given values                                                                        | `{ "name": { "$in": ["John", "Jane"] } }`  |
+| `$nin`               | Matches any property where the value is not in the list of given values                                                                    | `{ "name": { "$nin": ["John", "Jane"] } }` |
+
+<br />
+
+| String operators | Description                                                                                                            | Example                               |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `$contains`      | Matches any property where the value contains the given substring                                                      | `{ "name": { "$contains": "ohn" } }`  |
+| `$icontains`     | Matches any property where the value contains the given substring (case-insensitive)                                   | `{ "name": { "$icontains": "oHn" } }` |
+| `$startsWith`    | Matches any property where the value starts with the given substring                                                   | `{ "name": { "$startsWith": "J" } }`  |
+| `$istartsWith`   | Matches any property where the value starts with the given substring (case-insensitive)                                | `{ "name": { "$istartsWith": "j" } }` |
+| `$endsWith`      | Matches any property where the value ends with the given substring                                                     | `{ "name": { "$endsWith": "n" } }`    |
+| `$iendsWith`     | Matches any property where the value ends with the given substring (case-insensitive)                                  | `{ "name": { "$iendsWith": "N" } }`   |
+| `$regex`         | Matches any property where the value matches the given regular expression (Uses the same regular expressions as Neo4j) | `{ "name": { "$regex": "Jo.*" } }`    |
+
+<br />
+
+| List operators | Description                                                                                                                                              | Example                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `$all`         | Matches any property where the value contains all of the given values                                                                                    | `{ "projects": { "$all": ["neo4j-ogm", "buy-me-coffee"] } }`                         |
+| `$size`        | Matches any property where the value is an array of a given size. This operator can be combined with other numeric operators for more specific filtering | `{ "projects": { "$size": 2 } }` <br /> `{ "projects": { "$size": { "$gte": 2 } } }` |
+
+<br />
+
+| Logical operators | Description                                                                                                                   | Example                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `$not`            | Add a logical **NOT** to the operator it wraps, can be used with all basic operators                                          | `{ "age": { "$not": { "$gt": 12 } }`                                                                 |
+| `$and`            | Combines multiple operators with a logical **AND**. Falls back to this if multiple operators are defined on a single property | `{ "age": { "$and": [{ "$gt": 12 }, { "$lte": 32 }] }` <br /> `{ "age": { "$gt": 12, "$lte": 32 } }` |
+| `$or`             | Combines multiple operators with a logical **OR**                                                                             | `{ "age": { "$or": [{ "$gt": 12 }, { "$lte": 32 }] }`                                                |
+| `$xor`            | Combines multiple operators with a logical **XOR**                                                                            | `{ "age": { "$xor": [{ "$gt": 12 }, { "$lte": 32 }] }`                                               |
+
+<br />
+
+| Element operators | Description                                                                                         | Example                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `$exists`         | Matches all nodes or relationships where the property exists. Useful for models with dynamic fields | `{ "name": { "$exists": True } }`                                           |
+| `$elementId`      | Matches the node or relationship with the provided element-id                                       | `{ "$elementId": "4:704eea2c-3c2c-42a7-a774-8fb962a93f38:0" }`              |
+| `$id`             | Matches the node or relationship with the provided id                                               | `{ "$id": 1 }`                                                              |
+| `$labels`         | Matches all nodes with the given label(s)                                                           | `{ "$labels": "Developer" }`<br /> `{ "$labels": ["Developer", "Senior"] }` |
+| `$type`           | Matches all relationships with the given type                                                       | `{ "$type": "IMPLEMENTED" }`                                                |
+
+
 #### Pattern matching <a name="pattern-matching"></a>
 #### Filters on relationships with multiple hops <a name="filters-on-relationships-with-multiple-hops"></a>
 #### Filter options <a name="filter-options"></a>
