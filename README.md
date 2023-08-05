@@ -541,7 +541,7 @@ In the example above example, we define a direct connection between the `Develop
 
 - `target_model`: The target model (other end of the relationship) is the `Project` model. This can either be the class itself or a string with the **class name**.
 - `relationship_model`: The relationship between the two is defined by the `Implemented` class. This can, again, be defined as a string representing the class or the class itself.
-- `direction`: The direction of the relationship should be `OUTGOING`, meaning that the **Developer node is the start node** and the **Project node is the end node**
+- `direction`: The direction of the relationship should be `OUTGOING`, meaning that the **Developer node is the start node** and the **Project node is the end node**. This can be defined as either `OUTGOING` or `INCOMING`.
 - `allow_multiple`: We allow multiple relationships of the same type between the same nodes. By default, neo4j-ogm only allows one relationship of each type between two nodes. But there are certain use-cases where is is not wanted. In out example, one developer could implement multiple bugs in a project.
 
 > ❗️ **Note:** If you provide the target or relationship model as a string, you **have** to define the type for the relationship property by passing the types for the models. This has to be done because python can't infer the type of the returned relationships or models if they are defined as a string. You can define the types using the generic parameters of the `RelationshipProperty` class:
@@ -551,12 +551,136 @@ In the example above example, we define a direct connection between the `Develop
 > ```
 
 
-#### Relationship property settings <a name="relationship-property-settings"></a>
 #### Working with connections between node models <a name="working-with-connections-between-node-models"></a>
+Relationship properties provide a few methods to work with the defined connections between node models. For the following examples, we will use the `Developer`, `Project` and `Implemented` models from the example above.
+
+
+#### **`RelationshipProperty.connect()`**
+Creates a new relationship between two nodes. This method takes the target node as the first argument and the properties for the relationship as the second argument. The method returns an instance of the relationship model.
+
+```python
+async def main() -> None:
+  # `developer` and `project` are instances of the `Developer` and `Project` models
+  # respectively, defined somewhere else
+  implemented = await developer.projects.connect(project, {"killed_production": True})
+
+  print(implemented) # An hydrated instance of the `Implemented` model
+```
+<br />
+
+A new relationship between the two nodes will be created. Since we defined the relationship as `allow_multiple=True`, we can create multiple relationships between the same nodes. If we try to create a relationship between the same nodes without the `allow_multiple` option, neo4j-ogm will check if a relationship of the same type already exists between the two nodes, and do nothing if the relationship already exists.
+
+
+#### **`RelationshipProperty.relationship()`**
+Returns the relationship between two nodes. This method takes the target node as the first argument and returns an instance of the relationship model. If no relationship exists between the two nodes, `None` will be returned.
+
+```python
+async def main() -> None:
+  # `developer` and `project` are instances of the `Developer` and `Project` models
+  # respectively, defined somewhere else
+  implemented = await developer.projects.relationship(project)
+
+  if implemented is not None:
+    # Developer did not implement any bugs in the project
+    ...
+
+  # Do something with the relationship
+  ...
+```
+<br />
+
+The returned relationship is a instance of the defined relationship model. This means that you can access the properties of the relationship directly on the returned instance. For example, if we want to check if the developer killed production in the project, we can do the following:
+
+```python
+async def main() -> None:
+  # `developer` and `project` are instances of the `Developer` and `Project` models
+  # respectively, defined somewhere else
+  implemented = await developer.projects.relationship(project)
+
+  if implemented is not None:
+    if implemented.killed_production:
+      # Developer killed production in the project
+      ...
+    else:
+      # Developer did not kill production in the project
+      ...
+```
+
+
+#### **`RelationshipProperty.disconnect()`**
+Deletes the relationship between two nodes. This method takes the target node as the first argument and returns the number of deleted relationships. If multiple relationships exist between the two nodes, all of them will be deleted.
+
+```python
+async def main() -> None:
+  # `developer` and `project` are instances of the `Developer` and `Project` models
+  # respectively, defined somewhere else
+  implemented_count = await developer.projects.disconnect(project)
+
+  print(implemented_count)  # The number of deleted relationships
+  ...
+```
+
+
+#### **`RelationshipProperty.disconnect_all()`**
+Deletes all relationships of the same type for the node. This method returns the number of deleted relationships. This means if the developer implemented multiple bugs in multiple projects, all of the relationships will be deleted.
+
+```python
+async def main() -> None:
+  # `developer` and `project` are instances of the `Developer` and `Project` models
+  # respectively, defined somewhere else
+  implemented_count = await developer.projects.disconnect_all(project)
+
+  # The developer now does not implement any bugs in any project
+  print(implemented_count)
+  ...
+```
+
+
+#### **`RelationshipProperty.replace()`**
+Replaces one target node with another. This method takes the old target node as the first argument and the new target node as the second argument. The method returns the new relationship between the source node and the new target node. All properties of the old relationship will be copied to the new relationship.
+
+```python
+async def main() -> None:
+  # Instances defined somewhere else
+  developer = ...
+  old_project = ...
+  new_project = ...
+
+  implemented = await developer.projects.replace(old_project, new_project)
+
+  # Relationship holds the same properties as the old relationship
+  print(implemented)
+  ...
+```
+
+
+#### **`RelationshipProperty.find_connected_nodes()`**
+Similar to the `NodeModel.find_many()` and `RelationshipModel.find_many()` methods, this method queries nodes connected to the target node with the defined relationship. This method accepts special `RelationshipPropertyFilters` (see [Basic filters](#basic-filters)) as the first argument and query options (see [Filter options](#filter-options)). The method returns a list of hydrated node models.
+
+```python
+async def main() -> None:
+  # `developer` and `project` are instances of the `Developer` and `Project` models
+  # respectively, defined somewhere else
+  projects = await developer.projects.find_connected_nodes(
+    {
+      "finished": False,
+      "$relationship": {
+        "killed_production": True
+      }
+    },
+    {
+      "limit": 10,
+      "order": "ASC"
+    }
+  )
+```
+<br />
+
+The above example will return a list of projects that are not finished and the developer killed production in them. The list will be limited to `10 projects` and ordered in `ascending order`. If you want to get all connected nodes, you can just call the method without any arguments.
 
 
 ### Filters and options <a name="filters-and-options"></a>
-#### Basic filters <a name="available-filters"></a>
+#### Basic filters <a name="basic-filters"></a>
 #### Pattern matching <a name="pattern-matching"></a>
 #### Filters on relationships with multiple hops <a name="filters-on-relationships-with-multiple-hops"></a>
 #### Filter options <a name="filter-options"></a>
