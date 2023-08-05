@@ -735,8 +735,58 @@ Basic filters are the building blocks of more complex filters. They are used to 
 | `$labels`         | Matches all nodes with the given label(s)                                                           | `{ "$labels": "Developer" }`<br /> `{ "$labels": ["Developer", "Senior"] }` |
 | `$type`           | Matches all relationships with the given type                                                       | `{ "$type": "IMPLEMENTED" }`                                                |
 
+<br />
+
+| Node and relationship operators | Description                                                                                                  | Example                                              |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| `$relationship`                 | Specific to **RelationshipProperty.find_connected_nodes()**, allows filtering on a relationship's properties | `{ "$relationship": { "killed_production": True } }` | ` |
+
 
 #### Pattern matching <a name="pattern-matching"></a>
+Sometimes just filtering nodes based on their properties is not enough, or sometimes we might want to exclude nodes with connections to specific nodes with a specific relationship. In this case you can use the `$patterns` operator. Pattern filters allow you to specify a pattern of nodes and relationships that must be matched in order for the node to be matched. This is useful for filtering on nodes based on their relationships to other nodes.
+
+Pattern filters are specified as a list of dictionaries, where each dictionary represents a pattern. Each pattern can specify the following keys:
+
+- `$node`: Filters applied to the target node. Expects a dictionary containing basic filters.
+- `$relationship`: Filters applied to the relationship between the source node and the target node. Expects a dictionary containing basic filters.
+- `$direction`: The direction of the pattern. Can be either **INCOMING**,**OUTGOING** or **BOTH**
+- `$not`: A boolean value indicating whether the pattern should be negated. Defaults to **False**
+
+To make the power of this feature clear, let's look at an example. Let's say we want to find all developers who have worked on the neo4j-ogm project and have not implemented bugs which killed production. Additionally, we want to exclude developers who drink coffee. We can do this by specifying the following pattern:
+
+```python
+developer = Developer.find_one({
+  "$patterns": [
+    {
+      "$node": {
+        "$labels": ["Project"],
+        "$properties": {
+          "name": "neo4j-ogm"
+        }
+      },
+      "$relationship": {
+        "$type": "IMPLEMENTED",
+        "killed_production": False
+      },
+      "$direction": "OUTGOING"
+    },
+    {
+      "$node": {
+        "$labels": ["Coffee"]
+      },
+      "$relationship": {
+        "$type": "DRINKS"
+      },
+      "$direction": "INCOMING",
+      "$not": True
+    }
+  ]
+})
+```
+
+> ❗️ **Note:** Patterns are not available when filtering relationships
+
+
 #### Filters on relationships with multiple hops <a name="filters-on-relationships-with-multiple-hops"></a>
 #### Filter options <a name="filter-options"></a>
 
