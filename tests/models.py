@@ -44,10 +44,12 @@ class Actress(NodeModel):
     latest_role: Dict[str, Any] = dict(Role(name="No Emmies", year=2020))
     all_roles: List[Role] = [Role()]
 
-    colleagues = RelationshipProperty(
+    colleagues: RelationshipProperty["Actor", WorkedTogether] = RelationshipProperty(
         target_model=Actor, relationship_model="WorkedTogether", direction=RelationshipPropertyDirection.OUTGOING
     )
-    friends = RelationshipProperty("Actress", Friends, RelationshipPropertyDirection.INCOMING, True)
+    friends: RelationshipProperty["Actress", Friends] = RelationshipProperty(
+        "Actress", Friends, RelationshipPropertyDirection.INCOMING, True
+    )
 
     class Settings:
         exclude_from_export = {"latest_role"}
