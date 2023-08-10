@@ -89,9 +89,9 @@ class UnregisteredModel(Neo4jOGMException):
     Exception which gets raised when a model, which has not been registered, gets used.
     """
 
-    def __init__(self, unregistered_model: str, *args: object) -> None:
+    def __init__(self, model: str, *args: object) -> None:
         super().__init__(
-            f"Model {unregistered_model} was not registered, but another model is using it",
+            f"Model {model} is using other unregistered models. Please register all models before using them.",
             *args,
         )
 

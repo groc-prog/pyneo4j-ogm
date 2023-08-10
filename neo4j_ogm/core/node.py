@@ -4,17 +4,21 @@ It provides base functionality like de-/inflation and validation and methods for
 the database for CRUD operations on nodes.
 """
 
-# pylint: disable=bare-except
-
 import json
 import logging
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Set, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Set, Tuple, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.base import ModelBase, hooks
-from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, MissingFilters, NoResultsFound
+from neo4j_ogm.exceptions import (
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    MissingFilters,
+    NoResultsFound,
+    UnregisteredModel,
+)
 from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
 
@@ -322,13 +326,15 @@ class NodeModel(ModelBase):
 
     @classmethod
     @hooks
-    async def find_one(cls: Type[T], filters: NodeFilters) -> Union[T, None]:
+    async def find_one(cls: Type[T], filters: NodeFilters, auto_fetch_nodes: bool = False) -> Union[T, None]:
         """
         Finds the first node that matches `filters` and returns it. If no matching node is found,
         `None` is returned instead.
 
         Args:
             filters (NodeFilters): The filters to apply to the query.
+            auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
+                identical option defined in `Settings`. Defaults to False.
 
         Raises:
             MissingFilters: Raised if no filters or invalid filters are provided.
@@ -342,29 +348,68 @@ class NodeModel(ModelBase):
             filters,
         )
         cls._query_builder.node_filters(filters=filters)
+        match_queries, return_queries = cls._build_auto_fetch()
 
         if cls._query_builder.query["where"] == "":
             raise MissingFilters()
 
-        results, _ = await cls._client.cypher(
-            query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
-                WHERE {cls._query_builder.query['where']}
-                RETURN DISTINCT n
-                LIMIT 1
-            """,
-            parameters=cls._query_builder.parameters,
+        do_auto_fetch = all(
+            [
+                auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
+                len(match_queries) != 0,
+                len(return_queries) != 0,
+            ]
         )
+
+        if do_auto_fetch:
+            results, meta = await cls._client.cypher(
+                query=f"""
+                    MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                    WHERE {cls._query_builder.query['where']}
+                    WITH n
+                    LIMIT 1
+                    {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries)}
+                    RETURN DISTINCT n, {', '.join(return_queries)}
+                """,
+                parameters=cls._query_builder.parameters,
+            )
+        else:
+            results, meta = await cls._client.cypher(
+                query=f"""
+                    MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                    WHERE {cls._query_builder.query['where']}
+                    RETURN n
+                    LIMIT 1
+                """,
+                parameters=cls._query_builder.parameters,
+            )
 
         logging.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             return None
 
         logging.debug("Checking if node has to be parsed to instance")
-        if isinstance(results[0][0], Node):
-            return cls.inflate(node=results[0][0])
+        instance = cls.inflate(node=results[0][0]) if isinstance(results[0][0], Node) else results[0][0]
 
-        return results[0][0]
+        if not do_auto_fetch:
+            return instance
+
+        # Add auto-fetched nodes to relationship properties
+        added_nodes: Set[str] = set()
+
+        for result_list in results:
+            for index, result in enumerate(result_list[1:]):
+                if result is not None:
+                    relationship_property = getattr(instance, meta[index + 1])
+                    nodes = cast(List[str], getattr(relationship_property, "_nodes"))
+                    element_id = getattr(result, "_element_id")
+
+                    if element_id not in added_nodes:
+                        # Add model instance to nodes list and mark it as added
+                        nodes.append(result)
+                        added_nodes.add(element_id)
+
+        return instance
 
     @classmethod
     @hooks
@@ -372,6 +417,7 @@ class NodeModel(ModelBase):
         cls: Type[T],
         filters: Union[NodeFilters, None] = None,
         options: Union[QueryOptions, None] = None,
+        auto_fetch_nodes: bool = False,
     ) -> List[T]:
         """
         Finds the all nodes that matches `filters` and returns them. If no matches are found, an
@@ -380,39 +426,87 @@ class NodeModel(ModelBase):
         Args:
             filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
             options (QueryOptions, optional): The options to apply to the query. Defaults to None.
+            auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
+                identical option defined in `Settings`. Defaults to False.
 
         Returns:
             List[T]: A list of model instances.
         """
         logging.info("Getting nodes of model %s matching filters %s", cls.__name__, filters)
+        match_queries, return_queries = cls._build_auto_fetch()
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
         if options is not None:
             cls._query_builder.query_options(options=options)
 
-        results, _ = await cls._client.cypher(
-            query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
-                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                RETURN DISTINCT n
-                {cls._query_builder.query['options']}
-            """,
-            parameters=cls._query_builder.parameters,
+        instances: List[T] = []
+        do_auto_fetch = all(
+            [
+                auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
+                len(match_queries) != 0,
+                len(return_queries) != 0,
+            ]
         )
 
-        instances: List[T] = []
+        if do_auto_fetch:
+            results, meta = await cls._client.cypher(
+                query=f"""
+                    MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                    {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
+                    WITH DISTINCT n
+                    {cls._query_builder.query['options']}
+                    {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries)}
+                    RETURN DISTINCT n, {', '.join(return_queries)}
+                """,
+                parameters=cls._query_builder.parameters,
+            )
 
-        for result_list in results:
-            for result in result_list:
-                if result is None:
-                    continue
+            # Add auto-fetched nodes to relationship properties
+            added_nodes: Set[str] = set()
 
-                if isinstance(results[0][0], Node):
-                    instances.append(cls.inflate(node=results[0][0]))
-                else:
-                    instances.append(result)
+            for result_list in results:
+                for index, result in enumerate(result_list):
+                    if result is None or result_list[0] is None:
+                        continue
 
-        return instances
+                    instance_element_id = getattr(result, "_element_id")
+                    if instance_element_id in added_nodes:
+                        continue
+
+                    if index == 0:
+                        instances.append(cls.inflate(node=result) if isinstance(result, Node) else result)
+                    else:
+                        target_instance = [
+                            instance
+                            for instance in instances
+                            if getattr(result_list[0], "_element_id") == getattr(instance, "_element_id")
+                        ][0]
+                        relationship_property = getattr(target_instance, meta[index])
+                        nodes = cast(List[str], getattr(relationship_property, "_nodes"))
+                        nodes.append(result)
+
+                    added_nodes.add(instance_element_id)
+
+            return instances
+        else:
+            results, _ = await cls._client.cypher(
+                query=f"""
+                    MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                    {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
+                    RETURN DISTINCT n
+                    {cls._query_builder.query['options']}
+                """,
+                parameters=cls._query_builder.parameters,
+            )
+
+            for result_list in results:
+                for result in result_list:
+                    if result is None:
+                        continue
+
+                    instances.append(cls.inflate(node=result) if isinstance(result, Node) else result)
+
+            return instances
 
     @classmethod
     @hooks
@@ -544,10 +638,7 @@ class NodeModel(ModelBase):
                 if result is None:
                     continue
 
-                if isinstance(results[0][0], Node):
-                    old_instances.append(cls.inflate(node=results[0][0]))
-                else:
-                    old_instances.append(result)
+                old_instances.append(cls.inflate(node=result) if isinstance(result, Node) else result)
 
         logging.debug("Checking if query returned a result")
         if len(old_instances) == 0:
@@ -694,6 +785,49 @@ class NodeModel(ModelBase):
             raise NoResultsFound()
 
         return results[0][0]
+
+    @classmethod
+    def _build_auto_fetch(cls, ref: str = "n") -> Tuple[str, str]:
+        """
+        Builds the auto-fetch query for the instance.
+
+        Args:
+            ref (str, optional): The reference to use for the node. Defaults to "n".
+
+        Returns:
+            Tuple[str, str]: The `MATCH` and `RETURN` queries.
+        """
+        match_queries: List[str] = []
+        return_queries: List[str] = []
+
+        for defined_relationship in cls._relationships_properties:
+            relationship_type: str = None
+            end_node_labels: List[str] = None
+            relationship_property = cast(RelationshipProperty, cls.__fields__[defined_relationship].default)
+            direction = getattr(relationship_property, "_direction")
+
+            for model in cls._client.models:
+                if model.__name__ == getattr(relationship_property, "_relationship_model_name", None):
+                    relationship_type = model.__settings__.type
+                elif model.__name__ == getattr(relationship_property, "_target_model_name", None):
+                    end_node_labels = model.__settings__.labels
+
+            if relationship_type is None or end_node_labels is None:
+                raise UnregisteredModel(model=cls.__name__)
+
+            return_queries.append(defined_relationship)
+            match_queries.append(
+                cls._query_builder.relationship_match(
+                    ref=None,
+                    type_=relationship_type,
+                    start_node_ref=ref,
+                    direction=direction,
+                    end_node_ref=defined_relationship,
+                    end_node_labels=end_node_labels,
+                )
+            )
+
+        return match_queries, return_queries
 
     def _ensure_alive(self) -> None:
         """

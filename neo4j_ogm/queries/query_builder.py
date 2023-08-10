@@ -269,7 +269,7 @@ class QueryBuilder:
 
     def relationship_match(
         self,
-        ref: str = "r",
+        ref: Optional[str] = "r",
         type_: Optional[str] = None,
         direction: RelationshipMatchDirection = RelationshipMatchDirection.BOTH,
         start_node_ref: Optional[str] = None,

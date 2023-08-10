@@ -50,7 +50,7 @@ class RelationshipProperty(Generic[T, U]):
     _relationship_model: Type[U]
     _relationship_model_name: str
     _allow_multiple: bool
-    _nodes: List[T] = []
+    _nodes: List[T]
 
     def __init__(
         self,
@@ -75,6 +75,7 @@ class RelationshipProperty(Generic[T, U]):
             UnregisteredModel: Raised if the target model or the relationship model have not been registered with the
                 client.
         """
+        self._nodes = []
         self._allow_multiple = allow_multiple
         self._direction = direction
         self._relationship_model_name = (
@@ -484,7 +485,7 @@ class RelationshipProperty(Generic[T, U]):
             source_model.__class__.__name__,
         )
         if source_model.__class__ not in self._client.models:
-            raise UnregisteredModel(unregistered_model=source_model.__class__.__name__)
+            raise UnregisteredModel(model=source_model.__class__.__name__)
 
         self._source_node = source_model
 
@@ -494,7 +495,7 @@ class RelationshipProperty(Generic[T, U]):
         )
         registered_node_model = [model for model in self._client.models if model.__name__ == self._target_model_name]
         if len(registered_node_model) == 0:
-            raise UnregisteredModel(unregistered_model=self._target_model_name)
+            raise UnregisteredModel(model=source_model.__class__.__name__)
 
         self._target_model = registered_node_model[0]
 
@@ -506,7 +507,7 @@ class RelationshipProperty(Generic[T, U]):
             model for model in self._client.models if model.__name__ == self._relationship_model_name
         ]
         if len(registered_relationship_model) == 0:
-            raise UnregisteredModel(unregistered_model=self._relationship_model_name)
+            raise UnregisteredModel(model=source_model.__class__.__name__)
 
         self._relationship_model = registered_relationship_model[0]
 

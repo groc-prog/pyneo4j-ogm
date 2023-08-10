@@ -25,6 +25,11 @@ class Friends(RelationshipModel):
         type = "FRIENDS_WITH"
 
 
+class WorkedFor(RelationshipModel):
+    class Settings:
+        type = "WORKED_FOR"
+
+
 class Actor(NodeModel):
     id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
     name: WithOptions(str, text_index=True)
@@ -35,6 +40,14 @@ class Actor(NodeModel):
     class Settings:
         exclude_from_export = {"latest_role"}
         labels = "Actor"
+
+
+class Producer(NodeModel):
+    id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
+    name: WithOptions(str, text_index=True)
+
+    class Settings:
+        labels = "Producer"
 
 
 class Actress(NodeModel):
@@ -50,7 +63,11 @@ class Actress(NodeModel):
     friends: RelationshipProperty["Actress", Friends] = RelationshipProperty(
         "Actress", Friends, RelationshipPropertyDirection.INCOMING, True
     )
+    bosses: RelationshipProperty[Producer, WorkedFor] = RelationshipProperty(
+        Producer, WorkedFor, RelationshipPropertyDirection.INCOMING
+    )
 
     class Settings:
         exclude_from_export = {"latest_role"}
         labels = {"Actress", "Female"}
+        auto_fetch_nodes = True
