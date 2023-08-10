@@ -1,10 +1,11 @@
 """
-This module contains a class for building parts of the database query.
+Class for building the query for the database.
 """
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, TypedDict, Union, cast
 
 from neo4j_ogm.exceptions import InvalidRelationshipHops
+from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.types import (
     MultiHopFilters,
     MultiHopRelationship,
@@ -75,6 +76,7 @@ class QueryBuilder:
             filters (Dict[str, Any]): The filters to build.
             ref (str, optional): The reference to the node. Defaults to "n".
         """
+        logger.debug("Building node filters %s", filters)
         self.ref = ref
         self.query = {"where": "", "options": ""}
         self.parameters = {}
@@ -97,6 +99,7 @@ class QueryBuilder:
             filters (Dict[str, Any]): The filters to build.
             ref (str, optional): The reference to the relationship. Defaults to "r".
         """
+        logger.debug("Building relationship filters %s", filters)
         self.ref = ref
         self.query = {"where": "", "options": ""}
         self.parameters = {}
@@ -122,6 +125,7 @@ class QueryBuilder:
             ref (str, optional): The reference to the relationship. Defaults to "r".
             node_ref (str, optional): The reference to the node. Defaults to "end".
         """
+        logger.debug("Building relationship property filters %s", filters)
         self.query = {"where": "", "options": ""}
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
@@ -156,6 +160,7 @@ class QueryBuilder:
             start_ref (str, optional): The reference to the start node. Defaults to "n".
             end_ref (str, optional): The reference to the end node. Defaults to "m".
         """
+        logger.debug("Building multi hop filters %s", filters)
         self.ref = start_ref
         self.query = {"match": "", "where": "", "options": ""}
         self.parameters = {}
@@ -223,6 +228,7 @@ class QueryBuilder:
             options (Dict[str, Any]): The options to build.
             ref (str, optional): The reference to the node or relationship. Defaults to "n".
         """
+        logger.debug("Building query options %s", options)
         self.query["options"] = ""
 
         # Validate options with pydantic model
@@ -262,6 +268,7 @@ class QueryBuilder:
         Returns:
             str: The node to match.
         """
+        logger.debug("Building node match with labels %s and node ref %s", labels, ref)
         node_ref = ref if ref is not None else ""
         node_labels = f":{':'.join(labels)}" if labels is not None else ""
 
@@ -298,6 +305,18 @@ class QueryBuilder:
         Returns:
             str: The relationship to match.
         """
+        logger.debug(
+            """Building relationship match with type %s, relationship ref %s, start node ref %s, start node labels %s,
+            end node ref %s, end node labels %s, min hops %s and max hops %s""",
+            type_,
+            ref,
+            start_node_ref,
+            start_node_labels,
+            end_node_ref,
+            end_node_labels,
+            min_hops,
+            max_hops,
+        )
         start_node_match = self.node_match(labels=start_node_labels, ref=start_node_ref)
         end_node_match = self.node_match(labels=end_node_labels, ref=end_node_ref)
         hops = ""

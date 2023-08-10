@@ -1,6 +1,5 @@
 """
-This module contains custom datatypes which can be used to declare additional options for a property
-like indexing or a unique constraint.
+Datatype wrappers for Neo4j OGM properties which allow for extra options to be set on the property.
 """
 from typing import Type, TypeVar
 

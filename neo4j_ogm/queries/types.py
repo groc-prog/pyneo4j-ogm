@@ -1,5 +1,5 @@
 """
-This module contains type definitions for query options and filters.
+Types used to describe queries.
 """
 from datetime import date, datetime, time, timedelta
 from enum import Enum

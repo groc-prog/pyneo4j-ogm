@@ -13,6 +13,7 @@ from pydantic import BaseModel, PrivateAttr, root_validator
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.exceptions import ModelImportFailure, ReservedPropertyName
 from neo4j_ogm.fields.settings import BaseModelSettings
+from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.query_builder import QueryBuilder
 
 P = ParamSpec("P")
@@ -30,6 +31,7 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
         settings: BaseModelSettings = getattr(self, "__settings__")
 
         # Run pre hooks if defined
+        logger.debug("Checking pre hooks for %s", func.__name__)
         if func.__name__ in settings.pre_hooks:
             for hook_function in settings.pre_hooks[func.__name__]:
                 if iscoroutinefunction(hook_function):
@@ -40,6 +42,7 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
         result = await func(self, *args, **kwargs)
 
         # Run post hooks if defined
+        logger.debug("Checking post hooks for %s", func.__name__)
         if func.__name__ in settings.post_hooks:
             for hook_function in settings.post_hooks[func.__name__]:
                 if iscoroutinefunction(hook_function):
@@ -76,13 +79,13 @@ class ModelBase(BaseModel):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-
         self._db_properties = self.dict()
 
     def __init_subclass__(cls) -> None:
         setattr(cls, "_client", Neo4jClient())
         setattr(cls, "_query_builder", QueryBuilder())
 
+        logger.debug("Setting up defined settings for model %s", cls.__name__)
         if hasattr(cls, "Settings"):
             for setting, value in cls.Settings.__dict__.items():
                 if not setting.startswith("__"):
@@ -98,7 +101,13 @@ class ModelBase(BaseModel):
         return super().__init_subclass__()
 
     def __str__(self) -> str:
-        hydration_msg = self._element_id if self._element_id is not None else "not hydrated"
+        if self._destroyed:
+            hydration_msg = "destroyed"
+        elif self._element_id is None:
+            hydration_msg = "not hydrated"
+        else:
+            hydration_msg = self._element_id
+
         return f"{self.__class__.__name__}({hydration_msg})"
 
     def export_model(self: T, convert_to_camel_case: bool = False, *args, **kwargs) -> Dict[str, Any]:
@@ -114,15 +123,18 @@ class ModelBase(BaseModel):
             Dict[str, Any]: The exported model as a dictionary.
         """
         # Check if additional fields should be excluded
+        logger.debug("Checking if additional fields should be excluded")
         if "exclude" in kwargs:
             kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self.__settings__.exclude_from_export)
         else:
             kwargs["exclude"] = self.__settings__.exclude_from_export
 
+        logger.debug("Exporting model %s", self.__class__.__name__)
         model_dict = json.loads(self.json(*args, **kwargs))
         model_dict["element_id"] = self._element_id
 
         if convert_to_camel_case:
+            logger.debug("Converting keys to camel case")
             model_dict = self._convert_to_camel_case(model_dict)
 
         return model_dict
@@ -143,12 +155,12 @@ class ModelBase(BaseModel):
         Returns:
             T: An instance of the model.
         """
-        if from_camel_case and "elementId" not in model:
-            raise ModelImportFailure()
-        if not from_camel_case and "element_id" not in model:
+        logger.debug("Importing model %s", cls.__name__)
+        if "elementId" not in model:
             raise ModelImportFailure()
 
         if from_camel_case:
+            logger.debug("Converting keys from camel case")
             model = cls._convert_keys_to_snake_case(model)
 
         instance = cls(**model)
@@ -174,6 +186,7 @@ class ModelBase(BaseModel):
         """
         valid_hook_functions: List[Callable] = []
 
+        logger.debug("Registering pre-hook for %s", hook_name)
         if isinstance(hook_functions, list):
             for hook_function in hook_functions:
                 if callable(hook_function):
@@ -186,8 +199,10 @@ class ModelBase(BaseModel):
             cls.__settings__.pre_hooks[hook_name] = []
 
         if overwrite:
+            logger.debug("Overwriting existing pre-hook functions")
             cls.__settings__.pre_hooks[hook_name] = valid_hook_functions
         else:
+            logger.debug("Adding %s pre-hook functions", len(valid_hook_functions))
             for hook_function in valid_hook_functions:
                 cls.__settings__.pre_hooks[hook_name].append(hook_function)
 
@@ -210,6 +225,7 @@ class ModelBase(BaseModel):
         """
         valid_hook_functions: List[Callable] = []
 
+        logger.debug("Registering post-hook for %s", hook_name)
         if isinstance(hook_functions, list):
             for hook_function in hook_functions:
                 if callable(hook_function):
@@ -222,8 +238,10 @@ class ModelBase(BaseModel):
             cls.__settings__.post_hooks[hook_name] = []
 
         if overwrite:
+            logger.debug("Overwriting existing post-hook functions")
             cls.__settings__.post_hooks[hook_name] = valid_hook_functions
         else:
+            logger.debug("Adding %s post-hook functions", len(valid_hook_functions))
             for hook_function in valid_hook_functions:
                 cls.__settings__.post_hooks[hook_name].append(hook_function)
 

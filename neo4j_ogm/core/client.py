@@ -1,7 +1,6 @@
 """
 Database client for running queries against the connected database.
 """
-import logging
 import os
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type, Union
@@ -18,6 +17,7 @@ from neo4j_ogm.exceptions import (
     NotConnectedToDatabase,
     TransactionInProgress,
 )
+from neo4j_ogm.logger import logger
 
 if TYPE_CHECKING:
     from neo4j_ogm.core.node import NodeModel
@@ -57,6 +57,7 @@ def ensure_connection(func: Callable):
     """
 
     async def decorator(self, *args, **kwargs):
+        logger.debug("Ensuring connection to database for %s", func.__name__)
         if getattr(self, "_driver", None) is None:
             raise NotConnectedToDatabase()
 
@@ -118,9 +119,9 @@ class Neo4jClient:
         self.uri = db_uri
         self.auth = db_auth
 
-        logging.info("Connecting to database %s", self.uri)
+        logger.info("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth, *args, **kwargs)
-        logging.info("Connected to database")
+        logger.info("Connected to database")
 
         return self
 
@@ -135,6 +136,8 @@ class Neo4jClient:
         """
         from neo4j_ogm.core.node import NodeModel
         from neo4j_ogm.core.relationship import RelationshipModel
+
+        logger.debug("Registering models %s", models)
 
         for model in models:
             if issubclass(model, (NodeModel, RelationshipModel)):
@@ -185,9 +188,9 @@ class Neo4jClient:
         """
         Closes the current connection to the client.
         """
-        logging.info("Closing connection to database")
+        logger.info("Closing connection to database")
         await self._driver.close()
-        logging.info("Connection to database closed")
+        logger.info("Connection to database closed")
 
     @ensure_connection
     async def cypher(
@@ -212,19 +215,21 @@ class Neo4jClient:
         if parameters is None:
             parameters = {}
 
+        logger.debug("Checking if transaction is open")
         if getattr(self, "_session", None) is None or getattr(self, "_transaction", None) is None:
             await self.begin_transaction()
 
         try:
             parameters = parameters if parameters is not None else {}
 
-            logging.info("Running query %s with parameters %s", query, parameters)
+            logger.debug("Running query \n%s \nwith parameters %s", query, parameters)
             result_data = await self._transaction.run(query=query, parameters=parameters)
 
             results = [list(r.values()) async for r in result_data]
             meta = list(result_data.keys())
 
             if resolve_models:
+                logger.debug("Resolving results to models")
                 for list_index, result_list in enumerate(results):
                     for result_index, result in enumerate(result_list):
                         resolved = self._resolve_database_model(result)
@@ -235,10 +240,10 @@ class Neo4jClient:
             if self._batch_enabled is False:
                 await self.commit_transaction()
 
-            logging.info("Query completed")
+            logger.debug("Returning results %s", results)
             return results, meta
         except Exception as exc:
-            logging.error("Encountered exception during transaction: %s", exc)
+            logger.error("Error running query %s", exc)
             if self._batch_enabled is False:
                 await self.rollback_transaction()
 
@@ -274,7 +279,7 @@ class Neo4jClient:
                     raise InvalidLabelOrType()
 
                 for label in labels_or_type:
-                    logging.info("Creating constraint %s with labels %s", name, label)
+                    logger.info("Creating constraint %s for node with label %s", name, label)
                     await self.cypher(
                         query=f"""
                             CREATE CONSTRAINT {name} IF NOT EXISTS
@@ -287,7 +292,7 @@ class Neo4jClient:
                 if not isinstance(labels_or_type, str):
                     raise InvalidLabelOrType()
 
-                logging.info("Creating constraint %s with labels %s", name, labels_or_type)
+                logger.info("Creating constraint %s for relationship with type %s", name, labels_or_type)
                 await self.cypher(
                     query=f"""
                         CREATE CONSTRAINT {name} IF NOT EXISTS
@@ -341,8 +346,8 @@ class Neo4jClient:
                 for label in labels_or_type:
                     match index_type:
                         case IndexType.TOKEN:
-                            logging.info(
-                                "Creating %s index %s with labels %s",
+                            logger.info(
+                                "Creating %s index %s for node with labels %s",
                                 index_type,
                                 name,
                                 labels_or_type,
@@ -356,8 +361,8 @@ class Neo4jClient:
                                 resolve_models=False,
                             )
                         case IndexType.RANGE:
-                            logging.info(
-                                "Creating %s index %s with labels %s",
+                            logger.info(
+                                "Creating %s index %s for node with labels %s",
                                 index_type,
                                 name,
                                 labels_or_type,
@@ -371,8 +376,8 @@ class Neo4jClient:
                                 resolve_models=False,
                             )
                         case _:
-                            logging.info(
-                                "Creating %s index %s with labels %s",
+                            logger.info(
+                                "Creating %s index %s for node with labels %s",
                                 index_type,
                                 name,
                                 labels_or_type,
@@ -391,8 +396,8 @@ class Neo4jClient:
 
                 match index_type:
                     case IndexType.TOKEN:
-                        logging.info(
-                            "Creating %s index %s with labels %s",
+                        logger.info(
+                            "Creating %s index %s for relationship with labels %s",
                             index_type,
                             name,
                             labels_or_type,
@@ -406,8 +411,8 @@ class Neo4jClient:
                             resolve_models=False,
                         )
                     case IndexType.RANGE:
-                        logging.info(
-                            "Creating %s index %s with labels %s",
+                        logger.info(
+                            "Creating %s index %s for relationship with labels %s",
                             index_type,
                             name,
                             labels_or_type,
@@ -421,8 +426,8 @@ class Neo4jClient:
                             resolve_models=False,
                         )
                     case _:
-                        logging.info(
-                            "Creating %s index %s with labels %s",
+                        logger.info(
+                            "Creating %s index %s for relationship with labels %s",
                             index_type,
                             name,
                             labels_or_type,
@@ -446,7 +451,7 @@ class Neo4jClient:
         """
         Deletes all nodes in the database.
         """
-        logging.warning("Deleting all nodes in database")
+        logger.warning("Dropping all nodes")
         await self.cypher(query="MATCH (node) DETACH DELETE node", resolve_models=False)
 
     @ensure_connection
@@ -454,12 +459,12 @@ class Neo4jClient:
         """
         Drops all constraints.
         """
-        logging.debug("Discovering constraints")
+        logger.debug("Discovering constraints")
         results, _ = await self.cypher(query="SHOW CONSTRAINTS", resolve_models=False)
 
-        logging.warning("Dropping %s constraints", len(results))
+        logger.warning("Dropping %s constraints", len(results))
         for constraint in results:
-            logging.debug("Dropping constraint %s", constraint[1])
+            logger.debug("Dropping constraint %s", constraint[1])
             await self.cypher(f"DROP CONSTRAINT {constraint[1]}")
 
     @ensure_connection
@@ -467,16 +472,16 @@ class Neo4jClient:
         """
         Drops all indexes.
         """
-        logging.debug("Discovering indexes")
+        logger.debug("Discovering indexes")
         results, _ = await self.cypher(query="SHOW INDEXES", resolve_models=False)
 
-        logging.warning("Dropping %s indexes", len(results))
+        logger.warning("Dropping %s indexes", len(results))
         for index in results:
             try:
-                logging.debug("Dropping index %s", index[1])
+                logger.debug("Dropping index %s", index[1])
                 await self.cypher(f"DROP INDEX {index[1]}")
             except DatabaseError as exc:
-                logging.warning("Failed to drop index %s: %s", index[1], exc)
+                logger.warning("Failed to drop index %s: %s", index[1], exc.message)
 
     @ensure_connection
     async def begin_transaction(self) -> None:
@@ -486,20 +491,20 @@ class Neo4jClient:
         if getattr(self, "_session", None):
             raise TransactionInProgress()
 
-        logging.debug("Beginning new session")
+        logger.debug("Beginning new session")
         self._session = self._driver.session()
-        logging.debug("Session %s created", self._session)
+        logger.debug("Session %s created", self._session)
 
-        logging.debug("Beginning new transaction for session %s", self._session)
+        logger.debug("Beginning new transaction for session %s", self._session)
         self._transaction = await self._session.begin_transaction()
-        logging.debug("Transaction %s created", self._transaction)
+        logger.debug("Transaction %s created", self._transaction)
 
     @ensure_connection
     async def commit_transaction(self) -> None:
         """
         Commits the currently active transaction and closes it.
         """
-        logging.debug("Committing transaction %s", self._transaction)
+        logger.debug("Committing transaction %s", self._transaction)
         try:
             await self._transaction.commit()
         finally:
@@ -511,7 +516,7 @@ class Neo4jClient:
         """
         Rolls back the currently active transaction and closes it.
         """
-        logging.debug("Rolling back transaction %s", self._transaction)
+        logger.debug("Rolling back transaction %s", self._transaction)
         try:
             await self._transaction.rollback()
         finally:
@@ -546,16 +551,20 @@ class Neo4jClient:
         from neo4j_ogm.core.relationship import RelationshipModel
 
         if not isinstance(query_result, (Node, Relationship, Path)):
+            logger.debug("Query result %s is not a node, relationship, or path, skipping", type(query_result))
             return None
 
         if isinstance(query_result, Path):
+            logger.debug("Query result %s is a path, resolving nodes and relationship", query_result)
             nodes = []
             relationships = []
 
+            logger.debug("Resolving nodes")
             for node in query_result.nodes:
                 resolved = self._resolve_database_model(node)
                 nodes.append(resolved if resolved is not None else node)
 
+            logger.debug("Resolving relationships")
             for relationship in query_result.relationships:
                 resolved = self._resolve_database_model(relationship)
                 relationships.append(resolved if resolved is not None else relationship)
@@ -565,6 +574,7 @@ class Neo4jClient:
 
             return query_result
 
+        logger.debug("Query result %s is a node or relationship, resolving", query_result)
         labels = set(query_result.labels) if isinstance(query_result, Node) else set(query_result.type)
 
         for model in list(self.models):
@@ -578,6 +588,7 @@ class Neo4jClient:
             if labels == model_labels:
                 return model.inflate(query_result)
 
+        logger.debug("No model found for query result %s", query_result)
         return None
 
 
@@ -590,6 +601,7 @@ class BatchManager:
         self._client = client
 
     async def __aenter__(self) -> None:
+        logger.debug("Beginning batch transaction")
         self._client._batch_enabled = True
         await self._client.begin_transaction()
 
@@ -599,4 +611,5 @@ class BatchManager:
         else:
             await self._client.commit_transaction()
 
+        logger.debug("Batch transaction complete")
         self._client._batch_enabled = False

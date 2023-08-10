@@ -1,12 +1,12 @@
 """
-This module contains pydantic models for validating and normalizing query filters.
+Pydantic validators for query operators and filters.
 """
-import logging
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
 
+from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes, QueryOptionsOrder, RelationshipMatchDirection
 
 
@@ -20,7 +20,7 @@ def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
                 validated_values[property_name] = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
             except ValidationError:
                 validated_values.pop(property_name)
-                logging.debug("Invalid field %s found, omitting field", property_name)
+                logger.debug("Invalid field %s found, omitting field", property_name)
 
     return validated_values
 

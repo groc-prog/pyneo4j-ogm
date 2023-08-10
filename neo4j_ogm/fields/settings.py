@@ -1,5 +1,5 @@
 """
-This module contains possible settings for NodeModels and RelationshipModels
+Settings for NodeModel and RelationshipModel classes.
 """
 from typing import Callable, Dict, List, Optional, Set, Union
 

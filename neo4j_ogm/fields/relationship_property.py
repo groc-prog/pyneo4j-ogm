@@ -1,8 +1,7 @@
 """
-This module holds the `RelationshipProperty` class which can be used to make relationship related methods available
-on a `NodeModel` models field.
+Relationship property class used to define relationships between the model this class is used on and a target node,
+which defines the other end of the relationship.
 """
-import logging
 from enum import Enum
 from typing import Any, Dict, Generic, List, Type, TypeVar, Union, cast
 
@@ -19,6 +18,7 @@ from neo4j_ogm.exceptions import (
     NotConnectedToSourceNode,
     UnregisteredModel,
 )
+from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import QueryOptions, RelationshipPropertyFilters
 
@@ -97,11 +97,7 @@ class RelationshipProperty(Generic[T, U]):
         """
         self._ensure_alive(node)
 
-        logging.info(
-            "Getting relationship between target node %s and source node %s",
-            getattr(node, "_element_id", None),
-            getattr(self._source_node, "_element_id", None),
-        )
+        logger.info("Getting relationship between target node %s and source node %s", node, self._source_node)
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
             type_=self._relationship_model.__settings__.type,
@@ -110,6 +106,7 @@ class RelationshipProperty(Generic[T, U]):
             end_node_ref="end",
             end_node_labels=self._target_model.__settings__.labels,
         )
+
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -144,7 +141,7 @@ class RelationshipProperty(Generic[T, U]):
         """
         self._ensure_alive(node)
 
-        logging.info(
+        logger.info(
             "Creating relationship between target node %s and source node %s",
             getattr(node, "_element_id", None),
             getattr(self._source_node, "_element_id", None),
@@ -162,7 +159,7 @@ class RelationshipProperty(Generic[T, U]):
         )
 
         # Build MERGE/CREATE part of query depending on if duplicate relationships are allowed or not
-        logging.debug("Building queries")
+        logger.debug("Building queries")
         if self._allow_multiple:
             build_query = f"CREATE {relationship_query}"
         else:
@@ -208,7 +205,7 @@ class RelationshipProperty(Generic[T, U]):
         """
         self._ensure_alive(node)
 
-        logging.info(
+        logger.info(
             "Deleting relationships between target node %s and source node %s",
             getattr(node, "_element_id", None),
             getattr(self._source_node, "_element_id", None),
@@ -222,7 +219,7 @@ class RelationshipProperty(Generic[T, U]):
             end_node_labels=self._target_model.__settings__.labels,
         )
 
-        logging.debug("Getting relationship count between source and target node")
+        logger.debug("Getting relationship count between source and target node")
         count_results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -237,14 +234,14 @@ class RelationshipProperty(Generic[T, U]):
         )
 
         if len(count_results) == 0 or len(count_results[0]) == 0 or count_results[0][0] is None:
-            logging.debug(
+            logger.debug(
                 "No relationships found between source node %s and target node %s",
                 getattr(self._source_node, "_element_id", None),
                 getattr(node, "_element_id", None),
             )
             return 0
 
-        logging.debug("Found %s, deleting relationships", count_results[0][0])
+        logger.debug("Found %s, deleting relationships", count_results[0][0])
         await self._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -266,7 +263,7 @@ class RelationshipProperty(Generic[T, U]):
         Returns:
             int: The number of disconnected nodes.
         """
-        logging.info(
+        logger.info(
             "Deleting all relationships associated with source node %s",
             getattr(self._source_node, "_element_id", None),
         )
@@ -279,7 +276,7 @@ class RelationshipProperty(Generic[T, U]):
             end_node_labels=self._target_model.__settings__.labels,
         )
 
-        logging.debug("Getting relationship count for source node")
+        logger.debug("Getting relationship count for source node")
         count_results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -293,13 +290,13 @@ class RelationshipProperty(Generic[T, U]):
         )
 
         if len(count_results) == 0 or len(count_results[0]) == 0 or count_results[0][0] is None:
-            logging.debug(
+            logger.debug(
                 "No relationships found for source node %s",
                 getattr(self._source_node, "_element_id", None),
             )
             return 0
 
-        logging.debug("Found %s, deleting relationships", count_results[0][0])
+        logger.debug("Found %s, deleting relationships", count_results[0][0])
         await self._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -327,7 +324,7 @@ class RelationshipProperty(Generic[T, U]):
         """
         self._ensure_alive([old_node, new_node])
 
-        logging.info(
+        logger.info(
             "Replacing old node %s with new node %s",
             getattr(old_node, "_element_id", None),
             getattr(new_node, "_element_id", None),
@@ -341,7 +338,7 @@ class RelationshipProperty(Generic[T, U]):
             end_node_labels=self._target_model.__settings__.labels,
         )
 
-        logging.debug("Getting relationship between source node and old node")
+        logger.debug("Getting relationship between source node and old node")
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -359,7 +356,7 @@ class RelationshipProperty(Generic[T, U]):
 
         deflated_properties = cast(U, results[0][0]).deflate()
 
-        logging.debug("Deleting relationship between source node and old node")
+        logger.debug("Deleting relationship between source node and old node")
         await self._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -372,7 +369,7 @@ class RelationshipProperty(Generic[T, U]):
             },
         )
 
-        logging.debug("Creating relationship between source node and new node")
+        logger.debug("Creating relationship between source node and new node")
         create_query = self._query_builder.relationship_match(
             direction=self._direction,
             type_=self._relationship_model.__settings__.type,
@@ -422,7 +419,7 @@ class RelationshipProperty(Generic[T, U]):
         Returns:
             List[T]: A list of model instances.
         """
-        logging.info("Getting connected nodes matching filters %s", filters)
+        logger.info("Getting connected nodes matching filters %s", filters)
         if filters is not None:
             self._query_builder.relationship_property_filters(filters=filters, ref="r", node_ref="end")
         if options is not None:
@@ -480,7 +477,7 @@ class RelationshipProperty(Generic[T, U]):
         self._client = Neo4jClient()
         self._query_builder = QueryBuilder()
 
-        logging.debug(
+        logger.debug(
             "Checking if source model %s has been registered with client",
             source_model.__class__.__name__,
         )
@@ -489,7 +486,7 @@ class RelationshipProperty(Generic[T, U]):
 
         self._source_node = source_model
 
-        logging.debug(
+        logger.debug(
             "Checking if target model %s has been registered with client",
             self._target_model_name,
         )
@@ -499,7 +496,7 @@ class RelationshipProperty(Generic[T, U]):
 
         self._target_model = registered_node_model[0]
 
-        logging.debug(
+        logger.debug(
             "Checking if relationship model %s has been registered with client",
             self._relationship_model_name,
         )
@@ -538,7 +535,7 @@ class RelationshipProperty(Generic[T, U]):
         nodes_to_check = nodes if isinstance(nodes, list) else [nodes]
 
         for node in nodes_to_check:
-            logging.debug(
+            logger.debug(
                 "Checking if node %s is alive and of correct type",
                 getattr(node, "_element_id", None),
             )

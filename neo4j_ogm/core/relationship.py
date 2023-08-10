@@ -1,4 +1,6 @@
 """
+RelationshipModel module for the Neo4j OGM.
+
 This module holds the base relationship class `RelationshipModel` which is used to define database models for
 relationships. It provides base functionality like de-/inflation and validation and methods for interacting with
 the database for CRUD operations on relationships.
@@ -7,7 +9,6 @@ the database for CRUD operations on relationships.
 # pylint: disable=bare-except
 
 import json
-import logging
 import re
 from typing import Any, ClassVar, Dict, List, Type, TypeVar, Union, cast
 
@@ -18,6 +19,7 @@ from neo4j_ogm.core.base import ModelBase, hooks
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, MissingFilters, NoResultsFound
 from neo4j_ogm.fields.settings import RelationshipModelSettings
+from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.types import QueryOptions, RelationshipFilters, RelationshipMatchDirection
 
 T = TypeVar("T", bound="RelationshipModel")
@@ -44,10 +46,7 @@ class RelationshipModel(ModelBase):
 
         # Check if relationship type is set, else fall back to class name
         if type_ is None:
-            logging.warning(
-                "No type has been defined for model %s, using model name as type",
-                cls.__name__,
-            )
+            logger.warning("No type has been defined for model %s, using model name as type", cls.__name__)
             # Convert class name to upper snake case
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
             setattr(cls.__settings__, "type", relationship_type.upper())
@@ -59,7 +58,7 @@ class RelationshipModel(ModelBase):
         Returns:
             Dict[str, Any]: The deflated model instance
         """
-        logging.debug("Deflating model %s to storable dictionary", self._element_id)
+        logger.debug("Deflating model %s to storable dictionary", self)
         deflated: Dict[str, Any] = json.loads(self.json())
 
         # Serialize nested BaseModel or dict instances to JSON strings
@@ -93,7 +92,7 @@ class RelationshipModel(ModelBase):
             except:
                 return property_value
 
-        logging.debug("Inflating relationship %s to model instance", relationship.element_id)
+        logger.debug("Inflating relationship %s to model instance", relationship)
         for node_property in relationship.items():
             property_name, property_value = node_property
 
@@ -121,7 +120,7 @@ class RelationshipModel(ModelBase):
         self._ensure_alive()
         deflated = self.deflate()
 
-        logging.info(
+        logger.info(
             "Updating relationship %s of model %s with current properties %s",
             self._element_id,
             self.__class__.__name__,
@@ -148,13 +147,13 @@ class RelationshipModel(ModelBase):
             },
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.debug("Resetting modified properties")
+        logger.debug("Resetting modified properties")
         self._db_properties = self.dict()
-        logging.info("Updated relationship %s", self._element_id)
+        logger.info("Updated relationship %s", self)
 
     @hooks
     async def delete(self) -> None:
@@ -167,11 +166,7 @@ class RelationshipModel(ModelBase):
         """
         self._ensure_alive()
 
-        logging.info(
-            "Deleting relationship %s of model %s",
-            self._element_id,
-            self.__class__.__name__,
-        )
+        logger.info("Deleting relationship %s", self)
         await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
@@ -183,9 +178,9 @@ class RelationshipModel(ModelBase):
             },
         )
 
-        logging.debug("Marking instance as destroyed")
+        logger.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
-        logging.info("Deleted relationship %s", self._element_id)
+        logger.info("Deleted relationship %s", self._element_id)
 
     @hooks
     async def refresh(self) -> None:
@@ -197,11 +192,7 @@ class RelationshipModel(ModelBase):
         """
         self._ensure_alive()
 
-        logging.info(
-            "Refreshing relationship %s of model %s",
-            self._element_id,
-            self.__class__.__name__,
-        )
+        logger.info("Refreshing relationship %s with values from database", self)
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
@@ -211,13 +202,13 @@ class RelationshipModel(ModelBase):
             parameters={"element_id": self._element_id},
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.debug("Updating current instance")
+        logger.debug("Updating current instance")
         self.__dict__.update(cast(T, results[0][0]).__dict__)
-        logging.info("Refreshed relationship %s", self._element_id)
+        logger.info("Refreshed relationship %s", self)
 
     @hooks
     async def start_node(self) -> Type[NodeModel]:
@@ -232,12 +223,7 @@ class RelationshipModel(ModelBase):
         """
         self._ensure_alive()
 
-        logging.info(
-            "Getting start node %s relationship %s of model %s",
-            self._start_node_id,
-            self._element_id,
-            self.__class__.__name__,
-        )
+        logger.info("Getting start node %s for relationship %s", self._start_node_id, self)
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
@@ -249,7 +235,7 @@ class RelationshipModel(ModelBase):
             },
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
@@ -268,12 +254,7 @@ class RelationshipModel(ModelBase):
         """
         self._ensure_alive()
 
-        logging.info(
-            "Getting end node %s relationship %s of model %s",
-            self._end_node_id,
-            self._element_id,
-            self.__class__.__name__,
-        )
+        logger.info("Getting end node %s for relationship %s", self._end_node_id, self)
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start", end_node_ref="end")}
@@ -285,7 +266,7 @@ class RelationshipModel(ModelBase):
             },
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
@@ -307,7 +288,7 @@ class RelationshipModel(ModelBase):
         Returns:
             T | None: A instance of the model or None if no match is found.
         """
-        logging.info(
+        logger.info(
             "Getting first encountered relationship of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -331,11 +312,11 @@ class RelationshipModel(ModelBase):
             parameters=cls._query_builder.parameters,
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             return None
 
-        logging.debug("Checking if relationship has to be parsed to instance")
+        logger.debug("Checking if relationship has to be parsed to instance")
         if isinstance(results[0][0], Relationship):
             return cls.inflate(relationship=results[0][0])
 
@@ -359,7 +340,7 @@ class RelationshipModel(ModelBase):
         Returns:
             List[T]: A list of model instances.
         """
-        logging.info(
+        logger.info(
             "Getting relationships of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -385,13 +366,14 @@ class RelationshipModel(ModelBase):
 
         instances: List[T] = []
 
+        logger.debug("Building instances from query results")
         for result_list in results:
             for result in result_list:
                 if result is None:
                     continue
 
-                if isinstance(results[0][0], Relationship):
-                    instances.append(cls.inflate(relationship=results[0][0]))
+                if isinstance(result, Relationship):
+                    instances.append(cls.inflate(relationship=result))
                 else:
                     instances.append(result)
 
@@ -424,12 +406,12 @@ class RelationshipModel(ModelBase):
         """
         new_instance: T
 
-        logging.info(
+        logger.info(
             "Updating first encountered relationship of model %s matching filters %s",
             cls.__name__,
             filters,
         )
-        logging.debug(
+        logger.debug(
             "Getting first encountered relationship of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -453,17 +435,18 @@ class RelationshipModel(ModelBase):
             parameters=cls._query_builder.parameters,
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
         old_instance = cast(T, results[0][0])
 
         # Update existing instance with values and save
-        logging.debug("Creating instance copy with new values %s", update)
+        logger.debug("Creating instance copy with new values %s", update)
         new_instance = cls(**old_instance.dict())
 
         for key, value in update.items():
             setattr(new_instance, key, value)
+
         setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
         setattr(new_instance, "_start_node_id", getattr(old_instance, "_start_node_id", None))
         setattr(new_instance, "_end_node_id", getattr(old_instance, "_end_node_id", None))
@@ -489,12 +472,9 @@ class RelationshipModel(ModelBase):
                 **deflated,
             },
         )
-        logging.info("Successfully updated relationship %s", getattr(new_instance, "_element_id"))
 
-        if new:
-            return new_instance
-
-        return old_instance
+        logger.info("Successfully updated relationship %s", getattr(new_instance, "_element_id"))
+        return new_instance if new else old_instance
 
     @classmethod
     @hooks
@@ -519,7 +499,7 @@ class RelationshipModel(ModelBase):
         """
         new_instance: T
 
-        logging.info(
+        logger.info(
             "Updating all relationships of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -531,7 +511,7 @@ class RelationshipModel(ModelBase):
             type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
-        logging.debug(
+        logger.debug(
             "Getting all relationships of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -557,13 +537,13 @@ class RelationshipModel(ModelBase):
                 else:
                     old_instances.append(result)
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(old_instances) == 0:
-            logging.debug("No results found")
+            logger.debug("No results found")
             return []
 
         # Try and parse update values into random instance to check validation
-        logging.debug("Creating instance copy with new values %s", update)
+        logger.debug("Creating instance copy with new values %s", update)
         new_instance = cls(**old_instances[0].dict())
         new_instance.__dict__.update(update)
 
@@ -580,7 +560,7 @@ class RelationshipModel(ModelBase):
             parameters={**deflated_properties, **cls._query_builder.parameters},
         )
 
-        logging.info(
+        logger.info(
             "Successfully updated %s relationships %s",
             len(old_instances),
             [getattr(instance, "_element_id") for instance in old_instances],
@@ -612,7 +592,7 @@ class RelationshipModel(ModelBase):
         Returns:
             int: The number of deleted relationships.
         """
-        logging.info(
+        logger.info(
             "Deleting first encountered relationship of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -640,7 +620,7 @@ class RelationshipModel(ModelBase):
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.info("Deleted %s relationships", results[0][0])
+        logger.info("Deleted %s relationships", results[0][0])
         return results[0][0]
 
     @classmethod
@@ -655,7 +635,7 @@ class RelationshipModel(ModelBase):
         Returns:
             int: The number of deleted relationships.
         """
-        logging.info(
+        logger.info(
             "Deleting all relationships of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -667,7 +647,7 @@ class RelationshipModel(ModelBase):
             type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
-        logging.debug("Getting relationship count matching filters %s", filters)
+        logger.debug("Getting relationship count matching filters %s", filters)
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -678,11 +658,11 @@ class RelationshipModel(ModelBase):
             resolve_models=False,
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.debug("Deleting relationships")
+        logger.debug("Deleting relationships")
         await cls._client.cypher(
             query=f"""
                 MATCH {match_query}
@@ -693,7 +673,7 @@ class RelationshipModel(ModelBase):
             parameters=cls._query_builder.parameters,
         )
 
-        logging.info("Deleted %s relationships", results[0][0])
+        logger.info("Deleted %s relationships", results[0][0])
         return results[0][0]
 
     @classmethod
@@ -708,7 +688,7 @@ class RelationshipModel(ModelBase):
         Returns:
             int: The number of relationships matched by the query.
         """
-        logging.info(
+        logger.info(
             "Getting count of relationships of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -729,7 +709,7 @@ class RelationshipModel(ModelBase):
             parameters=cls._query_builder.parameters,
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
@@ -739,6 +719,7 @@ class RelationshipModel(ModelBase):
         """
         Ensures that the instance is alive and not deleted.
         """
+        logger.debug("Ensuring instance is alive")
         if self._destroyed is True:
             raise InstanceDestroyed()
 

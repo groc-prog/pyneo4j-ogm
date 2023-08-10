@@ -5,7 +5,6 @@ the database for CRUD operations on nodes.
 """
 
 import json
-import logging
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Set, Tuple, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
@@ -20,6 +19,7 @@ from neo4j_ogm.exceptions import (
     UnregisteredModel,
 )
 from neo4j_ogm.fields.settings import NodeModelSettings
+from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
 
 if TYPE_CHECKING:
@@ -44,6 +44,7 @@ class NodeModel(ModelBase):
         super().__init__(*args, **kwargs)
 
         # Build relationship properties
+        logger.debug("Building relationship properties for model %s", self.__class__.__name__)
         for _, property_name in self.__dict__.items():
             if hasattr(property_name, "_build_property"):
                 cast(RelationshipProperty, property_name)._build_property(self)
@@ -58,7 +59,7 @@ class NodeModel(ModelBase):
         labels = getattr(cls.__settings__, "labels", None)
 
         if labels is None:
-            logging.warning(
+            logger.warning(
                 "No labels have been defined for model %s, using model name as label",
                 cls.__name__,
             )
@@ -66,9 +67,10 @@ class NodeModel(ModelBase):
             pascal_str = "".join(word.capitalize() for word in words)
             setattr(cls.__settings__, "labels", (pascal_str,))
         elif labels is not None and isinstance(labels, str):
-            logging.debug("str class %s provided as labels, converting to tuple", labels)
+            logger.debug("str class %s provided as labels, converting to tuple", labels)
             setattr(cls.__settings__, "labels", (labels,))
 
+        logger.debug("Collecting relationship properties for model %s", cls.__name__)
         for property_name, value in cls.__fields__.items():
             # Check if value is None here to prevent breaking logic if property_name is of type None
             if value.type_ is not None and hasattr(value.type_, "_build_property"):
@@ -82,7 +84,7 @@ class NodeModel(ModelBase):
         Returns:
             Dict[str, Any]: The deflated model instance.
         """
-        logging.debug("Deflating model %s to storable dictionary", self._element_id)
+        logger.debug("Deflating model %s to storable dictionary", self)
         deflated: Dict[str, Any] = json.loads(self.json(exclude=self._relationships_properties))
 
         # Serialize nested BaseModel or dict instances to JSON strings
@@ -116,7 +118,7 @@ class NodeModel(ModelBase):
             except:
                 return property_value
 
-        logging.debug("Inflating node %s to model instance", node.element_id)
+        logger.debug("Inflating node %s to model instance", node)
         for node_property in node.items():
             property_name, property_value = node_property
 
@@ -143,7 +145,7 @@ class NodeModel(ModelBase):
         Returns:
             T: The current model instance.
         """
-        logging.info("Creating new node from model instance %s", self.__class__.__name__)
+        logger.info("Creating new node from model instance %s", self.__class__.__name__)
         deflated_properties = self.deflate()
 
         results, _ = await self._client.cypher(
@@ -155,16 +157,16 @@ class NodeModel(ModelBase):
             parameters=deflated_properties,
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.debug("Hydrating instance values")
+        logger.debug("Hydrating instance values")
         setattr(self, "_element_id", getattr(cast(T, results[0][0]), "_element_id"))
 
-        logging.debug("Resetting modified properties")
+        logger.debug("Resetting modified properties")
         self._db_properties = self.dict()
-        logging.info("Created new node %s", self._element_id)
+        logger.info("Created new node %s", self)
 
         return self
 
@@ -179,10 +181,9 @@ class NodeModel(ModelBase):
         self._ensure_alive()
         deflated = self.deflate()
 
-        logging.info(
-            "Updating node %s of model %s with current properties %s",
-            self._element_id,
-            self.__class__.__name__,
+        logger.info(
+            "Updating node %s with current properties %s",
+            self,
             deflated,
         )
         set_query = ", ".join(
@@ -203,13 +204,13 @@ class NodeModel(ModelBase):
             parameters={"element_id": self._element_id, **deflated},
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.debug("Resetting modified properties")
+        logger.debug("Resetting modified properties")
         self._db_properties = self.dict()
-        logging.info("Updated node %s", self._element_id)
+        logger.info("Updated node %s", self)
 
     @hooks
     async def delete(self) -> None:
@@ -222,7 +223,7 @@ class NodeModel(ModelBase):
         """
         self._ensure_alive()
 
-        logging.info("Deleting node %s of model %s", self._element_id, self.__class__.__name__)
+        logger.info("Deleting node %s", self)
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.node_match(self.__settings__.labels)}
@@ -233,13 +234,13 @@ class NodeModel(ModelBase):
             parameters={"element_id": self._element_id},
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.debug("Marking instance as destroyed")
+        logger.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
-        logging.info("Deleted node %s", self._element_id)
+        logger.info("Deleted node %s", self)
 
     @hooks
     async def refresh(self) -> None:
@@ -251,7 +252,7 @@ class NodeModel(ModelBase):
         """
         self._ensure_alive()
 
-        logging.info("Refreshing node %s of model %s", self._element_id, self.__class__.__name__)
+        logger.info("Refreshing node %s with values from database", self)
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.node_match(self.__settings__.labels)}
@@ -261,13 +262,13 @@ class NodeModel(ModelBase):
             parameters={"element_id": self._element_id},
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.debug("Updating current instance")
+        logger.debug("Updating current instance")
         self.__dict__.update(cast(T, results[0][0]).__dict__)
-        logging.info("Refreshed node %s", self._element_id)
+        logger.info("Refreshed node %s", self)
 
     @hooks
     async def find_connected_nodes(
@@ -285,9 +286,9 @@ class NodeModel(ModelBase):
         """
         self._ensure_alive()
 
-        logging.info(
-            "Getting connected nodes of model %s matching filters %s over multiple hops",
-            self.__class__.__name__,
+        logger.info(
+            "Getting connected nodes for node %s matching filters %s over multiple hops",
+            self,
             filters,
         )
         if filters is not None:
@@ -312,13 +313,14 @@ class NodeModel(ModelBase):
 
         instances: List[T] = []
 
+        logger.debug("Building instances from results")
         for result_list in results:
             for result in result_list:
                 if result is None:
                     continue
 
-                if isinstance(results[0][0], Node):
-                    instances.append(self.inflate(node=results[0][0]))
+                if isinstance(result, Node):
+                    instances.append(self.inflate(node=result))
                 else:
                     instances.append(result)
 
@@ -342,7 +344,7 @@ class NodeModel(ModelBase):
         Returns:
             T | None: A instance of the model or None if no match is found.
         """
-        logging.info(
+        logger.info(
             "Getting first encountered node of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -362,6 +364,7 @@ class NodeModel(ModelBase):
         )
 
         if do_auto_fetch:
+            logger.debug("Querying database with auto-fetch")
             results, meta = await cls._client.cypher(
                 query=f"""
                     MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
@@ -374,6 +377,7 @@ class NodeModel(ModelBase):
                 parameters=cls._query_builder.parameters,
             )
         else:
+            logger.debug("Querying database without auto-fetch")
             results, meta = await cls._client.cypher(
                 query=f"""
                     MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
@@ -384,11 +388,11 @@ class NodeModel(ModelBase):
                 parameters=cls._query_builder.parameters,
             )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             return None
 
-        logging.debug("Checking if node has to be parsed to instance")
+        logger.debug("Checking if node has to be parsed to instance")
         instance = cls.inflate(node=results[0][0]) if isinstance(results[0][0], Node) else results[0][0]
 
         if not do_auto_fetch:
@@ -397,6 +401,7 @@ class NodeModel(ModelBase):
         # Add auto-fetched nodes to relationship properties
         added_nodes: Set[str] = set()
 
+        logger.debug("Adding auto-fetched nodes to relationship properties")
         for result_list in results:
             for index, result in enumerate(result_list[1:]):
                 if result is not None:
@@ -432,7 +437,7 @@ class NodeModel(ModelBase):
         Returns:
             List[T]: A list of model instances.
         """
-        logging.info("Getting nodes of model %s matching filters %s", cls.__name__, filters)
+        logger.info("Getting nodes of model %s matching filters %s", cls.__name__, filters)
         match_queries, return_queries = cls._build_auto_fetch()
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
@@ -449,6 +454,7 @@ class NodeModel(ModelBase):
         )
 
         if do_auto_fetch:
+            logger.debug("Querying database with auto-fetch")
             results, meta = await cls._client.cypher(
                 query=f"""
                     MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
@@ -464,6 +470,7 @@ class NodeModel(ModelBase):
             # Add auto-fetched nodes to relationship properties
             added_nodes: Set[str] = set()
 
+            logger.debug("Adding auto-fetched nodes to relationship properties")
             for result_list in results:
                 for index, result in enumerate(result_list):
                     if result is None or result_list[0] is None:
@@ -489,6 +496,7 @@ class NodeModel(ModelBase):
 
             return instances
         else:
+            logger.debug("Querying database without auto-fetch")
             results, _ = await cls._client.cypher(
                 query=f"""
                     MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
@@ -531,12 +539,12 @@ class NodeModel(ModelBase):
         """
         new_instance: T
 
-        logging.info(
+        logger.info(
             "Updating first encountered node of model %s matching filters %s",
             cls.__name__,
             filters,
         )
-        logging.debug(
+        logger.debug(
             "Getting first encountered node of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -556,13 +564,13 @@ class NodeModel(ModelBase):
             parameters=cls._query_builder.parameters,
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
         old_instance = results[0][0]
 
         # Update existing instance with values and save
-        logging.debug("Creating instance copy with new values %s", update)
+        logger.debug("Creating instance copy with new values %s", update)
         new_instance = cls(**cast(T, old_instance).dict())
 
         for key, value in update.items():
@@ -587,7 +595,7 @@ class NodeModel(ModelBase):
             """,
             parameters={"element_id": cls._element_id, **deflated},
         )
-        logging.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
+        logger.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
 
         if new:
             return new_instance
@@ -617,11 +625,11 @@ class NodeModel(ModelBase):
         """
         new_instance: T
 
-        logging.info("Updating all nodes of model %s matching filters %s", cls.__name__, filters)
+        logger.info("Updating all nodes of model %s matching filters %s", cls.__name__, filters)
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
 
-        logging.debug("Getting all nodes of model %s matching filters %s", cls.__name__, filters)
+        logger.debug("Getting all nodes of model %s matching filters %s", cls.__name__, filters)
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
@@ -640,13 +648,13 @@ class NodeModel(ModelBase):
 
                 old_instances.append(cls.inflate(node=result) if isinstance(result, Node) else result)
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(old_instances) == 0:
-            logging.debug("No results found")
+            logger.debug("No results found")
             return []
 
         # Try and parse update values into random instance to check validation
-        logging.debug("Creating instance copy with new values %s", update)
+        logger.debug("Creating instance copy with new values %s", update)
         new_instance = cls(**old_instances[0].dict())
         new_instance.__dict__.update(update)
 
@@ -663,11 +671,12 @@ class NodeModel(ModelBase):
             parameters={**deflated_properties, **cls._query_builder.parameters},
         )
 
-        logging.info(
+        logger.info(
             "Successfully updated %s nodes %s",
             len(old_instances),
             [getattr(instance, "_element_id") for instance in old_instances],
         )
+        logger.debug("Building instances from results")
         if new:
             instances: List[T] = []
 
@@ -695,7 +704,7 @@ class NodeModel(ModelBase):
         Returns:
             int: The number of deleted nodes.
         """
-        logging.info(
+        logger.info(
             "Deleting first encountered node of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -716,11 +725,11 @@ class NodeModel(ModelBase):
             parameters=cls._query_builder.parameters,
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
-        logging.info("Deleted node %s", cast(Node, results[0][0]).element_id)
+        logger.info("Deleted node %s", cast(Node, results[0][0]).element_id)
         return len(results)
 
     @classmethod
@@ -735,7 +744,7 @@ class NodeModel(ModelBase):
         Returns:
             int: The number of deleted nodes.
         """
-        logging.info("Deleting all nodes of model %s matching filters %s", cls.__name__, filters)
+        logger.info("Deleting all nodes of model %s matching filters %s", cls.__name__, filters)
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
 
@@ -749,7 +758,7 @@ class NodeModel(ModelBase):
             parameters=cls._query_builder.parameters,
         )
 
-        logging.info("Deleted %s nodes", len(results))
+        logger.info("Deleted %s nodes", len(results))
         return len(results)
 
     @classmethod
@@ -763,7 +772,7 @@ class NodeModel(ModelBase):
         Returns:
             int: The number of nodes matched by the query.
         """
-        logging.info(
+        logger.info(
             "Getting count of nodes of model %s matching filters %s",
             cls.__name__,
             filters,
@@ -780,7 +789,7 @@ class NodeModel(ModelBase):
             parameters=cls._query_builder.parameters,
         )
 
-        logging.debug("Checking if query returned a result")
+        logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NoResultsFound()
 
@@ -800,6 +809,7 @@ class NodeModel(ModelBase):
         match_queries: List[str] = []
         return_queries: List[str] = []
 
+        logger.debug("Building node match queries for auto-fetch")
         for defined_relationship in cls._relationships_properties:
             relationship_type: str = None
             end_node_labels: List[str] = None
@@ -833,6 +843,7 @@ class NodeModel(ModelBase):
         """
         Ensures that the instance is alive and not deleted.
         """
+        logger.debug("Ensuring instance is alive")
         if self._destroyed is True:
             raise InstanceDestroyed()
 
