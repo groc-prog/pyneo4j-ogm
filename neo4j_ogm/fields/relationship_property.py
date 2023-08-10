@@ -50,6 +50,7 @@ class RelationshipProperty(Generic[T, U]):
     _relationship_model: Type[U]
     _relationship_model_name: str
     _allow_multiple: bool
+    _nodes: List[T] = []
 
     def __init__(
         self,
@@ -510,6 +511,17 @@ class RelationshipProperty(Generic[T, U]):
         self._relationship_model = registered_relationship_model[0]
 
         return self
+
+    @property
+    def nodes(self) -> List[T]:
+        """
+        Auto-fetched nodes. Must set `auto_fetch_nodes` in settings or `find_one, find_many or
+        find_connected_nodes` to `True` fot this to work.
+
+        Returns:
+            List[T]: The auto-fetched nodes.
+        """
+        return self._nodes
 
     def _ensure_alive(self, nodes: Union[T, List[T]]) -> None:
         """
