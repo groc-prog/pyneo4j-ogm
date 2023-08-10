@@ -39,6 +39,8 @@ class RelationshipProperty(Generic[T, U]):
     """
     Class used to define relationships between the model this class is used on and a target node, which defines the
     other end of the relationship.
+
+    Accepts two generic types, the first being the target node and the second being the relationship model.
     """
 
     _client: Neo4jClient

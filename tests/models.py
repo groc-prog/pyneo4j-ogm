@@ -1,73 +1,162 @@
-import asyncio
+# pylint: disable-all
+
+from datetime import datetime
 from typing import Any, Dict, List
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
 from neo4j_ogm.fields.property_options import WithOptions
 from neo4j_ogm.fields.relationship_property import RelationshipProperty, RelationshipPropertyDirection
 
 
-class Role(BaseModel):
-    name: str = "Emmies"
-    year: int = 2020
+def coffee_pre_hook(model: "Coffee", *args, **kwargs):
+    print("MORE COFFEEEEEE")
 
 
-class WorkedTogether(RelationshipModel):
-    had_fun: bool = True
-    fun_level: int = 5
+def worked_on_post_hook(model: "WorkedOn", *args, **kwargs):
+    print("WORKING ON IT")
 
 
-class Friends(RelationshipModel):
+class WorkingOn(RelationshipModel):
+    role: str
+
     class Settings:
-        type = "FRIENDS_WITH"
+        post_hooks = {"create": worked_on_post_hook}
 
 
-class WorkedFor(RelationshipModel):
+class ImplementedFeature(RelationshipModel):
+    name: str
+    amount_of_bugs: int
+
     class Settings:
-        type = "WORKED_FOR"
+        type = "IMPLEMENTED"
+        exclude_from_export = {"amount_of_bugs"}
 
 
-class Actor(NodeModel):
-    id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
-    name: WithOptions(str, text_index=True)
+class ConsumedBy(RelationshipModel):
+    pass
+
+
+class HatedBy(RelationshipModel):
+    class Settings:
+        type = "HATED_BY"
+        auto_fetch_nodes = True
+
+
+class Coffee(NodeModel):
+    flavour: WithOptions(property_type=str, unique=True)
+    origin: str
+
+    typescript_developers: RelationshipProperty["TypescriptDeveloper", ConsumedBy] = RelationshipProperty(
+        target_model="TypescriptDeveloper",
+        relationship_model=ConsumedBy,
+        direction=RelationshipPropertyDirection.OUTGOING,
+        allow_multiple=False,
+    )
+    java_developers: RelationshipProperty["JavaDeveloper", ConsumedBy] = RelationshipProperty(
+        target_model="JavaDeveloper",
+        relationship_model=ConsumedBy,
+        direction=RelationshipPropertyDirection.OUTGOING,
+        allow_multiple=False,
+    )
+
+    class Settings:
+        pre_hooks = {"create": coffee_pre_hook}
+
+
+class Developer(NodeModel):
+    id: WithOptions(property_type=UUID, range_index=True, unique=True) = Field(default_factory=uuid4)
+    name: str
     age: int
-    latest_role: Dict[str, Any] = dict(Role(name="No Emmies", year=2020))
-    all_roles: List[Role] = [Role()]
 
-    class Settings:
-        exclude_from_export = {"latest_role"}
-        labels = "Actor"
-
-
-class Producer(NodeModel):
-    id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
-    name: WithOptions(str, text_index=True)
-
-    class Settings:
-        labels = "Producer"
-
-
-class Actress(NodeModel):
-    id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
-    name: WithOptions(str, text_index=True)
-    age: int
-    latest_role: Dict[str, Any] = dict(Role(name="No Emmies", year=2020))
-    all_roles: List[Role] = [Role()]
-
-    colleagues: RelationshipProperty["Actor", WorkedTogether] = RelationshipProperty(
-        target_model=Actor, relationship_model="WorkedTogether", direction=RelationshipPropertyDirection.OUTGOING
+    projects: RelationshipProperty["Project", WorkingOn] = RelationshipProperty(
+        target_model="Project",
+        relationship_model=WorkingOn,
+        direction=RelationshipPropertyDirection.OUTGOING,
+        allow_multiple=False,
     )
-    friends: RelationshipProperty["Actress", Friends] = RelationshipProperty(
-        "Actress", Friends, RelationshipPropertyDirection.INCOMING, True
+    project_features: RelationshipProperty["Project", ImplementedFeature] = RelationshipProperty(
+        target_model="Project",
+        relationship_model="ImplementedFeature",
+        direction=RelationshipPropertyDirection.OUTGOING,
+        allow_multiple=True,
     )
-    bosses: RelationshipProperty[Producer, WorkedFor] = RelationshipProperty(
-        Producer, WorkedFor, RelationshipPropertyDirection.INCOMING
+    coffee: RelationshipProperty[Coffee, ConsumedBy] = RelationshipProperty(
+        target_model=Coffee,
+        relationship_model=ConsumedBy,
+        direction=RelationshipPropertyDirection.INCOMING,
+        allow_multiple=False,
+    )
+
+
+class TypescriptDeveloper(Developer):
+    hated_java_developes: RelationshipProperty["JavaDeveloper", HatedBy] = RelationshipProperty(
+        target_model="JavaDeveloper",
+        relationship_model=HatedBy,
+        direction=RelationshipPropertyDirection.INCOMING,
+        allow_multiple=False,
     )
 
     class Settings:
-        exclude_from_export = {"latest_role"}
-        labels = {"Actress", "Female"}
+        labels = {"Developer", "Happy"}
+
+
+class JavaDeveloper(Developer):
+    developers_hated_by: RelationshipProperty[TypescriptDeveloper, HatedBy] = RelationshipProperty(
+        target_model=TypescriptDeveloper,
+        relationship_model=HatedBy,
+        direction=RelationshipPropertyDirection.OUTGOING,
+        allow_multiple=False,
+    )
+
+    class Settings:
+        labels = {"Developer", "RegretsLifeDecisions"}
+
+
+class Milestone(BaseModel):
+    name: str
+    timestamp: float
+
+    class Settings:
+        labels = "ProjectMilestone"
+
+
+class Project(NodeModel):
+    name: str
+    description: str
+    deadline: datetime
+    metadata: Dict[str, Any]
+    milestones: List[Milestone]
+
+    typescript_developers: RelationshipProperty[TypescriptDeveloper, WorkingOn] = RelationshipProperty(
+        target_model=TypescriptDeveloper,
+        relationship_model=WorkingOn,
+        direction=RelationshipPropertyDirection.INCOMING,
+        allow_multiple=False,
+    )
+    java_developers: RelationshipProperty[JavaDeveloper, WorkingOn] = RelationshipProperty(
+        target_model=JavaDeveloper,
+        relationship_model=WorkingOn,
+        direction=RelationshipPropertyDirection.INCOMING,
+        allow_multiple=False,
+    )
+    typescript_developer_features: RelationshipProperty[TypescriptDeveloper, ImplementedFeature] = RelationshipProperty(
+        target_model=TypescriptDeveloper,
+        relationship_model=ImplementedFeature,
+        direction=RelationshipPropertyDirection.INCOMING,
+        allow_multiple=True,
+    )
+    java_developer_features: RelationshipProperty[JavaDeveloper, ImplementedFeature] = RelationshipProperty(
+        target_model=JavaDeveloper,
+        relationship_model=ImplementedFeature,
+        direction=RelationshipPropertyDirection.INCOMING,
+        allow_multiple=True,
+    )
+
+    class Settings:
+        exclude_from_export = {"metadata"}
         auto_fetch_nodes = True

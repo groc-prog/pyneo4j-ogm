@@ -1,3 +1,5 @@
+# pylint: disable-all
+
 import asyncio
 import logging
 
@@ -5,8 +7,27 @@ from neo4j_ogm.queries.query_builder import QueryBuilder
 
 logging.basicConfig(level=logging.DEBUG)
 
+import asyncio
+from typing import Any, Dict, List
+from uuid import UUID, uuid4
+
+from pydantic import BaseModel, Field
+
 from neo4j_ogm.core.client import Neo4jClient
-from tests.models import Actor, Actress, Friends, Producer, WorkedFor, WorkedTogether
+from neo4j_ogm.core.node import NodeModel
+from neo4j_ogm.core.relationship import RelationshipModel
+from neo4j_ogm.fields.property_options import WithOptions
+from neo4j_ogm.fields.relationship_property import RelationshipProperty, RelationshipPropertyDirection
+
+
+class FrontendDeveloper(NodeModel):
+    id: WithOptions(property_type=UUID, range_index=True) = Field(default_factory=uuid4)
+    name: str
+    age: int
+    likes_his_job: bool
+
+    class Settings:
+        labels = {"Developer", "Sane"}
 
 
 async def main():
