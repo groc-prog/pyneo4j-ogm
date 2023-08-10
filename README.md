@@ -2,6 +2,10 @@
 A asynchronous wrapper library around **Neo4j's python driver** which provides a **structured and easy** approach to working with
 Neo4j databases and cypher queries. This library makes heavy use of `pydantic` and it's validation capabilities.
 
+## Todo's
+- [ ] Add cardinality checks to relationships
+- [ ] Add auto-fetch of nodes connected with defined relationships
+- [ ] Better examples for documentation
 
 
 ## ⚡️ Quick start <a name="quick-start"></a>

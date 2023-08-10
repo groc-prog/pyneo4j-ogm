@@ -11,6 +11,7 @@ class BaseModelSettings(BaseModel):
     Shared settings for NodeModel and RelationshipModel classes or subclasses.
     """
 
+    auto_fetch_nodes: bool = False
     exclude_from_export: Set[str] = set()
     pre_hooks: Dict[str, Union[List[Callable], Callable]] = {}
     post_hooks: Dict[str, Union[List[Callable], Callable]] = {}

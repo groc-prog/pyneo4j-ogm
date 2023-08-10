@@ -9,10 +9,6 @@ from neo4j_ogm.core.client import Neo4jClient
 from tests.models import Actor, Actress, Friends, WorkedTogether
 
 
-def hook(*args, **kwargs):
-    print(args, kwargs)
-
-
 async def main():
     client = Neo4jClient()
 
@@ -21,8 +17,6 @@ async def main():
     await client.drop_constraints()
     await client.drop_nodes()
     await client.register_models([Actress, Actor, WorkedTogether, Friends])
-
-    Actress.register_post_hooks("create", hook)
 
     a = await Actress(name="Scarlett Johansson", age=35).create()
     b = await Actress(name="Gal Gadot", age=29).create()
