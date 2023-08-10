@@ -44,7 +44,6 @@ class ConsumedBy(RelationshipModel):
 class HatedBy(RelationshipModel):
     class Settings:
         type = "HATED_BY"
-        auto_fetch_nodes = True
 
 
 class Coffee(NodeModel):

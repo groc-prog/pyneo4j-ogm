@@ -14,6 +14,7 @@ CREATE
   (martin)-[:WORKS_ON {role:'Developer'}]->(project_one),
   (phil)-[:WORKS_ON {role:'Intern'}]->(project_two),
   (salli)-[:WORKS_ON {role:'Lead'}]->(project_two),
+  (thomas)-[:WORKS_ON {role:'Developer'}]->(project_two),
   (jim)-[:IMPLEMENTED {name:'Implemented the thing', amount_of_bugs: 3}]->(project_one),
   (jim)-[:IMPLEMENTED {name:'Some more things', amount_of_bugs: 5}]->(project_one),
   (jim)-[:IMPLEMENTED {name:'Something veeeery important', amount_of_bugs: 0}]->(project_two),

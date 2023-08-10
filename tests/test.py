@@ -3,57 +3,77 @@
 import asyncio
 import logging
 
-from neo4j_ogm.queries.query_builder import QueryBuilder
-
 logging.basicConfig(level=logging.DEBUG)
 
-import asyncio
-from typing import Any, Dict, List
-from uuid import UUID, uuid4
-
-from pydantic import BaseModel, Field
-
 from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.core.relationship import RelationshipModel
-from neo4j_ogm.fields.property_options import WithOptions
-from neo4j_ogm.fields.relationship_property import RelationshipProperty, RelationshipPropertyDirection
-
-
-class FrontendDeveloper(NodeModel):
-    id: WithOptions(property_type=UUID, range_index=True) = Field(default_factory=uuid4)
-    name: str
-    age: int
-    likes_his_job: bool
-
-    class Settings:
-        labels = {"Developer", "Sane"}
+from tests.models import (
+    Coffee,
+    ConsumedBy,
+    HatedBy,
+    ImplementedFeature,
+    JavaDeveloper,
+    Project,
+    TypescriptDeveloper,
+    WorkingOn,
+)
 
 
 async def main():
     client = Neo4jClient()
 
     client.connect("bolt://localhost:7687", ("neo4j", "password"))
-    await client.drop_indexes()
-    await client.drop_constraints()
-    await client.drop_nodes()
-    await client.register_models([Actress, Actor, WorkedTogether, Friends, Producer, WorkedFor])
+    await client.register_models(
+        [Coffee, TypescriptDeveloper, JavaDeveloper, Project, ConsumedBy, WorkingOn, HatedBy, ImplementedFeature]
+    )
 
-    a = await Actress(name="Scarlett Johansson", age=41).create()
-    g = await Actress(name="Rachel McAdams", age=41).create()
-    b = await Actor(name="Gal Gadot", age=29).create()
-    c = await Actor(name="Margot Robbie", age=39).create()
-    d = await Actor(name="Jennifer Lawrence", age=30).create()
-    e = await Producer(name="Angelina Jolie", age=45).create()
-    f = await Producer(name="Arnold Schwarzenegger", age=31).create()
+    jim = await TypescriptDeveloper(name="Jim", id="2b2f2c7e-0b1a-4b0e-8b0a-0e2b2f2c7e0a").create()
+    martin = await JavaDeveloper(name="Martin", id="b4c2b7e0-eeb1-4b9e-9e4c-6e9c9f1f8d8a").create()
+    phil = await TypescriptDeveloper(name="Phil", id="c2b7e0b4-eeb1-4b9e-9e4c-6e9c9f1f8d8a").create()
+    thomas = await TypescriptDeveloper(name="Thomas", id="b7e0b4c2-eeb1-4b9e-9e4c-6e9c9f1f8d8a").create()
+    salli = await TypescriptDeveloper(name="Salli", id="e0b4c2b7-eeb1-4b9e-9e4c-6e9c9f1f8d8a").create()
 
-    await a.colleagues.connect(b)
-    await a.colleagues.connect(c)
-    await g.colleagues.connect(d)
-    await a.bosses.connect(e)
-    await g.bosses.connect(f)
+    project_one = await Project(
+        name="Project One",
+        deadline="2022-01-01T12:00:00Z",
+        metadata='{"awesome": true}',
+        milestones=['{"name": "That hard thing done", "timestamp": 1691696518}'],
+    ).create()
+    project_two = await Project(
+        name="Project Two",
+        deadline="2022-04-23T16:45:00Z",
+        metadata="{}",
+        milestones=[
+            '{"name": "Finished talking with important person", "timestamp": 1691825684}',
+            '{"name": "Got copilot to do the work for me", "timestamp": 1691682690}',
+        ],
+    ).create()
 
-    result = await Actress.find_many({"age": 41}, auto_fetch_nodes=False)
+    macchiato = await Coffee(flavour="Macchiato", origin="Italy").create()
+    espresso = await Coffee(flavour="Espresso", origin="Colombia").create()
+    dark_roast = await Coffee(flavour="Dark Roast", origin="Brazil").create()
+
+    await jim.projects.connect(project_one, {"role": "Lead"})
+    await jim.projects.connect(project_two, {"role": "Developer"})
+    await martin.projects.connect(project_two, {"role": "Developer"})
+    await phil.projects.connect(project_two, {"role": "Intern"})
+    await salli.projects.connect(project_two, {"role": "Lead"})
+    await thomas.projects.connect(project_two, {"role": "Developer"})
+
+    await jim.project_features.connect(project_one, {"name": "Implemented the thing", "amount_of_bugs": 3})
+    await jim.project_features.connect(project_one, {"name": "Some more things", "amount_of_bugs": 5})
+    await jim.project_features.connect(project_two, {"name": "Something veeeery important", "amount_of_bugs": 0})
+    await martin.project_features.connect(project_one, {"name": "Implemented the other thing", "amount_of_bugs": 29})
+    await salli.project_features.connect(project_two, {"name": "Serious work", "amount_of_bugs": 7})
+
+    await martin.developers_hated_by.connect(jim)
+    await martin.developers_hated_by.connect(phil)
+    await martin.developers_hated_by.connect(thomas)
+    await martin.developers_hated_by.connect(salli)
+
+    await espresso.typescript_developers.connect(jim)
+    await espresso.java_developers.connect(martin)
+    await dark_roast.typescript_developers.connect(phil)
+    await macchiato.typescript_developers.connect(phil)
 
     print("DONE")
 
