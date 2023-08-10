@@ -1,8 +1,6 @@
 """
-Module containing all exceptions raised by the library.
+Neo4jOGM exceptions raised by the client or the models.
 """
-
-
 from typing import List
 
 

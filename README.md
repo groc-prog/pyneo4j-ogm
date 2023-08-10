@@ -4,7 +4,7 @@ Neo4j databases and cypher queries. This library makes heavy use of `pydantic` a
 
 ## Todo's
 - [ ] Add cardinality checks to relationships
-- [ ] Add auto-fetch of nodes connected with defined relationships
+- [x] Add auto-fetch of nodes connected with defined relationships
 - [ ] Better examples for documentation
 - [ ] Make logging controllable using ENV variable
 
