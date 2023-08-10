@@ -17,7 +17,7 @@ def coffee_pre_hook(model: "Coffee", *args, **kwargs):
     print("MORE COFFEEEEEE")
 
 
-def worked_on_post_hook(model: "WorkedOn", *args, **kwargs):
+def worked_on_post_hook(model: "WorkingOn", *args, **kwargs):
     print("WORKING ON IT")
 
 
@@ -71,7 +71,6 @@ class Coffee(NodeModel):
 class Developer(NodeModel):
     id: WithOptions(property_type=UUID, range_index=True, unique=True) = Field(default_factory=uuid4)
     name: str
-    age: int
 
     projects: RelationshipProperty["Project", WorkingOn] = RelationshipProperty(
         target_model="Project",
@@ -121,13 +120,9 @@ class Milestone(BaseModel):
     name: str
     timestamp: float
 
-    class Settings:
-        labels = "ProjectMilestone"
-
 
 class Project(NodeModel):
     name: str
-    description: str
     deadline: datetime
     metadata: Dict[str, Any]
     milestones: List[Milestone]
