@@ -38,6 +38,15 @@ class IndexType(str, Enum):
     TOKEN = "TOKEN"
 
 
+class Cardinality(str, Enum):
+    """
+    Available cardinality types.
+    """
+
+    ZERO_OR_ONE = "ZERO_OR_ONE"
+    ZERO_OR_MORE = "ZERO_OR_MORE"
+
+
 class EntityType(str, Enum):
     """
     Available entity types.
@@ -80,6 +89,7 @@ class Neo4jClient:
     _skip_constraints: bool
     _skip_indexes: bool
     _batch_enabled: bool = False
+    _cardinality: List[Tuple[Cardinality, str, str]] = []
     models: Set[Type[NodeModel | RelationshipModel]] = set()
     uri: str
     auth: Tuple[str, str] | None
@@ -558,6 +568,23 @@ class Neo4jClient:
                 statement.
         """
         return BatchManager(self)
+
+    def register_cardinality(
+        self, cardinality: Cardinality, start_model: Union[Type[NodeModel], str], end_model: Union[Type[NodeModel], str]
+    ) -> None:
+        """
+        Registers a cardinality between two models.
+
+        Args:
+            cardinality (Cardinality): The cardinality to register.
+            start_model (Union[Type[NodeModel], str]): Start model of the cardinality or string with the model name.
+            end_model (Union[Type[NodeModel], str]): End model of the cardinality or string with the model name.
+        """
+        start_model_name = start_model if isinstance(start_model, str) else start_model.__name__
+        end_model_name = end_model if isinstance(end_model, str) else end_model.__name__
+
+        logger.debug("Registering cardinality %s between %s and %s", cardinality, start_model_name, end_model_name)
+        self._cardinality.append((cardinality, start_model_name, end_model_name))
 
     def _resolve_database_model(
         self, query_result: Union[Node, Relationship, Path]
