@@ -452,7 +452,15 @@ class Neo4jClient:
         Deletes all nodes in the database.
         """
         logger.warning("Dropping all nodes")
-        await self.cypher(query="MATCH (node) DETACH DELETE node", resolve_models=False)
+        results, _ = await self.cypher(
+            query="""
+                MATCH (n)
+                DETACH DELETE n
+                RETURN count(n)
+            """,
+            resolve_models=False,
+        )
+        logger.info("Dropped %s nodes", results[0][0])
 
     @ensure_connection
     async def drop_constraints(self) -> None:
@@ -462,10 +470,11 @@ class Neo4jClient:
         logger.debug("Discovering constraints")
         results, _ = await self.cypher(query="SHOW CONSTRAINTS", resolve_models=False)
 
-        logger.warning("Dropping %s constraints", len(results))
+        logger.warning("Dropping all constraints")
         for constraint in results:
             logger.debug("Dropping constraint %s", constraint[1])
             await self.cypher(f"DROP CONSTRAINT {constraint[1]}")
+        logger.info("Dropped %s constraints", len(results))
 
     @ensure_connection
     async def drop_indexes(self) -> None:
@@ -475,13 +484,17 @@ class Neo4jClient:
         logger.debug("Discovering indexes")
         results, _ = await self.cypher(query="SHOW INDEXES", resolve_models=False)
 
-        logger.warning("Dropping %s indexes", len(results))
+        logger.warning("Dropping all indexes")
+        count = 0
+
         for index in results:
             try:
                 logger.debug("Dropping index %s", index[1])
                 await self.cypher(f"DROP INDEX {index[1]}")
+                count += 1
             except DatabaseError as exc:
                 logger.warning("Failed to drop index %s: %s", index[1], exc.message)
+        logger.info("Dropped %s indexes", count)
 
     @ensure_connection
     async def begin_transaction(self) -> None:
