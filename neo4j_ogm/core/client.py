@@ -77,6 +77,8 @@ class Neo4jClient:
     _driver: AsyncDriver
     _session: AsyncSession
     _transaction: AsyncTransaction
+    _skip_constraints: bool
+    _skip_indexes: bool
     _batch_enabled: bool = False
     models: Set[Type[NodeModel | RelationshipModel]] = set()
     uri: str
@@ -91,6 +93,8 @@ class Neo4jClient:
         self,
         uri: Union[str, None] = None,
         auth: Union[Tuple[str, str], None] = None,
+        skip_constraints: bool = False,
+        skip_indexes: bool = False,
         *args,
         **kwargs,
     ) -> "Neo4jClient":
@@ -102,6 +106,10 @@ class Neo4jClient:
                 NEO4J_URI environment variable. Defaults to None.
             auth (Tuple[str, str] | None, optional): Username and password authentication to use.
                 Defaults to None.
+            skip_constraints (bool, optional): Whether to skip creating constraints on models or
+                not. Defaults to False.
+            skip_indexes (bool, optional): Whether to skip creating indexes on models or not.
+                Defaults to False.
 
         Raises:
             MissingDatabaseURI: Raised if no uri is provided and the NEO4J_URI env variable is
@@ -110,14 +118,16 @@ class Neo4jClient:
         Returns:
             Neo4jClient: The client.
         """
-        db_uri = uri if uri is not None else os.environ.get("NEO4J_URI", None)
-        db_auth = auth if auth is not None else os.environ.get("NEO4J_AUTH", None)
+        db_uri = uri if uri is not None else os.environ.get("NEO4J_OGM_URI", None)
+        db_auth = auth if auth is not None else os.environ.get("NEO4J_OGM_AUTH", None)
 
         if db_uri is None:
             raise MissingDatabaseURI()
 
         self.uri = db_uri
         self.auth = db_auth
+        self._skip_constraints = skip_constraints
+        self._skip_indexes = skip_indexes
 
         logger.info("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth, *args, **kwargs)
@@ -151,37 +161,40 @@ class Neo4jClient:
                         else getattr(model.__settings__, "type")
                     )
 
-                    if getattr(property_definition.type_, "_unique", False):
-                        await self.create_constraint(
-                            name=f"{model.__name__}_{property_name}_unique_constraint",
-                            entity_type=entity_type,
-                            properties=[property_name],
-                            labels_or_type=labels_or_type,
-                        )
-                    if getattr(property_definition.type_, "_range_index", False):
-                        await self.create_index(
-                            name=f"{model.__name__}_{property_name}_range_index",
-                            entity_type=entity_type,
-                            index_type=IndexType.RANGE,
-                            properties=[property_name],
-                            labels_or_type=labels_or_type,
-                        )
-                    if getattr(property_definition.type_, "_point_index", False):
-                        await self.create_index(
-                            name=f"{model.__name__}_{property_name}_point_index",
-                            entity_type=entity_type,
-                            index_type=IndexType.POINT,
-                            properties=[property_name],
-                            labels_or_type=labels_or_type,
-                        )
-                    if getattr(property_definition.type_, "_text_index", False):
-                        await self.create_index(
-                            name=f"{model.__name__}_{property_name}_text_index",
-                            entity_type=entity_type,
-                            index_type=IndexType.TEXT,
-                            properties=[property_name],
-                            labels_or_type=labels_or_type,
-                        )
+                    if not self._skip_constraints:
+                        if getattr(property_definition.type_, "_unique", False):
+                            await self.create_constraint(
+                                name=f"{model.__name__}_{property_name}_unique_constraint",
+                                entity_type=entity_type,
+                                properties=[property_name],
+                                labels_or_type=labels_or_type,
+                            )
+
+                    if not self._skip_indexes:
+                        if getattr(property_definition.type_, "_range_index", False):
+                            await self.create_index(
+                                name=f"{model.__name__}_{property_name}_range_index",
+                                entity_type=entity_type,
+                                index_type=IndexType.RANGE,
+                                properties=[property_name],
+                                labels_or_type=labels_or_type,
+                            )
+                        if getattr(property_definition.type_, "_point_index", False):
+                            await self.create_index(
+                                name=f"{model.__name__}_{property_name}_point_index",
+                                entity_type=entity_type,
+                                index_type=IndexType.POINT,
+                                properties=[property_name],
+                                labels_or_type=labels_or_type,
+                            )
+                        if getattr(property_definition.type_, "_text_index", False):
+                            await self.create_index(
+                                name=f"{model.__name__}_{property_name}_text_index",
+                                entity_type=entity_type,
+                                index_type=IndexType.TEXT,
+                                properties=[property_name],
+                                labels_or_type=labels_or_type,
+                            )
 
     @ensure_connection
     async def close(self) -> None:
