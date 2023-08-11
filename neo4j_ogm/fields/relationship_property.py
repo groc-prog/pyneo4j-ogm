@@ -11,6 +11,7 @@ from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
 from neo4j_ogm.exceptions import (
+    CardinalityViolation,
     InstanceDestroyed,
     InstanceNotHydrated,
     InvalidTargetNode,
@@ -35,6 +36,15 @@ class RelationshipPropertyDirection(str, Enum):
     OUTGOING = "OUTGOING"
 
 
+class Cardinality(str, Enum):
+    """
+    Available cardinality types.
+    """
+
+    ZERO_OR_ONE = "ZERO_OR_ONE"
+    ZERO_OR_MORE = "ZERO_OR_MORE"
+
+
 class RelationshipProperty(Generic[T, U]):
     """
     Class used to define relationships between the model this class is used on and a target node, which defines the
@@ -49,6 +59,7 @@ class RelationshipProperty(Generic[T, U]):
     _target_model_name: str
     _source_node: T
     _direction: RelationshipPropertyDirection
+    _cardinality: Cardinality
     _relationship_model: Type[U]
     _relationship_model_name: str
     _allow_multiple: bool
@@ -59,6 +70,7 @@ class RelationshipProperty(Generic[T, U]):
         target_model: Union[Type[T], str],
         relationship_model: Union[Type[U], str],
         direction: RelationshipPropertyDirection,
+        cardinality: Cardinality = Cardinality.ZERO_OR_MORE,
         allow_multiple: bool = False,
     ) -> None:
         """
@@ -71,6 +83,7 @@ class RelationshipProperty(Generic[T, U]):
             direction (RelationshipPropertyDirection): The relationship direction.
             relationship_model (Type[U] | str): The relationship model or the relationship type as a string.
             direction (RelationshipPropertyDirection): The direction of the relationship.
+            cardinality (Cardinality, optional): The cardinality of the relationship. Defaults to Cardinality.ZERO_OR_MORE.
             allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to False.
 
         Raises:
@@ -80,6 +93,7 @@ class RelationshipProperty(Generic[T, U]):
         self._nodes = []
         self._allow_multiple = allow_multiple
         self._direction = direction
+        self._cardinality = cardinality
         self._relationship_model_name = (
             relationship_model if isinstance(relationship_model, str) else relationship_model.__name__
         )
@@ -142,6 +156,7 @@ class RelationshipProperty(Generic[T, U]):
             U: The created relationship.
         """
         self._ensure_alive(node)
+        await self._ensure_cardinality()
 
         logger.info(
             "Creating relationship between target node %s and source node %s",
@@ -552,3 +567,41 @@ class RelationshipProperty(Generic[T, U]):
                     expected_type=self._target_model.__name__,
                     actual_type=node.__class__.__name__,
                 )
+
+    async def _ensure_cardinality(self) -> None:
+        """
+        Checks for any cardinality violations before creating a new relationship.
+
+        Args:
+            node (T): The node to check the cardinality for.
+        """
+        logger.debug("Checking cardinality %s", self._cardinality)
+        match self._cardinality:
+            case Cardinality.ZERO_OR_ONE:
+                match_query = self._query_builder.relationship_match(
+                    direction=self._direction,
+                    type_=self._relationship_model.__settings__.type,
+                    start_node_ref="start",
+                    start_node_labels=self._source_node.__settings__.labels,
+                    end_node_ref="end",
+                    end_node_labels=self._target_model.__settings__.labels,
+                )
+
+                results, _ = await self._client.cypher(
+                    query=f"""
+                        MATCH {match_query}
+                        WHERE elementId(start) = $start_element_id
+                        RETURN count(r)
+                    """,
+                    parameters={"start_element_id": getattr(self._source_node, "_element_id", None)},
+                )
+
+                if results[0][0] > 0:
+                    raise CardinalityViolation(
+                        cardinality_type=self._cardinality,
+                        relationship_type=self._relationship_model.__settings__.type,
+                        start_model=self._source_node.__class__.__name__,
+                        end_model=self._target_model.__name__,
+                    )
+            case _:
+                logger.debug("Cardinality is %s, no checks required", self._cardinality)

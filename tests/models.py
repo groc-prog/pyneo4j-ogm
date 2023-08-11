@@ -6,11 +6,10 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
-from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
 from neo4j_ogm.fields.property_options import WithOptions
-from neo4j_ogm.fields.relationship_property import RelationshipProperty, RelationshipPropertyDirection
+from neo4j_ogm.fields.relationship_property import Cardinality, RelationshipProperty, RelationshipPropertyDirection
 
 
 def coffee_pre_hook(model: "Coffee", *args, **kwargs):
@@ -109,6 +108,7 @@ class JavaDeveloper(Developer):
         relationship_model=HatedBy,
         direction=RelationshipPropertyDirection.OUTGOING,
         allow_multiple=False,
+        cardinality=Cardinality.ZERO_OR_MORE,
     )
 
     class Settings:

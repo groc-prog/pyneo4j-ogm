@@ -172,3 +172,17 @@ class InvalidRelationshipHops(Neo4jOGMException):
 
     def __init__(self, *args: object) -> None:
         super().__init__("Invalid relationship hop. Hop must be positive integer or '*'.", *args)
+
+
+class CardinalityViolation(Neo4jOGMException):
+    """
+    Exception which gets raised when defined cardinality is violated.
+    """
+
+    def __init__(
+        self, cardinality_type: str, relationship_type: str, start_model: str, end_model: str, *args: object
+    ) -> None:
+        super().__init__(
+            f"Cardinality {cardinality_type} for relationship {relationship_type} between {start_model} and {end_model} is being violated.",
+            *args,
+        )
