@@ -12,6 +12,7 @@ from tests.models import (
     HatedBy,
     ImplementedFeature,
     JavaDeveloper,
+    Milestone,
     Project,
     TypescriptDeveloper,
     WorkingOn,
@@ -22,11 +23,12 @@ async def main():
     client = Neo4jClient()
 
     client.connect("bolt://localhost:7687", ("neo4j", "password"))
+    await client.drop_nodes()
     await client.register_models(
         [Coffee, TypescriptDeveloper, JavaDeveloper, Project, ConsumedBy, WorkingOn, HatedBy, ImplementedFeature]
     )
 
-    jim = await TypescriptDeveloper(name="Jim", id="2b2f2c7e-0b1a-4b0e-8b0a-0e2b2f2c7e0a").create()
+    jim = await TypescriptDeveloper(name="Jim", id="2bf37261-30bf-4de5-bcdf-28b579c9fe02").create()
     martin = await JavaDeveloper(name="Martin", id="b4c2b7e0-eeb1-4b9e-9e4c-6e9c9f1f8d8a").create()
     phil = await TypescriptDeveloper(name="Phil", id="c2b7e0b4-eeb1-4b9e-9e4c-6e9c9f1f8d8a").create()
     thomas = await TypescriptDeveloper(name="Thomas", id="b7e0b4c2-eeb1-4b9e-9e4c-6e9c9f1f8d8a").create()
@@ -35,16 +37,16 @@ async def main():
     project_one = await Project(
         name="Project One",
         deadline="2022-01-01T12:00:00Z",
-        metadata='{"awesome": true}',
-        milestones=['{"name": "That hard thing done", "timestamp": 1691696518}'],
+        metadata={"awesome": True},
+        milestones=[Milestone(name="That hard thing done", timestamp=1691696518)],
     ).create()
     project_two = await Project(
         name="Project Two",
         deadline="2022-04-23T16:45:00Z",
-        metadata="{}",
+        metadata={},
         milestones=[
-            '{"name": "Finished talking with important person", "timestamp": 1691825684}',
-            '{"name": "Got copilot to do the work for me", "timestamp": 1691682690}',
+            Milestone(name="Finished talking with important person", timestamp=1691825684),
+            Milestone(name="Got copilot to do the work for me", timestamp=1691682690),
         ],
     ).create()
 
