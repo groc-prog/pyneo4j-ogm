@@ -79,7 +79,7 @@ class NoResultsFound(Neo4jOGMException):
     """
 
     def __init__(self, *args: object) -> None:
-        super().__init__("The query was expected to return a result, but did not", *args)
+        super().__init__("The query did not match any results.", *args)
 
 
 class UnregisteredModel(Neo4jOGMException):
