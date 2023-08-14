@@ -6,15 +6,19 @@ from typing import Callable, Dict, List, Optional, Set, Union
 from pydantic import BaseModel, validator
 
 
-def _normalize_hooks(hooks: Union[List[Callable], Callable]) -> List[Callable]:
+def _normalize_hooks(hooks: Dict[str, Union[List[Callable], Callable]]) -> Dict[str, List[Callable]]:
     """
     Normalize a list of hooks to a list of callables.
     """
-    for hook_name, hook_function in hooks.items():
-        if not isinstance(hook_function, list):
-            hooks[hook_name] = [hook_function]
+    if isinstance(hooks, dict):
+        for hook_name, hook_function in hooks.items():
+            if not isinstance(hook_function, list) and callable(hook_function):
+                hooks[hook_name] = [hook_function]
+            elif not isinstance(hook_function, list) and not callable(hook_function):
+                hooks[hook_name] = []
+        return hooks
 
-    return hooks
+    return {}
 
 
 class BaseModelSettings(BaseModel):
