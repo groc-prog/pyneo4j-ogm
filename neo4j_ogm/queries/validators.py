@@ -315,3 +315,6 @@ class QueryOptionModel(BaseModel):
 
 
 NodeFiltersModel.update_forward_refs()
+RelationshipFiltersModel.update_forward_refs()
+RelationshipPropertyFiltersModel.update_forward_refs()
+MultiHopFiltersModel.update_forward_refs()
