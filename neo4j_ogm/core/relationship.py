@@ -63,7 +63,7 @@ class RelationshipModel(ModelBase):
             if isinstance(value, (dict, BaseModel)):
                 deflated[key] = json.dumps(value)
             if isinstance(value, list):
-                deflated[key] = [json.dumps(item) for item in value if isinstance(item, (dict, BaseModel))]
+                deflated[key] = [json.dumps(item) if isinstance(item, (dict, BaseModel)) else item for item in value]
 
         return deflated
 
