@@ -36,7 +36,7 @@ class RelationshipPropertyDirection(str, Enum):
     OUTGOING = "OUTGOING"
 
 
-class Cardinality(str, Enum):
+class RelationshipPropertyCardinality(str, Enum):
     """
     Available cardinality types.
     """
@@ -59,7 +59,7 @@ class RelationshipProperty(Generic[T, U]):
     _target_model_name: str
     _source_node: T
     _direction: RelationshipPropertyDirection
-    _cardinality: Cardinality
+    _cardinality: RelationshipPropertyCardinality
     _relationship_model: Type[U]
     _relationship_model_name: str
     _allow_multiple: bool
@@ -70,7 +70,7 @@ class RelationshipProperty(Generic[T, U]):
         target_model: Union[Type[T], str],
         relationship_model: Union[Type[U], str],
         direction: RelationshipPropertyDirection,
-        cardinality: Cardinality = Cardinality.ZERO_OR_MORE,
+        cardinality: RelationshipPropertyCardinality = RelationshipPropertyCardinality.ZERO_OR_MORE,
         allow_multiple: bool = False,
     ) -> None:
         """
@@ -83,7 +83,7 @@ class RelationshipProperty(Generic[T, U]):
             direction (RelationshipPropertyDirection): The relationship direction.
             relationship_model (Type[U] | str): The relationship model or the relationship type as a string.
             direction (RelationshipPropertyDirection): The direction of the relationship.
-            cardinality (Cardinality, optional): The cardinality of the relationship. Defaults to Cardinality.ZERO_OR_MORE.
+            cardinality (RelationshipPropertyCardinality, optional): The cardinality of the relationship. Defaults to RelationshipPropertyCardinality.ZERO_OR_MORE.
             allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to False.
 
         Raises:
@@ -336,6 +336,9 @@ class RelationshipProperty(Generic[T, U]):
             old_node (T): The currently connected node.
             new_node (T): The node which replaces the currently connected node.
 
+        Raises:
+            NotConnectedToSourceNode: Raised if the old node is not connected to the source node.
+
         Returns:
             U: The new relationship between the source node and the newly connected node.
         """
@@ -568,6 +571,9 @@ class RelationshipProperty(Generic[T, U]):
                     actual_type=node.__class__.__name__,
                 )
 
+        if getattr(self._source_node, "_element_id", None) is None:
+            raise InstanceNotHydrated()
+
     async def _ensure_cardinality(self) -> None:
         """
         Checks for any cardinality violations before creating a new relationship.
@@ -577,7 +583,7 @@ class RelationshipProperty(Generic[T, U]):
         """
         logger.debug("Checking cardinality %s", self._cardinality)
         match self._cardinality:
-            case Cardinality.ZERO_OR_ONE:
+            case RelationshipPropertyCardinality.ZERO_OR_ONE:
                 match_query = self._query_builder.relationship_match(
                     direction=self._direction,
                     type_=self._relationship_model.__settings__.type,
@@ -604,4 +610,4 @@ class RelationshipProperty(Generic[T, U]):
                         end_model=self._target_model.__name__,
                     )
             case _:
-                logger.debug("Cardinality is %s, no checks required", self._cardinality)
+                logger.debug("RelationshipPropertyCardinality is %s, no checks required", self._cardinality)
