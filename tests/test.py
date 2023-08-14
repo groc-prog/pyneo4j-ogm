@@ -81,53 +81,11 @@ async def main():
 
     client.connect("bolt://localhost:7687", ("neo4j", "password"))
     await client.register_models([Male, Female, Knows])
-    await client.drop_nodes()
-    await client.drop_constraints()
-    await client.drop_indexes()
 
-    john = Male(
-        id=UUID("ab11097c-f75f-4555-a973-a70ebc46af35"),
-        name="John Doe",
-        age=42,
-    )
-    donald = Male(
-        id=UUID("142eb1a0-1f8d-4acc-89ea-779b2b2f765a"),
-        name="Donald Trump",
-        age=64,
-    )
-    jimmy = Male(
-        id=UUID("557e3222-fe41-40ae-a69a-5e9905f413df"),
-        name="Jimmy Angel",
-        age=39,
-    )
-    henry = Male(
-        id=UUID("f5c0b68a-e89d-489d-a8a5-57078afee8c0"),
-        name="Henry cavil",
-        age=29,
-    )
-
-    await henry.create()
-    await john.create()
-    await donald.create()
-    await jimmy.create()
-
-    anna = Female(id=UUID("7c66ae5e-f0e1-4635-a2ba-356bef64b04e"), name="Anna Angel", age=39, letters=["a", "b", "c"])
-    bella = Female(id=UUID("36eb1035-3159-4a0e-b066-399c62def0a5"), name="Bella Chao", age=21, letters=["d", "a"])
-    stephany = Female(
-        id=UUID("5b8d4097-5414-4f31-9a5e-6027de860585"), name="Stephany Dillenger", age=26, letters=["e", "f", "b"]
-    )
-
-    await anna.create()
-    await bella.create()
-    await stephany.create()
-
-    await jimmy.females.connect(anna, {"since": datetime(2021, 12, 12)})
-
-    await henry.females.connect(anna)
-    await henry.females.connect(bella, {"since": datetime(2020, 1, 1)})
-    await henry.females.connect(stephany, {"since": datetime(2020, 2, 4)})
-
-    result = await Knows.count()
+    async with client.batch():
+        await Male(name="foo1", age=1).create()
+        await Male(name="bar1", age=2).create()
+        raise Exception("OH NOOO")
 
     print("DONE")
 

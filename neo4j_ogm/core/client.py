@@ -190,6 +190,7 @@ class Neo4jClient:
         """
         logger.info("Closing connection to database")
         await self._driver.close()
+        self._driver = None
         logger.info("Connection to database closed")
 
     @ensure_connection
