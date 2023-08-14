@@ -75,7 +75,7 @@ class ModelBase(BaseModel):
 
     @root_validator()
     def _validate_reserved_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        for value in ["element_id", "modified_properties"]:
+        for value in ["element_id", "modified_properties", "model_settings"]:
             if value in values:
                 raise ReservedPropertyName(value)
 
@@ -162,7 +162,12 @@ class ModelBase(BaseModel):
             T: An instance of the model.
         """
         logger.debug("Importing model %s", cls.__name__)
-        if "elementId" not in model:
+        if any(
+            [
+                "elementId" not in model and from_camel_case,
+                "element_id" not in model and not from_camel_case,
+            ]
+        ):
             raise ModelImportFailure()
 
         if from_camel_case:
@@ -311,6 +316,16 @@ class ModelBase(BaseModel):
                 modified_properties.append(property_name)
 
         return modified_properties
+
+    @property
+    def model_settings(self) -> Dict[str, Any]:
+        """
+        Returns the model settings as a dictionary.
+
+        Returns:
+            Dict[str, Any]: The model settings as a dictionary.
+        """
+        return self.__settings__.dict()
 
     class Config:
         """
