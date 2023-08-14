@@ -520,7 +520,7 @@ class NodeModel(ModelBase):
     async def update_one(cls: Type[T], update: Dict[str, Any], filters: NodeFilters, new: bool = False) -> T:
         """
         Finds the first node that matches `filters` and updates it with the values defined by
-        `update`. If no match is found, a `NoResultsFound` is raised.
+        `update`. If no match is found, a `NoResultsFound` exception is raised.
 
         Args:
             update (Dict[str, Any]): Values to update the node properties with.
@@ -592,7 +592,7 @@ class NodeModel(ModelBase):
                 {f"SET {set_query}" if set_query != "" else ""}
                 RETURN n
             """,
-            parameters={"element_id": cls._element_id, **deflated},
+            parameters={"element_id": new_instance._element_id, **deflated},
         )
         logger.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
 
