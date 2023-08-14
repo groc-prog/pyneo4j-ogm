@@ -491,7 +491,7 @@ class RelationshipProperty(Generic[T, U]):
         Raises:
             UnregisteredModel: Raised if the source model has not been registered with the client.
         """
-        self._client = Neo4jClient()
+        self._client = getattr(source_model, "_client")
         self._query_builder = QueryBuilder()
 
         logger.debug(

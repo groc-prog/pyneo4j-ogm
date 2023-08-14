@@ -6,15 +6,19 @@ dictionary.
 import json
 import re
 from asyncio import iscoroutinefunction
-from typing import Any, Callable, ClassVar, Dict, List, ParamSpec, Set, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, ParamSpec, Set, Type, TypeVar, Union, cast
 
 from pydantic import BaseModel, PrivateAttr, root_validator
 
-from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.exceptions import ModelImportFailure, ReservedPropertyName
+from neo4j_ogm.exceptions import ModelImportFailure, ReservedPropertyName, UnregisteredModel
 from neo4j_ogm.fields.settings import BaseModelSettings
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.query_builder import QueryBuilder
+
+if TYPE_CHECKING:
+    from neo4j_ogm.core.client import Neo4jClient
+else:
+    Neo4jClient = object
 
 P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
@@ -78,11 +82,13 @@ class ModelBase(BaseModel):
         return values
 
     def __init__(self, *args, **kwargs) -> None:
+        if not hasattr(self, "_client"):
+            raise UnregisteredModel(model=self.__class__.__name__)
+
         super().__init__(*args, **kwargs)
         self._db_properties = self.dict()
 
     def __init_subclass__(cls) -> None:
-        setattr(cls, "_client", Neo4jClient())
         setattr(cls, "_query_builder", QueryBuilder())
 
         logger.debug("Setting up defined settings for model %s", cls.__name__)

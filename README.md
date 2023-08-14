@@ -8,7 +8,7 @@ Neo4j databases and cypher queries. This library makes heavy use of `pydantic` a
 - [ ] Better examples for documentation
 - [x] Make logging controllable using ENV variable
 - [ ] Improve (or even add) test coverage
-- [ ] Change client form singleton to normal class and add model clients when registering model so multiple clients can be created
+- [x] Change client form singleton to normal class and add model clients when registering model so multiple clients can be created
 
 
 ## ⚡️ Quick start <a name="quick-start"></a>

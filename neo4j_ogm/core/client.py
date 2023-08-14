@@ -3,12 +3,14 @@ Database client for running queries against the connected database.
 """
 import os
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Set, Tuple, Type, Union
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.exceptions import DatabaseError
 from neo4j.graph import Node, Path, Relationship
 
+from neo4j_ogm.core.node import NodeModel
+from neo4j_ogm.core.relationship import RelationshipModel
 from neo4j_ogm.exceptions import (
     InvalidEntityType,
     InvalidIndexType,
@@ -18,13 +20,6 @@ from neo4j_ogm.exceptions import (
     TransactionInProgress,
 )
 from neo4j_ogm.logger import logger
-
-if TYPE_CHECKING:
-    from neo4j_ogm.core.node import NodeModel
-    from neo4j_ogm.core.relationship import RelationshipModel
-else:
-    NodeModel = object
-    RelationshipModel = object
 
 
 class IndexType(str, Enum):
@@ -73,7 +68,6 @@ class Neo4jClient:
     Singleton database client class used to run different operations on the database.
     """
 
-    _instance: "Neo4jClient"
     _driver: AsyncDriver
     _session: AsyncSession
     _transaction: AsyncTransaction
@@ -83,11 +77,6 @@ class Neo4jClient:
     models: Set[Type[NodeModel | RelationshipModel]] = set()
     uri: str
     auth: Tuple[str, str] | None
-
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, "_instance"):
-            cls._instance = super().__new__(cls, *args, **kwargs)
-        return cls._instance
 
     def connect(
         self,
@@ -144,14 +133,12 @@ class Neo4jClient:
         Args:
             models (List[Type[NodeModel | RelationshipModel]]): A list of models to register.
         """
-        from neo4j_ogm.core.node import NodeModel
-        from neo4j_ogm.core.relationship import RelationshipModel
-
         logger.debug("Registering models %s", models)
 
         for model in models:
             if issubclass(model, (NodeModel, RelationshipModel)):
                 self.models.add(model)
+                setattr(model, "_client", self)
 
                 for property_name, property_definition in model.__fields__.items():
                     entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
@@ -573,9 +560,6 @@ class Neo4jClient:
                 result, returns the `Path` class with `Path.nodes` and `Path.relationships` resolved to the database
                 models.
         """
-        from neo4j_ogm.core.node import NodeModel
-        from neo4j_ogm.core.relationship import RelationshipModel
-
         if not isinstance(query_result, (Node, Relationship, Path)):
             logger.debug("Query result %s is not a node, relationship, or path, skipping", type(query_result))
             return None

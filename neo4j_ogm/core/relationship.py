@@ -5,9 +5,6 @@ This module holds the base relationship class `RelationshipModel` which is used 
 relationships. It provides base functionality like de-/inflation and validation and methods for interacting with
 the database for CRUD operations on relationships.
 """
-
-# pylint: disable=bare-except
-
 import json
 import re
 from typing import Any, ClassVar, Dict, List, Type, TypeVar, Union, cast

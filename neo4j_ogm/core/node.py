@@ -3,7 +3,6 @@ This module holds the base node class `NodeModel` which is used to define databa
 It provides base functionality like de-/inflation and validation and methods for interacting with
 the database for CRUD operations on nodes.
 """
-
 import json
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Set, Tuple, Type, TypeVar, Union, cast
 

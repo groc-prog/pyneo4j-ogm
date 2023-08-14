@@ -89,7 +89,8 @@ class UnregisteredModel(Neo4jOGMException):
 
     def __init__(self, model: str, *args: object) -> None:
         super().__init__(
-            f"Model {model} is using other unregistered models. Please register all models before using them.",
+            f"""Model {model} is not registered or is using other unregistered models. Please register all models
+            before using them.""",
             *args,
         )
 
