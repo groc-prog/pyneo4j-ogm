@@ -10,7 +10,7 @@
 # from neo4j_ogm.core.node import NodeModel
 # from neo4j_ogm.core.relationship import RelationshipModel
 # from neo4j_ogm.fields.property_options import WithOptions
-# from neo4j_ogm.fields.relationship_property import Cardinality, RelationshipProperty, RelationshipPropertyDirection
+# from neo4j_ogm.fields.relationship_property import RelationshipPropertyCardinality, RelationshipProperty, RelationshipPropertyDirection
 
 
 # def coffee_pre_hook(model: "Coffee", *args, **kwargs):
@@ -109,7 +109,7 @@
 #         relationship_model=HatedBy,
 #         direction=RelationshipPropertyDirection.OUTGOING,
 #         allow_multiple=False,
-#         cardinality=Cardinality.ZERO_OR_MORE,
+#         cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
 #     )
 
 #     class Settings:

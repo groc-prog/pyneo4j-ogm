@@ -550,7 +550,7 @@ class RelationshipModel(ModelBase):
         results, _ = await cls._client.cypher(
             query=f"""
                 MATCH {match_query}
-                WHERE {cls._query_builder.query['where']}
+                {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 SET {", ".join([f"r.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN DISTINCT r
             """,
