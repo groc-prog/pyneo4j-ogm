@@ -17,7 +17,7 @@ from neo4j_ogm.exceptions import (
     NoResultsFound,
     UnregisteredModel,
 )
-from neo4j_ogm.fields.settings import NodeModelSettings
+from neo4j_ogm.fields.settings import NodeModelSettings, TypedNodeModelSettings
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
 
@@ -29,7 +29,7 @@ else:
 T = TypeVar("T", bound="NodeModel")
 
 
-class NodeModel(ModelBase):
+class NodeModel(ModelBase[TypedNodeModelSettings]):
     """
     Base model for all node models. Every node model should inherit from this class to define a
     model.

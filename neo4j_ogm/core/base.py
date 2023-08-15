@@ -6,7 +6,21 @@ dictionary.
 import json
 import re
 from asyncio import iscoroutinefunction
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, ParamSpec, Set, Type, TypeVar, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    ParamSpec,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from pydantic import BaseModel, PrivateAttr, root_validator
 
@@ -23,6 +37,7 @@ else:
 P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
 U = TypeVar("U")
+V = TypeVar("V")
 
 
 def hooks(func: Callable[P, U]) -> Callable[P, U]:
@@ -59,7 +74,7 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
     return decorator
 
 
-class ModelBase(BaseModel):
+class ModelBase(Generic[V], BaseModel):
     """
     This class is a modified version of Pydantic's BaseModel class adjusted to the needs of the library.
     It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
@@ -257,6 +272,16 @@ class ModelBase(BaseModel):
                 cls.__settings__.post_hooks[hook_name].append(hook_function)
 
     @classmethod
+    def model_settings(cls) -> V:
+        """
+        Returns the model settings as a dictionary.
+
+        Returns:
+            V: The model settings as a dictionary.
+        """
+        return cls.__settings__.dict()
+
+    @classmethod
     def _convert_to_camel_case(cls, model_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
         Recursively convert all keys in a dictionary to camelCase.
@@ -316,16 +341,6 @@ class ModelBase(BaseModel):
                 modified_properties.append(property_name)
 
         return modified_properties
-
-    @property
-    def model_settings(self) -> Dict[str, Any]:
-        """
-        Returns the model settings as a dictionary.
-
-        Returns:
-            Dict[str, Any]: The model settings as a dictionary.
-        """
-        return self.__settings__.dict()
 
     class Config:
         """

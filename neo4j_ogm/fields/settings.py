@@ -1,7 +1,7 @@
 """
 Settings for NodeModel and RelationshipModel classes.
 """
-from typing import Callable, Dict, List, Optional, Set, Union
+from typing import Callable, Dict, List, Optional, Set, TypedDict, Union
 
 from pydantic import BaseModel, validator
 
@@ -52,3 +52,26 @@ class RelationshipModelSettings(BaseModelSettings):
     """
 
     type: Optional[str] = None
+
+
+class TypedNodeModelSettings(TypedDict):
+    """
+    Interface to describe the settings for a NodeModel class.
+    """
+
+    exclude_from_export: Set[str]
+    pre_hooks: Dict[str, List[Callable]]
+    post_hooks: Dict[str, List[Callable]]
+    labels: Set[str]
+    auto_fetch_nodes: bool
+
+
+class TypedRelationshipModelSettings(TypedDict):
+    """
+    Interface to describe the settings for a RelationshipModel class.
+    """
+
+    exclude_from_export: Set[str]
+    pre_hooks: Dict[str, List[Callable]]
+    post_hooks: Dict[str, List[Callable]]
+    type: str
