@@ -1,6 +1,8 @@
 # Neo4j Object Graph Mapper
 A asynchronous library for working with Neo4j and Python 3.10+. The aim of this library is to provide a **clean and structured** way to work with Neo4j in Python. It is built on top of the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html) and [`pydantic 1.10`](https://docs.pydantic.dev/1.10/).
 
+## TODO's
+- [] Resolve models correclty when using COLLECT
 
 ## ⚡️ Quick start <a name="quick-start"></a>
 Before we can start to interact with the our database in any way, we have to do `three simple things`:
