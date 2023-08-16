@@ -254,7 +254,7 @@ class Neo4jClient:
     async def create_constraint(
         self,
         name: str,
-        entity_type: str,
+        entity_type: EntityType,
         properties: List[str],
         labels_or_type: Union[List[str], str],
     ) -> None:
@@ -264,7 +264,7 @@ class Neo4jClient:
 
         Args:
             name (str): The name of the constraint.
-            entity_type (str): The type of entity the constraint is applied to. Must be either
+            entity_type (EntityType): The type of entity the constraint is applied to. Must be either
                 `NODE` or `RELATIONSHIP`.
             properties (List[str]): A list of properties that should be unique for
                 nodes/relationships satisfying the constraint.
@@ -312,7 +312,7 @@ class Neo4jClient:
     async def create_index(
         self,
         name: str,
-        entity_type: str,
+        entity_type: EntityType,
         index_type: str,
         properties: List[str],
         labels_or_type: List[str],
@@ -322,7 +322,7 @@ class Neo4jClient:
 
         Args:
             name (str): The name of the constraint.
-            entity_type (str): The type of entity the constraint is applied to. Must be either
+            entity_type (EntityType): The type of entity the constraint is applied to. Must be either
                 `NODE` or `RELATIONSHIP`.
             index_type (str): The type of index to apply.
             properties (List[str]): A list of properties that should be unique for
@@ -604,6 +604,16 @@ class Neo4jClient:
 
         logger.debug("Query result %s is not a node, relationship, or path, skipping", type(query_result))
         return None
+
+    @property
+    def is_connected(self) -> bool:
+        """
+        Returns whether the client is connected to a database or not.
+
+        Returns:
+            bool: Whether the client is connected to a database or not.
+        """
+        return getattr(self, "_driver", None) is not None
 
 
 class BatchManager:

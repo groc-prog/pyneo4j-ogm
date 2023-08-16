@@ -44,10 +44,27 @@ class Drinks(RelationshipModel):
 
 
 async def main():
-    client = Neo4jClient().connect("bolt://localhost:7687", ("neo4j", "password"))
+    from neo4j_ogm import Neo4jClient
+
+    client = Neo4jClient()
+    client.connect("bolt://localhost:7687", ("neo4j", "password"), max_connection_pool_size=10)
     await client.register_models([Developer, Coffee, Drinks])
 
-    a = Developer.model_settings()
+    async with client.batch():
+        # All queries executed inside the context manager will be batched into a single transaction
+        # and executed once the context manager exits. If any of the queries fail, the whole transaction
+        # will be rolled back.
+        await client.cypher(
+            query="CREATE (d:Developer {name: $name, age: $age})",
+            parameters={"name": "John Doe", "age": 25},
+        )
+        await client.cypher(
+            query="CREATE (c:Coffee {name: $name})",
+            parameters={"name": "Espresso"},
+        )
+
+        # Model queries also can be batched together
+        coffee = await Coffee(name="Americano").create()
 
     print("DONE")
 
