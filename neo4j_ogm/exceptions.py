@@ -184,6 +184,7 @@ class CardinalityViolation(Neo4jOGMException):
         self, cardinality_type: str, relationship_type: str, start_model: str, end_model: str, *args: object
     ) -> None:
         super().__init__(
-            f"Cardinality {cardinality_type} for relationship {relationship_type} between {start_model} and {end_model} is being violated.",
+            f"""Cardinality {cardinality_type} for relationship {relationship_type} between {start_model} and
+            {end_model} is being violated.""",
             *args,
         )

@@ -83,7 +83,8 @@ class RelationshipProperty(Generic[T, U]):
             direction (RelationshipPropertyDirection): The relationship direction.
             relationship_model (Type[U] | str): The relationship model or the relationship type as a string.
             direction (RelationshipPropertyDirection): The direction of the relationship.
-            cardinality (RelationshipPropertyCardinality, optional): The cardinality of the relationship. Defaults to RelationshipPropertyCardinality.ZERO_OR_MORE.
+            cardinality (RelationshipPropertyCardinality, optional): The cardinality of the relationship. Defaults
+                to RelationshipPropertyCardinality.ZERO_OR_MORE.
             allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to False.
 
         Raises:

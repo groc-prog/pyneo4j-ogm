@@ -149,7 +149,7 @@ class QueryBuilder:
         self.ref = node_ref
         where_queries.append(self._build_query(filters=validated_filters))
 
-        self.query["where"] = " AND ".join([query for query in where_queries if query is not ""])
+        self.query["where"] = " AND ".join([query for query in where_queries if query != ""])
 
     def multi_hop_filters(self, filters: MultiHopFilters, start_ref: str = "n", end_ref: str = "m") -> None:
         """
@@ -360,7 +360,7 @@ class QueryBuilder:
                 self._property_name = property_or_operator
 
             match property_or_operator:
-                case operator if operator in self._operators.keys():
+                case operator if operator in [key for key, _ in self._operators.items()]:
                     param_var = self._build_param_var()
                     self.parameters[param_var] = expression_or_value
 
