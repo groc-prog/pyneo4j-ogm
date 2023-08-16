@@ -3,7 +3,7 @@ Database client for running queries against the connected database.
 """
 import os
 from enum import Enum
-from typing import Any, Callable, Dict, List, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.exceptions import DatabaseError
@@ -547,24 +547,18 @@ class Neo4jClient:
         """
         return BatchManager(self)
 
-    def _resolve_database_model(
-        self, query_result: Union[Node, Relationship, Path]
-    ) -> Type[Union[NodeModel, RelationshipModel, Path]]:
+    def _resolve_database_model(self, query_result: Any) -> Optional[Any]:
         """
         Resolves a query result to the corresponding database model, if one is registered.
 
         Args:
-            query_result (Node | Relationship, Path): The query result to try to resolve.
+            query_result (Any): The query result to try to resolve.
 
         Returns:
-            Type[Union[NodeModel, RelationshipModel, Path]]: The database model, if one is registered. If a path is the
-                result, returns the `Path` class with `Path.nodes` and `Path.relationships` resolved to the database
-                models.
+            Optional[Any]: The database model, if one is registered. If a path is the result, returns the `Path` class
+                with `Path.nodes` and `Path.relationships` resolved to the database models. If the result is generated
+                using `COLLECT`, the collected results will be resolved if a complete node or relationship is found.
         """
-        if not isinstance(query_result, (Node, Relationship, Path)):
-            logger.debug("Query result %s is not a node, relationship, or path, skipping", type(query_result))
-            return None
-
         if isinstance(query_result, Path):
             logger.debug("Query result %s is a path, resolving nodes and relationship", query_result)
             nodes = []
@@ -584,22 +578,31 @@ class Neo4jClient:
             setattr(query_result, "_relationships", tuple(relationships))
 
             return query_result
+        elif isinstance(query_result, (Node, Relationship)):
+            logger.debug("Query result %s is a node or relationship, resolving", query_result)
+            labels = set(query_result.labels) if isinstance(query_result, Node) else set(query_result.type)
 
-        logger.debug("Query result %s is a node or relationship, resolving", query_result)
-        labels = set(query_result.labels) if isinstance(query_result, Node) else set(query_result.type)
+            for model in list(self.models):
+                model_labels: set[str] = set()
 
-        for model in list(self.models):
-            model_labels: set[str] = set()
+                if issubclass(model, NodeModel):
+                    model_labels = set(getattr(model.__settings__, "labels"))
+                elif issubclass(model, RelationshipModel):
+                    model_labels = set(getattr(model.__settings__, "type"))
 
-            if issubclass(model, NodeModel):
-                model_labels = set(getattr(model.__settings__, "labels"))
-            elif issubclass(model, RelationshipModel):
-                model_labels = set(getattr(model.__settings__, "type"))
+                if labels == model_labels:
+                    return model.inflate(query_result)
 
-            if labels == model_labels:
-                return model.inflate(query_result)
+            logger.debug("No model found for query result %s", query_result)
+            return None
+        elif isinstance(query_result, list):
+            for index, sub_result in enumerate(query_result):
+                resolved = self._resolve_database_model(sub_result)
+                query_result[index] = resolved if resolved is not None else sub_result
 
-        logger.debug("No model found for query result %s", query_result)
+            return query_result
+
+        logger.debug("Query result %s is not a node, relationship, or path, skipping", type(query_result))
         return None
 
 
