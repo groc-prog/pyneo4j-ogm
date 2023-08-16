@@ -206,11 +206,6 @@ After connecting the client, you will be able to run queries against the databas
 Once you are done working with a database instance, you can close the connection to it by calling the `close()` method on the client instance. This will close the connection to the database instance and free up any resources used by the client instance. Here is an example of how to close a connection to a database instance:
 
 ```python
-from neo4j_ogm import Neo4jClient
-
-client = Neo4jClient()
-client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
-
 # Do some work with the database instance ...
 
 await client.close()
@@ -222,9 +217,8 @@ Once you closed the client, it will be seen as `disconnected` and if you try to 
 As mentioned before, the basic concept behind neo4j-ogm is to work with models which reflect the nodes and relationships inside the graph database. In order to work with these models, you have to register them with the client instance. You can do this by calling the `register_models()` method on the client instance and passing in your models as arguments. Let's take a look at an example:
 
 ```python
-from neo4j_ogm import Neo4jClient
+# Create a new client instance and connect ...
 
-client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
 client.register_models([Developer, Coffee, Drinks])
 ```
 
@@ -246,9 +240,7 @@ This method will always return a tuple containing list of result lists and a lis
 Here is an example of how to execute a custom cypher query:
 
 ```python
-from neo4j_ogm import Neo4jClient
-
-client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
+# Create a new client instance and connect ...
 
 results, meta = await client.cypher(
   query="MATCH (d:Developer) WHERE d.name = $name RETURN d.name as developer_name, d.age",
@@ -264,10 +256,8 @@ print(meta) # ["developer_name", "d.age"]
 Since Neo4j is ACID compliant, it is possible to batch multiple cypher queries into a single transaction. This can be useful if you want to execute multiple queries at once and make sure that either all of them succeed or none of them. The client instance provides a `batch()` method that allows you to batch multiple cypher queries into a single transaction. The `batch()` has to be called with a context manager like in the following example:
 
 ```python
-from neo4j_ogm import Neo4jClient
-
-client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
-await client.register_models([Developer, Coffee, Drinks])
+# Create a new client instance and connect ...
+# Make sure to register models when using them!
 
 async with client.batch():
   # All queries executed inside the context manager will be batched into a single transaction
