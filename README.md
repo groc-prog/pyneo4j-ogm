@@ -1,6 +1,22 @@
 # Neo4j Object Graph Mapper
 A asynchronous library for working with Neo4j and Python 3.10+. The aim of this library is to provide a **clean and structured** way to work with Neo4j in Python. It is built on top of the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html) and [`pydantic 1.10`](https://docs.pydantic.dev/1.10/).
 
+
+## 📌 Todo's and features for future updates
+
+### Todo's
+- [ ] Unit tests to ensure future updates don't break anything
+- [ ] Improve this documentation
+- [ ] Add release workflow to automatically publish new releases to PyPI
+- [ ] Add workflows for linting, formatting and package scanning
+
+### Features
+- [ ] Support for projections (Which will return a dict with the provided properties instead of the model)
+- [ ] Client features (Like client hooks)
+- [ ] Add a option for returning relationship models in methods with multi-hop filters
+- [ ] Maybe some small example projects to show how to use the library?
+
+
 ## ⚡️ Quick start <a name="quick-start"></a>
 Before we can start to interact with the our database in any way, we have to do `three simple things`:
 - Connect to our database instance
@@ -132,6 +148,9 @@ And just like that you have created a new `Developer` and `Coffee` node in the g
 
 ### Table of contents <a name="table-of-contents"></a>
 - [Neo4j Object Graph Mapper](#neo4j-object-graph-mapper)
+  - [📌 Todo's and features for future updates](#-todos-and-features-for-future-updates)
+    - [Todo's](#todos)
+    - [Features](#features)
   - [⚡️ Quick start ](#️-quick-start-)
   - [📚 Documentation ](#-documentation-)
     - [Table of contents ](#table-of-contents-)
