@@ -6,12 +6,10 @@ A asynchronous library for working with Neo4j and Python 3.10+. The aim of this 
 
 ### Todo's
 - [ ] Unit tests to ensure future updates don't break anything
-- [x] Improve this documentation
 - [ ] Add release workflow to automatically publish new releases to PyPI
 - [ ] Add workflows for linting, formatting and package scanning
 
 ### Features
-- [ ] Add support for auto-fetch in find_connected_nodes() method
 - [ ] Support for projections (Which will return a dict with the provided properties instead of the model)
 - [ ] Extend hooks to support more methods
 - [ ] Client features (Like client hooks)

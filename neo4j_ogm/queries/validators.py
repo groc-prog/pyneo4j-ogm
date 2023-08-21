@@ -120,6 +120,7 @@ class NodeFiltersModel(BaseModel):
     element_id_: Optional[str] = Field(alias="$elementId")
     id_: Optional[int] = Field(alias="$id")
     patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns")
+    projections_: Optional[Dict[str, str]] = Field(alias="$projections")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 

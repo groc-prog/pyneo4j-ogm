@@ -58,36 +58,43 @@ class GoesTo(RelationshipModel):
 
 
 async def main():
-    client = Neo4jClient()
-    client.connect("bolt://localhost:7687", ("neo4j", "password"), max_connection_pool_size=10)
-    await client.register_models([Developer, Coffee, GoesTo, Sells, Bar])
+    # client = Neo4jClient()
+    # client.connect("bolt://localhost:7687", ("neo4j", "password"), max_connection_pool_size=10)
+    # await client.drop_nodes()
+    # await client.register_models([Developer, Coffee, GoesTo, Sells, Bar])
 
-    dev = Developer(name="John", age=30)
-    bar = Bar()
-    coffee1 = Coffee(name="Espresso")
-    coffee2 = Coffee(name="Cappuccino")
-    coffee3 = Coffee(name="Latte")
-    coffee4 = Coffee(name="Mocha")
+    # dev = Developer(name="John", age=30)
+    # bar = Bar()
+    # coffee1 = Coffee(name="Espresso")
+    # coffee2 = Coffee(name="Cappuccino")
+    # coffee3 = Coffee(name="Latte")
+    # coffee4 = Coffee(name="Mocha")
 
-    await dev.create()
-    await bar.create()
-    await coffee1.create()
-    await coffee2.create()
-    await coffee3.create()
-    await coffee4.create()
+    # await dev.create()
+    # await bar.create()
+    # await coffee1.create()
+    # await coffee2.create()
+    # await coffee3.create()
+    # await coffee4.create()
 
-    await dev.bar.connect(bar)
-    await bar.coffee.connect(coffee1, {"ok": True})
-    await bar.coffee.connect(coffee2, {"ok": True})
-    await bar.coffee.connect(coffee3, {"ok": False})
-    await bar.coffee.connect(coffee4, {"ok": True})
+    # await dev.bar.connect(bar)
+    # await bar.coffee.connect(coffee1, {"ok": True})
+    # await bar.coffee.connect(coffee2, {"ok": True})
+    # await bar.coffee.connect(coffee3, {"ok": False})
+    # await bar.coffee.connect(coffee4, {"ok": True})
 
-    result = await dev.find_connected_nodes(
-        {
-            "$node": {"$labels": "Coffee"},
-            "$relationships": [{"$type": Sells.model_settings()["type"], "ok": True}],
-        }
-    )
+    # result = await dev.find_connected_nodes(
+    #     {
+    #         "$node": {},
+    #         "$relationships": [{"$type": Sells.model_settings()["type"], "ok": True}],
+    #     }
+    # )
+
+    from neo4j_ogm.queries.query_builder import QueryBuilder
+
+    builder = QueryBuilder()
+
+    builder.node_filters({"$projections": {"some_name": "name"}})
 
     print("DONE")
 

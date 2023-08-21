@@ -32,6 +32,21 @@ class FilterQueries(TypedDict):
     match: str
     where: str
     options: str
+    return_: str
+
+
+# TODO: Add support for projections
+# MATCH (n:Developer), path = (n)-[r*]->(m:Coffee)
+# WHERE
+#     ID(n) = 66 AND
+#     ALL(_n_0 IN relationships(path) WHERE
+#         CASE type(_n_0)
+#             WHEN 'SELLS' THEN _n_0.ok = True
+#             ELSE true
+#         END
+#     )
+# WITH [x IN r WHERE type(x) = "SELLS" | {ok: x.ok, foo: x.foo}] as sells, m -> Generates a projection for relationship properties
+# RETURN DISTINCT  collect({name: m.name, sells: sells }) -> Projection for node properties
 
 
 class QueryBuilder:
@@ -65,6 +80,7 @@ class QueryBuilder:
     query: FilterQueries = {
         "match": "",
         "where": "",
+        "return_": "",
         "options": "",
     }
 
@@ -78,7 +94,7 @@ class QueryBuilder:
         """
         logger.debug("Building node filters %s", filters)
         self.ref = ref
-        self.query = {"where": "", "options": ""}
+        self.query = {"where": "", "options": "", "return_": ""}
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
@@ -88,6 +104,10 @@ class QueryBuilder:
 
         # Remove invalid expressions
         self._remove_invalid_expressions(validated_filters)
+
+        if "$projections" in validated_filters:
+            projections = self._build_node_projection(ref=ref, projections=validated_filters["$projections"])
+            self.query["return_"] = f"DISTINCT collect({{{', '.join(projections)}}})" if len(projections) > 0 else ""
 
         self.query["where"] = self._build_query(filters=validated_filters)
 
@@ -353,6 +373,22 @@ class QueryBuilder:
             case RelationshipMatchDirection.BOTH:
                 return f"{start_node_match}-{relationship_match}-{end_node_match}"
 
+    def _build_node_projection(self, ref: str, projections: Dict[str, str]) -> List[str]:
+        """
+        Builds a projection which only returns the node properties defined in the projection.
+
+        Args:
+            ref (str): The reference to the node.
+            projections (Dict[str, str]): The projections to build.
+
+        Returns:
+            list[str]: The projection queries.
+        """
+        projection_queries: List[str] = [
+            f"{projection}: {ref}.{property_name}" for projection, property_name in projections.items()
+        ]
+        return projection_queries
+
     def _build_query(self, filters: Dict[str, Any]) -> str:
         where_queries: List[str] = []
 
@@ -373,6 +409,8 @@ class QueryBuilder:
                 case "$patterns":
                     for pattern in expression_or_value:
                         where_queries.append(self._patterns_operator(expression=pattern))
+                case "$projections":
+                    continue
                 case "$and":
                     where_queries.append(self._and_operator(expressions=expression_or_value))
                 case "$or":
@@ -453,6 +491,8 @@ class QueryBuilder:
                             normalized[operator][index]["$relationship"] = self._normalize_expressions(
                                 expressions=pattern["$relationship"], level=0
                             )
+                elif operator == "$projections":
+                    continue
                 else:
                     normalized[operator] = self._normalize_expressions(expressions=expression, level=level + 1)
 
@@ -474,7 +514,7 @@ class QueryBuilder:
             return
 
         for operator, expression in expressions.items():
-            if isinstance(expression, dict):
+            if isinstance(expression, dict) and operator != "$projections":
                 # Search through all operators nested within
                 self._remove_invalid_expressions(expressions=expression, level=level + 1)
 
