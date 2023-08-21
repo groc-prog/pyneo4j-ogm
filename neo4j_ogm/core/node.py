@@ -517,10 +517,12 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
 
     @classmethod
     @hooks
-    async def update_one(cls: Type[T], update: Dict[str, Any], filters: NodeFilters, new: bool = False) -> T:
+    async def update_one(
+        cls: Type[T], update: Dict[str, Any], filters: NodeFilters, new: bool = False
+    ) -> Union[T, None]:
         """
         Finds the first node that matches `filters` and updates it with the values defined by
-        `update`. If no match is found, a `NoResultsFound` exception is raised.
+        `update`. If no match is found, `None` is returned instead.
 
         Args:
             update (Dict[str, Any]): Values to update the node properties with.
@@ -529,11 +531,10 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 returned. Defaults to False.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the node.
             MissingFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
-            T: By default, the old node instance is returned. If `new` is set to `True`, the result
+            T | None: By default, the old node instance is returned. If `new` is set to `True`, the result
                 will be the `updated` instance.
         """
         new_instance: T
@@ -565,7 +566,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            return None
         old_instance = results[0][0]
 
         # Update existing instance with values and save

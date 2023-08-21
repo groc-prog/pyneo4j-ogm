@@ -383,10 +383,10 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         update: Dict[str, Any],
         filters: RelationshipFilters,
         new: bool = False,
-    ) -> T:
+    ) -> Union[T, None]:
         """
         Finds the first relationship that matches `filters` and updates it with the values defined by `update`. If
-        no match is found, a `NoResultsFound` is raised.
+        no match is found, `None` is returned instead.
 
         Args:
             update (Dict[str, Any]): Values to update the relationship properties with.
@@ -395,11 +395,11 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
                 returned. Defaults to False.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the relationship.
+            MissingFilters: Raised if no filters are provided.
 
         Returns:
-            T: By default, the old relationship instance is returned. If `new` is set to `True`, the result
-                will be the `updated instance`.
+            T | None: By default, the old relationship instance is returned. If `new` is set to `True`, the result
+                will be the `updated instance`. If no match is found, `None` is returned.
         """
         new_instance: T
 
@@ -434,7 +434,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            return None
         old_instance = cast(T, results[0][0])
 
         # Update existing instance with values and save
