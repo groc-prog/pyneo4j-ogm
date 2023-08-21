@@ -218,7 +218,9 @@ class QueryBuilder:
                 )"""
 
         self.ref = original_ref
-        self.query["where"] = f"{where_node_query}{' AND ' if where_node_query != '' else ''}{relationship_where_query}"
+        self.query[
+            "where"
+        ] = f"{where_node_query}{' AND ' if where_node_query != '' and relationship_where_query != '' else ''}{relationship_where_query}"
 
     def query_options(self, options: Dict[str, Any], ref: str = "n") -> None:
         """
