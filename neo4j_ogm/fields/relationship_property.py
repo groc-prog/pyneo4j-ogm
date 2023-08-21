@@ -359,6 +359,42 @@ class RelationshipProperty(Generic[T, U]):
             end_node_labels=self._target_model.__settings__.labels,
         )
 
+        logger.debug("Checking if new node is already connected and needs to be disconnected")
+        results, _ = await self._client.cypher(
+            query=f"""
+                MATCH {match_query}
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
+                RETURN r
+            """,
+            parameters={
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(new_node, "_element_id", None),
+            },
+        )
+
+        if all(
+            [
+                len(results) != 0,
+                len(results[0]) != 0,
+                results[0][0] is not None,
+                self._allow_multiple is False,
+            ]
+        ):
+            logger.debug(
+                "New node is already connected and 'allow_multiple' is set to 'False', deleting old relationship"
+            )
+            await self._client.cypher(
+                query=f"""
+                MATCH {match_query}
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
+                DELETE r
+            """,
+                parameters={
+                    "start_element_id": getattr(self._source_node, "_element_id", None),
+                    "end_element_id": getattr(new_node, "_element_id", None),
+                },
+            )
+
         logger.debug("Getting relationship between source node and old node")
         results, _ = await self._client.cypher(
             query=f"""
