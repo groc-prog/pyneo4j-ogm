@@ -11,10 +11,11 @@ A asynchronous library for working with Neo4j and Python 3.10+. The aim of this 
 - [ ] Add workflows for linting, formatting and package scanning
 
 ### Features
+- [ ] Add support for auto-fetch in find_connected_nodes() method
 - [ ] Support for projections (Which will return a dict with the provided properties instead of the model)
+- [ ] Extend hooks to support more methods
 - [ ] Client features (Like client hooks)
 - [ ] Add a option for returning relationship models in methods with multi-hop filters
-- [ ] Maybe some small example projects to show how to use the library?
 
 
 ## ⚡️ Quick start <a name="quick-start"></a>
@@ -164,14 +165,31 @@ And just like that you have created a new `Developer` and `Coffee` node in the g
       - [Custom indexing and constraints ](#custom-indexing-and-constraints-)
       - [Client utilities ](#client-utilities-)
     - [Model configuration ](#model-configuration-)
+      - [Defining node and relationship properties ](#defining-node-and-relationship-properties-)
       - [Defining indexes and constraints on model properties ](#defining-indexes-and-constraints-on-model-properties-)
       - [Defining settings for a model ](#defining-settings-for-a-model-)
+        - [NodeModel specific settings ](#nodemodel-specific-settings-)
+        - [RelationshipModel specific settings ](#relationshipmodel-specific-settings-)
+      - [Model methods ](#model-methods-)
+        - [Instance.update()](#instanceupdate)
+        - [Instance.delete()](#instancedelete)
+        - [Instance.refresh()](#instancerefresh)
+        - [Model.find\_one()](#modelfind_one)
+        - [Model.find\_many()](#modelfind_many)
+        - [Model.update\_one()](#modelupdate_one)
+        - [Model.update\_many()](#modelupdate_many)
+        - [Model.delete\_one()](#modeldelete_one)
+        - [Model.delete\_many()](#modeldelete_many)
+        - [Model.count()](#modelcount)
     - [Relationship models ](#relationship-models-)
-      - [Defining a relationship model ](#defining-a-relationship-model-)
       - [Working with relationship models ](#working-with-relationship-models-)
+        - [Instance.start\_node()](#instancestart_node)
+        - [Instance.end\_node()](#instanceend_node)
     - [Node models ](#node-models-)
-      - [Defining a node model ](#defining-a-node-model-)
       - [Working with node models ](#working-with-node-models-)
+        - [Instance.create()](#instancecreate)
+        - [Instance.find\_connected\_nodes()](#instancefind_connected_nodes)
+        - [Additional argument for Model.find\_one() and Model.find\_many()](#additional-argument-for-modelfind_one-and-modelfind_many)
     - [Relationship properties on node models ](#relationship-properties-on-node-models-)
       - [Defining connections between node models ](#defining-connections-between-node-models-)
       - [Working with relationship properties ](#working-with-relationship-properties-)
@@ -179,6 +197,7 @@ And just like that you have created a new `Developer` and `Coffee` node in the g
       - [Basic filters ](#basic-filters-)
       - [Pattern matching ](#pattern-matching-)
       - [Multi-hop filters ](#multi-hop-filters-)
+      - [Query options to modify results ](#query-options-to-modify-results-)
     - [Extended functionality of models ](#extended-functionality-of-models-)
       - [Importing/Exporting models ](#importingexporting-models-)
       - [Model hooks ](#model-hooks-)
@@ -329,6 +348,27 @@ Both Node- and RelationshipModels provide a few configuration options that can b
 
 Since neo4j-ogm uses `pydantic` under the hood, all of the configuration options available for pydantic models are also available for Node- and RelationshipModels. For more information about the configuration options available for pydantic models, see the [`pydantic docs`](https://docs.pydantic.dev/1.10/).
 
+#### Defining node and relationship properties <a name="defining-node-and-relationship-properties"></a>
+Node- and RelationshipModels are defined in the same way as pydantic models. The only difference is that you have to use the `NodeModel` and `RelationshipModel` classes instead of the `BaseModel` class. Here is an example of how to define a simple NodeModel:
+
+```python
+from neo4j_ogm import NodeModel
+from pydantic import Field
+from uuid import UUID, uuid4
+
+class Developer(NodeModel):
+  """
+  A model representing a developer node in the graph.
+  """
+  id: UUID = Field(default_factory=uuid4)
+  name: str
+  age: int
+```
+
+The above model will have all the properties defined on the model.
+
+> **Note:** Everything mentioned above also applies to `RelationshipModels`.
+
 #### Defining indexes and constraints on model properties <a name="defining-indexes-and-constraints-on-model-properties"></a>
 neo4j-ogm provides a convenient way to define indexes and constraints on model properties. This can be done by using the `WithOptions` method instead of the datatype when defining the properties of your model. The `WithOptions` method takes a few arguments:
 
@@ -366,23 +406,218 @@ In the example above, we defined a `text index` on the `name` property and a `un
 > **Note:** Everything mentioned above also applies to `RelationshipModels`.
 
 #### Defining settings for a model <a name="defining-settings-for-a-model"></a>
+It is possible to define a number of settings for a model. These settings can be used to configure how nodes and relationships are created in the database and how you can interact with them. Settings are defined with a nested class called `Settings`. Class attributes act as the settings defined on the model. The following settings are available for Node- and RelationshipModels:
+
+- `exclude_from_export`: Can be used to always exclude a property from being exported when using the `export_model()` method on a model. Defaults to `False`.
+- `pre_hooks`: A dictionary where the key is the name of the method for which to register the hook and the value is the hook function or a list of hook functions. The hook function can be sync or async. All hook functions receive the exact same arguments as the method they are registered for and the current model instance as the first argument. Defaults to `{}`.
+- `post_hooks`: Same as **pre_hooks**, but the hook functions are executed after the method they are registered for. Additionally, the result of the method is passed to the hook as the second argument. Defaults to `{}`.
+
+##### NodeModel specific settings <a name="nodemodel-specific-settings"></a>
+NodeModels have two additional setting, `labels` and `auto_fetch_nodes`.
+
+- `labels`: A set of labels to use for the node. If no labels are defined, the name of the model will be used as the label. Defaults to `None`.
+- `auto_fetch_nodes`: Whether to automatically fetch nodes of defined relationship properties when getting a model instance from the database. Defaults to `False`.
+
+> **Note:** When no labels are defined for a NodeModel, the name of the model will be used and converted to **PascalCase** to stay in line with the style guide for cypher.
+
+##### RelationshipModel specific settings <a name="relationshipmodel-specific-settings"></a>
+For RelationshipModels, the `labels` setting is not available, since relationships don't have labels in Neo4j. Instead, the `type` setting can be used to define the type of the relationship. If no type is defined, the name of the model will be used as the type.
+
+> **Note:** When no type is defined for a RelationshipModel, the name of the model will be used and converted to **SCREAMING_SNAKE_CASE** to stay in line with the style guide for cypher.
+
+Now let's take a look at an example of how to define settings for a model:
+
+```python
+class Developer(NodeModel):
+  ...
+
+  class Settings:
+    # Nodes of this model will have the labels "Developer" and "Python"
+    labels = {"Developer", "Python"}
+    # The "likes_his_job" property will always be excluded from being exported
+    exclude_from_export = {"likes_his_job"}
+
+
+def print_drink(self, result, *args, **kwargs):
+  # Will print the result from the `find_one()` method
+  print(result)
+
+
+class Drinks(RelationshipModel):
+  ...
+
+  class Settings:
+    # The type of the relationship will be "DRINKS"
+    type = "DRINKS"
+    # The "print_drink" method will be executed after the "find_one" method
+    post_hooks = {"find_one": print_drink}
+```
+
+#### Model methods <a name="model-methods"></a>
+Node- and RelationshipModels provide a number of methods for commonly used cypher queries. In the following sections we will take a look at all of the methods available on Node- and RelationshipModels.
+
+> **Note:** All of the methods mentioned below are available on both Node- and RelationshipModels unless stated otherwise. If a method is defined using **Instance.method()**, the method is to be called on a instance if a model. If a method is defined using **Model.method()**, the method is to be called on the model itself.
+
+##### Instance.update()
+The `update()` method can be used to update the relationship tied to the current model instance with the current values of the instance. This method takes no arguments and returns nothing.
+
+##### Instance.delete()
+The `delete()` method can be used to delete the relationship tied to the current model instance. This method takes no arguments and returns nothing. Once deleted, the model instance will be marked as `destroyed` and any further operations on it will raise a `InstanceDestroyed` exception.
+
+##### Instance.refresh()
+Refreshes the current instance with the latest data from the database. Can be useful if you want to sync your local instance with the graph or to reset the instance to it's original properties. This method takes no arguments and returns nothing.
+
+##### Model.find_one()
+The `find_one()` method can be used to find a single node or relationship in the graph. If multiple results are matched, the first one is returned. This method takes a mandatory `filters` argument, which can be used to filter the results. For more about filters, see the [`Filtering queries`](#filtering-queries) section. This method returns a single instance of the model or `None` if no results were found.
+
+##### Model.find_many()
+This method is similar to the `find_one()` method, but returns a list of all results matched by the query. This method takes a two argument:
+
+- `filters`: The filters to use for the query. Can be omitted to match all results. Defaults to `None`.
+- `options`: Options to modify the query results. Useful for pagination and sorting. Defaults to `None`. For more information about the options available, see the [`Query options to modify results`](#query-options-to-modify-results) section.
+
+##### Model.update_one()
+Updates the first encountered node or relationship matched by the query and updates it with the defined properties. This method takes three arguments:
+
+- `update`: A dictionary containing the properties to update. Must be defined.
+- `filters`: The filters to use for the query. Must be defined.
+- `new`: Whether to return the updated instance or the old instance. Defaults to `False`.
+
+If no match is found, `None` is returned instead.
+
+##### Model.update_many()
+Updates all nodes or relationships matched by the query and updates them with the defined properties. This method takes three arguments:
+
+- `update`: A dictionary containing the properties to update. Must be defined.
+- `filters`: The filters to use for the query. If omitted, updates all nodes or relationships in the graph. Defaults to `None`.
+- `new`: Whether to return the updated instances or the old instances. Defaults to `False`.
+
+If no match is found, a empty list is returned.
+
+##### Model.delete_one()
+Deletes the first encountered node or relationship matched by the query. This method takes a single argument:
+
+- `filters`: The filters to use for the query. Must be defined.
+
+Unlike the other methods, this one does not return a instance of the deleted node or relationship. Instead, it returns the number of nodes or relationships deleted, which will always be 1 (If a match was found) or 0 (If no match was found).
+
+##### Model.delete_many()
+Deletes all nodes or relationships matched by the query. This method takes a single argument:
+
+- `filters`: The filters to use for the query. If omitted, deletes all nodes or relationships in the graph. Defaults to `None`.
+
+Like the `delete_one()` method, this method also returns the number of nodes or relationships deleted.
+
+##### Model.count()
+Counts the number of nodes or relationships matched by the query. This method takes a single argument:
+
+- `filters`: The filters to use for the query. If omitted, counts all nodes or relationships in the graph. Defaults to `None`.
+
+This method returns the number of nodes or relationships matched by the query.
 
 
 ### Relationship models <a name="relationship-models"></a>
+RelationshipModels are used to define relationships between nodes in the graph. They are defined in the same way as NodeModels, but inherit from the `RelationshipModel` class instead of the `NodeModel` class. Let's take a look at an example of how to define a simple RelationshipModel:
 
-#### Defining a relationship model <a name="defining-a-relationship-model"></a>
+```python
+from neo4j_ogm import RelationshipModel
 
-#### Working with relationship models <a name="crud-operations-on-relationship-models"></a>
+
+class Drinks(RelationshipModel):
+  """
+  A model representing a DRINKS relationship between a developer and a coffee node.
+  """
+  likes_it: bool
+```
+
+#### Working with relationship models <a name="relationship-models-specific-methods"></a>
+RelationshipModels provide a few additional methods for working with relationships. Let's take a look at all of the methods available on RelationshipModels.
+
+##### Instance.start_node()
+Returns the start node of the relationship tied to the current model instance. This method takes no arguments and returns a instance of the start node, resolved to the correct model.
+
+##### Instance.end_node()
+Returns the end node of the relationship tied to the current model instance. This method takes no arguments and returns a instance of the end node, resolved to the correct model.
 
 
 ### Node models <a name="node-models"></a>
+To define a node inside the graph, we have to create a new class that inherits from the `NodeModel` class. Let's take a look at an example of how to define a simple NodeModel:
 
-#### Defining a node model <a name="defining-a-node-model"></a>
+```python
+from neo4j_ogm import NodeModel
+from pydantic import Field
+from uuid import UUID, uuid4
 
-#### Working with node models <a name="crud-operations-on-node-models"></a>
+class Developer(NodeModel):
+  """
+  A model representing a developer node in the graph.
+  """
+  id: UUID = Field(default_factory=uuid4)
+  name: str
+  age: int
+```
+
+#### Working with node models <a name="node-models-specific-methods"></a>
+Like RelationshipModels, NodeModels also provide a few additional methods for working with nodes. Let's take a look at all of the methods available on NodeModels.
+
+##### Instance.create()
+Creates a new node in the graph with the properties defined on the current model instance. This method takes no arguments and returns nothing. After the method is done, the instance is seen as `alive`, which enables you to call all other methods on it. If you try to call any methods on a instance which has not been hydrated, you will receive a `InstanceNotHydrated` exception.
+
+##### Instance.find_connected_nodes()
+This method allows you to query nodes connected to the current model over multiple hops. For this, the method takes a special `multi-hop filter` (see [`Multi-hop filters`](#multi-hop-filters)). The method takes two arguments:
+
+- `filters`: A special multi-hop filter which allows you to define filters in the end node and the relationships between them. Defaults to `None`.
+- `options`: Options to modify the query results. Useful for pagination and sorting. Defaults to `None`. For more information about the options available, see the [`Query options to modify results`](#query-options-to-modify-results) section.
+
+This method returns a list of all nodes matched by the query.
+
+##### Additional argument for Model.find_one() and Model.find_many()
+Node models support an additional argument for the `find_one()` and `find_many()` methods. This argument is called `auto_fetch_nodes` and can be used to automatically fetch nodes of defined relationship properties when getting a model instance from the database. This argument defaults to `False`. If `auto_fetch_nodes` is enabled in the models settings, this argument will be ignored and the nodes will be fetched automatically.
 
 
 ### Relationship properties on node models <a name="relationship-properties-on-node-models"></a>
+To define relationships between node models, RelationshipProperties can be used. RelationshipProperties are defined as a special type of pydantic property. They can be used to define relationships between node models and provide a convenient way to work with them. Let's take a look at an example of how to define a RelationshipProperty:
+
+```python
+from neo4j_ogm import (
+  Neo4jClient,
+  NodeModel,
+  RelationshipModel,
+  RelationshipProperty,
+  RelationshipPropertyDirection,
+  RelationshipPropertyCardinality
+)
+
+class Developer(NodeModel):
+  """
+  A model representing a developer node in the graph.
+  """
+  name: str
+  age: int
+
+  # Here we define a relationship property called "coffee" which defines a relationship
+  # between a developer and a coffee node.
+  coffee: RelationshipProperty["Coffee", "Drinks"] = RelationshipProperty(
+    target_model="Coffee",
+    relationship_model="Drinks",
+    direction=RelationshipPropertyDirection.OUTGOING,
+    cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
+    allow_multiple=True,
+  )
+
+
+class Coffee(NodeModel):
+  """
+  A model representing a coffee node in the graph.
+  """
+  name: str
+
+
+class Drinks(RelationshipModel):
+  """
+  A model representing a DRINKS relationship between a developer and a coffee node.
+  """
+  likes_it: bool
 
 #### Defining connections between node models <a name="defining-connections-between-node-models"></a>
 
@@ -396,6 +631,8 @@ In the example above, we defined a `text index` on the `name` property and a `un
 #### Pattern matching <a name="pattern-matching"></a>
 
 #### Multi-hop filters <a name="multi-hop-filters"></a>
+
+#### Query options to modify results <a name="query-options-to-modify-results"></a>
 
 
 ### Extended functionality of models <a name="extended-functionality-of-models"></a>
