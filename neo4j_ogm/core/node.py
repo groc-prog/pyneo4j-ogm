@@ -147,10 +147,16 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         logger.info("Creating new node from model instance %s", self.__class__.__name__)
         deflated_properties = self.deflate()
 
+        set_query = (
+            f"SET {', '.join(f'n.{property_name} = ${property_name}' for property_name in deflated_properties.keys())}"
+            if len(deflated_properties.keys()) != 0
+            else ""
+        )
+
         results, _ = await self._client.cypher(
             query=f"""
                 CREATE {self._query_builder.node_match(self.__settings__.labels)}
-                SET {', '.join(f"n.{property_name} = ${property_name}" for property_name in deflated_properties.keys())}
+                {set_query}
                 RETURN n
             """,
             parameters=deflated_properties,
