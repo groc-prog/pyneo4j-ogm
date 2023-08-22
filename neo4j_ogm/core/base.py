@@ -25,7 +25,11 @@ from typing import (
 
 from pydantic import BaseModel, PrivateAttr, root_validator
 
-from neo4j_ogm.exceptions import ModelImportFailure, ReservedPropertyName, UnregisteredModel
+from neo4j_ogm.exceptions import (
+    ModelImportFailure,
+    ReservedPropertyName,
+    UnregisteredModel,
+)
 from neo4j_ogm.fields.settings import BaseModelSettings
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.query_builder import QueryBuilder

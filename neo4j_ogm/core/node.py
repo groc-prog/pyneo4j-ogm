@@ -4,7 +4,20 @@ It provides base functionality like de-/inflation and validation and methods for
 the database for CRUD operations on nodes.
 """
 import json
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr

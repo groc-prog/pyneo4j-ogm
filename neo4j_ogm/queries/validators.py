@@ -9,7 +9,12 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
 
 from neo4j_ogm.logger import logger
-from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes, QueryOptionsOrder, RelationshipMatchDirection
+from neo4j_ogm.queries.types import (
+    NumericQueryDataType,
+    QueryDataTypes,
+    QueryOptionsOrder,
+    RelationshipMatchDirection,
+)
 
 
 def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:

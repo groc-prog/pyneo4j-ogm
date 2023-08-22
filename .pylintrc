@@ -109,7 +109,7 @@ disable=abstract-method,
 
 
 [REPORTS]
-output-format=text
+output-format=colorized
 reports=no
 evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
 

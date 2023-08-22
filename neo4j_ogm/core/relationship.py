@@ -14,10 +14,22 @@ from pydantic import BaseModel, PrivateAttr
 
 from neo4j_ogm.core.base import ModelBase, hooks
 from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated, MissingFilters, NoResultsFound
-from neo4j_ogm.fields.settings import RelationshipModelSettings, TypedRelationshipModelSettings
+from neo4j_ogm.exceptions import (
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    MissingFilters,
+    NoResultsFound,
+)
+from neo4j_ogm.fields.settings import (
+    RelationshipModelSettings,
+    TypedRelationshipModelSettings,
+)
 from neo4j_ogm.logger import logger
-from neo4j_ogm.queries.types import QueryOptions, RelationshipFilters, RelationshipMatchDirection
+from neo4j_ogm.queries.types import (
+    QueryOptions,
+    RelationshipFilters,
+    RelationshipMatchDirection,
+)
 
 T = TypeVar("T", bound="RelationshipModel")
 

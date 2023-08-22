@@ -9,4 +9,9 @@ from .fields.relationship_property import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
 )
-from .queries.types import MultiHopFilters, NodeFilters, QueryOptions, RelationshipFilters
+from .queries.types import (
+    MultiHopFilters,
+    NodeFilters,
+    QueryOptions,
+    RelationshipFilters,
+)

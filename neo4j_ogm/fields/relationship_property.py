@@ -4,7 +4,20 @@ which defines the other end of the relationship.
 """
 from asyncio import iscoroutinefunction
 from enum import Enum
-from typing import Any, Callable, Dict, Generic, List, Optional, ParamSpec, Set, Type, TypeVar, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    ParamSpec,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from neo4j.graph import Node
 
