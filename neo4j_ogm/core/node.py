@@ -277,19 +277,28 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
 
     @hooks
     async def find_connected_nodes(
-        self: T, filters: Optional[MultiHopFilters] = None, options: Optional[QueryOptions] = None
+        self: T,
+        filters: Optional[MultiHopFilters] = None,
+        projections: Optional[Dict[str, str]] = None,
+        options: Optional[QueryOptions] = None,
+        auto_fetch_nodes: bool = False,
     ) -> List[T]:
         """
         Gets all connected nodes which match the provided `filters` parameter over multiple hops.
 
         Args:
             filters (MultiHopFilters, optional): The filters to apply to the query. Defaults to None.
+            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
+                projection will result in the whole model instances being returned. Defaults to None.
             options (QueryOptions, optional): The options to apply to the query. Defaults to None.
+            auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
+                identical option defined in `Settings`. Defaults to False.
 
         Returns:
             List[T]: The nodes matched by the query.
         """
         self._ensure_alive()
+        do_auto_fetch: bool = False
 
         logger.info(
             "Getting connected nodes for node %s matching filters %s over multiple hops",
@@ -300,15 +309,55 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             self._query_builder.multi_hop_filters(filters=filters)
         if options is not None:
             self._query_builder.query_options(options=options)
+        if projections is not None:
+            self._query_builder.node_projection(projections=projections, ref="m")
 
-        results, _ = await self._client.cypher(
+        projection_query = (
+            "DISTINCT m" if self._query_builder.query["projections"] == "" else self._query_builder.query["projections"]
+        )
+
+        if auto_fetch_nodes:
+            logger.debug("Auto-fetching nodes is enabled, checking if model with target labels is registered")
+            target_node_model = None
+
+            for model in self._client.models:
+                if (
+                    hasattr(model.__settings__, "labels")
+                    and list(model.__settings__.labels) == filters["$node"]["$labels"]
+                ):
+                    target_node_model = model
+                    break
+
+            if target_node_model is None:
+                logger.warning(
+                    "No model with labels %s is registered, disabling auto-fetch", filters["$node"]["$labels"]
+                )
+            else:
+                logger.debug(
+                    "Model with labels %s is registered, building auto-fetch query", filters["$node"]["$labels"]
+                )
+                match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
+                    ref="m"
+                )
+
+                do_auto_fetch = all(
+                    [
+                        auto_fetch_nodes or self.__settings__.auto_fetch_nodes,
+                        len(match_queries) != 0,
+                        len(return_queries) != 0,
+                    ]
+                )
+
+        results, meta = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.node_match(self.__settings__.labels)}{self._query_builder.query['match']}
                 WHERE
                     elementId(n) = $element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
-                RETURN DISTINCT m
+                WITH DISTINCT m
                 {self._query_builder.query['options']}
+                {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries) if do_auto_fetch else ""}
+                RETURN {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}
             """,
             parameters={
                 "element_id": self._element_id,
@@ -319,15 +368,45 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         instances: List[T] = []
 
         logger.debug("Building instances from results")
-        for result_list in results:
-            for result in result_list:
-                if result is None:
-                    continue
+        if do_auto_fetch:
+            # Add auto-fetched nodes to relationship properties
+            added_nodes: Set[str] = set()
 
-                if isinstance(result, Node):
-                    instances.append(self.inflate(node=result))
-                else:
-                    instances.append(result)
+            logger.debug("Adding auto-fetched nodes to relationship properties")
+            for result_list in results:
+                for index, result in enumerate(result_list):
+                    if result is None or result_list[0] is None:
+                        continue
+
+                    instance_element_id = getattr(result, "_element_id")
+                    if instance_element_id in added_nodes:
+                        continue
+
+                    if index == 0:
+                        instances.append(target_node_model.inflate(node=result) if isinstance(result, Node) else result)
+                    else:
+                        target_instance = [
+                            instance
+                            for instance in instances
+                            if getattr(result_list[0], "_element_id") == getattr(instance, "_element_id")
+                        ][0]
+                        relationship_property = getattr(target_instance, meta[index])
+                        nodes = cast(List[str], getattr(relationship_property, "_nodes"))
+                        nodes.append(result)
+
+                    added_nodes.add(instance_element_id)
+        else:
+            for result_list in results:
+                for result in result_list:
+                    if result is None:
+                        continue
+
+                    if isinstance(result, Node):
+                        instances.append(self.inflate(node=result))
+                    elif isinstance(result, list):
+                        instances.extend(result)
+                    else:
+                        instances.append(result)
 
         return instances
 
@@ -447,7 +526,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
-    ) -> List[T]:
+    ) -> List[Union[T, Dict[str, Any]]]:
         """
         Finds the all nodes that matches `filters` and returns them. If no matches are found, an
         empty list is returned instead.
@@ -461,7 +540,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 identical option defined in `Settings`. Defaults to False.
 
         Returns:
-            List[T]: A list of model instances.
+            List[T | Dict[str, Any]]: A list of model instances.
         """
         logger.info("Getting nodes of model %s matching filters %s", cls.__name__, filters)
         match_queries, return_queries = cls._build_auto_fetch()

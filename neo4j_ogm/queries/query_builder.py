@@ -94,7 +94,7 @@ class QueryBuilder:
         """
         logger.debug("Building node filters %s", filters)
         self.ref = ref
-        self.query = {"where": "", "options": "", "projections": ""}
+        cast(dict, self.query).update({"where": "", "options": ""})
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
@@ -117,7 +117,7 @@ class QueryBuilder:
         """
         logger.debug("Building relationship filters %s", filters)
         self.ref = ref
-        self.query = {"where": "", "options": ""}
+        cast(dict, self.query).update({"where": "", "options": ""})
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
@@ -142,7 +142,7 @@ class QueryBuilder:
             node_ref (str, optional): The reference to the node. Defaults to "end".
         """
         logger.debug("Building relationship property filters %s", filters)
-        self.query = {"where": "", "options": ""}
+        cast(dict, self.query).update({"where": "", "options": ""})
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
@@ -178,7 +178,7 @@ class QueryBuilder:
         """
         logger.debug("Building multi hop filters %s", filters)
         self.ref = start_ref
-        self.query = {"match": "", "where": "", "options": ""}
+        cast(dict, self.query).update({"where": "", "options": "", "match": ""})
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
@@ -380,6 +380,8 @@ class QueryBuilder:
         Returns:
             list[str]: The projection queries.
         """
+        self.query["projections"] = ""
+
         if not isinstance(projections, dict):
             return
 

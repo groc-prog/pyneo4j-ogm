@@ -1,6 +1,8 @@
 """
 Pydantic validators for query operators and filters.
 """
+# pylint: disable=unused-argument
+
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Union
 
@@ -11,6 +13,15 @@ from neo4j_ogm.queries.types import NumericQueryDataType, QueryDataTypes, QueryO
 
 
 def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalizes and validates model property fields.
+
+    Args:
+        values (Dict[str, Any]): The values to normalize and validate.
+
+    Returns:
+        Dict[str, Any]: The normalized and validated values.
+    """
     validated_values: Dict[str, Any] = deepcopy(values)
 
     for property_name, property_value in values.items():
@@ -23,6 +34,21 @@ def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
                 logger.debug("Invalid field %s found, omitting field", property_name)
 
     return validated_values
+
+
+def _normalize_labels(cls, value: Optional[Union[str, List[str]]]) -> Optional[List[str]]:
+    """
+    Validator for `$labels` operator. If a string is passed, it will be converted to a list.
+
+    Args:
+        v (Optional[Union[str, List[str]]]): The value to validate.
+
+    Returns:
+        Optional[List[str]]: Validated value.
+    """
+    if isinstance(value, str):
+        return [value]
+    return value
 
 
 class NumericEqualsOperatorModel(BaseModel):
@@ -182,21 +208,7 @@ class PatternNodeOperatorsModel(BaseModel):
     labels_: Optional[Union[List[str], str]] = Field(alias="$labels")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
-
-    @validator("labels_", pre=True)
-    def normalize_labels(cls, value: Optional[Union[str, List[str]]]) -> Optional[List[str]]:
-        """
-        Validator for `$labels` operator. If a string is passed, it will be converted to a list.
-
-        Args:
-            v (Optional[Union[str, List[str]]]): The value to validate.
-
-        Returns:
-            Optional[List[str]]: Validated value.
-        """
-        if isinstance(value, str):
-            return [value]
-        return value
+    normalize_and_validate_labels = validator("labels_", pre=True, allow_reuse=True)(_normalize_labels)
 
     class Config:
         """
@@ -260,6 +272,27 @@ class MultiHopRelationshipOperatorsModel(NodeFiltersModel):
         use_enum_values = True
 
 
+class MultiHopNodeModel(BaseModel):
+    """
+    Validator model for multi hop node operators.
+    """
+
+    element_id_: Optional[str] = Field(alias="$elementId")
+    id_: Optional[int] = Field(alias="$id")
+    labels_: Union[List[str], str] = Field(alias="$labels")
+
+    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+    normalize_and_validate_labels = validator("labels_", pre=True, allow_reuse=True)(_normalize_labels)
+
+    class Config:
+        """
+        Pydantic configuration
+        """
+
+        extra = Extra.allow
+        use_enum_values = True
+
+
 class MultiHopFiltersModel(BaseModel):
     """
     Validator model for node and relationship filters with multiple hops between the nodes.
@@ -267,7 +300,7 @@ class MultiHopFiltersModel(BaseModel):
 
     min_hops_: Optional[int] = Field(alias="$minHops", ge=0, default=None)
     max_hops_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops", ge=1, default="*")
-    node_: Optional[PatternNodeOperatorsModel] = Field(alias="$node")
+    node_: MultiHopNodeModel = Field(alias="$node")
     relationships_: Optional[List[MultiHopRelationshipOperatorsModel]] = Field(alias="$relationships")
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)

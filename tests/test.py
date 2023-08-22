@@ -96,7 +96,16 @@ async def main():
 
     builder.node_filters({"$projections": {}})
 
-    result = await Coffee.find_many({}, {"coffee_name": "name"})
+    dev = await Developer.find_one({"name": "John"})
+
+    if dev is not None:
+        result = await dev.find_connected_nodes(
+            {
+                "$node": {"$labels": ["Coffee"]},
+                "$relationships": [{"$type": Sells.model_settings()["type"], "ok": True}],
+            },
+            auto_fetch_nodes=True,
+        )
 
     print("DONE")
 
