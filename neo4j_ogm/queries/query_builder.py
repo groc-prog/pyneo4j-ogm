@@ -738,7 +738,7 @@ class QueryBuilder:
             end_node_ref=node_ref,
             direction=expression["$direction"],
         )
-        exists_query = "NOT EXISTS" if expression["$not"] else "EXISTS"
+        exists_query = "EXISTS" if expression["$exists"] else "NOT EXISTS"
         where_query = " AND ".join(where_queries) if len(where_queries) > 0 else ""
 
         return (

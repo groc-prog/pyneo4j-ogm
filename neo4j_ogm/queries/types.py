@@ -128,7 +128,7 @@ RelationshipPattern = Union[Dict[str, QueryOperators], PatternRelationshipOperat
 PatternOperator = TypedDict(
     "PatternOperator",
     {
-        "$not": bool,
+        "$exists": bool,
         "$direction": RelationshipMatchDirection,
         "$relationship": RelationshipPattern,
         "$node": NodePattern,

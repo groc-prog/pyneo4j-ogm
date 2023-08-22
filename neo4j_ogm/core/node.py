@@ -282,7 +282,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
-    ) -> List[T]:
+    ) -> List[Union[T, Dict[str, Any]]]:
         """
         Gets all connected nodes which match the provided `filters` parameter over multiple hops.
 
@@ -295,7 +295,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 identical option defined in `Settings`. Defaults to False.
 
         Returns:
-            List[T]: The nodes matched by the query.
+            List[T | Dict[str, Any]]: The nodes matched by the query.
         """
         self._ensure_alive()
         do_auto_fetch: bool = False

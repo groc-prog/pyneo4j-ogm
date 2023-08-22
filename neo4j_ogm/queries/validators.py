@@ -244,7 +244,7 @@ class PatternOperatorModel(BaseModel):
     Validator for pattern operators defined in a property.
     """
 
-    not_: Optional[bool] = Field(default=False, alias="$not")
+    exists_: Optional[bool] = Field(default=False, alias="$exists")
     direction_: Optional[RelationshipMatchDirection] = Field(
         default=RelationshipMatchDirection.OUTGOING, alias="$direction"
     )
