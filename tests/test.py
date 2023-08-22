@@ -11,7 +11,7 @@ from neo4j_ogm.fields.relationship_property import (
     RelationshipPropertyDirection,
 )
 
-# os.environ["NEO4J_OGM_LOG_LEVEL"] = str(logging.DEBUG)
+os.environ["NEO4J_OGM_LOG_LEVEL"] = str(logging.DEBUG)
 
 
 class Developer(NodeModel):
@@ -105,8 +105,8 @@ async def main():
     bar = await Bar.find_one({"$id": 67})
 
     if dev is not None and bar is not None:
-        result = await dev.bar.connect(bar)
-        print(result.__settings__.type)
+        result = await dev.bar.find_connected_nodes(auto_fetch_nodes=True)
+        print(result)
 
     print("DONE")
 

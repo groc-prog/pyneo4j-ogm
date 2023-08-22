@@ -295,7 +295,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 identical option defined in `Settings`. Defaults to False.
 
         Returns:
-            List[T | Dict[str, Any]]: The nodes matched by the query.
+            List[T | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected properties.
         """
         self._ensure_alive()
         do_auto_fetch: bool = False
@@ -305,6 +305,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             self,
             filters,
         )
+        self._query_builder.reset_query()
         if filters is not None:
             self._query_builder.multi_hop_filters(filters=filters)
         if options is not None:
@@ -438,6 +439,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             cls.__name__,
             filters,
         )
+        cls._query_builder.reset_query()
         cls._query_builder.node_filters(filters=filters)
 
         if projections is not None:
@@ -540,10 +542,11 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 identical option defined in `Settings`. Defaults to False.
 
         Returns:
-            List[T | Dict[str, Any]]: A list of model instances.
+            List[T | Dict[str, Any]]: A list of model instances or dictionaries of the projected properties.
         """
         logger.info("Getting nodes of model %s matching filters %s", cls.__name__, filters)
         match_queries, return_queries = cls._build_auto_fetch()
+        cls._query_builder.reset_query()
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
         if options is not None:
@@ -665,6 +668,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             cls.__name__,
             filters,
         )
+        cls._query_builder.reset_query()
         cls._query_builder.node_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
@@ -742,6 +746,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         new_instance: T
 
         logger.info("Updating all nodes of model %s matching filters %s", cls.__name__, filters)
+        cls._query_builder.reset_query()
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
 
@@ -825,6 +830,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             cls.__name__,
             filters,
         )
+        cls._query_builder.reset_query()
         cls._query_builder.node_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
@@ -861,6 +867,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             int: The number of deleted nodes.
         """
         logger.info("Deleting all nodes of model %s matching filters %s", cls.__name__, filters)
+        cls._query_builder.reset_query()
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
 
@@ -894,6 +901,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             cls.__name__,
             filters,
         )
+        cls._query_builder.reset_query()
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
 

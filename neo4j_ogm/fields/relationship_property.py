@@ -4,18 +4,22 @@ which defines the other end of the relationship.
 """
 from asyncio import iscoroutinefunction
 from enum import Enum
-from typing import (Any, Callable, Dict, Generic, List, Optional, ParamSpec,
-                    Type, TypeVar, Union, cast)
+from typing import Any, Callable, Dict, Generic, List, Optional, ParamSpec, Set, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
-from neo4j_ogm.exceptions import (CardinalityViolation, InstanceDestroyed,
-                                  InstanceNotHydrated, InvalidTargetNode,
-                                  NoResultsFound, NotConnectedToSourceNode,
-                                  UnregisteredModel)
+from neo4j_ogm.exceptions import (
+    CardinalityViolation,
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    InvalidTargetNode,
+    NoResultsFound,
+    NotConnectedToSourceNode,
+    UnregisteredModel,
+)
 from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.query_builder import QueryBuilder
@@ -508,23 +512,73 @@ class RelationshipProperty(Generic[T, U]):
     async def find_connected_nodes(
         self,
         filters: Optional[RelationshipPropertyFilters] = None,
+        projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
-    ) -> List[T]:
+        auto_fetch_nodes: bool = False,
+    ) -> List[Union[T, Dict[str, Any]]]:
         """
         Finds the all nodes that matches `filters` and are connected to the source node.
 
         Args:
             filters (RelationshipPropertyFilters | None, optional): Expressions applied to the query. Defaults to None.
+            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
+                projection will result in the whole model instances being returned. Defaults to None.
             options (QueryOptions | None, optional): Options for modifying the query result. Defaults to None.
+            auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
+                identical option defined in `Settings`. Defaults to False.
 
         Returns:
-            List[T]: A list of model instances.
+            List[T | Dict[str, Any]]: A list of model instances or dictionaries of the projected properties.
         """
         logger.info("Getting connected nodes matching filters %s", filters)
+        self._query_builder.reset_query()
         if filters is not None:
             self._query_builder.relationship_property_filters(filters=filters, ref="r", node_ref="end")
         if options is not None:
             self._query_builder.query_options(options=options, ref="end")
+        if projections is not None:
+            self._query_builder.node_projection(projections=projections, ref="end")
+
+        instances: List[T] = []
+        do_auto_fetch: bool = False
+        projection_query = (
+            "DISTINCT end"
+            if self._query_builder.query["projections"] == ""
+            else self._query_builder.query["projections"]
+        )
+
+        if auto_fetch_nodes:
+            logger.debug("Auto-fetching nodes is enabled, checking if model with target labels is registered")
+            target_node_model = None
+
+            for model in self._client.models:
+                if hasattr(model.__settings__, "labels") and list(model.__settings__.labels) == list(
+                    self._target_model.__settings__.labels
+                ):
+                    target_node_model = model
+                    break
+
+            if target_node_model is None:
+                logger.warning(
+                    "No model with labels %s is registered, disabling auto-fetch",
+                    list(self._target_model.__settings__.labels),
+                )
+            else:
+                logger.debug(
+                    "Model with labels %s is registered, building auto-fetch query",
+                    list(self._target_model.__settings__.labels),
+                )
+                match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
+                    ref="end"
+                )
+
+                do_auto_fetch = all(
+                    [
+                        auto_fetch_nodes or self.__settings__.auto_fetch_nodes,
+                        len(match_queries) != 0,
+                        len(return_queries) != 0,
+                    ]
+                )
 
         match_query = self._query_builder.relationship_match(
             ref="r",
@@ -536,14 +590,16 @@ class RelationshipProperty(Generic[T, U]):
             end_node_labels=self._target_model.__settings__.labels,
         )
 
-        results, _ = await self._client.cypher(
+        results, meta = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
                 WHERE
                     elementId(start) = $start_element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
-                RETURN end
+                WITH DISTINCT end
                 {self._query_builder.query['options']}
+                {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries) if do_auto_fetch else ""}
+                RETURN {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}
             """,
             parameters={
                 "start_element_id": getattr(self._source_node, "_element_id", None),
@@ -551,17 +607,46 @@ class RelationshipProperty(Generic[T, U]):
             },
         )
 
-        instances: List[T] = []
+        logger.debug("Building instances from results")
+        if do_auto_fetch:
+            # Add auto-fetched nodes to relationship properties
+            added_nodes: Set[str] = set()
 
-        for result_list in results:
-            for result in result_list:
-                if result is None:
-                    continue
+            logger.debug("Adding auto-fetched nodes to relationship properties")
+            for result_list in results:
+                for index, result in enumerate(result_list):
+                    if result is None or result_list[0] is None:
+                        continue
 
-                if isinstance(results[0][0], Node):
-                    instances.append(self._target_model.inflate(node=results[0][0]))
-                else:
-                    instances.append(result)
+                    instance_element_id = getattr(result, "_element_id")
+                    if instance_element_id in added_nodes:
+                        continue
+
+                    if index == 0:
+                        instances.append(target_node_model.inflate(node=result) if isinstance(result, Node) else result)
+                    else:
+                        target_instance = [
+                            instance
+                            for instance in instances
+                            if getattr(result_list[0], "_element_id") == getattr(instance, "_element_id")
+                        ][0]
+                        relationship_property = getattr(target_instance, meta[index])
+                        nodes = cast(List[str], getattr(relationship_property, "_nodes"))
+                        nodes.append(result)
+
+                    added_nodes.add(instance_element_id)
+        else:
+            for result_list in results:
+                for result in result_list:
+                    if result is None:
+                        continue
+
+                    if isinstance(result, Node):
+                        instances.append(self.inflate(node=result))
+                    elif isinstance(result, list):
+                        instances.extend(result)
+                    else:
+                        instances.append(result)
 
         return instances
 

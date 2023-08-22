@@ -84,6 +84,17 @@ class QueryBuilder:
         "options": "",
     }
 
+    def reset_query(self) -> None:
+        """
+        Resets the previously generate query parts.
+        """
+        self.query = {
+            "match": "",
+            "where": "",
+            "projections": "",
+            "options": "",
+        }
+
     def node_filters(self, filters: NodeFilters, ref: str = "n") -> None:
         """
         Builds the node filters for the query.
@@ -94,7 +105,6 @@ class QueryBuilder:
         """
         logger.debug("Building node filters %s", filters)
         self.ref = ref
-        cast(dict, self.query).update({"where": "", "options": ""})
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
@@ -117,7 +127,6 @@ class QueryBuilder:
         """
         logger.debug("Building relationship filters %s", filters)
         self.ref = ref
-        cast(dict, self.query).update({"where": "", "options": ""})
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
@@ -142,7 +151,6 @@ class QueryBuilder:
             node_ref (str, optional): The reference to the node. Defaults to "end".
         """
         logger.debug("Building relationship property filters %s", filters)
-        cast(dict, self.query).update({"where": "", "options": ""})
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
@@ -178,7 +186,6 @@ class QueryBuilder:
         """
         logger.debug("Building multi hop filters %s", filters)
         self.ref = start_ref
-        cast(dict, self.query).update({"where": "", "options": "", "match": ""})
         self.parameters = {}
         normalized_filters = self._normalize_expressions(filters)
 
@@ -247,7 +254,6 @@ class QueryBuilder:
             ref (str, optional): The reference to the node or relationship. Defaults to "n".
         """
         logger.debug("Building query options %s", options)
-        self.query["options"] = ""
 
         # Validate options with pydantic model
         validated_options = QueryOptionModel(**options)
@@ -380,8 +386,6 @@ class QueryBuilder:
         Returns:
             list[str]: The projection queries.
         """
-        self.query["projections"] = ""
-
         if not isinstance(projections, dict):
             return
 
