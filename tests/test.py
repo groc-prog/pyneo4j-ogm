@@ -58,10 +58,10 @@ class GoesTo(RelationshipModel):
 
 
 async def main():
-    # client = Neo4jClient()
-    # client.connect("bolt://localhost:7687", ("neo4j", "password"), max_connection_pool_size=10)
+    client = Neo4jClient()
+    client.connect("bolt://localhost:7687", ("neo4j", "password"), max_connection_pool_size=10)
     # await client.drop_nodes()
-    # await client.register_models([Developer, Coffee, GoesTo, Sells, Bar])
+    await client.register_models([Developer, Coffee, GoesTo, Sells, Bar])
 
     # dev = Developer(name="John", age=30)
     # bar = Bar()
@@ -94,7 +94,9 @@ async def main():
 
     builder = QueryBuilder()
 
-    builder.node_filters({"$projections": {"some_name": "name"}})
+    builder.node_filters({"$projections": {}})
+
+    result = await Coffee.find_many({}, {"coffee_name": "name"})
 
     print("DONE")
 

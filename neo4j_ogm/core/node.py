@@ -4,7 +4,7 @@ It provides base functionality like de-/inflation and validation and methods for
 the database for CRUD operations on nodes.
 """
 import json
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Set, Tuple, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
@@ -277,7 +277,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
 
     @hooks
     async def find_connected_nodes(
-        self: T, filters: Union[MultiHopFilters, None] = None, options: Union[QueryOptions, None] = None
+        self: T, filters: Optional[MultiHopFilters] = None, options: Optional[QueryOptions] = None
     ) -> List[T]:
         """
         Gets all connected nodes which match the provided `filters` parameter over multiple hops.
@@ -333,21 +333,26 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
 
     @classmethod
     @hooks
-    async def find_one(cls: Type[T], filters: NodeFilters, auto_fetch_nodes: bool = False) -> Union[T, None]:
+    async def find_one(
+        cls: Type[T], filters: NodeFilters, projections: Optional[Dict[str, str]] = None, auto_fetch_nodes: bool = False
+    ) -> Optional[Union[T, Dict[str, Any]]]:
         """
         Finds the first node that matches `filters` and returns it. If no matching node is found,
         `None` is returned instead.
 
         Args:
             filters (NodeFilters): The filters to apply to the query.
+            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
+                projection will result in the whole model instance being returned. Defaults to None.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
-                identical option defined in `Settings`. Defaults to False.
+                identical option defined in `Settings`. Can not be used with projections. Defaults to False.
 
         Raises:
             MissingFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
-            T | None: A instance of the model or None if no match is found.
+            T | Dict[str, Any] | None: A instance of the model or None if no match is found or a dictionary of the
+                projected properties.
         """
         logger.info(
             "Getting first encountered node of model %s matching filters %s",
@@ -355,7 +360,14 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             filters,
         )
         cls._query_builder.node_filters(filters=filters)
+
+        if projections is not None:
+            cls._query_builder.node_projection(projections=projections)
+
         match_queries, return_queries = cls._build_auto_fetch()
+        projection_query = (
+            "DISTINCT n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
+        )
 
         if cls._query_builder.query["where"] == "":
             raise MissingFilters()
@@ -365,6 +377,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
                 len(match_queries) != 0,
                 len(return_queries) != 0,
+                cls._query_builder.query["projections"] == "",
             ]
         )
 
@@ -377,7 +390,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                     WITH n
                     LIMIT 1
                     {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries)}
-                    RETURN DISTINCT n, {', '.join(return_queries)}
+                    RETURN {projection_query}, {', '.join(return_queries)}
                 """,
                 parameters=cls._query_builder.parameters,
             )
@@ -387,7 +400,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 query=f"""
                     MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                     WHERE {cls._query_builder.query['where']}
-                    RETURN n
+                    RETURN {projection_query}
                     LIMIT 1
                 """,
                 parameters=cls._query_builder.parameters,
@@ -398,7 +411,12 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             return None
 
         logger.debug("Checking if node has to be parsed to instance")
-        instance = cls.inflate(node=results[0][0]) if isinstance(results[0][0], Node) else results[0][0]
+        if isinstance(results[0][0], Node):
+            instance = cls.inflate(node=results[0][0])
+        elif isinstance(results[0][0], list):
+            instance = results[0][0][0]
+        else:
+            instance = results[0][0]
 
         if not do_auto_fetch:
             return instance
@@ -425,8 +443,9 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
     @hooks
     async def find_many(
         cls: Type[T],
-        filters: Union[NodeFilters, None] = None,
-        options: Union[QueryOptions, None] = None,
+        filters: Optional[NodeFilters] = None,
+        projections: Optional[Dict[str, str]] = None,
+        options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
     ) -> List[T]:
         """
@@ -435,6 +454,8 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
 
         Args:
             filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
+            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
+                projection will result in the whole model instances being returned. Defaults to None.
             options (QueryOptions, optional): The options to apply to the query. Defaults to None.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
                 identical option defined in `Settings`. Defaults to False.
@@ -448,13 +469,20 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             cls._query_builder.node_filters(filters=filters)
         if options is not None:
             cls._query_builder.query_options(options=options)
+        if projections is not None:
+            cls._query_builder.node_projection(projections=projections)
 
         instances: List[T] = []
+        projection_query = (
+            "DISTINCT n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
+        )
+
         do_auto_fetch = all(
             [
                 auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
                 len(match_queries) != 0,
                 len(return_queries) != 0,
+                cls._query_builder.query["projections"] == "",
             ]
         )
 
@@ -467,7 +495,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                     WITH DISTINCT n
                     {cls._query_builder.query['options']}
                     {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries)}
-                    RETURN DISTINCT n, {', '.join(return_queries)}
+                    RETURN {projection_query}, {', '.join(return_queries)}
                 """,
                 parameters=cls._query_builder.parameters,
             )
@@ -506,7 +534,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 query=f"""
                     MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                     {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                    RETURN DISTINCT n
+                    RETURN {projection_query}
                     {cls._query_builder.query['options']}
                 """,
                 parameters=cls._query_builder.parameters,
@@ -517,7 +545,12 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                     if result is None:
                         continue
 
-                    instances.append(cls.inflate(node=result) if isinstance(result, Node) else result)
+                    if isinstance(result, Node):
+                        instances.append(cls.inflate(node=result))
+                    elif isinstance(result, list):
+                        instances.extend(result)
+                    else:
+                        instances.append(result)
 
             return instances
 

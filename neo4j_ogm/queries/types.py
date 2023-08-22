@@ -148,7 +148,7 @@ MultiHopRelationship = Union[Dict[str, QueryOperators], MultiHopRelationshipOper
 # for the model type.
 QueryNodeOperators = TypedDict(
     "QueryNodeOperators",
-    {"$elementId": str, "$id": int, "$patterns": List[PatternOperator], "$projections": Dict[str, str]},
+    {"$elementId": str, "$id": int, "$patterns": List[PatternOperator]},
     total=False,
 )
 
