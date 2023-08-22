@@ -35,20 +35,6 @@ class FilterQueries(TypedDict):
     projections: str
 
 
-# TODO: Add support for projections
-# MATCH (n:Developer), path = (n)-[r*]->(m:Coffee)
-# WHERE
-#     ID(n) = 66 AND
-#     ALL(_n_0 IN relationships(path) WHERE
-#         CASE type(_n_0)
-#             WHEN 'SELLS' THEN _n_0.ok = True
-#             ELSE true
-#         END
-#     )
-# WITH [x IN r WHERE type(x) = "SELLS" | {ok: x.ok, foo: x.foo}] as sells, m -> Generates a projection for relationship properties
-# RETURN DISTINCT  collect({name: m.name, sells: sells }) -> Projection for node properties
-
-
 class QueryBuilder:
     """
     This class builds parts of the database query for available query filters and options.
@@ -241,9 +227,9 @@ class QueryBuilder:
                 )"""
 
         self.ref = original_ref
-        self.query[
-            "where"
-        ] = f"{where_node_query}{' AND ' if where_node_query != '' and relationship_where_query != '' else ''}{relationship_where_query}"
+
+        chain_with_and = " AND " if where_node_query != "" and relationship_where_query != "" else ""
+        self.query["where"] = f"{where_node_query}{chain_with_and}{relationship_where_query}"
 
     def query_options(self, options: Dict[str, Any], ref: str = "n") -> None:
         """
