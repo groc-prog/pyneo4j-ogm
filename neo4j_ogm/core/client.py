@@ -80,8 +80,8 @@ class Neo4jClient:
 
     def connect(
         self,
-        uri: Union[str, None] = None,
-        auth: Union[Tuple[str, str], None] = None,
+        uri: Optional[str] = None,
+        auth: Optional[Tuple[str, str]] = None,
         skip_constraints: bool = False,
         skip_indexes: bool = False,
         *args,
@@ -197,7 +197,7 @@ class Neo4jClient:
     async def cypher(
         self,
         query: str,
-        parameters: Union[Dict[str, Any], None] = None,
+        parameters: Optional[Dict[str, Any]] = None,
         resolve_models: bool = True,
     ) -> Tuple[List[List[Any]], List[str]]:
         """

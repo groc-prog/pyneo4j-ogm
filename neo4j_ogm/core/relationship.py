@@ -7,7 +7,7 @@ the database for CRUD operations on relationships.
 """
 import json
 import re
-from typing import Any, ClassVar, Dict, List, Type, TypeVar, Union, cast
+from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
@@ -29,8 +29,8 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
     """
 
     __settings__: RelationshipModelSettings
-    _start_node_id: Union[str, None] = PrivateAttr(default=None)
-    _end_node_id: Union[str, None] = PrivateAttr(default=None)
+    _start_node_id: Optional[str] = PrivateAttr(default=None)
+    _end_node_id: Optional[str] = PrivateAttr(default=None)
     Settings: ClassVar[Type[RelationshipModelSettings]]
 
     def __init_subclass__(cls) -> None:
@@ -271,7 +271,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
 
     @classmethod
     @hooks
-    async def find_one(cls: Type[T], filters: RelationshipFilters) -> Union[T, None]:
+    async def find_one(cls: Type[T], filters: RelationshipFilters) -> Optional[T]:
         """
         Finds the first relationship that matches `filters` and returns it. If no matching relationship is found,
         `None` is returned instead.
@@ -323,8 +323,8 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
     @hooks
     async def find_many(
         cls: Type[T],
-        filters: Union[RelationshipFilters, None] = None,
-        options: Union[QueryOptions, None] = None,
+        filters: Optional[RelationshipFilters] = None,
+        options: Optional[QueryOptions] = None,
     ) -> List[T]:
         """
         Finds the all relationships that matches `filters` and returns them.
@@ -383,7 +383,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         update: Dict[str, Any],
         filters: RelationshipFilters,
         new: bool = False,
-    ) -> Union[T, None]:
+    ) -> Optional[T]:
         """
         Finds the first relationship that matches `filters` and updates it with the values defined by `update`. If
         no match is found, `None` is returned instead.
@@ -478,7 +478,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
     async def update_many(
         cls: Type[T],
         update: Dict[str, Any],
-        filters: Union[RelationshipFilters, None] = None,
+        filters: Optional[RelationshipFilters] = None,
         new: bool = False,
     ) -> Union[List[T], T]:
         """
@@ -622,7 +622,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
 
     @classmethod
     @hooks
-    async def delete_many(cls: Type[T], filters: Union[RelationshipFilters, None] = None) -> int:
+    async def delete_many(cls: Type[T], filters: Optional[RelationshipFilters] = None) -> int:
         """
         Finds all relationships that match `filters` and deletes them.
 
@@ -674,7 +674,8 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         return results[0][0]
 
     @classmethod
-    async def count(cls: Type[T], filters: Union[RelationshipFilters, None] = None) -> int:
+    @hooks
+    async def count(cls: Type[T], filters: Optional[RelationshipFilters] = None) -> int:
         """
         Counts all relationships which match the provided `filters` parameter.
 

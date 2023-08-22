@@ -2,29 +2,29 @@
 Relationship property class used to define relationships between the model this class is used on and a target node,
 which defines the other end of the relationship.
 """
+from asyncio import iscoroutinefunction
 from enum import Enum
-from typing import Any, Dict, Generic, List, Type, TypeVar, Union, cast
+from typing import (Any, Callable, Dict, Generic, List, Optional, ParamSpec,
+                    Type, TypeVar, Union, cast)
 
 from neo4j.graph import Node
 
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
-from neo4j_ogm.exceptions import (
-    CardinalityViolation,
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    InvalidTargetNode,
-    NoResultsFound,
-    NotConnectedToSourceNode,
-    UnregisteredModel,
-)
+from neo4j_ogm.exceptions import (CardinalityViolation, InstanceDestroyed,
+                                  InstanceNotHydrated, InvalidTargetNode,
+                                  NoResultsFound, NotConnectedToSourceNode,
+                                  UnregisteredModel)
+from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import QueryOptions, RelationshipPropertyFilters
 
+P = ParamSpec("P")
 T = TypeVar("T", bound=NodeModel)
 U = TypeVar("U", bound=RelationshipModel)
+V = TypeVar("V")
 
 
 class RelationshipPropertyDirection(str, Enum):
@@ -43,6 +43,42 @@ class RelationshipPropertyCardinality(str, Enum):
 
     ZERO_OR_ONE = "ZERO_OR_ONE"
     ZERO_OR_MORE = "ZERO_OR_MORE"
+
+
+def hooks(func: Callable[P, V]) -> Callable[P, V]:
+    """
+    Decorator which runs defined pre- and post hooks for the decorated method. The decorator expects the
+    hooks to have the name of the decorated method.
+    """
+
+    async def decorator(self: "RelationshipProperty", *args, **kwargs) -> V:
+        source_node: T = getattr(self, "_source_node")
+        settings: RelationshipModelSettings = getattr(source_node, "__settings__")
+        hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
+
+        # Run pre hooks if defined
+        logger.debug("Checking pre hooks for %s", hook_name)
+        if hook_name in settings.pre_hooks:
+            for hook_function in settings.pre_hooks[hook_name]:
+                if iscoroutinefunction(hook_function):
+                    await hook_function(self, *args, **kwargs)
+                else:
+                    hook_function(self, *args, **kwargs)
+
+        result = await func(self, *args, **kwargs)
+
+        # Run post hooks if defined
+        logger.debug("Checking post hooks for %s", hook_name)
+        if hook_name in settings.post_hooks:
+            for hook_function in settings.post_hooks[hook_name]:
+                if iscoroutinefunction(hook_function):
+                    await hook_function(self, result, *args, **kwargs)
+                else:
+                    hook_function(self, result, *args, **kwargs)
+
+        return result
+
+    return decorator
 
 
 class RelationshipProperty(Generic[T, U]):
@@ -64,6 +100,7 @@ class RelationshipProperty(Generic[T, U]):
     _relationship_model_name: str
     _allow_multiple: bool
     _nodes: List[T]
+    _registered_name: str
 
     def __init__(
         self,
@@ -92,6 +129,7 @@ class RelationshipProperty(Generic[T, U]):
                 client.
         """
         self._nodes = []
+        self._registered_name = None
         self._allow_multiple = allow_multiple
         self._direction = direction
         self._cardinality = cardinality
@@ -100,7 +138,8 @@ class RelationshipProperty(Generic[T, U]):
         )
         self._target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
 
-    async def relationship(self, node: T) -> Union[U, None]:
+    @hooks
+    async def relationship(self, node: T) -> Optional[U]:
         """
         Gets the relationship between the current node instance and the provided node. If the nodes are not connected
         the defined relationship, `None` will be returned.
@@ -140,6 +179,7 @@ class RelationshipProperty(Generic[T, U]):
             return None
         return results[0][0]
 
+    @hooks
     async def connect(self, node: T, properties: Union[Dict[str, Any], None] = None) -> U:
         """
         Connects the given node to the source node. By default only one relationship will be created between nodes.
@@ -210,6 +250,7 @@ class RelationshipProperty(Generic[T, U]):
             raise NoResultsFound()
         return results[0][0]
 
+    @hooks
     async def disconnect(self, node: T) -> int:
         """
         Disconnects the provided node from the source node. If the nodes are `not connected`, the query will not modify
@@ -274,6 +315,7 @@ class RelationshipProperty(Generic[T, U]):
 
         return count_results[0][0]
 
+    @hooks
     async def disconnect_all(self) -> int:
         """
         Disconnects all nodes.
@@ -328,6 +370,7 @@ class RelationshipProperty(Generic[T, U]):
 
         return count_results[0][0]
 
+    @hooks
     async def replace(self, old_node: T, new_node: T) -> U:
         """
         Disconnects a old node and replaces it with a new node. All relationship properties will be carried over to
@@ -461,10 +504,11 @@ class RelationshipProperty(Generic[T, U]):
             raise NoResultsFound()
         return cast(U, results[0][0])
 
+    @hooks
     async def find_connected_nodes(
         self,
-        filters: Union[RelationshipPropertyFilters, None] = None,
-        options: Union[QueryOptions, None] = None,
+        filters: Optional[RelationshipPropertyFilters] = None,
+        options: Optional[QueryOptions] = None,
     ) -> List[T]:
         """
         Finds the all nodes that matches `filters` and are connected to the source node.
@@ -521,16 +565,18 @@ class RelationshipProperty(Generic[T, U]):
 
         return instances
 
-    def _build_property(self, source_model: T) -> None:
+    def _build_property(self, source_model: T, property_name: str) -> None:
         """
         Sets the source node and returns self.
 
         Args:
             source_model (T): The source model instance.
+            property_name (str): The name under which the relationship property is defined on the source model.
 
         Raises:
             UnregisteredModel: Raised if the source model has not been registered with the client.
         """
+        self._registered_name = property_name
         self._client = getattr(source_model, "_client")
         self._query_builder = QueryBuilder()
 

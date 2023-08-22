@@ -2,8 +2,6 @@ import asyncio
 import logging
 import os
 
-os.environ["NEO4J_OGM_LOG_LEVEL"] = str(logging.DEBUG)
-
 from neo4j_ogm.core.client import Neo4jClient
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
@@ -12,6 +10,8 @@ from neo4j_ogm.fields.relationship_property import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
 )
+
+# os.environ["NEO4J_OGM_LOG_LEVEL"] = str(logging.DEBUG)
 
 
 class Developer(NodeModel):
@@ -25,6 +25,11 @@ class Developer(NodeModel):
         cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
         allow_multiple=False,
     )
+
+    class Settings:
+        pre_hooks = {
+            "bar.connect": lambda *args, **kwargs: print("HOOKS"),
+        }
 
 
 class Coffee(NodeModel):
@@ -97,15 +102,11 @@ async def main():
     builder.node_filters({"$projections": {}})
 
     dev = await Developer.find_one({"name": "John"})
+    bar = await Bar.find_one({"$id": 67})
 
-    if dev is not None:
-        result = await dev.find_connected_nodes(
-            {
-                "$node": {"$labels": ["Coffee"]},
-                "$relationships": [{"$type": Sells.model_settings()["type"], "ok": True}],
-            },
-            auto_fetch_nodes=True,
-        )
+    if dev is not None and bar is not None:
+        result = await dev.bar.connect(bar)
+        print(result.__settings__.type)
 
     print("DONE")
 

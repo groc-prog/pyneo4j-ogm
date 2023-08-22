@@ -44,9 +44,9 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
 
         # Build relationship properties
         logger.debug("Building relationship properties for model %s", self.__class__.__name__)
-        for _, property_name in self.__dict__.items():
-            if hasattr(property_name, "_build_property"):
-                cast(RelationshipProperty, property_name)._build_property(self)
+        for property_name, property_value in self.__dict__.items():
+            if hasattr(property_value, "_build_property"):
+                cast(RelationshipProperty, property_value)._build_property(self, property_name)
 
     def __init_subclass__(cls) -> None:
         setattr(cls, "_relationships_properties", set())
@@ -635,9 +635,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
 
     @classmethod
     @hooks
-    async def update_one(
-        cls: Type[T], update: Dict[str, Any], filters: NodeFilters, new: bool = False
-    ) -> Union[T, None]:
+    async def update_one(cls: Type[T], update: Dict[str, Any], filters: NodeFilters, new: bool = False) -> Optional[T]:
         """
         Finds the first node that matches `filters` and updates it with the values defined by
         `update`. If no match is found, `None` is returned instead.
@@ -725,7 +723,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
     async def update_many(
         cls: Type[T],
         update: Dict[str, Any],
-        filters: Union[NodeFilters, None] = None,
+        filters: Optional[NodeFilters] = None,
         new: bool = False,
     ) -> [List[T], T]:
         """
@@ -852,7 +850,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
 
     @classmethod
     @hooks
-    async def delete_many(cls: Type[T], filters: Union[NodeFilters, None] = None) -> int:
+    async def delete_many(cls: Type[T], filters: Optional[NodeFilters] = None) -> int:
         """
         Finds all nodes that match `filters` and deletes them.
 
@@ -880,7 +878,8 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         return len(results)
 
     @classmethod
-    async def count(cls: Type[T], filters: Union[NodeFilters, None] = None) -> int:
+    @hooks
+    async def count(cls: Type[T], filters: Optional[NodeFilters] = None) -> int:
         """
         Counts all nodes which match the provided `filters` parameter.
 

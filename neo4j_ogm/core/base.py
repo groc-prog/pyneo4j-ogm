@@ -14,6 +14,7 @@ from typing import (
     Dict,
     Generic,
     List,
+    Optional,
     ParamSpec,
     Set,
     Type,
@@ -85,7 +86,7 @@ class ModelBase(Generic[V], BaseModel):
     _query_builder: QueryBuilder = PrivateAttr()
     _db_properties: Dict[str, Any] = PrivateAttr(default_factory=dict)
     _destroyed: bool = PrivateAttr(default=False)
-    _element_id: Union[str, None] = PrivateAttr(default=None)
+    _element_id: Optional[str] = PrivateAttr(default=None)
     Settings: ClassVar[Type[BaseModelSettings]]
 
     @root_validator()

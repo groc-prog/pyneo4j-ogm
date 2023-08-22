@@ -10,10 +10,7 @@ A asynchronous library for working with Neo4j and Python 3.10+. The aim of this 
 - [ ] Add workflows for linting, formatting and package scanning
 
 ### Features
-- [ ] Support for projections (Which will return a dict with the provided properties instead of the model)
 - [ ] Extend hooks to support more methods
-- [ ] Client features (Like client hooks)
-- [ ] Add a option for returning relationship models in methods with multi-hop filters
 
 
 ## ⚡️ Quick start <a name="quick-start"></a>
