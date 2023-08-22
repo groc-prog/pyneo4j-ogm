@@ -8,9 +8,8 @@ A asynchronous library for working with Neo4j and Python 3.10+. The aim of this 
 - [ ] Unit tests to ensure future updates don't break anything
 - [ ] Add release workflow to automatically publish new releases to PyPI
 - [ ] Add workflows for linting, formatting and package scanning
-
-### Features
-- [ ] Extend hooks to support more methods
+- [ ] Add projections and auto_fetch_nodes to documentation
+- [ ] Add extensive examples to documentation
 
 
 ## ⚡️ Quick start <a name="quick-start"></a>
@@ -146,7 +145,6 @@ And just like that you have created a new `Developer` and `Coffee` node in the g
 - [Neo4j Object Graph Mapper](#neo4j-object-graph-mapper)
   - [📌 Todo's and features for future updates](#-todos-and-features-for-future-updates)
     - [Todo's](#todos)
-    - [Features](#features)
   - [⚡️ Quick start ](#️-quick-start-)
   - [📚 Documentation ](#-documentation-)
     - [Table of contents ](#table-of-contents-)
