@@ -1,4 +1,4 @@
-name: Checks
+name: Formatting and linting checks
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   pylint:
-    name: pylint
+    name: pylint linter
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -38,7 +38,7 @@ jobs:
           pre-commit run pylint --all-files
 
   black:
-    name: black
+    name: black formatter
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -61,12 +61,12 @@ jobs:
           key: venv-${{ hashFiles('poetry.lock') }}
       - name: Install the project dependencies
         run: poetry install
-      - name: Run pylint
+      - name: Run black
         run: |
           pre-commit run black --all-files
 
   isort:
-    name: isort
+    name: isort import sorter
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -89,6 +89,6 @@ jobs:
           key: venv-${{ hashFiles('poetry.lock') }}
       - name: Install the project dependencies
         run: poetry install
-      - name: Run pylint
+      - name: Run isort
         run: |
           pre-commit run isort --all-files
