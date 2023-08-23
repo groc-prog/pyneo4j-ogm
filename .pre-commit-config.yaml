@@ -1,16 +1,22 @@
 repos:
+  # Black formatter
   - repo: https://github.com/psf/black
     rev: 23.7.0
     hooks:
       - id: black
         language_version: python3.10
+        args: [".", "--config", "pyproject.toml"]
+
+  # Pylint linter
   - repo: https://github.com/PyCQA/pylint
     rev: v3.0.0a7
     hooks:
       - id: pylint
-        args: [--rcfile=.pylintrc]
+        args: ["--rcfile", ".pylintrc"]
+
+  # isort import sorter
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
     hooks:
       - id: isort
-        args: [--profile=black]
+        args: ["--profile", "black"]
