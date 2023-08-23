@@ -1,4 +1,11 @@
 repos:
+  # isort import sorter
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
   # Black formatter
   - repo: https://github.com/psf/black
     rev: 23.7.0
@@ -13,10 +20,3 @@ repos:
     hooks:
       - id: pylint
         args: ["--rcfile", ".pylintrc"]
-
-  # isort import sorter
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-        args: ["--profile", "black"]

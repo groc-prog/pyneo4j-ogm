@@ -550,7 +550,7 @@ class RelationshipProperty(Generic[T, U]):
         if options is not None:
             self._query_builder.query_options(options=options, ref="end")
         if projections is not None:
-            self._query_builder.node_projection(projections=projections, ref="end")
+            self._query_builder.build_projections(projections=projections, ref="end")
 
         instances: List[T] = []
         do_auto_fetch: bool = False
@@ -609,7 +609,7 @@ class RelationshipProperty(Generic[T, U]):
                 WHERE
                     elementId(start) = $start_element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
-                WITH DISTINCT end
+                WITH end
                 {self._query_builder.query['options']}
                 {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries) if do_auto_fetch else ""}
                 RETURN {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}

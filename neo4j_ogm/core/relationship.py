@@ -206,7 +206,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
                 WHERE elementId(r) = $element_id
-                RETURN DISTINCT r
+                RETURN r
             """,
             parameters={"element_id": self._element_id},
         )
@@ -237,7 +237,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
-                RETURN DISTINCT start
+                RETURN start
             """,
             parameters={
                 "element_id": self._element_id,
@@ -268,7 +268,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start", end_node_ref="end")}
                 WHERE elementId(r) = $element_id
-                RETURN DISTINCT end
+                RETURN end
             """,
             parameters={
                 "element_id": self._element_id,
@@ -283,19 +283,24 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
 
     @classmethod
     @hooks
-    async def find_one(cls: Type[T], filters: RelationshipFilters) -> Optional[T]:
+    async def find_one(
+        cls: Type[T], filters: RelationshipFilters, projections: Optional[Dict[str, str]] = None
+    ) -> Optional[Union[T, Dict[str, Any]]]:
         """
         Finds the first relationship that matches `filters` and returns it. If no matching relationship is found,
         `None` is returned instead.
 
         Args:
             filters (RelationshipFilters): Expressions applied to the query.
+            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
+                projection will result in the whole model instance being returned. Defaults to None.
 
         Raises:
             MissingFilters: Raised if no filters are provided.
 
         Returns:
-            T | None: A instance of the model or None if no match is found.
+            T | Dict[str, Any] | None: A instance of the model or None if no match is found or a dictionary if a
+                projection is provided.
         """
         logger.info(
             "Getting first encountered relationship of model %s matching filters %s",
@@ -304,6 +309,13 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         )
         cls._query_builder.reset_query()
         cls._query_builder.relationship_filters(filters=filters)
+
+        if projections is not None:
+            cls._query_builder.build_projections(projections=projections, ref="r")
+
+        projection_query = (
+            "DISTINCT r" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
+        )
 
         if cls._query_builder.query["where"] == "":
             raise MissingFilters()
@@ -316,8 +328,9 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
             query=f"""
                 MATCH {match_query}
                 WHERE {cls._query_builder.query['where']}
-                RETURN DISTINCT r
+                WITH r
                 LIMIT 1
+                RETURN {projection_query}
             """,
             parameters=cls._query_builder.parameters,
         )
@@ -329,6 +342,8 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         logger.debug("Checking if relationship has to be parsed to instance")
         if isinstance(results[0][0], Relationship):
             return cls.inflate(relationship=results[0][0])
+        elif isinstance(results[0][0], list):
+            return results[0][0][0]
 
         return results[0][0]
 
@@ -337,18 +352,21 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
     async def find_many(
         cls: Type[T],
         filters: Optional[RelationshipFilters] = None,
+        projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
-    ) -> List[T]:
+    ) -> List[Union[T, Dict[str, Any]]]:
         """
         Finds the all relationships that matches `filters` and returns them.
 
         Args:
             filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults to
                 None.
+            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
+                projection will result in the whole model instance being returned. Defaults to None.
             options (QueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
-            List[T]: A list of model instances.
+            List[T | Dict[str, Any]]: A list of model instances or dictionaries if a projection is provided.
         """
         logger.info(
             "Getting relationships of model %s matching filters %s",
@@ -360,7 +378,13 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
             cls._query_builder.relationship_filters(filters=filters)
         if options is not None:
             cls._query_builder.query_options(options=options, ref="r")
+        if projections is not None:
+            cls._query_builder.build_projections(projections=projections, ref="r")
 
+        instances: List[T] = []
+        projection_query = (
+            "DISTINCT r" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
+        )
         match_query = cls._query_builder.relationship_match(
             type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
         )
@@ -369,13 +393,12 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
             query=f"""
                 MATCH {match_query}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                RETURN DISTINCT r
+                WITH r
+                RETURN {projection_query}
                 {cls._query_builder.query['options']}
             """,
             parameters=cls._query_builder.parameters,
         )
-
-        instances: List[T] = []
 
         logger.debug("Building instances from query results")
         for result_list in results:
@@ -385,6 +408,8 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
 
                 if isinstance(result, Relationship):
                     instances.append(cls.inflate(relationship=result))
+                elif isinstance(result, list):
+                    instances.extend(result)
                 else:
                     instances.append(result)
 
@@ -472,12 +497,11 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
             ]
         )
 
-        results, _ = await cls._client.cypher(
+        await cls._client.cypher(
             query=f"""
                 MATCH {cls._query_builder.relationship_match(type_=new_instance.__settings__.type)}
                 WHERE elementId(r) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
-                RETURN r
             """,
             parameters={
                 "element_id": new_instance._element_id,
@@ -721,7 +745,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
             query=f"""
                 MATCH {match_query}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                RETURN DISTINCT count(r)
+                RETURN count(r)
             """,
             parameters=cls._query_builder.parameters,
         )

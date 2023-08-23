@@ -21,7 +21,6 @@ packages = [{include = "neo4j_ogm"}]
   line-length = 120
   target-version = ["py310"]
   workers = 4
-  exclude = "tests"
 
 [build-system]
 requires = ["poetry-core"]

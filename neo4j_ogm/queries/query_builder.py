@@ -361,7 +361,7 @@ class QueryBuilder:
             case RelationshipMatchDirection.BOTH:
                 return f"{start_node_match}-{relationship_match}-{end_node_match}"
 
-    def node_projection(self, projections: Dict[str, str], ref: str = "n") -> List[str]:
+    def build_projections(self, projections: Dict[str, str], ref: str = "n") -> List[str]:
         """
         Builds a projection which only returns the node properties defined in the projection.
 

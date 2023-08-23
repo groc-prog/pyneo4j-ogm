@@ -275,7 +275,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             query=f"""
                 MATCH {self._query_builder.node_match(self.__settings__.labels)}
                 WHERE elementId(n) = $element_id
-                RETURN DISTINCT n
+                RETURN n
             """,
             parameters={"element_id": self._element_id},
         )
@@ -324,7 +324,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         if options is not None:
             self._query_builder.query_options(options=options)
         if projections is not None:
-            self._query_builder.node_projection(projections=projections, ref="m")
+            self._query_builder.build_projections(projections=projections, ref="m")
 
         projection_query = (
             "DISTINCT m" if self._query_builder.query["projections"] == "" else self._query_builder.query["projections"]
@@ -368,7 +368,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 WHERE
                     elementId(n) = $element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
-                WITH DISTINCT m
+                WITH m
                 {self._query_builder.query['options']}
                 {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries) if do_auto_fetch else ""}
                 RETURN {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}
@@ -456,7 +456,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         cls._query_builder.node_filters(filters=filters)
 
         if projections is not None:
-            cls._query_builder.node_projection(projections=projections)
+            cls._query_builder.build_projections(projections=projections)
 
         match_queries, return_queries = cls._build_auto_fetch()
         projection_query = (
@@ -565,7 +565,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         if options is not None:
             cls._query_builder.query_options(options=options)
         if projections is not None:
-            cls._query_builder.node_projection(projections=projections)
+            cls._query_builder.build_projections(projections=projections)
 
         instances: List[T] = []
         projection_query = (
@@ -587,7 +587,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 query=f"""
                     MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
                     {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                    WITH DISTINCT n
+                    WITH n
                     {cls._query_builder.query['options']}
                     {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries)}
                     RETURN {projection_query}, {', '.join(return_queries)}
@@ -719,12 +719,11 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             ]
         )
 
-        results, _ = await cls._client.cypher(
+        await cls._client.cypher(
             query=f"""
                 MATCH {cls._query_builder.node_match(new_instance.__settings__.labels)}
                 WHERE elementId(n) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
-                RETURN n
             """,
             parameters={"element_id": new_instance._element_id, **deflated},
         )
