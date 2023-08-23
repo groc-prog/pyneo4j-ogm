@@ -25,9 +25,7 @@ jobs:
         with:
           poetry-version: "1.5.1"
       - name: Setup a local virtual environment
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry config virtualenvs.in-project true --local
+        run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
       - uses: actions/cache@v3
         name: Create cache for the virtual environment
         with:
@@ -35,9 +33,10 @@ jobs:
           key: venv-${{ hashFiles('poetry.lock') }}
       - name: Install the project dependencies
         run: poetry install
+      - name: Activate virtual environment
+        run: source .venv/bin/activate
       - name: Run isort
-        run: |
-          pre-commit run isort --all-files
+        run: pre-commit run isort --all-files
 
   pylint:
     name: pylint linter
@@ -53,9 +52,7 @@ jobs:
         with:
           poetry-version: "1.5.1"
       - name: Setup a local virtual environment
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry config virtualenvs.in-project true --local
+        run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
       - uses: actions/cache@v3
         name: Create cache for the virtual environment
         with:
@@ -63,9 +60,10 @@ jobs:
           key: venv-${{ hashFiles('poetry.lock') }}
       - name: Install the project dependencies
         run: poetry install
+      - name: Activate virtual environment
+        run: source .venv/bin/activate
       - name: Run pylint
-        run: |
-          pre-commit run pylint --all-files
+        run: pre-commit run pylint --all-files
 
   black:
     name: black formatter
@@ -81,9 +79,7 @@ jobs:
         with:
           poetry-version: "1.5.1"
       - name: Setup a local virtual environment
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry config virtualenvs.in-project true --local
+        run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
       - uses: actions/cache@v3
         name: Create cache for the virtual environment
         with:
@@ -91,6 +87,7 @@ jobs:
           key: venv-${{ hashFiles('poetry.lock') }}
       - name: Install the project dependencies
         run: poetry install
+      - name: Activate virtual environment
+        run: source .venv/bin/activate
       - name: Run black
-        run: |
-          pre-commit run black --all-files
+        run: pre-commit run black --all-files
