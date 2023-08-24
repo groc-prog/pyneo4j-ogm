@@ -48,14 +48,14 @@ U = TypeVar("U")
 
 def ensure_alive(func: Callable[P, U]) -> Callable[P, U]:
     """
-    Decorator to ensure that the decorated method is only called on a alive instance. If the
-    instance is destroyed, a `InstanceDestroyed` exception is raised.
+    Decorator to ensure that the decorated method is only called on a alive instance.
 
     Args:
         func (Callable[P, U]): The method to decorate.
 
     Raises:
         InstanceDestroyed: Raised if the instance is destroyed.
+        InstanceNotHydrated: Raised if the instance is not hydrated.
 
     Returns:
         Callable[P, U]: The decorated method.
