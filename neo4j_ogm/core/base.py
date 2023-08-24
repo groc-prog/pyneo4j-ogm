@@ -6,6 +6,7 @@ dictionary.
 import json
 import re
 from asyncio import iscoroutinefunction
+from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -51,7 +52,8 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
     hooks to have the name of the decorated method.
     """
 
-    async def decorator(self: T, *args, **kwargs) -> U:
+    @wraps(func)
+    async def wrapper(self: T, *args, **kwargs) -> U:
         settings: BaseModelSettings = getattr(self, "__settings__")
 
         # Run pre hooks if defined
@@ -76,7 +78,7 @@ def hooks(func: Callable[P, U]) -> Callable[P, U]:
 
         return result
 
-    return decorator
+    return wrapper
 
 
 class ModelBase(Generic[V], BaseModel):

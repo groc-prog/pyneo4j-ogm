@@ -4,13 +4,16 @@ It provides base functionality like de-/inflation and validation and methods for
 the database for CRUD operations on nodes.
 """
 import json
+from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     ClassVar,
     Dict,
     List,
     Optional,
+    ParamSpec,
     Set,
     Tuple,
     Type,
@@ -28,7 +31,6 @@ from neo4j_ogm.exceptions import (
     InstanceNotHydrated,
     MissingFilters,
     NoResultsFound,
-    UnregisteredModel,
 )
 from neo4j_ogm.fields.settings import NodeModelSettings, TypedNodeModelSettings
 from neo4j_ogm.logger import logger
@@ -39,7 +41,37 @@ if TYPE_CHECKING:
 else:
     RelationshipProperty = object
 
+P = ParamSpec("P")
 T = TypeVar("T", bound="NodeModel")
+U = TypeVar("U")
+
+
+def ensure_alive(func: Callable[P, U]) -> Callable[P, U]:
+    """
+    Decorator to ensure that the decorated method is only called on a alive instance. If the
+    instance is destroyed, a `InstanceDestroyed` exception is raised.
+
+    Args:
+        func (Callable[P, U]): The method to decorate.
+
+    Raises:
+        InstanceDestroyed: Raised if the instance is destroyed.
+
+    Returns:
+        Callable[P, U]: The decorated method.
+    """
+
+    @wraps(func)
+    def wrapper(self: T, *args: Any, **kwargs: Any) -> U:
+        if getattr(self, "_destroyed", False):
+            raise InstanceDestroyed()
+
+        if getattr(self, "_element_id", None) is None:
+            raise InstanceNotHydrated()
+
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class NodeModel(ModelBase[TypedNodeModelSettings]):
@@ -189,6 +221,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         return self
 
     @hooks
+    @ensure_alive
     async def update(self) -> None:
         """
         Updates the corresponding node in the database with the current instance values.
@@ -196,7 +229,6 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         Raises:
             NoResultsFound: Raised if the query did not return the updated node.
         """
-        self._ensure_alive()
         deflated = self.deflate()
 
         logger.info(
@@ -231,6 +263,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         logger.info("Updated node %s", self)
 
     @hooks
+    @ensure_alive
     async def delete(self) -> None:
         """
         Deletes the corresponding node in the database and marks this instance as destroyed. If
@@ -239,8 +272,6 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         Raises:
             NoResultsFound: Raised if the query did not return the updated node.
         """
-        self._ensure_alive()
-
         logger.info("Deleting node %s", self)
         results, _ = await self._client.cypher(
             query=f"""
@@ -261,6 +292,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         logger.info("Deleted node %s", self)
 
     @hooks
+    @ensure_alive
     async def refresh(self) -> None:
         """
         Refreshes the current instance with the values from the database.
@@ -268,8 +300,6 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         Raises:
             NoResultsFound: Raised if the query did not return the current node.
         """
-        self._ensure_alive()
-
         logger.info("Refreshing node %s with values from database", self)
         results, _ = await self._client.cypher(
             query=f"""
@@ -289,6 +319,7 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         logger.info("Refreshed node %s", self)
 
     @hooks
+    @ensure_alive
     async def find_connected_nodes(
         self: T,
         filters: Optional[MultiHopFilters] = None,
@@ -310,7 +341,6 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
         Returns:
             List[T | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected properties.
         """
-        self._ensure_alive()
         do_auto_fetch: bool = False
 
         logger.info(
@@ -959,8 +989,16 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
                 elif model.__name__ == getattr(relationship_property, "_target_model_name", None):
                     end_node_labels = model.__settings__.labels
 
-            if relationship_type is None or end_node_labels is None:
-                raise UnregisteredModel(model=cls.__name__)
+            if relationship_type is None:
+                logger.debug(
+                    "Model for relationship used on property %s was not registered, skipping", defined_relationship
+                )
+                continue
+            if end_node_labels is None:
+                logger.debug(
+                    "Model for target node used on property %s was not registered, skipping", defined_relationship
+                )
+                continue
 
             return_queries.append(defined_relationship)
             match_queries.append(
@@ -975,14 +1013,3 @@ class NodeModel(ModelBase[TypedNodeModelSettings]):
             )
 
         return match_queries, return_queries
-
-    def _ensure_alive(self) -> None:
-        """
-        Ensures that the instance is alive and not deleted.
-        """
-        logger.debug("Ensuring instance is alive")
-        if self._destroyed is True:
-            raise InstanceDestroyed()
-
-        if self._element_id is None:
-            raise InstanceNotHydrated()
