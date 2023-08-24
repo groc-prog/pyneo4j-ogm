@@ -4,6 +4,7 @@ which defines the other end of the relationship.
 """
 from asyncio import iscoroutinefunction
 from enum import Enum
+from functools import wraps
 from typing import (
     Any,
     Callable,
@@ -68,6 +69,7 @@ def hooks(func: Callable[P, V]) -> Callable[P, V]:
     hooks to have the name of the decorated method.
     """
 
+    @wraps(func)
     async def decorator(self: "RelationshipProperty", *args, **kwargs) -> V:
         source_node: T = getattr(self, "_source_node")
         settings: RelationshipModelSettings = getattr(source_node, "__settings__")
@@ -98,6 +100,45 @@ def hooks(func: Callable[P, V]) -> Callable[P, V]:
     return decorator
 
 
+def check_models_registered(func: Callable[P, V]) -> Callable[P, V]:
+    """
+    Decorator which checks if the relationship- and target model have been registered with the client.
+    """
+
+    @wraps(func)
+    async def decorator(self: "RelationshipProperty", *args, **kwargs) -> V:
+        source_node: T = getattr(self, "_source_node")
+        client: Neo4jClient = getattr(source_node, "_client")
+        target_model_name: str = getattr(self, "_target_model_name")
+        relationship_model_name: str = getattr(self, "_relationship_model_name")
+
+        logger.debug(
+            "Checking if source model %s has been registered with client",
+            source_node.__class__.__name__,
+        )
+        if source_node.__class__ not in client.models:
+            raise UnregisteredModel(model=source_node.__class__.__name__)
+
+        logger.debug(
+            "Checking if target model %s has been registered with client",
+            target_model_name,
+        )
+        if getattr(self, "_target_model", None) is None:
+            raise UnregisteredModel(model=target_model_name)
+
+        logger.debug(
+            "Checking if relationship model %s has been registered with client",
+            relationship_model_name,
+        )
+        if getattr(self, "_relationship_model", None) is None:
+            raise UnregisteredModel(model=relationship_model_name)
+
+        result = await func(self, *args, **kwargs)
+        return result
+
+    return decorator
+
+
 class RelationshipProperty(Generic[T, U]):
     """
     Class used to define relationships between the model this class is used on and a target node, which defines the
@@ -108,7 +149,7 @@ class RelationshipProperty(Generic[T, U]):
 
     _client: Neo4jClient
     _query_builder: QueryBuilder
-    _target_model: Type[T]
+    _target_model: Optional[Type[T]]
     _target_model_name: str
     _source_node: T
     _direction: RelationshipPropertyDirection
@@ -128,8 +169,7 @@ class RelationshipProperty(Generic[T, U]):
         allow_multiple: bool = False,
     ) -> None:
         """
-        Verifies that the defined target model has been registered with the client. If not, a `UnregisteredModel`
-        will be raised.
+        Verifies that the defined target model has been registered with the client.
 
         Args:
             target_model (Type[T] | str): The model which is the target of the relationship. Can be a
@@ -140,13 +180,11 @@ class RelationshipProperty(Generic[T, U]):
             cardinality (RelationshipPropertyCardinality, optional): The cardinality of the relationship. Defaults
                 to RelationshipPropertyCardinality.ZERO_OR_MORE.
             allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to False.
-
-        Raises:
-            UnregisteredModel: Raised if the target model or the relationship model have not been registered with the
-                client.
         """
         self._nodes = []
         self._registered_name = None
+        self._target_model = None
+        self._relationship_model = None
         self._allow_multiple = allow_multiple
         self._direction = direction
         self._cardinality = cardinality
@@ -156,6 +194,7 @@ class RelationshipProperty(Generic[T, U]):
         self._target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
 
     @hooks
+    @check_models_registered
     async def relationship(self, node: T) -> Optional[U]:
         """
         Gets the relationship between the current node instance and the provided node. If the nodes are not connected
@@ -197,6 +236,7 @@ class RelationshipProperty(Generic[T, U]):
         return results[0][0]
 
     @hooks
+    @check_models_registered
     async def connect(self, node: T, properties: Union[Dict[str, Any], None] = None) -> U:
         """
         Connects the given node to the source node. By default only one relationship will be created between nodes.
@@ -268,6 +308,7 @@ class RelationshipProperty(Generic[T, U]):
         return results[0][0]
 
     @hooks
+    @check_models_registered
     async def disconnect(self, node: T) -> int:
         """
         Disconnects the provided node from the source node. If the nodes are `not connected`, the query will not modify
@@ -333,6 +374,7 @@ class RelationshipProperty(Generic[T, U]):
         return count_results[0][0]
 
     @hooks
+    @check_models_registered
     async def disconnect_all(self) -> int:
         """
         Disconnects all nodes.
@@ -388,6 +430,7 @@ class RelationshipProperty(Generic[T, U]):
         return count_results[0][0]
 
     @hooks
+    @check_models_registered
     async def replace(self, old_node: T, new_node: T) -> U:
         """
         Disconnects a old node and replaces it with a new node. All relationship properties will be carried over to
@@ -522,6 +565,7 @@ class RelationshipProperty(Generic[T, U]):
         return cast(U, results[0][0])
 
     @hooks
+    @check_models_registered
     async def find_connected_nodes(
         self,
         filters: Optional[RelationshipPropertyFilters] = None,
@@ -675,41 +719,19 @@ class RelationshipProperty(Generic[T, U]):
             UnregisteredModel: Raised if the source model has not been registered with the client.
         """
         self._registered_name = property_name
-        self._client = getattr(source_model, "_client")
+        self._client = cast(Neo4jClient, getattr(source_model, "_client"))
         self._query_builder = QueryBuilder()
-
-        logger.debug(
-            "Checking if source model %s has been registered with client",
-            source_model.__class__.__name__,
-        )
-        if source_model.__class__ not in self._client.models:
-            raise UnregisteredModel(model=source_model.__class__.__name__)
-
         self._source_node = source_model
 
-        logger.debug(
-            "Checking if target model %s has been registered with client",
-            self._target_model_name,
-        )
         registered_node_model = [model for model in self._client.models if model.__name__ == self._target_model_name]
-        if len(registered_node_model) == 0:
-            raise UnregisteredModel(model=source_model.__class__.__name__)
+        if len(registered_node_model) > 0:
+            self._target_model = registered_node_model[0]
 
-        self._target_model = registered_node_model[0]
-
-        logger.debug(
-            "Checking if relationship model %s has been registered with client",
-            self._relationship_model_name,
-        )
         registered_relationship_model = [
             model for model in self._client.models if model.__name__ == self._relationship_model_name
         ]
-        if len(registered_relationship_model) == 0:
-            raise UnregisteredModel(model=source_model.__class__.__name__)
-
-        self._relationship_model = registered_relationship_model[0]
-
-        return self
+        if len(registered_relationship_model) > 0:
+            self._relationship_model = registered_relationship_model[0]
 
     @property
     def nodes(self) -> List[T]:
