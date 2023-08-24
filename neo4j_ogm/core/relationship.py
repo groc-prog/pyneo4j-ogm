@@ -7,7 +7,20 @@ the database for CRUD operations on relationships.
 """
 import json
 import re
-from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
+from functools import wraps
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    List,
+    Optional,
+    ParamSpec,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
@@ -31,7 +44,43 @@ from neo4j_ogm.queries.types import (
     RelationshipMatchDirection,
 )
 
+P = ParamSpec("P")
 T = TypeVar("T", bound="RelationshipModel")
+U = TypeVar("U")
+
+
+def ensure_alive(func: Callable[P, U]) -> Callable[P, U]:
+    """
+    Decorator to ensure that the decorated method is only called on a alive instance.
+
+    Args:
+        func (Callable[P, U]): The method to decorate.
+
+    Raises:
+        InstanceDestroyed: Raised if the instance is destroyed.
+        InstanceNotHydrated: Raised if the instance is not hydrated.
+
+    Returns:
+        Callable[P, U]: The decorated method.
+    """
+
+    @wraps(func)
+    def wrapper(self: T, *args: Any, **kwargs: Any) -> U:
+        if getattr(self, "_destroyed", False):
+            raise InstanceDestroyed()
+
+        if any(
+            [
+                getattr(self, "_element_id", None) is None,
+                getattr(self, "_start_node_id", None) is None,
+                getattr(self, "_end_node_id", None) is None,
+            ]
+        ):
+            raise InstanceNotHydrated()
+
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
@@ -119,6 +168,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         return instance
 
     @hooks
+    @ensure_alive
     async def update(self) -> None:
         """
         Updates the corresponding relationship in the database with the current instance values.
@@ -126,7 +176,6 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         Raises:
             NoResultsFound: Raised if the query did not return the updated relationship.
         """
-        self._ensure_alive()
         deflated = self.deflate()
 
         logger.info(
@@ -165,6 +214,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         logger.info("Updated relationship %s", self)
 
     @hooks
+    @ensure_alive
     async def delete(self) -> None:
         """
         Deletes the corresponding relationship in the database and marks this instance as destroyed. If another
@@ -173,8 +223,6 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         Raises:
             NoResultsFound: Raised if the query did not return the updated relationship.
         """
-        self._ensure_alive()
-
         logger.info("Deleting relationship %s", self)
         await self._client.cypher(
             query=f"""
@@ -192,6 +240,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         logger.info("Deleted relationship %s", self._element_id)
 
     @hooks
+    @ensure_alive
     async def refresh(self) -> None:
         """
         Refreshes the current instance with the values from the database.
@@ -199,8 +248,6 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         Raises:
             NoResultsFound: Raised if the query did not return the current relationship.
         """
-        self._ensure_alive()
-
         logger.info("Refreshing relationship %s with values from database", self)
         results, _ = await self._client.cypher(
             query=f"""
@@ -220,6 +267,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         logger.info("Refreshed relationship %s", self)
 
     @hooks
+    @ensure_alive
     async def start_node(self) -> Type[NodeModel]:
         """
         Returns the start node the relationship belongs to.
@@ -230,8 +278,6 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         Returns:
             Type[NodeModel]: A instance of the start node model.
         """
-        self._ensure_alive()
-
         logger.info("Getting start node %s for relationship %s", self._start_node_id, self)
         results, _ = await self._client.cypher(
             query=f"""
@@ -251,6 +297,7 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         return results[0][0]
 
     @hooks
+    @ensure_alive
     async def end_node(self) -> Type[NodeModel]:
         """
         Returns the end node the relationship belongs to.
@@ -261,8 +308,6 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
         Returns:
             Type[NodeModel]: A instance of the end node model.
         """
-        self._ensure_alive()
-
         logger.info("Getting end node %s for relationship %s", self._end_node_id, self)
         results, _ = await self._client.cypher(
             query=f"""
@@ -755,20 +800,3 @@ class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
             raise NoResultsFound()
 
         return results[0][0]
-
-    def _ensure_alive(self) -> None:
-        """
-        Ensures that the instance is alive and not deleted.
-        """
-        logger.debug("Ensuring instance is alive")
-        if self._destroyed is True:
-            raise InstanceDestroyed()
-
-        if any(
-            [
-                self._element_id is None,
-                self._start_node_id is None,
-                self._end_node_id is None,
-            ]
-        ):
-            raise InstanceNotHydrated()
