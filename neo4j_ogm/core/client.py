@@ -108,7 +108,22 @@ class Neo4jClient:
             Neo4jClient: The client.
         """
         db_uri = uri if uri is not None else os.environ.get("NEO4J_OGM_URI", None)
-        db_auth = auth if auth is not None else os.environ.get("NEO4J_OGM_AUTH", None)
+
+        if auth is not None:
+            db_auth = auth
+        elif all(
+            [
+                auth is None,
+                os.environ.get("NEO4J_OGM_USERNAME", None) is not None,
+                os.environ.get("NEO4J_OGM_PASSWORD", None) is not None,
+            ]
+        ):
+            db_auth = (
+                os.environ.get("NEO4J_OGM_USERNAME", None),
+                os.environ.get("NEO4J_OGM_PASSWORD", None),
+            )
+        else:
+            db_auth = None
 
         if db_uri is None:
             raise MissingDatabaseURI()

@@ -5,7 +5,7 @@ A asynchronous library for working with Neo4j and Python 3.10+. The aim of this 
 ## 📌 Todo's and features for future updates
 
 ### Todo's
-- [ ] Unit tests to ensure future updates don't break anything
+- [ ] Integration tests to ensure future updates don't break anything
 - [ ] Add release workflow to automatically publish new releases to PyPI
 - [ ] Add projections and auto_fetch_nodes to documentation
 - [ ] Add extensive examples to documentation

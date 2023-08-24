@@ -16,6 +16,7 @@ packages = [{include = "neo4j_ogm"}]
   black = "^23.7.0"
   pytest = "^7.4.0"
   pre-commit = "^3.3.3"
+  pytest-asyncio = "^0.21.1"
 
   [tool.black]
   line-length = 120
