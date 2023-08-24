@@ -32,7 +32,7 @@ from neo4j_ogm.exceptions import (
     MissingFilters,
     NoResultsFound,
 )
-from neo4j_ogm.fields.settings import NodeModelSettings, TypedNodeModelSettings
+from neo4j_ogm.fields.settings import NodeModelSettings
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
 
@@ -74,7 +74,7 @@ def ensure_alive(func: Callable[P, U]) -> Callable[P, U]:
     return wrapper
 
 
-class NodeModel(ModelBase[TypedNodeModelSettings]):
+class NodeModel(ModelBase[NodeModelSettings]):
     """
     Base model for all node models. Every node model should inherit from this class to define a
     model.

@@ -33,10 +33,7 @@ from neo4j_ogm.exceptions import (
     MissingFilters,
     NoResultsFound,
 )
-from neo4j_ogm.fields.settings import (
-    RelationshipModelSettings,
-    TypedRelationshipModelSettings,
-)
+from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.types import (
     QueryOptions,
@@ -83,7 +80,7 @@ def ensure_alive(func: Callable[P, U]) -> Callable[P, U]:
     return wrapper
 
 
-class RelationshipModel(ModelBase[TypedRelationshipModelSettings]):
+class RelationshipModel(ModelBase[RelationshipModelSettings]):
     """
     Base model for all relationship models. Every relationship model should inherit from this class to have needed base
     functionality like de-/inflation and validation.

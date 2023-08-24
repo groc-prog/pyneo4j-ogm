@@ -281,12 +281,12 @@ class ModelBase(Generic[V], BaseModel):
     @classmethod
     def model_settings(cls) -> V:
         """
-        Returns the model settings as a dictionary.
+        Returns the model settings.
 
         Returns:
-            V: The model settings as a dictionary.
+            V: The model settings.
         """
-        return cls.__settings__.dict()
+        return cls.__settings__
 
     @classmethod
     def _convert_to_camel_case(cls, model_dict: Dict[str, Any]) -> Dict[str, Any]:
