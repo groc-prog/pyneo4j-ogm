@@ -166,7 +166,7 @@ class Neo4jClient:
                     if not self._skip_constraints:
                         if getattr(property_definition.type_, "_unique", False):
                             await self.create_constraint(
-                                name=f"{model.__name__}_{property_name}_unique_constraint",
+                                name=model.__name__,
                                 entity_type=entity_type,
                                 properties=[property_name],
                                 labels_or_type=labels_or_type,
@@ -175,7 +175,7 @@ class Neo4jClient:
                     if not self._skip_indexes:
                         if getattr(property_definition.type_, "_range_index", False):
                             await self.create_index(
-                                name=f"{model.__name__}_{property_name}_range_index",
+                                name=model.__name__,
                                 entity_type=entity_type,
                                 index_type=IndexType.RANGE,
                                 properties=[property_name],
@@ -183,7 +183,7 @@ class Neo4jClient:
                             )
                         if getattr(property_definition.type_, "_point_index", False):
                             await self.create_index(
-                                name=f"{model.__name__}_{property_name}_point_index",
+                                name=model.__name__,
                                 entity_type=entity_type,
                                 index_type=IndexType.POINT,
                                 properties=[property_name],
@@ -191,7 +191,7 @@ class Neo4jClient:
                             )
                         if getattr(property_definition.type_, "_text_index", False):
                             await self.create_index(
-                                name=f"{model.__name__}_{property_name}_text_index",
+                                name=model.__name__,
                                 entity_type=entity_type,
                                 index_type=IndexType.TEXT,
                                 properties=[property_name],
@@ -295,10 +295,12 @@ class Neo4jClient:
                     raise InvalidLabelOrType()
 
                 for label in labels_or_type:
-                    logger.info("Creating constraint %s for node with label %s", name, label)
+                    constraint_name = f"{name}_{label}_{'_'.join(properties)}_unique_constraint"
+
+                    logger.info("Creating constraint %s for node with label %s", constraint_name, label)
                     await self.cypher(
                         query=f"""
-                            CREATE CONSTRAINT {name} IF NOT EXISTS
+                            CREATE CONSTRAINT {constraint_name} IF NOT EXISTS
                             FOR (n:{label})
                             REQUIRE ({", ".join([f"n.{property}" for property in properties])}) IS UNIQUE
                         """,
@@ -308,10 +310,12 @@ class Neo4jClient:
                 if not isinstance(labels_or_type, str):
                     raise InvalidLabelOrType()
 
-                logger.info("Creating constraint %s for relationship with type %s", name, labels_or_type)
+                constraint_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_unique_constraint"
+
+                logger.info("Creating constraint %s for relationship with type %s", constraint_name, labels_or_type)
                 await self.cypher(
                     query=f"""
-                        CREATE CONSTRAINT {name} IF NOT EXISTS
+                        CREATE CONSTRAINT {constraint_name} IF NOT EXISTS
                         FOR ()-[r:{labels_or_type}]-()
                         REQUIRE ({", ".join([f"r.{property}" for property in properties])}) IS UNIQUE
                     """,
@@ -362,45 +366,52 @@ class Neo4jClient:
                 for label in labels_or_type:
                     match index_type:
                         case IndexType.TOKEN:
+                            index_name = f"{name}_{label}_{'_'.join(properties)}_token_index"
+
                             logger.info(
                                 "Creating %s index %s for node with labels %s",
                                 index_type,
-                                name,
+                                index_name,
                                 labels_or_type,
                             )
                             await self.cypher(
                                 query=f"""
-                                    CREATE LOOKUP INDEX {name} IF NOT EXISTS
+                                    CREATE LOOKUP INDEX {index_name} IF NOT EXISTS
                                     FOR (n)
                                     ON EACH labels(node)
                                 """,
                                 resolve_models=False,
                             )
                         case IndexType.RANGE:
+                            index_name = f"{name}_{label}_{'_'.join(properties)}_range_index"
+
                             logger.info(
                                 "Creating %s index %s for node with labels %s",
                                 index_type,
-                                name,
+                                index_name,
                                 labels_or_type,
                             )
                             await self.cypher(
                                 query=f"""
-                                    CREATE {index_type} INDEX {name} IF NOT EXISTS
+                                    CREATE {index_type} INDEX {index_name} IF NOT EXISTS
                                     FOR (n:{label})
                                     ON ({", ".join([f"n.{property_name}" for property_name in properties])})
                                 """,
                                 resolve_models=False,
                             )
                         case _:
+                            index_type_name = f"{IndexType(index_type).value}".lower()
+                            index_name = f"{name}_{label}_{'_'.join(properties)}_{index_type_name}_index"
+
                             logger.info(
                                 "Creating %s index %s for node with labels %s",
                                 index_type,
-                                name,
+                                index_name,
                                 labels_or_type,
                             )
                             await self.cypher(
                                 query=f"""
-                                    CREATE {index_type} INDEX {name} IF NOT EXISTS
+                                    CREATE {index_type} INDEX {index_name} IF NOT EXISTS
                                     FOR (n:{label})
                                     ON (n.{properties[0]})
                                 """,
@@ -412,45 +423,52 @@ class Neo4jClient:
 
                 match index_type:
                     case IndexType.TOKEN:
+                        index_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_token_index"
+
                         logger.info(
                             "Creating %s index %s for relationship with labels %s",
                             index_type,
-                            name,
+                            index_name,
                             labels_or_type,
                         )
                         await self.cypher(
                             query=f"""
-                                CREATE LOOKUP INDEX {name} IF NOT EXISTS
+                                CREATE LOOKUP INDEX {index_name} IF NOT EXISTS
                                 FOR ()-[r]-()
                                 ON EACH type(r)
                             """,
                             resolve_models=False,
                         )
                     case IndexType.RANGE:
+                        index_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_range_index"
+
                         logger.info(
                             "Creating %s index %s for relationship with labels %s",
                             index_type,
-                            name,
+                            index_name,
                             labels_or_type,
                         )
                         await self.cypher(
                             query=f"""
-                                CREATE {index_type} INDEX {name} IF NOT EXISTS
+                                CREATE {index_type} INDEX {index_name} IF NOT EXISTS
                                 FOR ()-[r:{labels_or_type}]-()
                                 ON ({", ".join([f"r.{property}" for property in properties])})
                             """,
                             resolve_models=False,
                         )
                     case _:
+                        index_type_name = f"{IndexType(index_type).value}".lower()
+                        index_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_{index_type_name}_index"
+
                         logger.info(
                             "Creating %s index %s for relationship with labels %s",
                             index_type,
-                            name,
+                            index_name,
                             labels_or_type,
                         )
                         await self.cypher(
                             query=f"""
-                                CREATE {index_type} INDEX {name} IF NOT EXISTS
+                                CREATE {index_type} INDEX {index_name} IF NOT EXISTS
                                 FOR ()-[r:{labels_or_type}]-()
                                 ON (r.{properties[0]})
                             """,

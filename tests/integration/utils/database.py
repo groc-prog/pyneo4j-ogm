@@ -24,7 +24,13 @@ async def database_client():
     """
     Create a Neo4jClient instance for the test session.
     """
-    client = Neo4jClient().connect()
+    client = Neo4jClient().connect("bolt://localhost:7687", ("neo4j", "password"))
+
+    # Drop all nodes, indexes, and constraints from the database.
+    await client.drop_constraints()
+    await client.drop_indexes()
+    await client.drop_nodes()
+
     yield client
 
     await client.close()
