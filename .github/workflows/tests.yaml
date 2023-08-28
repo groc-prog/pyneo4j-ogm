@@ -1,0 +1,42 @@
+name: Formatting and linting checks
+
+on:
+  push:
+    branches:
+      - main, develop
+  pull_request:
+    branches:
+      - main, develop
+
+jobs:
+  integration-tests:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:latest
+        ports:
+          - 7687:7687
+        env:
+          NEO4J_AUTH: neo4j/password
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.5.1"
+      - name: Setup a local virtual environment
+        run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
+      - uses: actions/cache@v3
+        name: Create cache for the virtual environment
+        with:
+          path: ./.venv
+          key: venv-${{ hashFiles('poetry.lock') }}
+      - name: Install the project dependencies
+        run: poetry install
+      - name: Run integration tests
+        run: poetry run pytest tests/integration
