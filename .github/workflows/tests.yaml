@@ -3,10 +3,12 @@ name: Formatting and linting checks
 on:
   push:
     branches:
-      - main, develop
+      - main
+      - develop
   pull_request:
     branches:
-      - main, develop
+      - main
+      - develop
 
 jobs:
   integration-tests:
