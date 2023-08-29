@@ -5,7 +5,7 @@ Integration tests for neo4j_ogm.core.client.
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access
 
 import os
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 import pytest
 
@@ -22,7 +22,7 @@ async def test_connection():
     """
     Test that the Neo4jClient can connect to a database.
     """
-    client = Neo4jClient().connect("bolt://localhost:7687", ("neo4j", "password"))
+    client = Neo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
     assert client.is_connected
     assert client._driver is not None
 
@@ -32,10 +32,8 @@ async def test_connection():
 
     # Test that the Neo4jClient can connect to a database using ENV variables.
     os.environ["NEO4J_OGM_URI"] = "bolt://localhost:7687"
-    os.environ["NEO4J_OGM_USERNAME"] = "neo4j"
-    os.environ["NEO4J_OGM_PASSWORD"] = "password"
 
-    client = Neo4jClient().connect()
+    client = Neo4jClient().connect(auth=("neo4j", "password"))
     assert client.is_connected
     assert client._driver is not None
 
@@ -44,8 +42,6 @@ async def test_connection():
     assert client._driver is None
 
     os.environ.pop("NEO4J_OGM_URI")
-    os.environ.pop("NEO4J_OGM_USERNAME")
-    os.environ.pop("NEO4J_OGM_PASSWORD")
 
     with pytest.raises(MissingDatabaseURI):
         # Test raised exception when no URI is provided.
@@ -53,7 +49,7 @@ async def test_connection():
 
 
 @pytest.mark.asyncio
-async def test_ensure_connection(database_client: AsyncGenerator):
+async def test_ensure_connection(database_client: AsyncGenerator[Neo4jClient, Any]):
     """
     Test that the Neo4jClient raises an exception when attempting to execute a query
     without first connecting to a database.
@@ -62,22 +58,22 @@ async def test_ensure_connection(database_client: AsyncGenerator):
         client = Neo4jClient()
         await client.cypher("MATCH (n) RETURN n")
 
+    client = await anext(database_client)
     with pytest.raises(NotConnectedToDatabase):
-        client = Neo4jClient().connect("bolt://localhost:7687", ("neo4j", "password"))
         await client.close()
         await client.cypher("MATCH (n) RETURN n")
 
-    client: Neo4jClient = await anext(database_client)
+    client.connect("bolt://localhost:7687", auth=("neo4j", "password"))
     results, _ = await client.cypher("MATCH (n) RETURN n")
     assert results == []
 
 
 @pytest.mark.asyncio
-async def test_register_models(database_client: AsyncGenerator):
+async def test_register_models(database_client: AsyncGenerator[Neo4jClient, Any]):
     """
     Test that the Neo4jClient correctly registers models.
     """
-    client: Neo4jClient = await anext(database_client)
+    client = await anext(database_client)
     await client.register_models([TestNodeModel, TestRelationshipModel])
 
     assert TestNodeModel in client.models
