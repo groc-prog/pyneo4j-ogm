@@ -3,11 +3,12 @@ Database client for running queries against the connected database.
 """
 import os
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, cast
 
 from neo4j import AsyncDriver, AsyncGraphDatabase, AsyncSession, AsyncTransaction
 from neo4j.exceptions import DatabaseError
 from neo4j.graph import Node, Path, Relationship
+from typing_extensions import LiteralString
 
 from neo4j_ogm.core.node import NodeModel
 from neo4j_ogm.core.relationship import RelationshipModel
@@ -68,23 +69,22 @@ class Neo4jClient:
     Singleton database client class used to run different operations on the database.
     """
 
-    _driver: AsyncDriver
-    _session: AsyncSession
-    _transaction: AsyncTransaction
+    _driver: Optional[AsyncDriver]
+    _session: Optional[AsyncSession]
+    _transaction: Optional[AsyncTransaction]
     _skip_constraints: bool
     _skip_indexes: bool
     _batch_enabled: bool = False
     models: Set[Type[NodeModel | RelationshipModel]] = set()
     uri: str
-    auth: Tuple[str, str] | None
+    auth: Optional[Tuple[str, str]]
 
     def connect(
         self,
         uri: Optional[str] = None,
-        auth: Optional[Tuple[str, str]] = None,
+        *args,
         skip_constraints: bool = False,
         skip_indexes: bool = False,
-        *args,
         **kwargs,
     ) -> "Neo4jClient":
         """
@@ -93,8 +93,6 @@ class Neo4jClient:
         Args:
             uri (str | None, optional): Connection URI. If not provided, will try to fall back to
                 NEO4J_URI environment variable. Defaults to None.
-            auth (Tuple[str, str] | None, optional): Username and password authentication to use.
-                Defaults to None.
             skip_constraints (bool, optional): Whether to skip creating constraints on models or
                 not. Defaults to False.
             skip_indexes (bool, optional): Whether to skip creating indexes on models or not.
@@ -109,27 +107,10 @@ class Neo4jClient:
         """
         db_uri = uri if uri is not None else os.environ.get("NEO4J_OGM_URI", None)
 
-        if auth is not None:
-            db_auth = auth
-        elif all(
-            [
-                auth is None,
-                os.environ.get("NEO4J_OGM_USERNAME", None) is not None,
-                os.environ.get("NEO4J_OGM_PASSWORD", None) is not None,
-            ]
-        ):
-            db_auth = (
-                os.environ.get("NEO4J_OGM_USERNAME", None),
-                os.environ.get("NEO4J_OGM_PASSWORD", None),
-            )
-        else:
-            db_auth = None
-
         if db_uri is None:
             raise MissingDatabaseURI()
 
         self.uri = db_uri
-        self.auth = db_auth
         self._skip_constraints = skip_constraints
         self._skip_indexes = skip_indexes
 
@@ -204,7 +185,7 @@ class Neo4jClient:
         Closes the current connection to the client.
         """
         logger.info("Closing connection to database")
-        await self._driver.close()
+        await cast(AsyncDriver, self._driver).close()
         self._driver = None
         logger.info("Connection to database closed")
 
@@ -239,7 +220,9 @@ class Neo4jClient:
             parameters = parameters if parameters is not None else {}
 
             logger.debug("Running query \n%s \nwith parameters %s", query, parameters)
-            result_data = await self._transaction.run(query=query, parameters=parameters)
+            result_data = await cast(AsyncTransaction, self._transaction).run(
+                query=cast(LiteralString, query), parameters=parameters
+            )
 
             results = [list(r.values()) async for r in result_data]
             meta = list(result_data.keys())
@@ -539,7 +522,7 @@ class Neo4jClient:
             raise TransactionInProgress()
 
         logger.debug("Beginning new session")
-        self._session = self._driver.session()
+        self._session = cast(AsyncDriver, self._driver).session()
         logger.debug("Session %s created", self._session)
 
         logger.debug("Beginning new transaction for session %s", self._session)
@@ -553,7 +536,7 @@ class Neo4jClient:
         """
         logger.debug("Committing transaction %s", self._transaction)
         try:
-            await self._transaction.commit()
+            await cast(AsyncTransaction, self._transaction).commit()  # type: ignore
         finally:
             self._session = None
             self._transaction = None
@@ -565,7 +548,7 @@ class Neo4jClient:
         """
         logger.debug("Rolling back transaction %s", self._transaction)
         try:
-            await self._transaction.rollback()
+            await cast(AsyncTransaction, self._transaction).rollback()  # type: ignore
         finally:
             self._session = None
             self._transaction = None
@@ -620,11 +603,14 @@ class Neo4jClient:
 
                 if issubclass(model, NodeModel):
                     model_labels = set(getattr(model.__settings__, "labels"))
+
+                    if labels == model_labels:
+                        return model.inflate(cast(Node, query_result))
                 elif issubclass(model, RelationshipModel):
                     model_labels = set(getattr(model.__settings__, "type"))
 
-                if labels == model_labels:
-                    return model.inflate(query_result)
+                    if labels == model_labels:
+                        return model.inflate(cast(Relationship, query_result))
 
             logger.debug("No model found for query result %s", query_result)
             return None

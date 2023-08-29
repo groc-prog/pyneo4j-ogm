@@ -7,7 +7,6 @@ from enum import Enum
 from functools import wraps
 from typing import (
     Any,
-    Callable,
     Dict,
     Generic,
     List,
@@ -63,15 +62,21 @@ class RelationshipPropertyCardinality(str, Enum):
     ZERO_OR_MORE = "ZERO_OR_MORE"
 
 
-def hooks(func: Callable[P, V]) -> Callable[P, V]:
+def hooks(func):
     """
     Decorator which runs defined pre- and post hooks for the decorated method. The decorator expects the
     hooks to have the name of the decorated method.
+
+    Args:
+        func (Callable): The method to decorate.
+
+    Returns:
+        Callable: The decorated method.
     """
 
     @wraps(func)
-    async def decorator(self: "RelationshipProperty", *args, **kwargs) -> V:
-        source_node: T = getattr(self, "_source_node")
+    async def decorator(self: "RelationshipProperty", *args, **kwargs):
+        source_node = getattr(self, "_source_node")
         settings: RelationshipModelSettings = getattr(source_node, "__settings__")
         hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
 
@@ -100,14 +105,20 @@ def hooks(func: Callable[P, V]) -> Callable[P, V]:
     return decorator
 
 
-def check_models_registered(func: Callable[P, V]) -> Callable[P, V]:
+def check_models_registered(func):
     """
     Decorator which checks if the relationship- and target model have been registered with the client.
+
+    Args:
+        func (Callable): The method to decorate.
+
+    Returns:
+        Callable: The decorated method.
     """
 
     @wraps(func)
-    async def decorator(self: "RelationshipProperty", *args, **kwargs) -> V:
-        source_node: T = getattr(self, "_source_node")
+    async def decorator(self: "RelationshipProperty", *args, **kwargs):
+        source_node = getattr(self, "_source_node")
         client: Neo4jClient = getattr(source_node, "_client")
         target_model_name: str = getattr(self, "_target_model_name")
         relationship_model_name: str = getattr(self, "_relationship_model_name")
@@ -154,11 +165,11 @@ class RelationshipProperty(Generic[T, U]):
     _source_node: T
     _direction: RelationshipPropertyDirection
     _cardinality: RelationshipPropertyCardinality
-    _relationship_model: Type[U]
+    _relationship_model: Optional[Type[U]]
     _relationship_model_name: str
     _allow_multiple: bool
     _nodes: List[T]
-    _registered_name: str
+    _registered_name: Optional[str]
 
     def __init__(
         self,
@@ -212,11 +223,11 @@ class RelationshipProperty(Generic[T, U]):
         logger.info("Getting relationship between target node %s and source node %s", node, self._source_node)
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=cast(U, self._relationship_model).__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=list(self._source_node.__settings__.labels),
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
         )
 
         results, _ = await self._client.cypher(
@@ -263,12 +274,12 @@ class RelationshipProperty(Generic[T, U]):
         )
 
         # Build properties if relationship is defined as model
-        relationship_instance = self._relationship_model.validate(properties if properties is not None else {})
+        relationship_instance = cast(U, self._relationship_model).validate(properties if properties is not None else {})
         deflated_properties: Dict[str, Any] = relationship_instance.deflate()
 
         relationship_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=cast(U, self._relationship_model).__settings__.type,
             start_node_ref="start",
             end_node_ref="end",
         )
@@ -329,11 +340,11 @@ class RelationshipProperty(Generic[T, U]):
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=cast(U, self._relationship_model).__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=list(cast(T, self._source_node).__settings__.labels),
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
         )
 
         logger.debug("Getting relationship count between source and target node")
@@ -388,11 +399,11 @@ class RelationshipProperty(Generic[T, U]):
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=cast(U, self._relationship_model).__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=list(cast(T, self._source_node).__settings__.labels),
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
         )
 
         logger.debug("Getting relationship count for source node")
@@ -455,11 +466,11 @@ class RelationshipProperty(Generic[T, U]):
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=cast(U, self._relationship_model).__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=list(cast(T, self._source_node).__settings__.labels),
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
         )
 
         logger.debug("Checking if new node is already connected and needs to be disconnected")
@@ -532,7 +543,7 @@ class RelationshipProperty(Generic[T, U]):
         logger.debug("Creating relationship between source node and new node")
         create_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=cast(U, self._relationship_model).__settings__.type,
             start_node_ref="start",
             end_node_ref="end",
         )
@@ -546,8 +557,8 @@ class RelationshipProperty(Generic[T, U]):
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH
-                    {self._query_builder.node_match(labels=self._source_node.__settings__.labels, ref="start")},
-                    {self._query_builder.node_match(labels=self._target_model.__settings__.labels, ref="end")}
+                    {self._query_builder.node_match(labels=list(cast(T, self._source_node).__settings__.labels), ref="start")},
+                    {self._query_builder.node_match(labels=list(cast(Type[T], self._target_model).__settings__.labels), ref="end")}
                 WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 CREATE {create_query}
                 {set_query}
@@ -587,6 +598,11 @@ class RelationshipProperty(Generic[T, U]):
         Returns:
             List[T | Dict[str, Any]]: A list of model instances or dictionaries of the projected properties.
         """
+        instances: List[Union[T, Dict[str, Any]]] = []
+        do_auto_fetch: bool = False
+        match_queries, return_queries = [], []
+        target_node_model: Optional[T] = None
+
         logger.info("Getting connected nodes matching filters %s", filters)
         self._query_builder.reset_query()
         if filters is not None:
@@ -596,8 +612,6 @@ class RelationshipProperty(Generic[T, U]):
         if projections is not None:
             self._query_builder.build_projections(projections=projections, ref="end")
 
-        instances: List[T] = []
-        do_auto_fetch: bool = False
         projection_query = (
             "DISTINCT end"
             if self._query_builder.query["projections"] == ""
@@ -606,24 +620,23 @@ class RelationshipProperty(Generic[T, U]):
 
         if auto_fetch_nodes:
             logger.debug("Auto-fetching nodes is enabled, checking if model with target labels is registered")
-            target_node_model = None
 
             for model in self._client.models:
-                if hasattr(model.__settings__, "labels") and list(model.__settings__.labels) == list(
-                    self._target_model.__settings__.labels
+                if hasattr(model.__settings__, "labels") and list(getattr(model.__settings__, "labels", [])) == list(
+                    cast(Type[T], self._target_model).__settings__.labels
                 ):
-                    target_node_model = model
+                    target_node_model = cast(T, model)
                     break
 
             if target_node_model is None:
                 logger.warning(
                     "No model with labels %s is registered, disabling auto-fetch",
-                    list(self._target_model.__settings__.labels),
+                    list(cast(Type[T], self._target_model).__settings__.labels),
                 )
             else:
                 logger.debug(
                     "Model with labels %s is registered, building auto-fetch query",
-                    list(self._target_model.__settings__.labels),
+                    list(cast(Type[T], self._target_model).__settings__.labels),
                 )
                 match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
                     ref="end"
@@ -631,7 +644,7 @@ class RelationshipProperty(Generic[T, U]):
 
                 do_auto_fetch = all(
                     [
-                        auto_fetch_nodes or self.__settings__.auto_fetch_nodes,
+                        auto_fetch_nodes,
                         len(match_queries) != 0,
                         len(return_queries) != 0,
                     ]
@@ -640,11 +653,11 @@ class RelationshipProperty(Generic[T, U]):
         match_query = self._query_builder.relationship_match(
             ref="r",
             direction=self._direction,
-            type_=self._relationship_model.__settings__.type,
+            type_=cast(U, self._relationship_model).__settings__.type,
             start_node_ref="start",
-            start_node_labels=self._source_node.__settings__.labels,
+            start_node_labels=list(cast(T, self._source_node).__settings__.labels),
             end_node_ref="end",
-            end_node_labels=self._target_model.__settings__.labels,
+            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
         )
 
         results, meta = await self._client.cypher(
@@ -679,7 +692,7 @@ class RelationshipProperty(Generic[T, U]):
                     if instance_element_id in added_nodes:
                         continue
 
-                    if index == 0:
+                    if index == 0 and target_node_model is not None:
                         instances.append(target_node_model.inflate(node=result) if isinstance(result, Node) else result)
                     else:
                         target_instance = [
@@ -698,12 +711,12 @@ class RelationshipProperty(Generic[T, U]):
                     if result is None:
                         continue
 
-                    if isinstance(result, Node):
-                        instances.append(self.inflate(node=result))
+                    if isinstance(result, Node) and target_node_model is not None:
+                        instances.append(target_node_model.inflate(node=result))
                     elif isinstance(result, list):
                         instances.extend(result)
                     else:
-                        instances.append(result)
+                        instances.append(cast(T, result))
 
         return instances
 
@@ -725,13 +738,13 @@ class RelationshipProperty(Generic[T, U]):
 
         registered_node_model = [model for model in self._client.models if model.__name__ == self._target_model_name]
         if len(registered_node_model) > 0:
-            self._target_model = registered_node_model[0]
+            self._target_model = cast(Type[T], registered_node_model[0])
 
         registered_relationship_model = [
             model for model in self._client.models if model.__name__ == self._relationship_model_name
         ]
         if len(registered_relationship_model) > 0:
-            self._relationship_model = registered_relationship_model[0]
+            self._relationship_model = cast(Type[U], registered_relationship_model[0])
 
     @property
     def nodes(self) -> List[T]:
@@ -768,9 +781,9 @@ class RelationshipProperty(Generic[T, U]):
             if getattr(node, "_destroyed", True):
                 raise InstanceDestroyed()
 
-            if self._target_model.__name__ != node.__class__.__name__:
+            if cast(Type[T], self._target_model).__name__ != node.__class__.__name__:
                 raise InvalidTargetNode(
-                    expected_type=self._target_model.__name__,
+                    expected_type=cast(Type[T], self._target_model).__name__,
                     actual_type=node.__class__.__name__,
                 )
 
@@ -789,11 +802,11 @@ class RelationshipProperty(Generic[T, U]):
             case RelationshipPropertyCardinality.ZERO_OR_ONE:
                 match_query = self._query_builder.relationship_match(
                     direction=self._direction,
-                    type_=self._relationship_model.__settings__.type,
+                    type_=cast(Type[U], self._relationship_model).__settings__.type,
                     start_node_ref="start",
-                    start_node_labels=self._source_node.__settings__.labels,
+                    start_node_labels=list(cast(T, self._source_node).__settings__.labels),
                     end_node_ref="end",
-                    end_node_labels=self._target_model.__settings__.labels,
+                    end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
                 )
 
                 results, _ = await self._client.cypher(
@@ -808,9 +821,9 @@ class RelationshipProperty(Generic[T, U]):
                 if results[0][0] > 0:
                     raise CardinalityViolation(
                         cardinality_type=self._cardinality,
-                        relationship_type=self._relationship_model.__settings__.type,
+                        relationship_type=cast(str, cast(Type[U], self._relationship_model).__settings__.type),
                         start_model=self._source_node.__class__.__name__,
-                        end_model=self._target_model.__name__,
+                        end_model=cast(Type[T], self._target_model).__name__,
                     )
             case _:
                 logger.debug("RelationshipPropertyCardinality is %s, no checks required", self._cardinality)

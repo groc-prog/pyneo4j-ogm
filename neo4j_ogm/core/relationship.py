@@ -8,19 +8,7 @@ the database for CRUD operations on relationships.
 import json
 import re
 from functools import wraps
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Dict,
-    List,
-    Optional,
-    ParamSpec,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
@@ -41,28 +29,26 @@ from neo4j_ogm.queries.types import (
     RelationshipMatchDirection,
 )
 
-P = ParamSpec("P")
 T = TypeVar("T", bound="RelationshipModel")
-U = TypeVar("U")
 
 
-def ensure_alive(func: Callable[P, U]) -> Callable[P, U]:
+def ensure_alive(func):
     """
     Decorator to ensure that the decorated method is only called on a alive instance.
 
     Args:
-        func (Callable[P, U]): The method to decorate.
+        func (Callable): The method to decorate.
 
     Raises:
         InstanceDestroyed: Raised if the instance is destroyed.
         InstanceNotHydrated: Raised if the instance is not hydrated.
 
     Returns:
-        Callable[P, U]: The decorated method.
+        Callable: The decorated method.
     """
 
     @wraps(func)
-    def wrapper(self: T, *args: Any, **kwargs: Any) -> U:
+    def wrapper(self, *args: Any, **kwargs: Any):
         if getattr(self, "_destroyed", False):
             raise InstanceDestroyed()
 
@@ -260,7 +246,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             raise NoResultsFound()
 
         logger.debug("Updating current instance")
-        self.__dict__.update(cast(T, results[0][0]).__dict__)
+        self.__dict__.update(results[0][0].__dict__)
         logger.info("Refreshed relationship %s", self)
 
     @hooks
@@ -423,7 +409,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         if projections is not None:
             cls._query_builder.build_projections(projections=projections, ref="r")
 
-        instances: List[T] = []
+        instances: List[Union[T, Dict[str, Any]]] = []
         projection_query = (
             "DISTINCT r" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
         )
@@ -561,7 +547,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         update: Dict[str, Any],
         filters: Optional[RelationshipFilters] = None,
         new: bool = False,
-    ) -> Union[List[T], T]:
+    ) -> List[T]:
         """
         Finds all relationships that match `filters` and updates them with the values defined by `update`.
 
@@ -572,7 +558,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 returned. Defaults to False.
 
         Returns:
-            List[T] | T: By default, the old relationship instances are returned. If `new` is set to `True`, the
+            List[T]: By default, the old relationship instances are returned. If `new` is set to `True`, the
                 result will be the `updated instance`.
         """
         new_instance: T

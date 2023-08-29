@@ -8,7 +8,6 @@ from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ClassVar,
     Dict,
     List,
@@ -32,7 +31,7 @@ from neo4j_ogm.exceptions import (
     MissingFilters,
     NoResultsFound,
 )
-from neo4j_ogm.fields.settings import NodeModelSettings
+from neo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
 
@@ -46,23 +45,23 @@ T = TypeVar("T", bound="NodeModel")
 U = TypeVar("U")
 
 
-def ensure_alive(func: Callable[P, U]) -> Callable[P, U]:
+def ensure_alive(func):
     """
     Decorator to ensure that the decorated method is only called on a alive instance.
 
     Args:
-        func (Callable[P, U]): The method to decorate.
+        func (Callable): The method to decorate.
 
     Raises:
         InstanceDestroyed: Raised if the instance is destroyed.
         InstanceNotHydrated: Raised if the instance is not hydrated.
 
     Returns:
-        Callable[P, U]: The decorated method.
+        Callable: The decorated method.
     """
 
     @wraps(func)
-    def wrapper(self: T, *args: Any, **kwargs: Any) -> U:
+    def wrapper(self, *args: Any, **kwargs: Any):
         if getattr(self, "_destroyed", False):
             raise InstanceDestroyed()
 
@@ -200,7 +199,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await self._client.cypher(
             query=f"""
-                CREATE {self._query_builder.node_match(self.__settings__.labels)}
+                CREATE {self._query_builder.node_match(list(self.__settings__.labels))}
                 {set_query}
                 RETURN n
             """,
@@ -246,7 +245,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self.__settings__.labels)}
+                MATCH {self._query_builder.node_match(list(self.__settings__.labels))}
                 WHERE elementId(n) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
                 RETURN n
@@ -275,7 +274,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.info("Deleting node %s", self)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self.__settings__.labels)}
+                MATCH {self._query_builder.node_match(list(self.__settings__.labels))}
                 WHERE elementId(n) = $element_id
                 DETACH DELETE n
                 RETURN count(n)
@@ -303,7 +302,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.info("Refreshing node %s with values from database", self)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self.__settings__.labels)}
+                MATCH {self._query_builder.node_match(list(self.__settings__.labels))}
                 WHERE elementId(n) = $element_id
                 RETURN n
             """,
@@ -315,14 +314,14 @@ class NodeModel(ModelBase[NodeModelSettings]):
             raise NoResultsFound()
 
         logger.debug("Updating current instance")
-        self.__dict__.update(cast(T, results[0][0]).__dict__)
+        self.__dict__.update(results[0][0].__dict__)
         logger.info("Refreshed node %s", self)
 
     @hooks
     @ensure_alive
     async def find_connected_nodes(
         self: T,
-        filters: Optional[MultiHopFilters] = None,
+        filters: MultiHopFilters,
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
@@ -331,7 +330,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Gets all connected nodes which match the provided `filters` parameter over multiple hops.
 
         Args:
-            filters (MultiHopFilters, optional): The filters to apply to the query. Defaults to None.
+            filters (MultiHopFilters): The filters to apply to the query.
             projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
                 projection will result in the whole model instances being returned. Defaults to None.
             options (QueryOptions, optional): The options to apply to the query. Defaults to None.
@@ -342,6 +341,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             List[T | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected properties.
         """
         do_auto_fetch: bool = False
+        match_queries, return_queries = [], []
+        target_node_model: Optional[T] = None
 
         logger.info(
             "Getting connected nodes for node %s matching filters %s over multiple hops",
@@ -362,14 +363,13 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         if auto_fetch_nodes:
             logger.debug("Auto-fetching nodes is enabled, checking if model with target labels is registered")
-            target_node_model = None
 
             for model in self._client.models:
                 if (
                     hasattr(model.__settings__, "labels")
-                    and list(model.__settings__.labels) == filters["$node"]["$labels"]
+                    and list(getattr(model.__settings__, "labels", [])) == filters["$node"]["$labels"]
                 ):
-                    target_node_model = model
+                    target_node_model = cast(T, model)
                     break
 
             if target_node_model is None:
@@ -394,7 +394,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, meta = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(self.__settings__.labels)}{self._query_builder.query['match']}
+                MATCH {self._query_builder.node_match(list(self.__settings__.labels))}{self._query_builder.query['match']}
                 WHERE
                     elementId(n) = $element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
@@ -409,7 +409,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             },
         )
 
-        instances: List[T] = []
+        instances: List[Union[T, Dict[str, Any]]] = []
 
         logger.debug("Building instances from results")
         if do_auto_fetch:
@@ -426,7 +426,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     if instance_element_id in added_nodes:
                         continue
 
-                    if index == 0:
+                    if index == 0 and target_node_model is not None:
                         instances.append(target_node_model.inflate(node=result) if isinstance(result, Node) else result)
                     else:
                         target_instance = [
@@ -509,7 +509,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             logger.debug("Querying database with auto-fetch")
             results, meta = await cls._client.cypher(
                 query=f"""
-                    MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                    MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                     WHERE {cls._query_builder.query['where']}
                     WITH n
                     LIMIT 1
@@ -522,7 +522,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             logger.debug("Querying database without auto-fetch")
             results, meta = await cls._client.cypher(
                 query=f"""
-                    MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                    MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                     WHERE {cls._query_builder.query['where']}
                     RETURN {projection_query}
                     LIMIT 1
@@ -597,7 +597,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if projections is not None:
             cls._query_builder.build_projections(projections=projections)
 
-        instances: List[T] = []
+        instances: List[Union[T, Dict[str, Any]]] = []
         projection_query = (
             "DISTINCT n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
         )
@@ -615,7 +615,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             logger.debug("Querying database with auto-fetch")
             results, meta = await cls._client.cypher(
                 query=f"""
-                    MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                    MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                     {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                     WITH n
                     {cls._query_builder.query['options']}
@@ -657,7 +657,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             logger.debug("Querying database without auto-fetch")
             results, _ = await cls._client.cypher(
                 query=f"""
-                    MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                    MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                     {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                     RETURN {projection_query}
                     {cls._query_builder.query['options']}
@@ -719,7 +719,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                 WHERE {cls._query_builder.query['where']}
                 RETURN DISTINCT n
                 LIMIT 1
@@ -751,7 +751,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(new_instance.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(list(new_instance.__settings__.labels))}
                 WHERE elementId(n) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
             """,
@@ -771,7 +771,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         update: Dict[str, Any],
         filters: Optional[NodeFilters] = None,
         new: bool = False,
-    ) -> [List[T], T]:
+    ) -> List[T]:
         """
         Finds all nodes that match `filters` and updates them with the values defined by `update`.
 
@@ -782,8 +782,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 is returned. Defaults to False.
 
         Returns:
-            List[T] | T: By default, the old node instances are returned. If `new` is set to `True`,
-                the result will be the `updated/created instance`.
+            List[T]: By default, the old node instances are returned. If `new` is set to `True`,
+                the result will be the `updated/created instances`.
         """
         new_instance: T
 
@@ -795,7 +795,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.debug("Getting all nodes of model %s matching filters %s", cls.__name__, filters)
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN DISTINCT n
             """,
@@ -826,7 +826,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN DISTINCT n
@@ -880,7 +880,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                 WHERE {cls._query_builder.query['where']}
                 WITH n LIMIT 1
                 DETACH DELETE n
@@ -915,7 +915,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 DETACH DELETE n
                 RETURN DISTINCT n
@@ -949,7 +949,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(cls.__settings__.labels)}
+                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN count(n)
             """,
@@ -963,7 +963,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         return results[0][0]
 
     @classmethod
-    def _build_auto_fetch(cls, ref: str = "n") -> Tuple[str, str]:
+    def _build_auto_fetch(cls, ref: str = "n") -> Tuple[List[str], List[str]]:
         """
         Builds the auto-fetch query for the instance.
 
@@ -971,23 +971,23 @@ class NodeModel(ModelBase[NodeModelSettings]):
             ref (str, optional): The reference to use for the node. Defaults to "n".
 
         Returns:
-            Tuple[str, str]: The `MATCH` and `RETURN` queries.
+            Tuple[List[str], List[str]]: The `MATCH` and `RETURN` queries.
         """
         match_queries: List[str] = []
         return_queries: List[str] = []
 
         logger.debug("Building node match queries for auto-fetch")
         for defined_relationship in cls._relationships_properties:
-            relationship_type: str = None
-            end_node_labels: List[str] = None
+            relationship_type: Optional[str] = None
+            end_node_labels: Optional[List[str]] = None
             relationship_property = cast(RelationshipProperty, cls.__fields__[defined_relationship].default)
             direction = getattr(relationship_property, "_direction")
 
             for model in cls._client.models:
                 if model.__name__ == getattr(relationship_property, "_relationship_model_name", None):
-                    relationship_type = model.__settings__.type
+                    relationship_type = cast(RelationshipModelSettings, model.__settings__).type
                 elif model.__name__ == getattr(relationship_property, "_target_model_name", None):
-                    end_node_labels = model.__settings__.labels
+                    end_node_labels = list(cast(NodeModelSettings, model.__settings__).labels)
 
             if relationship_type is None:
                 logger.debug(

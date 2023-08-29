@@ -1,24 +1,22 @@
 """
 Datatype wrappers for Neo4j OGM properties which allow for extra options to be set on the property.
 """
-from typing import Type, TypeVar
-
-T = TypeVar("T")
+from typing import Type
 
 
 def WithOptions(
-    property_type: T,
+    property_type: Type,
     range_index: bool = False,
     text_index: bool = False,
     point_index: bool = False,
     unique: bool = False,
-) -> Type[T]:
+) -> Type:
     """
     Returns a subclass of `property_type` which includes extra attributes which can be used to define indexes and
     constraints on the property. Does not have an effect when called with just the `property_type` argument.
 
     Args:
-        property_type (Any): The property type to return for the model field
+        property_type (Type): The property type to return for the model field
         range_index (bool, optional): Whether the property should have a `RANGE` index or not. Defaults to False.
         text_index (bool, optional): Whether the property should have a `TEXT` index or not. Defaults to False.
         point_index (bool, optional): Whether the property should have a `POINT` index or not. Defaults to False.
@@ -26,7 +24,7 @@ def WithOptions(
             Defaults to False.
 
     Returns:
-        A subclass of the provided type with extra attributes
+        Type: A subclass of the provided type with extra attributes
     """
 
     class PropertyWithOptions(property_type):

@@ -5,12 +5,13 @@ from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, TypedDict, Union, cast
 
 from neo4j_ogm.exceptions import InvalidRelationshipHops
+from neo4j_ogm.fields.relationship_property import RelationshipPropertyDirection
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.types import (
     MultiHopFilters,
-    MultiHopRelationship,
     NodeFilters,
     QueryDataTypes,
+    QueryOptions,
     RelationshipFilters,
     RelationshipMatchDirection,
     RelationshipPropertyFilters,
@@ -62,7 +63,7 @@ class QueryBuilder:
     _property_name: Optional[str] = None
     _property_var_overwrite: Optional[str] = None
     ref: str
-    parameters: Dict[str, QueryDataTypes] = {}
+    parameters: Dict[str, Union[QueryDataTypes, List[str]]] = {}
     query: FilterQueries = {
         "match": "",
         "where": "",
@@ -92,10 +93,10 @@ class QueryBuilder:
         logger.debug("Building node filters %s", filters)
         self.ref = ref
         self.parameters = {}
-        normalized_filters = self._normalize_expressions(filters)
+        normalized_filters = self._normalize_expressions(expressions=cast(Dict[str, Any], filters))
 
         # Validate filters with pydantic model
-        validated_filters = NodeFiltersModel(**normalized_filters)
+        validated_filters = NodeFiltersModel(**cast(Dict[str, Any], normalized_filters))
         validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
@@ -114,10 +115,10 @@ class QueryBuilder:
         logger.debug("Building relationship filters %s", filters)
         self.ref = ref
         self.parameters = {}
-        normalized_filters = self._normalize_expressions(filters)
+        normalized_filters = self._normalize_expressions(expressions=cast(Dict[str, Any], filters))
 
         # Validate filters with pydantic model
-        validated_filters = RelationshipFiltersModel(**normalized_filters)
+        validated_filters = RelationshipFiltersModel(**cast(Dict[str, Any], normalized_filters))
         validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
@@ -138,10 +139,10 @@ class QueryBuilder:
         """
         logger.debug("Building relationship property filters %s", filters)
         self.parameters = {}
-        normalized_filters = self._normalize_expressions(filters)
+        normalized_filters = self._normalize_expressions(expressions=cast(Dict[str, Any], filters))
 
         # Validate filters with pydantic model
-        validated_filters = RelationshipPropertyFiltersModel(**normalized_filters)
+        validated_filters = RelationshipPropertyFiltersModel(**cast(Dict[str, Any], normalized_filters))
         validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
@@ -173,10 +174,10 @@ class QueryBuilder:
         logger.debug("Building multi hop filters %s", filters)
         self.ref = start_ref
         self.parameters = {}
-        normalized_filters = self._normalize_expressions(filters)
+        normalized_filters = self._normalize_expressions(expressions=cast(Dict[str, Any], filters))
 
         # Validate filters with pydantic model
-        validated_filters = MultiHopFiltersModel(**normalized_filters)
+        validated_filters = MultiHopFiltersModel(**cast(Dict[str, Any], normalized_filters))
         validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
@@ -207,7 +208,7 @@ class QueryBuilder:
             for relationship in validated_filters["$relationships"]:
                 relationship_type = relationship["$type"]
 
-                relationship_filters = deepcopy(cast(MultiHopRelationship, relationship))
+                relationship_filters = deepcopy(relationship)
                 relationship_filters.pop("$type")
                 build_filters = self._build_query(filters=relationship_filters)
 
@@ -231,18 +232,18 @@ class QueryBuilder:
         chain_with_and = " AND " if where_node_query != "" and relationship_where_query != "" else ""
         self.query["where"] = f"{where_node_query}{chain_with_and}{relationship_where_query}"
 
-    def query_options(self, options: Dict[str, Any], ref: str = "n") -> None:
+    def query_options(self, options: QueryOptions, ref: str = "n") -> None:
         """
         Builds the query options for the query.
 
         Args:
-            options (Dict[str, Any]): The options to build.
+            options (QueryOptions): The options to build.
             ref (str, optional): The reference to the node or relationship. Defaults to "n".
         """
         logger.debug("Building query options %s", options)
 
         # Validate options with pydantic model
-        validated_options = QueryOptionModel(**options)
+        validated_options = QueryOptionModel(**cast(Dict[str, Any], options))
         validated_options = validated_options.dict(exclude_none=True)
 
         sort_query: str = ""
@@ -288,7 +289,7 @@ class QueryBuilder:
         self,
         ref: Optional[str] = "r",
         type_: Optional[str] = None,
-        direction: RelationshipMatchDirection = RelationshipMatchDirection.BOTH,
+        direction: Union[RelationshipMatchDirection, RelationshipPropertyDirection] = RelationshipMatchDirection.BOTH,
         start_node_ref: Optional[str] = None,
         start_node_labels: Optional[List[str]] = None,
         end_node_ref: Optional[str] = None,
@@ -354,14 +355,14 @@ class QueryBuilder:
         relationship_match = f"[{relationship_ref}{relationship_type}{hops}]"
 
         match direction:
-            case RelationshipMatchDirection.INCOMING:
+            case RelationshipMatchDirection.INCOMING, RelationshipPropertyDirection.INCOMING:
                 return f"{start_node_match}<-{relationship_match}-{end_node_match}"
-            case RelationshipMatchDirection.OUTGOING:
+            case RelationshipMatchDirection.OUTGOING, RelationshipPropertyDirection.OUTGOING:
                 return f"{start_node_match}-{relationship_match}->{end_node_match}"
             case RelationshipMatchDirection.BOTH:
                 return f"{start_node_match}-{relationship_match}-{end_node_match}"
 
-    def build_projections(self, projections: Dict[str, str], ref: str = "n") -> List[str]:
+    def build_projections(self, projections: Dict[str, str], ref: str = "n") -> Optional[List[str]]:
         """
         Builds a projection which only returns the node properties defined in the projection.
 
@@ -370,7 +371,7 @@ class QueryBuilder:
             projections (Dict[str, str]): The projections to build.
 
         Returns:
-            list[str]: The projection queries.
+            Optional[List[str]]: The projections to use in the query.
         """
         if not isinstance(projections, dict):
             return
@@ -429,19 +430,21 @@ class QueryBuilder:
 
         return " AND ".join(where_queries)
 
-    def _normalize_expressions(self, expressions: Dict[str, Any], level: int = 0) -> Dict[str, Any]:
+    def _normalize_expressions(
+        self, expressions: Union[Dict[str, Any], List[Any]], level: int = 0
+    ) -> Union[Dict[str, Any], List[Any]]:
         """
         Normalizes and formats the provided expressions into usable expressions for the builder.
 
         Args:
-            expressions (Dict[str, Any]): The expressions to normalize
+            expressions (Union[Dict[str, Any], List[Any]]): The expressions to normalize
             level (int, optional): The recursion depth level. Should not be modified outside the
                 function itself. Defaults to 0.
 
         Returns:
-            Dict[str, Any]: The normalized expressions.
+            Union[Dict[str, Any], List[Any]]: The normalized expressions.
         """
-        normalized: Dict[str, Any] = deepcopy(expressions)
+        normalized = deepcopy(expressions)
 
         if isinstance(normalized, dict):
             # Transform values without a operator to a `$eq` operator
@@ -459,19 +462,21 @@ class QueryBuilder:
 
         # Normalize nested operators
         if isinstance(normalized, list):
-            for index, expression in enumerate(normalized):
+            for index, expression in enumerate((normalized)):
                 normalized[index] = self._normalize_expressions(expressions=expression, level=level + 1)
         elif isinstance(normalized, dict):
             for operator, expression in normalized.items():
                 # Handle $relationships operators
                 if operator == "$relationships":
                     for index, relationship_expression in enumerate(expression):
-                        normalized[operator][index] = self._normalize_expressions(
+                        cast(Dict[str, List[Any]], normalized)[operator][index] = self._normalize_expressions(
                             expressions=relationship_expression, level=0
                         )
                 # Handle $node operator
                 elif operator == "$node":
-                    normalized[operator] = self._normalize_expressions(expressions=expression, level=0)
+                    cast(Dict[str, Any], normalized)[operator] = self._normalize_expressions(
+                        expressions=expression, level=0
+                    )
                 # Handle $patterns operator
                 elif operator == "$patterns":
                     for index, pattern in enumerate(expression):
@@ -485,7 +490,9 @@ class QueryBuilder:
                                 expressions=pattern["$relationship"], level=0
                             )
                 else:
-                    normalized[operator] = self._normalize_expressions(expressions=expression, level=level + 1)
+                    cast(Dict[str, Any], normalized)[operator] = self._normalize_expressions(
+                        expressions=expression, level=level + 1
+                    )
 
         return normalized
 
@@ -513,7 +520,7 @@ class QueryBuilder:
                     operators_to_remove.append(operator)
             elif isinstance(expression, list):
                 # Handle logical operators
-                indexes_to_remove: List[str] = []
+                indexes_to_remove: List[int] = []
 
                 for index, nested_expression in enumerate(expression):
                     # Search through all operators nested within
@@ -638,12 +645,12 @@ class QueryBuilder:
 
         return f"elementId({self.ref}) = ${param_var}"
 
-    def _and_operator(self, expressions: Dict[str, Any]) -> str:
+    def _and_operator(self, expressions: List[Dict[str, Any]]) -> str:
         """
         Builds the query for the `$and` operator.
 
         Args:
-            expressions (Dict[str, Any]): The provided expression for the operator.
+            expressions (List[Dict[str, Any]]): The provided expression for the operator.
 
         Returns:
             str: The operator query.
@@ -655,12 +662,12 @@ class QueryBuilder:
 
         return f"({' AND '.join(and_queries)})"
 
-    def _or_operator(self, expressions: Dict[str, Any]) -> str:
+    def _or_operator(self, expressions: List[Dict[str, Any]]) -> str:
         """
         Builds the query for the `$or` operator.
 
         Args:
-            expressions (Dict[str, Any]): The provided expression for the operator.
+            expressions (List[Dict[str, Any]]): The provided expression for the operator.
 
         Returns:
             str: The operator query.
@@ -672,12 +679,12 @@ class QueryBuilder:
 
         return f"({' OR '.join(or_queries)})"
 
-    def _xor_operator(self, expressions: Dict[str, Any]) -> str:
+    def _xor_operator(self, expressions: List[Dict[str, Any]]) -> str:
         """
         Builds the query for the `$xor` operator.
 
         Args:
-            expressions (Dict[str, Any]): The provided expression for the operator.
+            expressions (List[Dict[str, Any]]): The provided expression for the operator.
 
         Returns:
             str: The operator query.

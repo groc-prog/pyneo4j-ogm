@@ -25,3 +25,7 @@ class TestRelationshipModel(RelationshipModel):
 
     class Settings:
         type = "TEST_RELATIONSHIP"
+
+
+async def main():
+    a = await TestNodeModel.find_one({})

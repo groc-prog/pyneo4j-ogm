@@ -6,6 +6,7 @@ dictionary.
 import json
 import re
 from asyncio import iscoroutinefunction
+from copy import deepcopy
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -46,14 +47,20 @@ U = TypeVar("U")
 V = TypeVar("V")
 
 
-def hooks(func: Callable[P, U]) -> Callable[P, U]:
+def hooks(func):
     """
     Decorator which runs defined pre- and post hooks for the decorated method. The decorator expects the
     hooks to have the name of the decorated method.
+
+    Args:
+        func (Callable): The method to decorate.
+
+    Returns:
+        Callable: The decorated method.
     """
 
     @wraps(func)
-    async def wrapper(self: T, *args, **kwargs) -> U:
+    async def wrapper(self, *args, **kwargs):
         settings: BaseModelSettings = getattr(self, "__settings__")
 
         # Run pre hooks if defined
@@ -138,7 +145,7 @@ class ModelBase(Generic[V], BaseModel):
 
         return f"{self.__class__.__name__}({hydration_msg})"
 
-    def export_model(self: T, convert_to_camel_case: bool = False, *args, **kwargs) -> Dict[str, Any]:
+    def export_model(self, convert_to_camel_case: bool = False, *args, **kwargs) -> Dict[str, Any]:
         """
         Export the model to a dictionary containing standard python types. This method accepts all
         arguments of `pydantic.BaseModel.dict()`.
@@ -163,7 +170,7 @@ class ModelBase(Generic[V], BaseModel):
 
         if convert_to_camel_case:
             logger.debug("Converting keys to camel case")
-            model_dict = self._convert_to_camel_case(model_dict)
+            model_dict = cast(Dict[str, Any], self._convert_to_camel_case(model_dict))
 
         return model_dict
 
@@ -183,6 +190,8 @@ class ModelBase(Generic[V], BaseModel):
         Returns:
             T: An instance of the model.
         """
+        import_model = deepcopy(model)
+
         logger.debug("Importing model %s", cls.__name__)
         if any(
             [
@@ -194,10 +203,10 @@ class ModelBase(Generic[V], BaseModel):
 
         if from_camel_case:
             logger.debug("Converting keys from camel case")
-            model = cls._convert_keys_to_snake_case(model)
+            import_model = cast(Dict[str, Any], cls._convert_keys_to_snake_case(model))
 
-        instance = cls(**model)
-        instance._element_id = model["element_id"]
+        instance = cls(**import_model)
+        instance._element_id = import_model["element_id"]
         return instance
 
     @classmethod
@@ -286,18 +295,18 @@ class ModelBase(Generic[V], BaseModel):
         Returns:
             V: The model settings.
         """
-        return cls.__settings__
+        return cast(V, cls.__settings__)
 
     @classmethod
-    def _convert_to_camel_case(cls, model_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _convert_to_camel_case(cls, model_dict: Union[Dict[str, Any], List[Any]]) -> Union[Dict[str, Any], List[Any]]:
         """
         Recursively convert all keys in a dictionary to camelCase.
 
         Args:
-            model_dict (dict): The dictionary to convert.
+            model_dict (Union[Dict[str, Any], List[Any]]): The dictionary to convert.
 
         Returns:
-            dict: The dictionary with all keys converted to camelCase.
+            Union[Dict[str, Any], List[Any]]: The dictionary with all keys converted to camelCase.
         """
 
         def to_camel_case(key: str) -> str:
@@ -311,15 +320,17 @@ class ModelBase(Generic[V], BaseModel):
         return model_dict
 
     @classmethod
-    def _convert_keys_to_snake_case(cls, model_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _convert_keys_to_snake_case(
+        cls, model_dict: Union[Dict[str, Any], List[Any]]
+    ) -> Union[Dict[str, Any], List[Any]]:
         """
         Recursively convert all keys in a dictionary from camelCase to snake_case.
 
         Args:
-            model_dict (dict): The dictionary to convert.
+            model_dict (Union[Dict[str, Any], List[Any]]): The dictionary to convert.
 
         Returns:
-            dict: The dictionary with all keys converted to snake_case.
+            Union[Dict[str, Any], List[Any]]: The dictionary with all keys converted to snake_case.
         """
 
         def to_snake_case(key: str) -> str:

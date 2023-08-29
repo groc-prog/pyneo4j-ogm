@@ -10,15 +10,16 @@ def _normalize_hooks(hooks: Dict[str, Union[List[Callable], Callable]]) -> Dict[
     """
     Normalize a list of hooks to a list of callables.
     """
+    normalized_hooks: Dict[str, List[Callable]] = {}
+
     if isinstance(hooks, dict):
         for hook_name, hook_function in hooks.items():
-            if not isinstance(hook_function, list) and callable(hook_function):
-                hooks[hook_name] = [hook_function]
-            elif not isinstance(hook_function, list) and not callable(hook_function):
-                hooks[hook_name] = []
-        return hooks
+            if callable(hook_function):
+                normalized_hooks[hook_name] = [hook_function]
+            elif isinstance(hook_function, list):
+                normalized_hooks[hook_name] = [func for func in hook_function if callable(func)]
 
-    return {}
+    return normalized_hooks
 
 
 class BaseModelSettings(BaseModel):
@@ -27,8 +28,8 @@ class BaseModelSettings(BaseModel):
     """
 
     exclude_from_export: Set[str] = set()
-    pre_hooks: Dict[str, Union[List[Callable], Callable]] = {}
-    post_hooks: Dict[str, Union[List[Callable], Callable]] = {}
+    pre_hooks: Dict[str, List[Callable]] = {}
+    post_hooks: Dict[str, List[Callable]] = {}
 
     normalize_pre_hooks = validator("pre_hooks", pre=True, allow_reuse=True)(_normalize_hooks)
     normalize_post_hooks = validator("post_hooks", pre=True, allow_reuse=True)(_normalize_hooks)
@@ -42,8 +43,17 @@ class NodeModelSettings(BaseModelSettings):
     Settings for a NodeModel class.
     """
 
-    labels: Optional[Union[Set[str], str]] = None
+    labels: Set[str] = set()
     auto_fetch_nodes: bool = False
+
+    @validator("labels", pre=True)
+    def _normalize_labels(cls, value: Optional[Union[Set[str], str]]) -> Optional[Set[str]]:
+        """
+        Normalize a list of labels to a set of labels.
+        """
+        if isinstance(value, str):
+            return {value}
+        return value
 
 
 class RelationshipModelSettings(BaseModelSettings):
