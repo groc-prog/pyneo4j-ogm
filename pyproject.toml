@@ -4,24 +4,24 @@ version = "0.0.0"
 description = ""
 authors = ["groc-prog <marc.troisner@gmail.com>"]
 readme = "README.md"
-packages = [{include = "neo4j_ogm"}]
+packages = [{ include = "neo4j_ogm" }]
 
-  [tool.poetry.dependencies]
-  python = "^3.10"
-  pydantic = "^1.10.9"
-  neo4j = "^5.9.0"
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^1.10.9"
+neo4j = "^5.9.0"
 
-  [tool.poetry.group.dev.dependencies]
-  pylint = "^2.17.5"
-  black = "^23.7.0"
-  pytest = "^7.4.0"
-  pre-commit = "^3.3.3"
-  pytest-asyncio = "^0.21.1"
+[tool.poetry.group.dev.dependencies]
+pylint = "^2.17.5"
+black = "^23.7.0"
+pytest = "^7.4.0"
+pre-commit = "^3.3.3"
+pytest-asyncio = "^0.21.1"
 
-  [tool.black]
-  line-length = 120
-  target-version = ["py310"]
-  workers = 4
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+workers = 4
 
 [build-system]
 requires = ["poetry-core"]

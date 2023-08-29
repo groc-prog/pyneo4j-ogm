@@ -77,7 +77,6 @@ class Neo4jClient:
     _batch_enabled: bool = False
     models: Set[Type[NodeModel | RelationshipModel]] = set()
     uri: str
-    auth: Optional[Tuple[str, str]]
 
     def connect(
         self,
@@ -115,7 +114,7 @@ class Neo4jClient:
         self._skip_indexes = skip_indexes
 
         logger.info("Connecting to database %s", self.uri)
-        self._driver = AsyncGraphDatabase.driver(uri=self.uri, auth=self.auth, *args, **kwargs)
+        self._driver = AsyncGraphDatabase.driver(uri=self.uri, *args, **kwargs)
         logger.info("Connected to database")
 
         return self

@@ -3,7 +3,6 @@ Relationship property class used to define relationships between the model this 
 which defines the other end of the relationship.
 """
 from asyncio import iscoroutinefunction
-from enum import Enum
 from functools import wraps
 from typing import (
     Any,
@@ -35,6 +34,10 @@ from neo4j_ogm.exceptions import (
 )
 from neo4j_ogm.fields.settings import RelationshipModelSettings
 from neo4j_ogm.logger import logger
+from neo4j_ogm.queries.enums import (
+    RelationshipPropertyCardinality,
+    RelationshipPropertyDirection,
+)
 from neo4j_ogm.queries.query_builder import QueryBuilder
 from neo4j_ogm.queries.types import QueryOptions, RelationshipPropertyFilters
 
@@ -42,24 +45,6 @@ P = ParamSpec("P")
 T = TypeVar("T", bound=NodeModel)
 U = TypeVar("U", bound=RelationshipModel)
 V = TypeVar("V")
-
-
-class RelationshipPropertyDirection(str, Enum):
-    """
-    Available relationship directions for relationship properties.
-    """
-
-    INCOMING = "INCOMING"
-    OUTGOING = "OUTGOING"
-
-
-class RelationshipPropertyCardinality(str, Enum):
-    """
-    Available cardinality types.
-    """
-
-    ZERO_OR_ONE = "ZERO_OR_ONE"
-    ZERO_OR_MORE = "ZERO_OR_MORE"
 
 
 def hooks(func):

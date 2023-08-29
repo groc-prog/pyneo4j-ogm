@@ -5,8 +5,8 @@ from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, TypedDict, Union, cast
 
 from neo4j_ogm.exceptions import InvalidRelationshipHops
-from neo4j_ogm.fields.relationship_property import RelationshipPropertyDirection
 from neo4j_ogm.logger import logger
+from neo4j_ogm.queries.enums import RelationshipPropertyDirection
 from neo4j_ogm.queries.types import (
     MultiHopFilters,
     NodeFilters,
