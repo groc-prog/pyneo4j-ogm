@@ -4,13 +4,15 @@ on:
   push:
     branches:
       - main
+      - develop
   pull_request:
     branches:
       - main
+      - develop
 
 jobs:
-  isort:
-    name: isort import sorter
+  pyright:
+    name: pyright type checker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -32,7 +34,7 @@ jobs:
       - name: Install the project dependencies
         run: poetry install
       - name: Run isort
-        run: poetry run pre-commit run isort --all-files
+        run: poetry run pyright
 
   pylint:
     name: pylint linter
@@ -57,29 +59,4 @@ jobs:
       - name: Install the project dependencies
         run: poetry install
       - name: Run pylint
-        run: poetry run pre-commit run pylint --all-files
-
-  black:
-    name: black formatter
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.10"
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v2
-        with:
-          poetry-version: "1.5.1"
-      - name: Setup a local virtual environment
-        run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
-      - uses: actions/cache@v3
-        name: Create cache for the virtual environment
-        with:
-          path: ./.venv
-          key: venv-${{ hashFiles('poetry.lock') }}
-      - name: Install the project dependencies
-        run: poetry install
-      - name: Run black
-        run: poetry run pre-commit run black --all-files
+        run: poetry run pylint --rcfile=.pylintrc neo4j_ogm tests
