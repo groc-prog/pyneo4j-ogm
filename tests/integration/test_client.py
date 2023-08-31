@@ -1,7 +1,3 @@
-"""
-Integration tests for neo4j_ogm.core.client.
-"""
-
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access
 
 import os
@@ -19,9 +15,6 @@ pytest_plugins = ("pytest_asyncio",)
 
 @pytest.mark.asyncio
 async def test_connection():
-    """
-    Test that the Neo4jClient can connect to a database.
-    """
     client = Neo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
     assert client.is_connected
     assert client._driver is not None
@@ -50,10 +43,6 @@ async def test_connection():
 
 @pytest.mark.asyncio
 async def test_ensure_connection(database_client: AsyncGenerator[Neo4jClient, Any]):
-    """
-    Test that the Neo4jClient raises an exception when attempting to execute a query
-    without first connecting to a database.
-    """
     with pytest.raises(NotConnectedToDatabase):
         client = Neo4jClient()
         await client.cypher("MATCH (n) RETURN n")
@@ -70,9 +59,6 @@ async def test_ensure_connection(database_client: AsyncGenerator[Neo4jClient, An
 
 @pytest.mark.asyncio
 async def test_register_models(database_client: AsyncGenerator[Neo4jClient, Any]):
-    """
-    Test that the Neo4jClient correctly registers models.
-    """
     client = await anext(database_client)
     await client.register_models([TestNodeModel, TestRelationshipModel])
 
