@@ -11,8 +11,8 @@ import pytest
 
 from neo4j_ogm.core.client import EntityType, IndexType, Neo4jClient
 from neo4j_ogm.exceptions import MissingDatabaseURI, NotConnectedToDatabase
-from tests.integration.utils.database import database_client
-from tests.integration.utils.models import TestNodeModel, TestRelationshipModel
+from tests.integration.fixtures.database import database_client
+from tests.integration.fixtures.models import TestNodeModel, TestRelationshipModel
 
 pytest_plugins = ("pytest_asyncio",)
 
