@@ -46,15 +46,6 @@ class NodeModelSettings(BaseModelSettings):
     labels: Set[str] = set()
     auto_fetch_nodes: bool = False
 
-    @validator("labels", pre=True)
-    def _normalize_labels(cls, value: Optional[Union[Set[str], str]]) -> Optional[Set[str]]:
-        """
-        Normalize a list of labels to a set of labels.
-        """
-        if isinstance(value, str):
-            return {value}
-        return value
-
 
 class RelationshipModelSettings(BaseModelSettings):
     """
