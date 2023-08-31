@@ -55,6 +55,18 @@ class InvalidIndexType(Neo4jOGMException):
         )
 
 
+class InvalidRelationshipDirection(Neo4jOGMException):
+    """
+    Exception which gets raised if a invalid relationship direction is provided.
+    """
+
+    def __init__(self, direction: str, *args: object) -> None:
+        super().__init__(
+            f"Invalid relationship direction {direction} was provided. Expected one of 'INCOMING', 'OUTGOING' or 'BOTH'",
+            *args,
+        )
+
+
 class InstanceNotHydrated(Neo4jOGMException):
     """
     Exception which gets raised when a query is run with a instance which has not been hydrated yet.

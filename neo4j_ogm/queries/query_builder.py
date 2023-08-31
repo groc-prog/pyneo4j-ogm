@@ -4,7 +4,7 @@ Class for building the query for the database.
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, TypedDict, Union, cast
 
-from neo4j_ogm.exceptions import InvalidRelationshipHops
+from neo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
 from neo4j_ogm.logger import logger
 from neo4j_ogm.queries.enums import RelationshipPropertyDirection
 from neo4j_ogm.queries.types import (
@@ -280,8 +280,12 @@ class QueryBuilder:
             str: The node to match.
         """
         logger.debug("Building node match with labels %s and node ref %s", labels, ref)
+        normalized_labels = [label for label in labels if label != ""] if labels is not None else []
+
         node_ref = ref if ref is not None else ""
-        node_labels = f":{':'.join(labels)}" if labels is not None else ""
+        node_labels = (
+            f":{':'.join(normalized_labels)}" if normalized_labels is not None and len(normalized_labels) > 0 else ""
+        )
 
         return f"({node_ref}{node_labels})"
 
@@ -351,27 +355,26 @@ class QueryBuilder:
             hops = f"*..{max_hops}"
 
         relationship_ref = ref if ref is not None else ""
-        relationship_type = f":{type_}" if type_ is not None else ""
+        relationship_type = f":{type_}" if type_ is not None and type_ != "" else ""
         relationship_match = f"[{relationship_ref}{relationship_type}{hops}]"
 
         match direction:
-            case RelationshipMatchDirection.INCOMING, RelationshipPropertyDirection.INCOMING:
+            case RelationshipMatchDirection.INCOMING | RelationshipPropertyDirection.INCOMING:
                 return f"{start_node_match}<-{relationship_match}-{end_node_match}"
-            case RelationshipMatchDirection.OUTGOING, RelationshipPropertyDirection.OUTGOING:
+            case RelationshipMatchDirection.OUTGOING | RelationshipPropertyDirection.OUTGOING:
                 return f"{start_node_match}-{relationship_match}->{end_node_match}"
             case RelationshipMatchDirection.BOTH:
                 return f"{start_node_match}-{relationship_match}-{end_node_match}"
+            case _:
+                raise InvalidRelationshipDirection(direction)
 
-    def build_projections(self, projections: Dict[str, str], ref: str = "n") -> Optional[List[str]]:
+    def build_projections(self, projections: Dict[str, str], ref: str = "n") -> None:
         """
         Builds a projection which only returns the node properties defined in the projection.
 
         Args:
             ref (str): The reference to the node. Defaults to "n".
             projections (Dict[str, str]): The projections to build.
-
-        Returns:
-            Optional[List[str]]: The projections to use in the query.
         """
         if not isinstance(projections, dict):
             return
