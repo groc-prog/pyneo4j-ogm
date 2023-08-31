@@ -3,8 +3,7 @@ Pydantic validators for query operators and filters.
 """
 # pylint: disable=unused-argument
 
-from copy import deepcopy
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
 
@@ -17,7 +16,7 @@ from neo4j_ogm.queries.types import (
 )
 
 
-def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_fields(cls: Type[BaseModel], values: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalizes and validates model property fields.
 
@@ -27,16 +26,22 @@ def _normalize_fields(cls: BaseModel, values: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: The normalized and validated values.
     """
-    validated_values: Dict[str, Any] = deepcopy(values)
+    validated_values: Dict[str, Any] = {}
 
     for property_name, property_value in values.items():
         if property_name not in cls.__fields__.keys():
             try:
                 validated = QueryOperatorModel.parse_obj(property_value)
-                validated_values[property_name] = validated.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+                validated_value = validated.dict(
+                    by_alias=True, exclude_none=True, exclude_unset=True, exclude_defaults=True
+                )
+
+                if len(validated_value.keys()) > 0:
+                    validated_values[property_name] = validated_value
             except ValidationError:
-                validated_values.pop(property_name)
                 logger.debug("Invalid field %s found, omitting field", property_name)
+        else:
+            validated_values[property_name] = property_value
 
     return validated_values
 
