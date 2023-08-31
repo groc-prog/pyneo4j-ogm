@@ -4,15 +4,13 @@ on:
   push:
     branches:
       - main
-      - develop
   pull_request:
     branches:
       - main
-      - develop
 
 jobs:
   pyright:
-    name: pyright type checker
+    name: Run pyright type-checker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -24,20 +22,20 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: "1.5.1"
-      - name: Setup a local virtual environment
+      - name: Setup local virtual environment
         run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
       - uses: actions/cache@v3
         name: Create cache for the virtual environment
         with:
           path: ./.venv
           key: venv-${{ hashFiles('poetry.lock') }}
-      - name: Install the project dependencies
+      - name: Install project dependencies
         run: poetry install
-      - name: Run isort
+      - name: Run pyright
         run: poetry run pyright
 
   pylint:
-    name: pylint linter
+    name: Run pylint linter
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -49,14 +47,14 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: "1.5.1"
-      - name: Setup a local virtual environment
+      - name: Setup local virtual environment
         run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
       - uses: actions/cache@v3
         name: Create cache for the virtual environment
         with:
           path: ./.venv
           key: venv-${{ hashFiles('poetry.lock') }}
-      - name: Install the project dependencies
+      - name: Install project dependencies
         run: poetry install
       - name: Run pylint
         run: poetry run pylint --rcfile=.pylintrc neo4j_ogm tests
