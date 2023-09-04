@@ -2,13 +2,14 @@
 A asynchronous library for working with Neo4j and Python 3.10+. The aim of this library is to provide a **clean and structured** way to work with Neo4j in Python. It is built on top of the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html) and [`pydantic 1.10`](https://docs.pydantic.dev/1.10/).
 
 
-## 📌 Todo's and features for future updates
+## 📌 Todo's and missing features
 
 ### Todo's
 - [ ] Integration tests to ensure future updates don't break anything
 - [ ] Add release workflow to automatically publish new releases to PyPI
 - [ ] Add projections and auto_fetch_nodes to documentation
 - [ ] Add extensive examples to documentation
+- [ ] Add support for pydantic v2
 
 
 ## ⚡️ Quick start <a name="quick-start"></a>
@@ -142,7 +143,7 @@ And just like that you have created a new `Developer` and `Coffee` node in the g
 
 ### Table of contents <a name="table-of-contents"></a>
 - [Neo4j Object Graph Mapper](#neo4j-object-graph-mapper)
-  - [📌 Todo's and features for future updates](#-todos-and-features-for-future-updates)
+  - [📌 Todo's and missing features](#-todos-and-missing-features)
     - [Todo's](#todos)
   - [⚡️ Quick start ](#️-quick-start-)
   - [📚 Documentation ](#-documentation-)
