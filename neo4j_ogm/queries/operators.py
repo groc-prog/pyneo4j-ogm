@@ -33,8 +33,12 @@ class Operators:
     }
     _property_name: Optional[str] = None
     _property_var_overwrite: Optional[str] = None
-    ref: str
+    ref: str = "n"
     parameters: Dict[str, Union[QueryDataTypes, List[str]]] = {}
+
+    def reset_state(self) -> None:
+        self._parameter_indent = 0
+        self.parameters = {}
 
     def build_operators(self, filters: Dict[str, Any]) -> str:
         """
@@ -179,6 +183,10 @@ class Operators:
                 if not expression:
                     operators_to_remove.append(operator)
             elif isinstance(expression, list):
+                if expression == []:
+                    operators_to_remove.append(operator)
+                    continue
+
                 # Handle logical operators
                 indexes_to_remove: List[int] = []
 
@@ -190,8 +198,15 @@ class Operators:
                         indexes_to_remove.append(index)
 
                 # Remove all invalid indexes
-                for index in indexes_to_remove:
-                    expression.pop(index)
+                expression_copy = deepcopy(expression)
+
+                for index in sorted(indexes_to_remove, reverse=True):
+                    expression_copy.pop(index)
+
+                expressions[operator] = expression_copy
+
+                if not expression_copy:
+                    operators_to_remove.append(operator)
             elif not operator.startswith("$") and level != 0:
                 operators_to_remove.append(operator)
 

@@ -71,7 +71,7 @@ class QueryBuilder:
         """
         logger.debug("Building node filters %s", filters)
         self._operator_builder.ref = ref
-        self._operator_builder.parameters = {}
+        self._operator_builder.reset_state()
         normalized_filters = self._operator_builder.normalize_expressions(expressions=cast(Dict[str, Any], filters))
 
         # Validate filters with pydantic model
@@ -94,7 +94,7 @@ class QueryBuilder:
         """
         logger.debug("Building relationship filters %s", filters)
         self._operator_builder.ref = ref
-        self._operator_builder.parameters = {}
+        self._operator_builder.reset_state()
         normalized_filters = self._operator_builder.normalize_expressions(expressions=cast(Dict[str, Any], filters))
 
         # Validate filters with pydantic model
@@ -119,7 +119,7 @@ class QueryBuilder:
             node_ref (str, optional): The reference to the node. Defaults to "end".
         """
         logger.debug("Building relationship property filters %s", filters)
-        self._operator_builder.parameters = {}
+        self._operator_builder.reset_state()
         normalized_filters = self._operator_builder.normalize_expressions(expressions=cast(Dict[str, Any], filters))
 
         # Validate filters with pydantic model
@@ -155,7 +155,7 @@ class QueryBuilder:
         """
         logger.debug("Building multi hop filters %s", filters)
         self._operator_builder.ref = start_ref
-        self._operator_builder.parameters = {}
+        self._operator_builder.reset_state()
         normalized_filters = self._operator_builder.normalize_expressions(expressions=cast(Dict[str, Any], filters))
 
         # Validate filters with pydantic model

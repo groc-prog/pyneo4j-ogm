@@ -68,3 +68,14 @@ def test_relationship_match_hops(query_builder: QueryBuilder):
 
     result = query_builder.relationship_match(max_hops="*")
     assert result == "()-[r*]-()"
+
+
+def test_invalid_relationship_hops(query_builder: QueryBuilder):
+    with pytest.raises(InvalidRelationshipHops):
+        query_builder.relationship_match(min_hops=-1)
+
+    with pytest.raises(InvalidRelationshipHops):
+        query_builder.relationship_match(max_hops="INVALID_VALUE")
+
+    with pytest.raises(InvalidRelationshipHops):
+        query_builder.relationship_match(max_hops=-1)
