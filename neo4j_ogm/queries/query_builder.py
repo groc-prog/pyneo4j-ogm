@@ -42,6 +42,7 @@ class QueryBuilder:
     """
 
     _operator_builder: Operators = Operators()
+    parameters: Dict[str, Any] = {}
     query: FilterQueries = {
         "match": "",
         "where": "",
@@ -81,6 +82,7 @@ class QueryBuilder:
         self._operator_builder.remove_invalid_expressions(validated_filters)
 
         self.query["where"] = self._operator_builder.build_operators(filters=validated_filters)
+        self.parameters = self._operator_builder.parameters
 
     def relationship_filters(self, filters: RelationshipFilters, ref: str = "r") -> None:
         """
@@ -103,6 +105,7 @@ class QueryBuilder:
         self._operator_builder.remove_invalid_expressions(validated_filters)
 
         self.query["where"] = self._operator_builder.build_operators(filters=validated_filters)
+        self.parameters = self._operator_builder.parameters
 
     def relationship_property_filters(
         self, filters: RelationshipPropertyFilters, ref: str = "r", node_ref: str = "end"
@@ -139,6 +142,7 @@ class QueryBuilder:
         where_queries.append(self._operator_builder.build_operators(filters=validated_filters))
 
         self.query["where"] = " AND ".join([query for query in where_queries if query != ""])
+        self.parameters = self._operator_builder.parameters
 
     def multi_hop_filters(self, filters: MultiHopFilters, start_ref: str = "n", end_ref: str = "m") -> None:
         """
@@ -213,6 +217,7 @@ class QueryBuilder:
 
         chain_with_and = " AND " if where_node_query != "" and relationship_where_query != "" else ""
         self.query["where"] = f"{where_node_query}{chain_with_and}{relationship_where_query}"
+        self.parameters = self._operator_builder.parameters
 
     def query_options(self, options: QueryOptions, ref: str = "n") -> None:
         """
