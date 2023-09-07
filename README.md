@@ -9,7 +9,7 @@ A asynchronous library for working with Neo4j and Python 3.10+. The aim of this 
 - [ ] Add release workflow to automatically publish new releases to PyPI
 - [ ] Add projections and auto_fetch_nodes to documentation
 - [ ] Add extensive examples to documentation
-- [ ] Add support for pydantic v2
+- [ ] Add option to define fetched nodes in auto_fetch_nodes
 
 
 ## ⚡️ Quick start <a name="quick-start"></a>
