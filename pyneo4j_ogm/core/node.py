@@ -24,19 +24,19 @@ from typing import (
 from neo4j.graph import Node
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.base import ModelBase, hooks
-from neo4j_ogm.exceptions import (
+from pyneo4j_ogm.core.base import ModelBase, hooks
+from pyneo4j_ogm.exceptions import (
     InstanceDestroyed,
     InstanceNotHydrated,
     MissingFilters,
     NoResultsFound,
 )
-from neo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
-from neo4j_ogm.logger import logger
-from neo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
+from pyneo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
+from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
 
 if TYPE_CHECKING:
-    from neo4j_ogm.fields.relationship_property import RelationshipProperty
+    from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 else:
     RelationshipProperty = object
 

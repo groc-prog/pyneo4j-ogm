@@ -21,7 +21,7 @@ Before we can start to interact with the our database in any way, we have to do 
 First, let's connect to our database instance. We can do this by creating a new instance of the `Neo4jClient` class. This class is primarily used to interact with the database. We can create a new instance of the class and connect to a database like this:
 
 ```python
-from neo4j_ogm import Neo4jClient
+from pyneo4j_ogm import Neo4jClient
 
 client = Neo4jClient()
 client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
@@ -34,7 +34,7 @@ client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<usern
 Next, we have to define our node and relationship models. We can do this by creating a new class that inherits from the `NodeModel` or `RelationshipModel` class. Let's create some simple models we can use to represent a `Developer` who `DRINKS` some `Coffee`:
 
 ```python
-from neo4j_ogm import (
+from pyneo4j_ogm import (
   NodeModel,
   RelationshipModel,
   RelationshipProperty,
@@ -77,7 +77,7 @@ Finally, we have to register our models with the client instance and put everyth
 
 ```python
 import asyncio
-from neo4j_ogm import (
+from pyneo4j_ogm import (
   Neo4jClient,
   NodeModel,
   RelationshipModel,
@@ -227,7 +227,7 @@ Before you can interact with anything neo4j-ogm offers in any way, you have to c
 The `connect()` method returns the client instance itself, so you can chain it right after the instantiation of the class. Here is an example of how to connect to a database instance:
 
 ```python
-from neo4j_ogm import Neo4jClient
+from pyneo4j_ogm import Neo4jClient
 
 client = Neo4jClient()
 client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
@@ -350,7 +350,7 @@ Since neo4j-ogm uses `pydantic` under the hood, all of the configuration options
 Node- and RelationshipModels are defined in the same way as pydantic models. The only difference is that you have to use the `NodeModel` and `RelationshipModel` classes instead of the `BaseModel` class. Here is an example of how to define a simple NodeModel:
 
 ```python
-from neo4j_ogm import NodeModel
+from pyneo4j_ogm import NodeModel
 from pydantic import Field, validator
 from uuid import UUID, uuid4
 
@@ -390,7 +390,7 @@ neo4j-ogm provides a convenient way to define indexes and constraints on model p
 If the method is called without defining any indexes or constraints, it behaves just like any other property. Here is an example of how to define indexes and constraints on model properties:
 
 ```python
-from neo4j_ogm import NodeModel, WithOptions
+from pyneo4j_ogm import NodeModel, WithOptions
 from pydantic import Field
 from uuid import UUID, uuid4
 
@@ -614,7 +614,7 @@ print(developer_count) # However many nodes were counted
 RelationshipModels are used to define relationships between nodes in the graph. They are defined in the same way as NodeModels, but inherit from the `RelationshipModel` class instead of the `NodeModel` class. Let's take a look at an example of how to define a simple RelationshipModel:
 
 ```python
-from neo4j_ogm import RelationshipModel
+from pyneo4j_ogm import RelationshipModel
 
 
 class Drinks(RelationshipModel):
@@ -654,7 +654,7 @@ print(coffee) # An hydrated instance of the `Coffee` model
 To define a node inside the graph, we have to create a new class that inherits from the `NodeModel` class. Let's take a look at an example of how to define a simple NodeModel:
 
 ```python
-from neo4j_ogm import NodeModel
+from pyneo4j_ogm import NodeModel
 from pydantic import Field
 from uuid import UUID, uuid4
 
@@ -733,7 +733,7 @@ print(developer.coffee.nodes) # A list of hydrated `Coffee` instances
 To define relationships between node models, RelationshipProperties can be used. RelationshipProperties are defined as a special type of pydantic property. They can be used to define relationships between node models and provide a convenient way to work with them. Let's take a look at an example of how to define a RelationshipProperty:
 
 ```python
-from neo4j_ogm import (
+from pyneo4j_ogm import (
   Neo4jClient,
   NodeModel,
   RelationshipModel,

@@ -5,8 +5,8 @@ from typing import Any, AsyncGenerator
 
 import pytest
 
-from neo4j_ogm.core.client import EntityType, IndexType, Neo4jClient
-from neo4j_ogm.exceptions import MissingDatabaseURI, NotConnectedToDatabase
+from pyneo4j_ogm.core.client import EntityType, IndexType, Neo4jClient
+from pyneo4j_ogm.exceptions import MissingDatabaseURI, NotConnectedToDatabase
 from tests.integration.fixtures.database import database_client
 from tests.integration.fixtures.models import TestNodeModel, TestRelationshipModel
 

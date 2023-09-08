@@ -4,9 +4,9 @@ Node- and RelationshipModels used for integration tests.
 
 # pyright: reportGeneralTypeIssues=false
 
-from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.core.relationship import RelationshipModel
-from neo4j_ogm.fields.property_options import WithOptions
+from pyneo4j_ogm.core.node import NodeModel
+from pyneo4j_ogm.core.relationship import RelationshipModel
+from pyneo4j_ogm.fields.property_options import WithOptions
 
 
 class TestNodeModel(NodeModel):

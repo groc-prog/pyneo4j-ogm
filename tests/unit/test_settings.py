@@ -1,4 +1,4 @@
-from neo4j_ogm.fields.settings import (
+from pyneo4j_ogm.fields.settings import (
     BaseModelSettings,
     NodeModelSettings,
     RelationshipModelSettings,

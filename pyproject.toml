@@ -4,7 +4,7 @@ version = "0.0.0"
 description = ""
 authors = ["groc-prog <marc.troisner@gmail.com>"]
 readme = "README.md"
-packages = [{ include = "neo4j_ogm" }]
+packages = [{ include = "pyneo4j_ogm" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -18,6 +18,7 @@ pytest = "^7.4.0"
 pre-commit = "^3.3.3"
 pytest-asyncio = "^0.21.1"
 pyright = "^1.1.325"
+isort = "^5.12.0"
 
 [tool.black]
 line-length = 120

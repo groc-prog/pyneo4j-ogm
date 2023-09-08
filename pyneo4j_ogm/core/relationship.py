@@ -13,17 +13,17 @@ from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, ca
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from neo4j_ogm.core.base import ModelBase, hooks
-from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.exceptions import (
+from pyneo4j_ogm.core.base import ModelBase, hooks
+from pyneo4j_ogm.core.node import NodeModel
+from pyneo4j_ogm.exceptions import (
     InstanceDestroyed,
     InstanceNotHydrated,
     MissingFilters,
     NoResultsFound,
 )
-from neo4j_ogm.fields.settings import RelationshipModelSettings
-from neo4j_ogm.logger import logger
-from neo4j_ogm.queries.types import (
+from pyneo4j_ogm.fields.settings import RelationshipModelSettings
+from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.queries.types import (
     QueryOptions,
     RelationshipFilters,
     RelationshipMatchDirection,

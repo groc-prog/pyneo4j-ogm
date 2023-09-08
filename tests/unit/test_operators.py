@@ -1,6 +1,6 @@
 # pylint: disable=invalid-name, redefined-outer-name, unused-import
 
-from neo4j_ogm.queries.operators import Operators
+from pyneo4j_ogm.queries.operators import Operators
 from tests.unit.fixtures.operators import operators
 
 

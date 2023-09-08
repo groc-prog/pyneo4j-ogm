@@ -3,7 +3,7 @@ Fixture for setup/teardown of unit tests using QueryBuilder instance.
 """
 import pytest
 
-from neo4j_ogm.queries.query_builder import QueryBuilder
+from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ import asyncio
 
 import pytest
 
-from neo4j_ogm.core.client import Neo4jClient
+from pyneo4j_ogm.core.client import Neo4jClient
 
 
 @pytest.fixture(scope="session")

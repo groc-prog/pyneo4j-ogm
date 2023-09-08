@@ -4,7 +4,7 @@ Module for building operators which can be used in filters.
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union, cast
 
-from neo4j_ogm.queries.types import QueryDataTypes
+from pyneo4j_ogm.queries.types import QueryDataTypes
 
 
 class Operators:

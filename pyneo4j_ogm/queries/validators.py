@@ -7,8 +7,8 @@ from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
 
-from neo4j_ogm.logger import logger
-from neo4j_ogm.queries.types import (
+from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.queries.types import (
     NumericQueryDataType,
     QueryDataTypes,
     QueryOptionsOrder,

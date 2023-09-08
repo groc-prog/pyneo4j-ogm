@@ -20,10 +20,10 @@ from typing import (
 
 from neo4j.graph import Node
 
-from neo4j_ogm.core.client import Neo4jClient
-from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.core.relationship import RelationshipModel
-from neo4j_ogm.exceptions import (
+from pyneo4j_ogm.core.client import Neo4jClient
+from pyneo4j_ogm.core.node import NodeModel
+from pyneo4j_ogm.core.relationship import RelationshipModel
+from pyneo4j_ogm.exceptions import (
     CardinalityViolation,
     InstanceDestroyed,
     InstanceNotHydrated,
@@ -32,14 +32,14 @@ from neo4j_ogm.exceptions import (
     NotConnectedToSourceNode,
     UnregisteredModel,
 )
-from neo4j_ogm.fields.settings import RelationshipModelSettings
-from neo4j_ogm.logger import logger
-from neo4j_ogm.queries.enums import (
+from pyneo4j_ogm.fields.settings import RelationshipModelSettings
+from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.queries.enums import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
 )
-from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import QueryOptions, RelationshipPropertyFilters
+from pyneo4j_ogm.queries.query_builder import QueryBuilder
+from pyneo4j_ogm.queries.types import QueryOptions, RelationshipPropertyFilters
 
 P = ParamSpec("P")
 T = TypeVar("T", bound=NodeModel)

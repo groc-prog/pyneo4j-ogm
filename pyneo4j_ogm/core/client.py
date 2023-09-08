@@ -10,9 +10,9 @@ from neo4j.exceptions import DatabaseError
 from neo4j.graph import Node, Path, Relationship
 from typing_extensions import LiteralString
 
-from neo4j_ogm.core.node import NodeModel
-from neo4j_ogm.core.relationship import RelationshipModel
-from neo4j_ogm.exceptions import (
+from pyneo4j_ogm.core.node import NodeModel
+from pyneo4j_ogm.core.relationship import RelationshipModel
+from pyneo4j_ogm.exceptions import (
     InvalidEntityType,
     InvalidIndexType,
     InvalidLabelOrType,
@@ -20,7 +20,7 @@ from neo4j_ogm.exceptions import (
     NotConnectedToDatabase,
     TransactionInProgress,
 )
-from neo4j_ogm.logger import logger
+from pyneo4j_ogm.logger import logger
 
 
 class IndexType(str, Enum):

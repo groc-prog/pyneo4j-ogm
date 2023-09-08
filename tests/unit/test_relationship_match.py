@@ -2,9 +2,9 @@
 
 import pytest
 
-from neo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
-from neo4j_ogm.queries.query_builder import QueryBuilder
-from neo4j_ogm.queries.types import RelationshipMatchDirection
+from pyneo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
+from pyneo4j_ogm.queries.query_builder import QueryBuilder
+from pyneo4j_ogm.queries.types import RelationshipMatchDirection
 from tests.unit.fixtures.query_builder import query_builder
 
 

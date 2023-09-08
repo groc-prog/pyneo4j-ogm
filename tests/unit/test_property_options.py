@@ -1,6 +1,6 @@
 # pylint: disable=invalid-name
 
-from neo4j_ogm.fields.property_options import WithOptions
+from pyneo4j_ogm.fields.property_options import WithOptions
 
 
 def test_WithOptions_returns_subclass_of_provided_type():

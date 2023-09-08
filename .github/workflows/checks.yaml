@@ -57,4 +57,4 @@ jobs:
       - name: Install project dependencies
         run: poetry install
       - name: Run pylint
-        run: poetry run pylint --rcfile=.pylintrc neo4j_ogm tests
+        run: poetry run pylint --rcfile=.pylintrc pyneo4j_ogm tests

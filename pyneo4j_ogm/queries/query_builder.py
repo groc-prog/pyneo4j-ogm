@@ -4,11 +4,11 @@ Module for building parts of queries related to filters and options.
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, TypedDict, Union, cast
 
-from neo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
-from neo4j_ogm.logger import logger
-from neo4j_ogm.queries.enums import RelationshipPropertyDirection
-from neo4j_ogm.queries.operators import Operators
-from neo4j_ogm.queries.types import (
+from pyneo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
+from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.queries.enums import RelationshipPropertyDirection
+from pyneo4j_ogm.queries.operators import Operators
+from pyneo4j_ogm.queries.types import (
     MultiHopFilters,
     NodeFilters,
     QueryOptions,
@@ -16,7 +16,7 @@ from neo4j_ogm.queries.types import (
     RelationshipMatchDirection,
     RelationshipPropertyFilters,
 )
-from neo4j_ogm.queries.validators import (
+from pyneo4j_ogm.queries.validators import (
     MultiHopFiltersModel,
     NodeFiltersModel,
     QueryOptionModel,

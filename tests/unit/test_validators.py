@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Extra, root_validator
 
-from neo4j_ogm.queries.validators import _normalize_fields, _normalize_labels
+from pyneo4j_ogm.queries.validators import _normalize_fields, _normalize_labels
 
 
 def test_normalize_fields():
