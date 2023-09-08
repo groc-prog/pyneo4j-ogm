@@ -7,8 +7,12 @@ from pyneo4j_ogm.queries.operators import Operators
 
 
 @pytest.fixture
-def operators():
+def operators_builder():
     """
     Fixture for providing a Operators instance.
     """
-    return Operators()
+    builder = Operators()
+    builder.reset_state()
+    builder.ref = "n"
+
+    return builder

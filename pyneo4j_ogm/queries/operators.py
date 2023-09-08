@@ -40,7 +40,7 @@ class Operators:
         self._parameter_indent = 0
         self.parameters = {}
 
-    def build_operators(self, filters: Dict[str, Any]) -> str:
+    def build_operators(self, filters: Dict[str, Any]) -> Optional[str]:
         """
         Builds the query for the provided filters.
 
@@ -48,9 +48,12 @@ class Operators:
             filters (Dict[str, Any]): The filters to build the query for.
 
         Returns:
-            str: The query string for the provided filters.
+            Optional[str]: The query string for the provided filters or None if the filter is invalid.
         """
         where_queries: List[str] = []
+
+        if not isinstance(filters, dict):
+            return None
 
         for property_or_operator, expression_or_value in filters.items():
             # Set the property name here so it can be used in the operators
@@ -80,7 +83,10 @@ class Operators:
                 case "$id":
                     where_queries.append(self.id_operator(id_=expression_or_value))
                 case "$size":
-                    where_queries.append(self.size_operator(expression=expression_or_value))
+                    query = self.size_operator(expression=expression_or_value)
+
+                    if query is not None:
+                        where_queries.append(query)
                 case "$not":
                     where_queries.append(self.not_operator(expression=expression_or_value))
                 case "$exists":
@@ -90,7 +96,10 @@ class Operators:
                 case "$type":
                     where_queries.append(self.type_operator(types=expression_or_value))
                 case _:
-                    where_queries.append(self.build_operators(filters=expression_or_value))
+                    query = self.build_operators(filters=expression_or_value)
+
+                    if query is not None:
+                        where_queries.append(query)
 
         return " AND ".join(where_queries)
 
@@ -213,7 +222,7 @@ class Operators:
         for operator in operators_to_remove:
             expressions.pop(operator)
 
-    def size_operator(self, expression: Dict[str, Any]) -> str:
+    def size_operator(self, expression: Dict[str, Any]) -> Optional[str]:
         """
         Builds the query for the `$size` operator.
 
@@ -221,7 +230,7 @@ class Operators:
             expression (Dict[str, Any]): The provided expression for the operator.
 
         Returns:
-            str: The operator query.
+            Optional[str]: The operator query.
         """
         self._property_var_overwrite = f"SIZE({self.build_property_var()})"
         size_query = self.build_operators(filters=expression)
@@ -333,7 +342,10 @@ class Operators:
         and_queries: List[str] = []
 
         for expression in expressions:
-            and_queries.append(self.build_operators(filters=expression))
+            query = self.build_operators(filters=expression)
+
+            if query is not None:
+                and_queries.append(query)
 
         return f"({' AND '.join(and_queries)})"
 
@@ -350,7 +362,10 @@ class Operators:
         or_queries: List[str] = []
 
         for expression in expressions:
-            or_queries.append(self.build_operators(filters=expression))
+            query = self.build_operators(filters=expression)
+
+            if query is not None:
+                or_queries.append(query)
 
         return f"({' OR '.join(or_queries)})"
 
@@ -367,7 +382,10 @@ class Operators:
         xor_queries: List[str] = []
 
         for expression in expressions:
-            xor_queries.append(self.build_operators(filters=expression))
+            query = self.build_operators(filters=expression)
+
+            if query is not None:
+                xor_queries.append(query)
 
         return f"({' XOR '.join(xor_queries)})"
 
@@ -398,7 +416,7 @@ class Operators:
             self.ref = node_ref
             node_queries = self.build_operators(filters=expression["$node"])
 
-            if node_queries != "":
+            if node_queries != "" and node_queries is not None:
                 where_queries.append(node_queries)
 
         # Build relationship queries
@@ -406,7 +424,7 @@ class Operators:
             self.ref = relationship_ref
             relationship_queries = self.build_operators(filters=expression["$relationship"])
 
-            if relationship_queries != "":
+            if relationship_queries != "" and relationship_queries is not None:
                 where_queries.append(relationship_queries)
 
         self.ref = original_ref

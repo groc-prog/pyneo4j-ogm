@@ -81,7 +81,11 @@ class QueryBuilder:
         # Remove invalid expressions
         self._operator_builder.remove_invalid_expressions(validated_filters)
 
-        self.query["where"] = self._operator_builder.build_operators(filters=validated_filters)
+        where_query = self._operator_builder.build_operators(filters=validated_filters)
+
+        if where_query is not None and where_query != "":
+            self.query["where"] = where_query
+
         self.parameters = self._operator_builder.parameters
 
     def relationship_filters(self, filters: RelationshipFilters, ref: str = "r") -> None:
@@ -104,7 +108,11 @@ class QueryBuilder:
         # Remove invalid expressions
         self._operator_builder.remove_invalid_expressions(validated_filters)
 
-        self.query["where"] = self._operator_builder.build_operators(filters=validated_filters)
+        where_query = self._operator_builder.build_operators(filters=validated_filters)
+
+        if where_query is not None and where_query != "":
+            self.query["where"] = where_query
+
         self.parameters = self._operator_builder.parameters
 
     def relationship_property_filters(
@@ -198,7 +206,7 @@ class QueryBuilder:
                 cast(Dict[str, Any], relationship_filters).pop("$type")
                 build_filters = self._operator_builder.build_operators(filters=relationship_filters)
 
-                if build_filters != "":
+                if build_filters != "" and build_filters is not None:
                     where_relationship_queries[relationship_type] = build_filters
 
         # Build WHERE query
