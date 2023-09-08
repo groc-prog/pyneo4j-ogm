@@ -394,18 +394,20 @@ class Operators:
         node_ref = self.build_param_var()
 
         # Build node queries
-        self.ref = node_ref
-        node_queries = self.build_operators(filters=expression["$node"])
+        if "$node" in expression:
+            self.ref = node_ref
+            node_queries = self.build_operators(filters=expression["$node"])
 
-        if node_queries != "":
-            where_queries.append(node_queries)
+            if node_queries != "":
+                where_queries.append(node_queries)
 
         # Build relationship queries
-        self.ref = relationship_ref
-        relationship_queries = self.build_operators(filters=expression["$relationship"])
+        if "$relationship" in expression:
+            self.ref = relationship_ref
+            relationship_queries = self.build_operators(filters=expression["$relationship"])
 
-        if relationship_queries != "":
-            where_queries.append(relationship_queries)
+            if relationship_queries != "":
+                where_queries.append(relationship_queries)
 
         self.ref = original_ref
 
@@ -419,9 +421,7 @@ class Operators:
         exists_query = "EXISTS" if expression["$exists"] else "NOT EXISTS"
         where_query = " AND ".join(where_queries) if len(where_queries) > 0 else ""
 
-        return (
-            f"{exists_query} {{MATCH {match_query} {f'WHERE {where_query}' if where_query != '' else where_queries}}}"
-        )
+        return f"{exists_query} {{MATCH {match_query}{f' WHERE {where_query}' if where_query != '' else where_query}}}"
 
     def build_param_var(self) -> str:
         """
