@@ -208,3 +208,56 @@ def test_xor_operator(operators: Operators):
     query_string = operators.xor_operator([{"name": {"$eq": "John"}}, {"age": {"$gt": 18}}, {"age": {"$lte": 30}}])
     assert query_string == "(n.name = $_n_0 XOR n.age > $_n_1 XOR n.age <= $_n_2)"
     assert operators.parameters == {"_n_0": "John", "_n_1": 18, "_n_2": 30}
+
+
+def test_patterns_operator(operators: Operators):
+    operators.ref = "n"
+
+    query_string = operators.patterns_operator(
+        {
+            "$node": {"name": {"$eq": "John"}, "$labels": ["A", "B"]},
+            "$direction": "OUTGOING",
+            "$exists": True,
+        }
+    )
+    assert (
+        query_string
+        == "EXISTS {MATCH (n)-[_n_0]->(_n_1) WHERE _n_1.name = $_n_2 AND ALL(i IN labels(_n_1) WHERE i IN $_n_3)}"
+    )
+    assert operators.parameters == {"_n_2": "John", "_n_3": ["A", "B"]}
+
+    operators.reset_state()
+    query_string = operators.patterns_operator(
+        {
+            "$relationship": {"valid": {"$eq": True}, "$type": "VALIDATION"},
+            "$direction": "INCOMING",
+            "$exists": False,
+        }
+    )
+    assert query_string == "NOT EXISTS {MATCH (n)<-[_n_0]-(_n_1) WHERE _n_0.valid = $_n_2 AND type(_n_0) = $_n_3}"
+    assert operators.parameters == {"_n_2": True, "_n_3": "VALIDATION"}
+
+    operators.reset_state()
+    query_string = operators.patterns_operator(
+        {
+            "$node": {"name": {"$eq": "John"}, "$labels": ["A", "B"]},
+            "$relationship": {"valid": {"$eq": True}, "$type": "VALIDATION"},
+            "$direction": "BOTH",
+            "$exists": False,
+        }
+    )
+    assert (
+        query_string
+        == "NOT EXISTS {MATCH (n)-[_n_0]-(_n_1) WHERE _n_1.name = $_n_2 AND ALL(i IN labels(_n_1) WHERE i IN $_n_3) AND _n_0.valid = $_n_4 AND type(_n_0) = $_n_5}"  # pylint: disable=line-too-long
+    )
+    assert operators.parameters == {"_n_2": "John", "_n_3": ["A", "B"], "_n_4": True, "_n_5": "VALIDATION"}
+
+    operators.reset_state()
+    query_string = operators.patterns_operator(
+        {
+            "$direction": "INCOMING",
+            "$exists": False,
+        }
+    )
+    assert query_string == "NOT EXISTS {MATCH (n)<-[_n_0]-(_n_1)}"
+    assert operators.parameters == {}
