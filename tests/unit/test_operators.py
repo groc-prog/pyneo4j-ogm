@@ -184,3 +184,27 @@ def test_element_id_operator(operators: Operators):
     query_string = operators.element_id_operator("some-id")
     assert query_string == "elementId(n) = $_n_0"
     assert operators.parameters == {"_n_0": "some-id"}
+
+
+def test_and_operator(operators: Operators):
+    operators.ref = "n"
+
+    query_string = operators.and_operator([{"name": {"$eq": "John"}}, {"age": {"$gt": 18}}, {"age": {"$lte": 30}}])
+    assert query_string == "(n.name = $_n_0 AND n.age > $_n_1 AND n.age <= $_n_2)"
+    assert operators.parameters == {"_n_0": "John", "_n_1": 18, "_n_2": 30}
+
+
+def test_or_operator(operators: Operators):
+    operators.ref = "n"
+
+    query_string = operators.or_operator([{"name": {"$eq": "John"}}, {"age": {"$gt": 18}}, {"age": {"$lte": 30}}])
+    assert query_string == "(n.name = $_n_0 OR n.age > $_n_1 OR n.age <= $_n_2)"
+    assert operators.parameters == {"_n_0": "John", "_n_1": 18, "_n_2": 30}
+
+
+def test_xor_operator(operators: Operators):
+    operators.ref = "n"
+
+    query_string = operators.xor_operator([{"name": {"$eq": "John"}}, {"age": {"$gt": 18}}, {"age": {"$lte": 30}}])
+    assert query_string == "(n.name = $_n_0 XOR n.age > $_n_1 XOR n.age <= $_n_2)"
+    assert operators.parameters == {"_n_0": "John", "_n_1": 18, "_n_2": 30}

@@ -75,7 +75,7 @@ def test_invalid_relationship_hops(query_builder: QueryBuilder):
         query_builder.relationship_match(min_hops=-1)
 
     with pytest.raises(InvalidRelationshipHops):
-        query_builder.relationship_match(max_hops="INVALID_VALUE")
+        query_builder.relationship_match(max_hops="INVALID_VALUE")  # type: ignore
 
     with pytest.raises(InvalidRelationshipHops):
         query_builder.relationship_match(max_hops=-1)
