@@ -202,7 +202,7 @@ And just like that you have created a new `Developer` and `Coffee` node in the g
 
 
 ### Basic concepts <a name="basic-concepts"></a>
-If you have worked with other ORM's like `sqlalchemy` or `beanie` before, you will find that this library is very similar to them. The main idea behind neo4j-ogm is to work with nodes and relationships in a **structured and easy-to-use** way instead of writing out complex cypher queries and tons of boilerplate for simple operations.
+If you have worked with other ORM's like `sqlalchemy` or `beanie` before, you will find that this library is very similar to them. The main idea behind pyneo4j-ogm is to work with nodes and relationships in a **structured and easy-to-use** way instead of writing out complex cypher queries and tons of boilerplate for simple operations.
 
 The concept of the library builds on the idea of defining nodes and relationships present in the graph database as **Python classes**. This allows for easy and structured access to the data in the database. These classes provide a robust foundation for working with a Neo4j database. On top of that, the library provides additional features like a `custom query filters` and `automatic model resolution from queries` out of the box. All of this is done in a **asynchronous** way using the asynchronous driver provided by Neo4j.
 
@@ -215,7 +215,7 @@ In the following sections we will take a look at all of the features of this lib
 The `Neo4jClient` class is the main class used to interact with the database. It is used to connect to a database instance, register models and execute queries. Under the hood, every class uses the client you connected to a database with to execute queries. It is also possible to use multiple client instances to connect to multiple databases at the same time.
 
 #### Connecting to a database instance <a name="connecting-to-a-database-instance"></a>
-Before you can interact with anything neo4j-ogm offers in any way, you have to connect to a database instance. You can do this by creating a new instance of the `Neo4jClient` class and calling the `connect()` method on it. The `connect()` method takes a few arguments:
+Before you can interact with anything pyneo4j-ogm offers in any way, you have to connect to a database instance. You can do this by creating a new instance of the `Neo4jClient` class and calling the `connect()` method on it. The `connect()` method takes a few arguments:
 
 - `uri`: The connection URI to the database instance.
 - `auth`: A tuple containing the username and password for the database instance.
@@ -250,7 +250,7 @@ await client.close()
 Once you closed the client, it will be seen as `disconnected` and if you try to run any further queries with it, you will get a `NotConnectedToDatabase` exception.
 
 #### Registering models <a name="registering-models"></a>
-As mentioned before, the basic concept behind neo4j-ogm is to work with models which reflect the nodes and relationships inside the graph database. In order to work with these models, you have to register them with the client instance. You can do this by calling the `register_models()` method on the client instance and passing in your models as arguments. Let's take a look at an example:
+As mentioned before, the basic concept behind pyneo4j-ogm is to work with models which reflect the nodes and relationships inside the graph database. In order to work with these models, you have to register them with the client instance. You can do this by calling the `register_models()` method on the client instance and passing in your models as arguments. Let's take a look at an example:
 
 ```python
 # Create a new client instance and connect ...
@@ -344,7 +344,7 @@ Additionally, transactions can be manually controlled by using the `begin_transa
 ### Model configuration <a name="model-configuration"></a>
 Both Node- and RelationshipModels provide a few configuration options that can be used to define indexes, constraints and other settings for the model. These options can be used to easily define indexes and constraints on models and configure how nodes and relationships are created in the database.
 
-Since neo4j-ogm uses `pydantic` under the hood, all of the configuration options available for pydantic models are also available for Node- and RelationshipModels. For more information about the configuration options available for pydantic models, see the [`pydantic docs`](https://docs.pydantic.dev/1.10/).
+Since pyneo4j-ogm uses `pydantic` under the hood, all of the configuration options available for pydantic models are also available for Node- and RelationshipModels. For more information about the configuration options available for pydantic models, see the [`pydantic docs`](https://docs.pydantic.dev/1.10/).
 
 #### Defining node and relationship properties <a name="defining-node-and-relationship-properties"></a>
 Node- and RelationshipModels are defined in the same way as pydantic models. The only difference is that you have to use the `NodeModel` and `RelationshipModel` classes instead of the `BaseModel` class. Here is an example of how to define a simple NodeModel:
@@ -379,7 +379,7 @@ CREATE (d:Developer {id: "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6", name: "John Doe
 > **Note:** Everything mentioned above also applies to `RelationshipModels`.
 
 #### Defining indexes and constraints on model properties <a name="defining-indexes-and-constraints-on-model-properties"></a>
-neo4j-ogm provides a convenient way to define indexes and constraints on model properties. This can be done by using the `WithOptions` method instead of the datatype when defining the properties of your model. The `WithOptions` method takes a few arguments:
+pyneo4j-ogm provides a convenient way to define indexes and constraints on model properties. This can be done by using the `WithOptions` method instead of the datatype when defining the properties of your model. The `WithOptions` method takes a few arguments:
 
 - `property_type`: The datatype of the property.
 - `range_index`: Whether to create a range index on the property. Defaults to `False`.
@@ -893,16 +893,16 @@ As you have seen in the previous examples, many methods accept filters and optio
 #### Basic filters <a name="basic-filters"></a>
 Basic filters are the building blocks of more complex filters. They are used to filter nodes and relationships based on their properties. There is a number of basic filters that can be used to filter nodes and relationships. If you used **MongoDB's query language** before, you will find these filters very familiar. The following table lists all basic filters and their usage:
 
-| Comparison operators | Description                                                                                                                                | Example                                    |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| `$eq`                | Matches any property where the value is equal to a specified value. If a filter specifies no operator, neo4j-ogm will assume a this filter | `{ "name": { "$eq": "John" } }`            |
-| `$neq`               | Matches any property where the value is not equal to a specified value                                                                     | `{ "name": { "$neq": "John" } }`           |
-| `$gt`                | Matches any property where the value is greater than a specified value                                                                     | `{ "age": { "$gt": 18 } }`                 |
-| `$gte`               | Matches any property where the value is greater than or equal to a specified value                                                         | `{ "age": { "$gte": 18 } }`                |
-| `$lt`                | Matches any property where the value is less than a specified value                                                                        | `{ "age": { "$lt": 18 } }`                 |
-| `$lte`               | Matches any property where the value is less than or equal to a specified value                                                            | `{ "age": { "$lte": 18 } }`                |
-| `$in`                | Matches any property where the value is in the list of given values                                                                        | `{ "name": { "$in": ["John", "Jane"] } }`  |
-| `$nin`               | Matches any property where the value is not in the list of given values                                                                    | `{ "name": { "$nin": ["John", "Jane"] } }` |
+| Comparison operators | Description                                                                                                                                  | Example                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `$eq`                | Matches any property where the value is equal to a specified value. If a filter specifies no operator, pyneo4j-ogm will assume a this filter | `{ "name": { "$eq": "John" } }`            |
+| `$neq`               | Matches any property where the value is not equal to a specified value                                                                       | `{ "name": { "$neq": "John" } }`           |
+| `$gt`                | Matches any property where the value is greater than a specified value                                                                       | `{ "age": { "$gt": 18 } }`                 |
+| `$gte`               | Matches any property where the value is greater than or equal to a specified value                                                           | `{ "age": { "$gte": 18 } }`                |
+| `$lt`                | Matches any property where the value is less than a specified value                                                                          | `{ "age": { "$lt": 18 } }`                 |
+| `$lte`               | Matches any property where the value is less than or equal to a specified value                                                              | `{ "age": { "$lte": 18 } }`                |
+| `$in`                | Matches any property where the value is in the list of given values                                                                          | `{ "name": { "$in": ["John", "Jane"] } }`  |
+| `$nin`               | Matches any property where the value is not in the list of given values                                                                      | `{ "name": { "$nin": ["John", "Jane"] } }` |
 
 <br />
 
@@ -920,7 +920,7 @@ Basic filters are the building blocks of more complex filters. They are used to 
 
 | List operators | Description                                                                                                                                              | Example                                                                              |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `$all`         | Matches any property where the value contains all of the given values                                                                                    | `{ "projects": { "$all": ["neo4j-ogm", "buy-me-coffee"] } }`                         |
+| `$all`         | Matches any property where the value contains all of the given values                                                                                    | `{ "projects": { "$all": ["pyneo4j-ogm", "buy-me-coffee"] } }`                       |
 | `$size`        | Matches any property where the value is an array of a given size. This operator can be combined with other numeric operators for more specific filtering | `{ "projects": { "$size": 2 } }` <br /> `{ "projects": { "$size": { "$gte": 2 } } }` |
 
 <br />
@@ -959,7 +959,7 @@ Pattern filters are specified as a list of dictionaries, where each dictionary r
 - `$direction`: The direction of the pattern. Can be either **INCOMING**,**OUTGOING** or **BOTH**.
 - `$not`: A boolean value indicating whether the pattern should be negated. Defaults to **False**.
 
-To make the power of this feature clear, let's look at an example. Let's say we want to find all developers who have worked on the neo4j-ogm project and have not implemented many bugs. Additionally, we want to exclude developers who drink coffee. We can do this by specifying the following pattern:
+To make the power of this feature clear, let's look at an example. Let's say we want to find all developers who have worked on the pyneo4j-ogm project and have not implemented many bugs. Additionally, we want to exclude developers who drink coffee. We can do this by specifying the following pattern:
 
 ```python
 developer = await Developer.find_one({
@@ -968,7 +968,7 @@ developer = await Developer.find_one({
       "$node": {
         "$labels": ["Project"],
         "$properties": {
-          "name": "neo4j-ogm"
+          "name": "pyneo4j-ogm"
         }
       },
       "$relationship": {

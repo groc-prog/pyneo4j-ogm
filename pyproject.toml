@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "neo4j-ogm"
+name = "pyneo4j-ogm"
 version = "0.0.0"
 description = ""
 authors = ["groc-prog <marc.troisner@gmail.com>"]

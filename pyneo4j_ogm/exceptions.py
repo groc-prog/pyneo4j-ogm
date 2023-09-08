@@ -62,7 +62,8 @@ class InvalidRelationshipDirection(Neo4jOGMException):
 
     def __init__(self, direction: str, *args: object) -> None:
         super().__init__(
-            f"Invalid relationship direction {direction} was provided. Expected one of 'INCOMING', 'OUTGOING' or 'BOTH'",
+            f"""Invalid relationship direction {direction} was provided. Expected one of
+            'INCOMING', 'OUTGOING' or 'BOTH'""",
             *args,
         )
 

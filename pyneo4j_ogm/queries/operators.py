@@ -290,12 +290,12 @@ class Operators:
 
         return f"type({self.ref}) IN ${param_var}"
 
-    def id_operator(self, id_: str) -> str:
+    def id_operator(self, id_: int) -> str:
         """
         Builds the query for the `$id` operator.
 
         Args:
-            id_ (str): The ID to match by.
+            id_ (int): The ID to match by.
 
         Returns:
             str: The operator query.
@@ -381,6 +381,12 @@ class Operators:
         Returns:
             str: The operator query.
         """
+        from pyneo4j_ogm.queries.query_builder import (  # pylint: disable=import-outside-toplevel
+            QueryBuilder,
+        )
+
+        builder = QueryBuilder()
+
         original_ref = deepcopy(self.ref)
         where_queries: List[str] = []
 
@@ -404,7 +410,7 @@ class Operators:
         self.ref = original_ref
 
         # Build final queries
-        match_query = self.relationship_match(
+        match_query = builder.relationship_match(
             ref=relationship_ref,
             start_node_ref=self.ref,
             end_node_ref=node_ref,

@@ -12,7 +12,7 @@ from os import environ
 enable_logging = environ.get("NEO4J_OGM_ENABLE_LOGGING", "True").lower() == "true"
 log_level = int(environ.get("NEO4J_OGM_LOG_LEVEL", logging.WARNING))
 
-logger = logging.getLogger("neo4j-ogm")
+logger = logging.getLogger("pyneo4j-ogm")
 logger.setLevel(log_level)
 
 handler = logging.StreamHandler()
