@@ -1,5 +1,9 @@
 {
   "python.testing.pytestArgs": [
+    "--cov",
+    "pyneo4j_ogm",
+    "--cov-report",
+    "html:tests/coverage",
     "tests"
   ],
   "python.testing.unittestEnabled": false,
