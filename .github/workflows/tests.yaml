@@ -1,4 +1,4 @@
-name: Formatting and linting checks
+name: Unit and integration tests
 
 on:
   push:
