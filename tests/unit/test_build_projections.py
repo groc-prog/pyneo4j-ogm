@@ -9,6 +9,11 @@ def test_build_projections_with_empty_projections(query_builder: QueryBuilder):
     assert query_builder.query["projections"] == ""
 
 
+def test_build_projections_with_non_dict_param(query_builder: QueryBuilder):
+    query_builder.build_projections(projections="not a dict", ref="n")  # type: ignore
+    assert query_builder.query["projections"] == ""
+
+
 def test_build_projections_with_projections(query_builder: QueryBuilder):
     projections = {"name_prop": "name", "age_prop": "age"}
     expected_result = "DISTINCT collect({name_prop: n.name, age_prop: n.age})"

@@ -251,7 +251,6 @@ def test_patterns_operator(operators_builder: Operators):
 
 
 def test_build_basic_operators(operators_builder: Operators):
-    # Basic operators
     query_string = operators_builder.build_operators(
         {
             "a": {"$eq": "John"},
@@ -261,8 +260,8 @@ def test_build_basic_operators(operators_builder: Operators):
     assert query_string == "n.a = $_n_0 AND n.b <> $_n_1"
     assert operators_builder.parameters == {"_n_0": "John", "_n_1": 1}
 
-    # Numeric operators
-    operators_builder.reset_state()
+
+def test_build_numeric_operators(operators_builder: Operators):
     query_string = operators_builder.build_operators(
         {
             "a": {"$gt": 1},
@@ -274,8 +273,8 @@ def test_build_basic_operators(operators_builder: Operators):
     assert query_string == "n.a > $_n_0 AND n.b >= $_n_1 AND n.c < $_n_2 AND n.d <= $_n_3"
     assert operators_builder.parameters == {"_n_0": 1, "_n_1": 1, "_n_2": 1, "_n_3": 1}
 
-    # String operators
-    operators_builder.reset_state()
+
+def test_build_string_operators(operators_builder: Operators):
     query_string = operators_builder.build_operators(
         {
             "a": {"$icontains": "a"},
@@ -301,8 +300,8 @@ def test_build_basic_operators(operators_builder: Operators):
         "_n_6": "\\bg\\w*",
     }
 
-    # List operators
-    operators_builder.reset_state()
+
+def test_build_list_operators(operators_builder: Operators):
     query_string = operators_builder.build_operators(
         {"a": {"$in": [1, 2]}, "b": {"$nin": ["a", "b"]}, "c": {"$all": [1, 2]}}
     )
@@ -314,6 +313,71 @@ def test_build_basic_operators(operators_builder: Operators):
         "_n_0": [1, 2],
         "_n_1": ["a", "b"],
         "_n_2": [1, 2],
+    }
+
+
+def test_build_size_operators(operators_builder: Operators):
+    query_string = operators_builder.build_operators(
+        {
+            "a": {"$size": {"$eq": 1}},
+            "b": {"$size": {"$gt": 2}},
+            "c": {"$size": {"$gte": 3}},
+            "d": {"$size": {"$lt": 4}},
+            "e": {"$size": {"$lte": 5}},
+        }
+    )
+    assert (
+        query_string
+        == "SIZE(n.a) = $_n_0 AND SIZE(n.b) > $_n_1 AND SIZE(n.c) >= $_n_2 AND SIZE(n.d) < $_n_3 AND SIZE(n.e) <= $_n_4"
+    )
+    assert operators_builder.parameters == {
+        "_n_0": 1,
+        "_n_1": 2,
+        "_n_2": 3,
+        "_n_3": 4,
+        "_n_4": 5,
+    }
+
+
+def test_build_logical_operators(operators_builder: Operators):
+    operators_builder.reset_state()
+    query_string = operators_builder.build_operators(
+        {
+            "a": {"$or": [{"$eq": 1}, {"$eq": 2}]},
+            "b": {"$and": [{"$eq": 1}, {"$eq": 2}]},
+            "c": {"$xor": [{"$eq": 1}, {"$eq": 2}]},
+            "d": {"$not": {"$eq": 1}},
+        }
+    )
+    assert (
+        query_string
+        == "(n.a = $_n_0 OR n.a = $_n_1) AND (n.b = $_n_2 AND n.b = $_n_3) AND (n.c = $_n_4 XOR n.c = $_n_5) AND NOT(n.d = $_n_6)"
+    )
+    assert operators_builder.parameters == {
+        "_n_0": 1,
+        "_n_1": 2,
+        "_n_2": 1,
+        "_n_3": 2,
+        "_n_4": 1,
+        "_n_5": 2,
+        "_n_6": 1,
+    }
+
+
+def test_build_neo4j_operators(operators_builder: Operators):
+    operators_builder.reset_state()
+    query_string = operators_builder.build_operators(
+        {
+            "$id": 12,
+            "$elementId": "some-id",
+            "a": {"$exists": True},
+            "b": {"$exists": False},
+        }
+    )
+    assert query_string == "ID(n) = $_n_0 AND elementId(n) = $_n_1 AND n.a IS NOT NULL AND n.b IS NULL"
+    assert operators_builder.parameters == {
+        "_n_0": 12,
+        "_n_1": "some-id",
     }
 
 
@@ -336,6 +400,12 @@ def test_build_combined_operators(operators_builder: Operators):
         == "n.a = $_n_0 AND (n.b > $_n_1 AND n.b < $_n_2) AND EXISTS {MATCH (n)-[_n_3]->(_n_4) WHERE _n_4.name = $_n_5 AND ALL(i IN labels(_n_4) WHERE i IN $_n_6)}"  # pylint: disable=line-too-long
     )
     assert operators_builder.parameters == {"_n_0": "John", "_n_1": 18, "_n_2": 30, "_n_5": "John", "_n_6": ["A", "B"]}
+
+
+def test_invalid_filter_returns_none(operators_builder: Operators):
+    query_string = operators_builder.build_operators("not a filter")  # type: ignore
+    assert query_string is None
+    assert operators_builder.parameters == {}
 
 
 def test_omit_invalid_operators(operators_builder: Operators):
