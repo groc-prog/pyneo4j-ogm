@@ -101,7 +101,7 @@ class Operators:
                     if query is not None:
                         where_queries.append(query)
 
-        return " AND ".join(where_queries)
+        return " AND ".join([partial_query for partial_query in where_queries if partial_query != ""])
 
     def normalize_expressions(
         self, expressions: Union[Dict[str, Any], List[Any]], level: int = 0
