@@ -338,8 +338,6 @@ The database client also provides a few utility methods and properties that can 
 - `drop_constraints()`: Drops all constraints from the database.
 - `drop_indexes()`: Drops all indexes from the database.
 
-Additionally, transactions can be manually controlled by using the `begin_transaction()`, `commit_transaction()` and `rollback_transaction()` methods. These methods are also used internally by the client when using the `batch()` context manager.
-
 
 ### Model configuration <a name="model-configuration"></a>
 Both Node- and RelationshipModels provide a few configuration options that can be used to define indexes, constraints and other settings for the model. These options can be used to easily define indexes and constraints on models and configure how nodes and relationships are created in the database.

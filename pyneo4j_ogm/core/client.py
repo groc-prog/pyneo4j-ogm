@@ -215,7 +215,7 @@ class Neo4jClient:
 
         logger.debug("Checking if transaction is open")
         if getattr(self, "_session", None) is None or getattr(self, "_transaction", None) is None:
-            await self.begin_transaction()
+            await self._begin_transaction()
 
         try:
             parameters = parameters if parameters is not None else {}
@@ -238,14 +238,14 @@ class Neo4jClient:
                             results[list_index][result_index] = resolved
 
             if self._batch_enabled is False:
-                await self.commit_transaction()
+                await self._commit_transaction()
 
             logger.debug("Returning results %s", results)
             return results, meta
         except Exception as exc:
             logger.error("Error running query %s", exc)
             if self._batch_enabled is False:
-                await self.rollback_transaction()
+                await self._rollback_transaction()
 
             raise exc
 
@@ -559,8 +559,18 @@ class Neo4jClient:
                 logger.warning("Failed to drop index %s: %s", index[1], exc.message)
         logger.info("Dropped %s indexes", count)
 
+    def batch(self) -> "BatchManager":
+        """
+        Combine multiple transactions into a batch transaction.
+
+        Returns:
+            BatchManager: A class for managing batch transaction which can be used with a `with`
+                statement.
+        """
+        return BatchManager(self)
+
     @ensure_connection
-    async def begin_transaction(self) -> None:
+    async def _begin_transaction(self) -> None:
         """
         Begin a new transaction from a session. If no session exists, a new one will be cerated.
         """
@@ -576,7 +586,7 @@ class Neo4jClient:
         logger.debug("Transaction %s created", self._transaction)
 
     @ensure_connection
-    async def commit_transaction(self) -> None:
+    async def _commit_transaction(self) -> None:
         """
         Commits the currently active transaction and closes it.
         """
@@ -588,7 +598,7 @@ class Neo4jClient:
             self._transaction = None
 
     @ensure_connection
-    async def rollback_transaction(self) -> None:
+    async def _rollback_transaction(self) -> None:
         """
         Rolls back the currently active transaction and closes it.
         """
@@ -598,16 +608,6 @@ class Neo4jClient:
         finally:
             self._session = None
             self._transaction = None
-
-    def batch(self) -> "BatchManager":
-        """
-        Combine multiple transactions into a batch transaction.
-
-        Returns:
-            BatchManager: A class for managing batch transaction which can be used with a `with`
-                statement.
-        """
-        return BatchManager(self)
 
     def _resolve_database_model(self, query_result: Any) -> Optional[Any]:
         """
@@ -692,13 +692,13 @@ class BatchManager:
     async def __aenter__(self) -> None:
         logger.debug("Beginning batch transaction")
         self._client._batch_enabled = True
-        await self._client.begin_transaction()
+        await self._client._begin_transaction()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         if exc_val:
-            await self._client.rollback_transaction()
+            await self._client._rollback_transaction()
         else:
-            await self._client.commit_transaction()
+            await self._client._commit_transaction()
 
         logger.debug("Batch transaction complete")
         self._client._batch_enabled = False
