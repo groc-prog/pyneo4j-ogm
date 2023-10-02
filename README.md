@@ -319,7 +319,7 @@ First, let's take a look at how to create a custom index in the database. The `c
 
 - `name`: The name of the index to create.
 - `entity_type`: The entity type the index is created for. Can be either `EntityType.NODE` or `EntityType.RELATIONSHIP`.
-- `index_type`: The type of index to create. Can be `IndexType.RANGE`, `IndexType.TEXT`, `IndexType.POINT` or `IndexType.TOKEN`.
+- `index_type`: The type of index to create. Can be `IndexType.RANGE`, `IndexType.TEXT`, `IndexType.POINT` or `IndexType.LOOKUP`.
 - `properties`: A list of properties to create the index for.
 - `labels_or_type`: The node labels or relationship type the index is created for.
 

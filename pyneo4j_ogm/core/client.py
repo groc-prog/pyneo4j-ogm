@@ -21,6 +21,7 @@ from pyneo4j_ogm.exceptions import (
     TransactionInProgress,
 )
 from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 
 class IndexType(str, Enum):
@@ -31,7 +32,7 @@ class IndexType(str, Enum):
     RANGE = "RANGE"
     TEXT = "TEXT"
     POINT = "POINT"
-    TOKEN = "TOKEN"
+    LOOKUP = "LOOKUP"
 
 
 class EntityType(str, Enum):
@@ -69,6 +70,7 @@ class Neo4jClient:
     Singleton database client class used to run different operations on the database.
     """
 
+    _builder: QueryBuilder = QueryBuilder()
     _driver: Optional[AsyncDriver]
     _session: Optional[AsyncSession]
     _transaction: Optional[AsyncTransaction]
@@ -283,7 +285,7 @@ class Neo4jClient:
                     await self.cypher(
                         query=f"""
                             CREATE CONSTRAINT {constraint_name} IF NOT EXISTS
-                            FOR (n:{label})
+                            FOR {self._builder.node_match(labels=[label])}
                             REQUIRE ({", ".join([f"n.{property}" for property in properties])}) IS UNIQUE
                         """,
                         resolve_models=False,
@@ -298,7 +300,7 @@ class Neo4jClient:
                 await self.cypher(
                     query=f"""
                         CREATE CONSTRAINT {constraint_name} IF NOT EXISTS
-                        FOR ()-[r:{labels_or_type}]-()
+                        FOR {self._builder.relationship_match(type_=labels_or_type)}
                         REQUIRE ({", ".join([f"r.{property}" for property in properties])}) IS UNIQUE
                     """,
                     resolve_models=False,
@@ -315,8 +317,8 @@ class Neo4jClient:
         name: str,
         entity_type: EntityType,
         index_type: IndexType,
-        properties: List[str],
-        labels_or_type: List[str],
+        properties: Union[List[str], str],
+        labels_or_type: Union[List[str], str],
     ) -> None:
         """
         Creates a index on nodes or relationships in the Neo4j database.
@@ -326,14 +328,17 @@ class Neo4jClient:
             entity_type (EntityType): The type of entity the constraint is applied to. Must be either
                 `NODE` or `RELATIONSHIP`.
             index_type (IndexType): The type of index to apply.
-            properties (List[str]): A list of properties that should be unique for
-                nodes/relationships satisfying the constraint.
-            labels_or_type (List[str]): For nodes, a list of labels to which the constraint should
+            properties (Union[List[str], str]): A list of properties or a single property that should be
+                indexed for nodes/relationships.
+            labels_or_type (Union[List[str], str]): For nodes, a list of labels to which the constraint should
                 be applied. For relationships, a string representing the relationship type.
 
         Raises:
             InvalidEntityType: If an invalid entity_type is provided.
+            InvalidIndexType: If an invalid index_type is provided.
         """
+        formatted_properties = properties if isinstance(properties, list) else [properties]
+
         if index_type not in [index.value for index in IndexType]:
             raise InvalidIndexType(
                 available_types=[option.value for option in IndexType],
@@ -347,45 +352,27 @@ class Neo4jClient:
                 if not isinstance(labels_or_type, list):
                     raise InvalidLabelOrType()
 
-                for label in labels_or_type:
-                    match normalized_index_type:
-                        case IndexType.TOKEN:
-                            index_name = f"{name}_{label}_{'_'.join(properties)}_token_index"
+                match normalized_index_type:
+                    case IndexType.LOOKUP:
+                        index_name = f"{name}_{'_'.join(labels_or_type)}_{'_'.join(formatted_properties)}_lookup_index"
 
-                            logger.info(
-                                "Creating %s index %s for node with labels %s",
-                                normalized_index_type,
-                                index_name,
-                                labels_or_type,
-                            )
-                            await self.cypher(
-                                query=f"""
-                                    CREATE LOOKUP INDEX {index_name} IF NOT EXISTS
-                                    FOR (n)
-                                    ON EACH labels(node)
-                                """,
-                                resolve_models=False,
-                            )
-                        case IndexType.RANGE:
-                            index_name = f"{name}_{label}_{'_'.join(properties)}_range_index"
-
-                            logger.info(
-                                "Creating %s index %s for node with labels %s",
-                                normalized_index_type,
-                                index_name,
-                                labels_or_type,
-                            )
-                            await self.cypher(
-                                query=f"""
-                                    CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                    FOR (n:{label})
-                                    ON ({", ".join([f"n.{property_name}" for property_name in properties])})
-                                """,
-                                resolve_models=False,
-                            )
-                        case _:
-                            index_type_name = f"{IndexType(normalized_index_type).value}".lower()
-                            index_name = f"{name}_{label}_{'_'.join(properties)}_{index_type_name}_index"
+                        logger.info(
+                            "Creating %s index %s for node with labels %s",
+                            normalized_index_type,
+                            index_name,
+                            labels_or_type,
+                        )
+                        await self.cypher(
+                            query=f"""
+                                CREATE LOOKUP INDEX {index_name} IF NOT EXISTS
+                                FOR {self._builder.node_match()}
+                                ON EACH labels(n)
+                            """,
+                            resolve_models=False,
+                        )
+                    case IndexType.RANGE:
+                        for label in labels_or_type:
+                            index_name = f"{name}_{label}_{'_'.join(formatted_properties)}_range_index"
 
                             logger.info(
                                 "Creating %s index %s for node with labels %s",
@@ -396,18 +383,57 @@ class Neo4jClient:
                             await self.cypher(
                                 query=f"""
                                     CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                    FOR (n:{label})
-                                    ON (n.{properties[0]})
+                                    FOR {self._builder.node_match(labels=[label])}
+                                    ON ({", ".join([f"n.{property_name}" for property_name in formatted_properties])})
                                 """,
                                 resolve_models=False,
                             )
+                    case IndexType.TEXT:
+                        for label in labels_or_type:
+                            for property_name in formatted_properties:
+                                index_name = f"{name}_{label}_{property_name}_text_index"
+
+                                logger.info(
+                                    "Creating %s index %s for node with labels %s",
+                                    normalized_index_type,
+                                    index_name,
+                                    labels_or_type,
+                                )
+                                await self.cypher(
+                                    query=f"""
+                                        CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
+                                        FOR {self._builder.node_match(labels=[label])}
+                                        ON (n.{property_name})
+                                    """,
+                                    resolve_models=False,
+                                )
+                    case IndexType.POINT:
+                        for label in labels_or_type:
+                            for property_name in formatted_properties:
+                                index_type_name = f"{IndexType(normalized_index_type).value}".lower()
+                                index_name = f"{name}_{label}_{property_name}_{index_type_name}_index"
+
+                                logger.info(
+                                    "Creating %s index %s for node with labels %s",
+                                    normalized_index_type,
+                                    index_name,
+                                    labels_or_type,
+                                )
+                                await self.cypher(
+                                    query=f"""
+                                        CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
+                                        FOR (n:{label})
+                                        ON (n.{property_name})
+                                    """,
+                                    resolve_models=False,
+                                )
             case EntityType.RELATIONSHIP:
                 if not isinstance(labels_or_type, str):
                     raise InvalidLabelOrType()
 
                 match normalized_index_type:
-                    case IndexType.TOKEN:
-                        index_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_token_index"
+                    case IndexType.LOOKUP:
+                        index_name = f"{name}_{labels_or_type}_{'_'.join(formatted_properties)}_lookup_index"
 
                         logger.info(
                             "Creating %s index %s for relationship with labels %s",
@@ -418,13 +444,13 @@ class Neo4jClient:
                         await self.cypher(
                             query=f"""
                                 CREATE LOOKUP INDEX {index_name} IF NOT EXISTS
-                                FOR ()-[r]-()
+                                FOR {self._builder.relationship_match()}
                                 ON EACH type(r)
                             """,
                             resolve_models=False,
                         )
                     case IndexType.RANGE:
-                        index_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_range_index"
+                        index_name = f"{name}_{labels_or_type}_{'_'.join(formatted_properties)}_range_index"
 
                         logger.info(
                             "Creating %s index %s for relationship with labels %s",
@@ -435,29 +461,48 @@ class Neo4jClient:
                         await self.cypher(
                             query=f"""
                                 CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                FOR ()-[r:{labels_or_type}]-()
-                                ON ({", ".join([f"r.{property}" for property in properties])})
+                                FOR {self._builder.relationship_match(type_=labels_or_type)}
+                                ON ({", ".join([f"r.{property}" for property in formatted_properties])})
                             """,
                             resolve_models=False,
                         )
-                    case _:
-                        index_type_name = f"{IndexType(normalized_index_type).value}".lower()
-                        index_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_{index_type_name}_index"
+                    case IndexType.TEXT:
+                        for property_name in formatted_properties:
+                            index_name = f"{name}_{labels_or_type}_{property_name}_text_index"
 
-                        logger.info(
-                            "Creating %s index %s for relationship with labels %s",
-                            normalized_index_type,
-                            index_name,
-                            labels_or_type,
-                        )
-                        await self.cypher(
-                            query=f"""
-                                CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                FOR ()-[r:{labels_or_type}]-()
-                                ON (r.{properties[0]})
-                            """,
-                            resolve_models=False,
-                        )
+                            logger.info(
+                                "Creating %s index %s for relationship with labels %s",
+                                normalized_index_type,
+                                index_name,
+                                labels_or_type,
+                            )
+                            await self.cypher(
+                                query=f"""
+                                    CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
+                                    FOR {self._builder.relationship_match(type_=labels_or_type)}
+                                    ON (r.{property_name})
+                                """,
+                                resolve_models=False,
+                            )
+                    case IndexType.POINT:
+                        for property_name in formatted_properties:
+                            index_type_name = f"{IndexType(normalized_index_type).value}".lower()
+                            index_name = f"{name}_{labels_or_type}_{property_name}_{index_type_name}_index"
+
+                            logger.info(
+                                "Creating %s index %s for relationship with labels %s",
+                                normalized_index_type,
+                                index_name,
+                                labels_or_type,
+                            )
+                            await self.cypher(
+                                query=f"""
+                                    CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
+                                    FOR {self._builder.relationship_match(type_=labels_or_type)}
+                                    ON (r.{property_name})
+                                """,
+                                resolve_models=False,
+                            )
             case _:
                 raise InvalidEntityType(
                     available_types=[option.value for option in EntityType],
