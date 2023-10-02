@@ -325,6 +325,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
+        auto_fetch_models: Optional[List[Union[str, T]]] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
         Gets all connected nodes which match the provided `filters` parameter over multiple hops.
@@ -336,6 +337,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             options (QueryOptions, optional): The options to apply to the query. Defaults to None.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
                 identical option defined in `Settings`. Defaults to False.
+            auto_fetch_models (List[Union[str, T]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
+                to be set to `True` for this to have any effect. Defaults to [].
 
         Returns:
             List[T | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected properties.
@@ -381,7 +384,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     "Model with labels %s is registered, building auto-fetch query", filters["$node"]["$labels"]
                 )
                 match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
-                    ref="m"
+                    ref="m", nodes_to_fetch=auto_fetch_models
                 )
 
                 do_auto_fetch = all(
@@ -457,7 +460,11 @@ class NodeModel(ModelBase[NodeModelSettings]):
     @classmethod
     @hooks
     async def find_one(
-        cls: Type[T], filters: NodeFilters, projections: Optional[Dict[str, str]] = None, auto_fetch_nodes: bool = False
+        cls: Type[T],
+        filters: NodeFilters,
+        projections: Optional[Dict[str, str]] = None,
+        auto_fetch_nodes: bool = False,
+        auto_fetch_models: Optional[List[Union[str, T]]] = None,
     ) -> Optional[Union[T, Dict[str, Any]]]:
         """
         Finds the first node that matches `filters` and returns it. If no matching node is found,
@@ -469,6 +476,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 projection will result in the whole model instance being returned. Defaults to None.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
                 identical option defined in `Settings`. Can not be used with projections. Defaults to False.
+            auto_fetch_models (List[Union[str, T]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
+                to be set to `True` for this to have any effect. Defaults to [].
 
         Raises:
             MissingFilters: Raised if no filters or invalid filters are provided.
@@ -488,7 +497,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if projections is not None:
             cls._query_builder.build_projections(projections=projections)
 
-        match_queries, return_queries = cls._build_auto_fetch()
+        match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
         projection_query = (
             "DISTINCT n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
         )
@@ -571,6 +580,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
+        auto_fetch_models: Optional[List[Union[str, T]]] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
         Finds the all nodes that matches `filters` and returns them. If no matches are found, an
@@ -583,12 +593,14 @@ class NodeModel(ModelBase[NodeModelSettings]):
             options (QueryOptions, optional): The options to apply to the query. Defaults to None.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
                 identical option defined in `Settings`. Defaults to False.
+            auto_fetch_models (List[Union[str, T]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
+                to be set to `True` for this to have any effect. Defaults to [].
 
         Returns:
             List[T | Dict[str, Any]]: A list of model instances or dictionaries of the projected properties.
         """
         logger.info("Getting nodes of model %s matching filters %s", cls.__name__, filters)
-        match_queries, return_queries = cls._build_auto_fetch()
+        match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
         cls._query_builder.reset_query()
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
@@ -963,11 +975,15 @@ class NodeModel(ModelBase[NodeModelSettings]):
         return results[0][0]
 
     @classmethod
-    def _build_auto_fetch(cls, ref: str = "n") -> Tuple[List[str], List[str]]:
+    def _build_auto_fetch(
+        cls, nodes_to_fetch: List[Union[str, T]] | None = None, ref: str = "n"
+    ) -> Tuple[List[str], List[str]]:
         """
         Builds the auto-fetch query for the instance.
 
         Args:
+            nodes_to_fetch (List[Union[str, T]] | None): The nodes to fetch. Can contain the actual Model of the Node
+                or the model name as a string. If None, all nodes will be fetched. Defaults to None.
             ref (str, optional): The reference to use for the node. Defaults to "n".
 
         Returns:
@@ -975,6 +991,14 @@ class NodeModel(ModelBase[NodeModelSettings]):
         """
         match_queries: List[str] = []
         return_queries: List[str] = []
+        node_model_names: List[str] = []
+
+        if nodes_to_fetch is not None:
+            for node in nodes_to_fetch:
+                if isinstance(node, str):
+                    node_model_names.append(node)
+                else:
+                    node_model_names.append(node.__name__)
 
         logger.debug("Building node match queries for auto-fetch")
         for defined_relationship in cls._relationships_properties:
@@ -982,6 +1006,12 @@ class NodeModel(ModelBase[NodeModelSettings]):
             end_node_labels: Optional[List[str]] = None
             relationship_property = cast(RelationshipProperty, cls.__fields__[defined_relationship].default)
             direction = getattr(relationship_property, "_direction")
+
+            if (
+                nodes_to_fetch is not None
+                and getattr(relationship_property, "_target_model_name") not in node_model_names
+            ):
+                continue
 
             for model in cls._client.models:
                 if model.__name__ == getattr(relationship_property, "_relationship_model_name", None):

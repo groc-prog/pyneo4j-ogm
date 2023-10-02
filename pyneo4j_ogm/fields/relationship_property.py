@@ -568,6 +568,7 @@ class RelationshipProperty(Generic[T, U]):
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
+        auto_fetch_models: Optional[List[Union[str, T]]] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
         Finds the all nodes that matches `filters` and are connected to the source node.
@@ -579,6 +580,8 @@ class RelationshipProperty(Generic[T, U]):
             options (QueryOptions | None, optional): Options for modifying the query result. Defaults to None.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
                 identical option defined in `Settings`. Defaults to False.
+            auto_fetch_models (List[Union[str, T]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
+                to be set to `True` for this to have any effect. Defaults to [].
 
         Returns:
             List[T | Dict[str, Any]]: A list of model instances or dictionaries of the projected properties.
@@ -624,7 +627,7 @@ class RelationshipProperty(Generic[T, U]):
                     list(cast(Type[T], self._target_model).__settings__.labels),
                 )
                 match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
-                    ref="end"
+                    ref="end", nodes_to_fetch=auto_fetch_models
                 )
 
                 do_auto_fetch = all(
