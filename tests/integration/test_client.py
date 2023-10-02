@@ -10,6 +10,7 @@ from neo4j.graph import Node
 
 from pyneo4j_ogm.core.client import EntityType, IndexType, Neo4jClient
 from pyneo4j_ogm.exceptions import (
+    InvalidEntityType,
     InvalidIndexType,
     InvalidLabelOrType,
     MissingDatabaseURI,
@@ -173,14 +174,29 @@ async def test_cypher_query_exception(package_client: AsyncGenerator[Neo4jClient
 
 
 @pytest.mark.asyncio
+async def test_invalid_constraints(package_client: AsyncGenerator[Neo4jClient, Any]):
+    client = await anext(package_client)
+
+    with pytest.raises(InvalidLabelOrType):
+        await client.create_constraint("invalid_node_constraint", EntityType.NODE, ["prop_a", "prop_b"], "Test")
+
+    with pytest.raises(InvalidLabelOrType):
+        await client.create_constraint(
+            "invalid_relationship_constraint", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], ["Test", "Relationship"]
+        )
+
+    with pytest.raises(InvalidEntityType):
+        await client.create_constraint(
+            "invalid_constraint", "invalid entity", ["prop_a", "prop_b"], ["Test", "Relationship"]  # type: ignore
+        )
+
+
+@pytest.mark.asyncio
 async def test_create_node_constraints(
     package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
 ):
     driver = await anext(neo4j_driver)
     client = await anext(package_client)
-
-    with pytest.raises(InvalidLabelOrType):
-        await client.create_constraint("invalid_node_constraint", EntityType.NODE, ["prop_a", "prop_b"], "Test")
 
     await client.create_constraint("node_constraint", EntityType.NODE, ["prop_a", "prop_b"], ["Test", "Node"])
 
@@ -208,11 +224,6 @@ async def test_create_relationship_constraints(
     driver = await anext(neo4j_driver)
     client = await anext(package_client)
 
-    with pytest.raises(InvalidLabelOrType):
-        await client.create_constraint(
-            "invalid_relationship_constraint", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], ["Test", "Relationship"]
-        )
-
     await client.create_constraint(
         "relationship_constraint", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], "TEST_RELATIONSHIP"
     )
@@ -229,10 +240,7 @@ async def test_create_relationship_constraints(
 
 
 @pytest.mark.asyncio
-async def test_create_node_range_indexes(
-    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
-):
-    driver = await anext(neo4j_driver)
+async def test_invalid_indexes(package_client: AsyncGenerator[Neo4jClient, Any]):
     client = await anext(package_client)
 
     with pytest.raises(InvalidIndexType):
@@ -240,6 +248,22 @@ async def test_create_node_range_indexes(
 
     with pytest.raises(InvalidLabelOrType):
         await client.create_index("invalid_node_index", EntityType.NODE, IndexType.RANGE, "prop_a", "NotAList")  # type: ignore
+
+    with pytest.raises(InvalidIndexType):
+        await client.create_index("invalid_relationship_index", EntityType.RELATIONSHIP, "Not valid", ["prop_a", "prop_b"], "REL")  # type: ignore
+
+    with pytest.raises(InvalidEntityType):
+        await client.create_index(
+            "invalid_index", "invalid entity", IndexType.RANGE, ["prop_a", "prop_b"], "REL"  # type: ignore
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_node_range_indexes(
+    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
+):
+    driver = await anext(neo4j_driver)
+    client = await anext(package_client)
 
     await client.create_index(
         "node_range_index", EntityType.NODE, IndexType.RANGE, ["prop_a", "prop_b"], ["Test", "Node"]
@@ -268,9 +292,6 @@ async def test_create_relationship_range_indexes(
 ):
     driver = await anext(neo4j_driver)
     client = await anext(package_client)
-
-    with pytest.raises(InvalidIndexType):
-        await client.create_index("invalid_relationship_index", EntityType.RELATIONSHIP, "Not valid", ["prop_a", "prop_b"], "REL")  # type: ignore
 
     with pytest.raises(InvalidLabelOrType):
         await client.create_index(
@@ -470,3 +491,81 @@ async def test_create_relationship_point_indexes(
         assert index_results[1][5] == EntityType.RELATIONSHIP
         assert index_results[1][6] == ["REL"]
         assert index_results[1][7] == ["prop_b"]
+
+
+@pytest.mark.asyncio
+async def test_drop_nodes(
+    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
+):
+    driver = await anext(neo4j_driver)
+    client = await anext(package_client)
+
+    async with driver.session() as session:
+        await session.run("CREATE (n:Node) SET n.name = $name", {"name": "TestName"})
+
+    await client.drop_nodes()
+
+    async with driver.session() as session:
+        query_results = await session.run("MATCH (n) RETURN n")
+        results = await query_results.values()
+
+        assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_drop_constraints(
+    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
+):
+    driver = await anext(neo4j_driver)
+    client = await anext(package_client)
+
+    async with driver.session() as session:
+        await session.run("CREATE CONSTRAINT test FOR (n:Node) REQUIRE n.name IS UNIQUE")
+
+    await client.drop_constraints()
+
+    async with driver.session() as session:
+        query_results = await session.run("SHOW CONSTRAINTS")
+        results = await query_results.values()
+
+        assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_drop_indexes(
+    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
+):
+    driver = await anext(neo4j_driver)
+    client = await anext(package_client)
+
+    async with driver.session() as session:
+        await session.run("CREATE INDEX test FOR (n:Node) ON (n.name)")
+
+    await client.drop_indexes()
+
+    async with driver.session() as session:
+        query_results = await session.run("SHOW INDEXES")
+        results = await query_results.values()
+
+        assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_batch_exception(
+    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
+):
+    driver = await anext(neo4j_driver)
+    client = await anext(package_client)
+
+    with pytest.raises(Exception):
+        async with client.batch():
+            await client.cypher("CREATE (n:Node) SET n.name = $name", parameters={"name": "TestName"})
+            await client.cypher("CREATE (n:Node) SET n.name = $name", parameters={"name": "TestName2"})
+
+            raise Exception("Test Exception")  # pylint: disable=broad-exception-raised
+
+    async with driver.session() as session:
+        query_results = await session.run("MATCH (n) RETURN n")
+        results = await query_results.values()
+
+        assert len(results) == 0
