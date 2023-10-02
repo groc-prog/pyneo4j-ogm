@@ -156,6 +156,17 @@ class RelationshipProperty(Generic[T, U]):
     _nodes: List[T]
     _registered_name: Optional[str]
 
+    @property
+    def nodes(self) -> List[T]:
+        """
+        Auto-fetched nodes. Must set `auto_fetch_nodes` in settings or `find_one, find_many or
+        find_connected_nodes` to `True` fot this to work.
+
+        Returns:
+            List[T]: The auto-fetched nodes.
+        """
+        return self._nodes
+
     def __init__(
         self,
         target_model: Union[Type[T], str],
@@ -733,17 +744,6 @@ class RelationshipProperty(Generic[T, U]):
         ]
         if len(registered_relationship_model) > 0:
             self._relationship_model = cast(Type[U], registered_relationship_model[0])
-
-    @property
-    def nodes(self) -> List[T]:
-        """
-        Auto-fetched nodes. Must set `auto_fetch_nodes` in settings or `find_one, find_many or
-        find_connected_nodes` to `True` fot this to work.
-
-        Returns:
-            List[T]: The auto-fetched nodes.
-        """
-        return self._nodes
 
     def _ensure_alive(self, nodes: Union[T, List[T]]) -> None:
         """
