@@ -660,12 +660,6 @@ class Neo4jClient:
 
             logger.debug("No model found for query result %s", query_result)
             return None
-        elif isinstance(query_result, list):
-            for index, sub_result in enumerate(query_result):
-                resolved = self._resolve_database_model(sub_result)
-                query_result[index] = resolved if resolved is not None else sub_result
-
-            return query_result
 
         logger.debug("Query result %s is not a node, relationship, or path, skipping", type(query_result))
         return None

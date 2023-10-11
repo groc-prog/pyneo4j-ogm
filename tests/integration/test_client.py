@@ -6,7 +6,7 @@ from typing import Any, AsyncGenerator
 import pytest
 from neo4j import AsyncDriver
 from neo4j.exceptions import CypherSyntaxError
-from neo4j.graph import Node
+from neo4j.graph import Node, Path, Relationship
 
 from pyneo4j_ogm.core.client import EntityType, IndexType, Neo4jClient
 from pyneo4j_ogm.exceptions import (
@@ -18,9 +18,10 @@ from pyneo4j_ogm.exceptions import (
 )
 from tests.integration.fixtures.database import neo4j_driver, package_client
 from tests.integration.fixtures.models import (
+    TestClientNodeModel,
+    TestClientRelationshipModel,
     TestCypherResolvingModel,
-    TestRegisterNode,
-    TestRegisterRelationship,
+    TestCypherResolvingRelationship,
 )
 
 pytest_plugins = ("pytest_asyncio",)
@@ -76,10 +77,10 @@ async def test_register_models(
 ):
     driver = await anext(neo4j_driver)
     client = await anext(package_client)
-    await client.register_models([TestRegisterNode, TestRegisterRelationship])
+    await client.register_models([TestClientNodeModel, TestClientRelationshipModel])
 
-    assert TestRegisterNode in client.models
-    assert TestRegisterRelationship in client.models
+    assert TestClientNodeModel in client.models
+    assert TestClientRelationshipModel in client.models
 
     async with driver.session() as session:
         query_results = await session.run("SHOW CONSTRAINTS")
@@ -94,25 +95,25 @@ async def test_register_models(
         assert len(index_results) == 12
 
         # Indexes for 'TEST_RELATIONSHIP' type
-        assert index_results[8][1] == "TestRegisterRelationship_TEST_RELATIONSHIP_a_unique_constraint"
+        assert index_results[8][1] == "TestClientRelationshipModel_TEST_RELATIONSHIP_a_unique_constraint"
         assert index_results[8][4] == IndexType.RANGE
         assert index_results[8][5] == EntityType.RELATIONSHIP
         assert index_results[8][6] == ["TEST_RELATIONSHIP"]
         assert index_results[8][7] == ["a"]
 
-        assert index_results[9][1] == "TestRegisterRelationship_TEST_RELATIONSHIP_b_range_index"
+        assert index_results[9][1] == "TestClientRelationshipModel_TEST_RELATIONSHIP_b_range_index"
         assert index_results[9][4] == IndexType.RANGE
         assert index_results[9][5] == EntityType.RELATIONSHIP
         assert index_results[9][6] == ["TEST_RELATIONSHIP"]
         assert index_results[9][7] == ["b"]
 
-        assert index_results[10][1] == "TestRegisterRelationship_TEST_RELATIONSHIP_c_text_index"
+        assert index_results[10][1] == "TestClientRelationshipModel_TEST_RELATIONSHIP_c_text_index"
         assert index_results[10][4] == IndexType.TEXT
         assert index_results[10][5] == EntityType.RELATIONSHIP
         assert index_results[10][6] == ["TEST_RELATIONSHIP"]
         assert index_results[10][7] == ["c"]
 
-        assert index_results[11][1] == "TestRegisterRelationship_TEST_RELATIONSHIP_d_point_index"
+        assert index_results[11][1] == "TestClientRelationshipModel_TEST_RELATIONSHIP_d_point_index"
         assert index_results[11][4] == IndexType.POINT
         assert index_results[11][5] == EntityType.RELATIONSHIP
         assert index_results[11][6] == ["TEST_RELATIONSHIP"]
@@ -569,3 +570,50 @@ async def test_batch_exception(
         results = await query_results.values()
 
         assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_batch_commit(
+    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
+):
+    driver = await anext(neo4j_driver)
+    client = await anext(package_client)
+
+    async with client.batch():
+        await client.cypher("CREATE (n:Node) SET n.name = $name", parameters={"name": "TestName"})
+        await client.cypher("CREATE (n:Node) SET n.name = $name", parameters={"name": "TestName2"})
+
+    async with driver.session() as session:
+        query_results = await session.run("MATCH (n) RETURN n")
+        results = await query_results.values()
+
+        assert len(results) == 2
+
+
+@pytest.mark.asyncio
+async def test_resolve_paths(
+    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
+):
+    driver = await anext(neo4j_driver)
+    client = await anext(package_client)
+
+    await client.register_models([TestCypherResolvingModel, TestCypherResolvingRelationship])
+
+    async with driver.session() as session:
+        await session.run(
+            "CREATE (a:TestNode {name: 'a'})-[b:TEST_RELATIONSHIP {kind: 'b'}]->(c:NotRegistered {name: 'c'})"
+        )
+
+    results, _ = await client.cypher("MATCH path = (a)-[b]->(c) RETURN path", resolve_models=True)
+
+    assert isinstance(results[0][0], Path)
+    assert isinstance(results[0][0].start_node, TestCypherResolvingModel)
+    assert isinstance(results[0][0].relationships[0], TestCypherResolvingRelationship)
+    assert isinstance(results[0][0].end_node, Node)
+
+    results, _ = await client.cypher("MATCH path = (a)-[b]->(c) RETURN path", resolve_models=False)
+
+    assert isinstance(results[0][0], Path)
+    assert isinstance(results[0][0].start_node, Node)
+    assert isinstance(results[0][0].relationships[0], Relationship)
+    assert isinstance(results[0][0].end_node, Node)
