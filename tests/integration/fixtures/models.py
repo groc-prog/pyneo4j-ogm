@@ -9,7 +9,7 @@ from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.fields.property_options import WithOptions
 
 
-class TestClientNodeModel(NodeModel):
+class ClientNodeModel(NodeModel):
     a: WithOptions(str, unique=True)
     b: WithOptions(str, range_index=True)
     c: WithOptions(str, text_index=True)
@@ -19,7 +19,7 @@ class TestClientNodeModel(NodeModel):
         labels = {"Test", "Node"}
 
 
-class TestClientRelationshipModel(RelationshipModel):
+class ClientRelationshipModel(RelationshipModel):
     a: WithOptions(str, unique=True)
     b: WithOptions(str, range_index=True)
     c: WithOptions(str, text_index=True)
@@ -29,14 +29,14 @@ class TestClientRelationshipModel(RelationshipModel):
         type = "TEST_RELATIONSHIP"
 
 
-class TestCypherResolvingModel(NodeModel):
+class CypherResolvingModel(NodeModel):
     name: str
 
     class Settings:
         labels = {"TestNode"}
 
 
-class TestCypherResolvingRelationship(RelationshipModel):
+class CypherResolvingRelationship(RelationshipModel):
     kind: str
 
     class Settings:
