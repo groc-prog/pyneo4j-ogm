@@ -1,4 +1,4 @@
-name: CI
+name: Package release
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    needs: [quality, tests]
+    # needs: [quality, tests]
     steps:
       - name: foo
         run: echo "foo"
