@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 jobs:
   unit-tests:
@@ -55,5 +55,5 @@ jobs:
         run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
       - name: Install dependencies
         run: poetry install
-      - name: Start unit tests
+      - name: Start integration tests
         run: poetry run pytest tests/integration
