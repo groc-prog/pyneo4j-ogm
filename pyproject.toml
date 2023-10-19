@@ -26,6 +26,9 @@ line-length = 120
 target-version = ["py310", "py311"]
 workers = 4
 
+[tool.isort]
+profile = "black"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
