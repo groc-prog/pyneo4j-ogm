@@ -3,9 +3,7 @@ name: Package release
 on:
   workflow_run:
     workflows: [Quality checks and tests]
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
     types:
       - completed
 
