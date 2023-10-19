@@ -1,0 +1,15 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    needs: [quality, tests]
+    steps:
+      - name: foo
+        run: echo "foo"
