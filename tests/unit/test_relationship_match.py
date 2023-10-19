@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name, redefined-outer-name, unused-import
+# pylint: disable=invalid-name, redefined-outer-name, unused-import, missing-module-docstring
 
 import pytest
 

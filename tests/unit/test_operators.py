@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name, redefined-outer-name, unused-import
+# pylint: disable=invalid-name, redefined-outer-name, unused-import, missing-module-docstring
 
 from pyneo4j_ogm.queries.operators import Operators
 from tests.unit.fixtures.operators import operators_builder
@@ -351,7 +351,10 @@ def test_build_logical_operators(operators_builder: Operators):
     )
     assert (
         query_string
-        == "(n.a = $_n_0 OR n.a = $_n_1) AND (n.b = $_n_2 AND n.b = $_n_3) AND (n.c = $_n_4 XOR n.c = $_n_5) AND NOT(n.d = $_n_6)"
+        == """(n.a = $_n_0 OR n.a = $_n_1)
+        AND (n.b = $_n_2 AND n.b = $_n_3)
+        AND (n.c = $_n_4 XOR n.c = $_n_5)
+        AND NOT(n.d = $_n_6)"""
     )
     assert operators_builder.parameters == {
         "_n_0": 1,

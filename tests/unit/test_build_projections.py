@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name, redefined-outer-name, unused-import
+# pylint: disable=invalid-name, redefined-outer-name, unused-import, missing-module-docstring
 
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 from tests.unit.fixtures.query_builder import query_builder

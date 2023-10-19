@@ -1,4 +1,4 @@
-# pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access
+# pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
 import os
 from typing import Any, AsyncGenerator
@@ -245,13 +245,23 @@ async def test_invalid_indexes(package_client: AsyncGenerator[Neo4jClient, Any])
     client = await anext(package_client)
 
     with pytest.raises(InvalidIndexType):
-        await client.create_index("invalid_node_index", EntityType.NODE, "Not valid", ["prop_a", "prop_b"], ["Test", "Node"])  # type: ignore
+        await client.create_index(
+            "invalid_node_index", EntityType.NODE, "Not valid", ["prop_a", "prop_b"], ["Test", "Node"]  # type: ignore
+        )
 
     with pytest.raises(InvalidLabelOrType):
-        await client.create_index("invalid_node_index", EntityType.NODE, IndexType.RANGE, "prop_a", "NotAList")  # type: ignore
+        await client.create_index(
+            "invalid_node_index", EntityType.NODE, IndexType.RANGE, "prop_a", "NotAList"  # type: ignore
+        )
 
     with pytest.raises(InvalidIndexType):
-        await client.create_index("invalid_relationship_index", EntityType.RELATIONSHIP, "Not valid", ["prop_a", "prop_b"], "REL")  # type: ignore
+        await client.create_index(
+            "invalid_relationship_index",
+            EntityType.RELATIONSHIP,
+            "Not valid",  # type: ignore
+            ["prop_a", "prop_b"],
+            "REL",
+        )
 
     with pytest.raises(InvalidEntityType):
         await client.create_index(

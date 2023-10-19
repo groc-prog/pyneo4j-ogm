@@ -1,3 +1,5 @@
+# pylint: disable=missing-module-docstring
+
 from pyneo4j_ogm.fields.settings import (
     BaseModelSettings,
     NodeModelSettings,
@@ -29,8 +31,8 @@ def test_base_model_settings():
     settings = BaseModelSettings()
 
     assert settings.exclude_from_export == set()
-    assert settings.pre_hooks == {}
-    assert settings.post_hooks == {}
+    assert not settings.pre_hooks
+    assert not settings.post_hooks
 
 
 def test_node_model_settings():
@@ -39,14 +41,14 @@ def test_node_model_settings():
     assert settings.labels == set()
     assert settings.auto_fetch_nodes is False
     assert settings.exclude_from_export == set()
-    assert settings.pre_hooks == {}
-    assert settings.post_hooks == {}
+    assert not settings.pre_hooks
+    assert not settings.post_hooks
 
 
 def test_relationship_model_settings():
     settings = RelationshipModelSettings()
 
     assert settings.exclude_from_export == set()
-    assert settings.pre_hooks == {}
-    assert settings.post_hooks == {}
+    assert not settings.pre_hooks
+    assert not settings.post_hooks
     assert settings.type is None

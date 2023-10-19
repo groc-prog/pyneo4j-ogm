@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name missing-module-docstring
 
 from pyneo4j_ogm.fields.property_options import WithOptions
 
