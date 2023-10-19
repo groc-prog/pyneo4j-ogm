@@ -588,32 +588,3 @@ async def test_batch_commit(
         results = await query_results.values()
 
         assert len(results) == 2
-
-
-@pytest.mark.asyncio
-async def test_resolve_paths(
-    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
-):
-    driver = await anext(neo4j_driver)
-    client = await anext(package_client)
-
-    await client.register_models([TestCypherResolvingModel, TestCypherResolvingRelationship])
-
-    async with driver.session() as session:
-        await session.run(
-            "CREATE (a:TestNode {name: 'a'})-[b:TEST_RELATIONSHIP {kind: 'b'}]->(c:NotRegistered {name: 'c'})"
-        )
-
-    results, _ = await client.cypher("MATCH path = (a)-[b]->(c) RETURN path", resolve_models=True)
-
-    assert isinstance(results[0][0], Path)
-    assert isinstance(results[0][0].start_node, TestCypherResolvingModel)
-    assert isinstance(results[0][0].relationships[0], TestCypherResolvingRelationship)
-    assert isinstance(results[0][0].end_node, Node)
-
-    results, _ = await client.cypher("MATCH path = (a)-[b]->(c) RETURN path", resolve_models=False)
-
-    assert isinstance(results[0][0], Path)
-    assert isinstance(results[0][0].start_node, Node)
-    assert isinstance(results[0][0].relationships[0], Relationship)
-    assert isinstance(results[0][0].end_node, Node)

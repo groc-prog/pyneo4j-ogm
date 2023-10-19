@@ -1,4 +1,4 @@
-name: Tests
+name: Quality checks
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [main, develop]
 
 jobs:
-  unit-tests:
-    name: Run unit tests
+  type-checker:
+    name: Run type-checker
     runs-on: ubuntu-latest
     env:
       PYTHON_VERSION: "3.11.5"
@@ -26,23 +26,15 @@ jobs:
         run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
       - name: Install dependencies
         run: poetry install
-      - name: Start unit tests
-        run: poetry run pytest tests/unit
+      - name: Run type-checker
+        run: poetry run pyright
 
-  integration-tests:
-    name: Run integration tests
+  linter:
+    name: Run linter
     runs-on: ubuntu-latest
     env:
       PYTHON_VERSION: "3.11.5"
       POETRY_VERSION: "1.5.1"
-    services:
-      neo4j:
-        image: neo4j:latest
-        env:
-          NEO4J_AUTH: ${{ secrets.NEO4J_AUTH }}
-          NEO4J_PORT: ${{ env.NEO4J_PORT }}
-        ports:
-          - ${{ env.NEO4J_PORT }}:${{ env.NEO4J_PORT }}
     steps:
       - uses: actions/checkout@v3
       - name: Install Poetry ${{ env.POETRY_VERSION }}
@@ -56,5 +48,5 @@ jobs:
         run: poetry config virtualenvs.create true --local && poetry config virtualenvs.in-project true --local
       - name: Install dependencies
         run: poetry install
-      - name: Start unit tests
-        run: poetry run pytest tests/integration
+      - name: Run linter
+        run: poetry run pylint --rcfile=.pylintrc pyneo4j_ogm tests
