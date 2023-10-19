@@ -1,8 +1,10 @@
-name: Package release
+name: Release
 
 on:
   workflow_run:
-    workflows: [checks]
+    workflows: [Quality]
+    # branches:
+    #   - main
     types:
       - completed
 
