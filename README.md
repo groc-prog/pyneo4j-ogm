@@ -465,3 +465,4 @@ Node- and RelationshipModels provide a number of methods for commonly used cyphe
 > **Note:** All of the methods mentioned below are available on both Node- and RelationshipModels unless stated otherwise. If a method is defined using **Instance.method()**, the method is to be called on a instance if a model. If a method is defined using **Model.method()**, the method is to be called on the model itself.
 
 
+
