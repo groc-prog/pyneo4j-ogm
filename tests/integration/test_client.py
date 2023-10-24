@@ -1,12 +1,12 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
 import os
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, cast
 
 import pytest
 from neo4j import AsyncDriver
 from neo4j.exceptions import CypherSyntaxError
-from neo4j.graph import Node
+from neo4j.graph import Node, Path, Relationship
 
 from pyneo4j_ogm.core.client import EntityType, IndexType, Neo4jClient
 from pyneo4j_ogm.exceptions import (
@@ -20,7 +20,8 @@ from tests.integration.fixtures.database import neo4j_driver, package_client
 from tests.integration.fixtures.models import (
     ClientNodeModel,
     ClientRelationshipModel,
-    CypherResolvingModel,
+    CypherResolvingNode,
+    CypherResolvingRelationship,
 )
 
 pytest_plugins = ("pytest_asyncio",)
@@ -147,7 +148,7 @@ async def test_cypher_resolve_model_query(
 ):
     driver = await anext(neo4j_driver)
     client = await anext(package_client)
-    await client.register_models([CypherResolvingModel])
+    await client.register_models([CypherResolvingNode])
 
     async with driver.session() as session:
         await session.run("CREATE (n:TestNode) SET n.name = $name", {"name": "TestName"})
@@ -162,7 +163,75 @@ async def test_cypher_resolve_model_query(
 
     assert len(resolved_results) == 1
     assert len(resolved_results[0]) == 1
-    assert isinstance(resolved_results[0][0], CypherResolvingModel)
+    assert isinstance(resolved_results[0][0], CypherResolvingNode)
+
+
+@pytest.mark.asyncio
+async def test_cypher_resolve_relationship_model_query(
+    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
+):
+    driver = await anext(neo4j_driver)
+    client = await anext(package_client)
+    await client.register_models([CypherResolvingRelationship])
+
+    async with driver.session() as session:
+        await session.run(
+            "CREATE (:TestNode {name: $start})-[:TEST_RELATIONSHIP {kind: 'awesome'}]->(:TestNode {end: $end}) ",
+            {"start": "start", "end": "end"},
+        )
+
+    unresolved_results, _ = await client.cypher(
+        "MATCH ()-[r:TEST_RELATIONSHIP]->() WHERE r.kind = $kind RETURN r", {"kind": "awesome"}, resolve_models=False
+    )
+
+    assert len(unresolved_results) == 1
+    assert len(unresolved_results[0]) == 1
+    assert isinstance(unresolved_results[0][0], Relationship)
+
+    resolved_results, _ = await client.cypher(
+        "MATCH ()-[r:TEST_RELATIONSHIP]->() WHERE r.kind = $kind RETURN r", {"kind": "awesome"}, resolve_models=True
+    )
+
+    assert len(resolved_results) == 1
+    assert len(resolved_results[0]) == 1
+    assert isinstance(resolved_results[0][0], CypherResolvingRelationship)
+
+
+@pytest.mark.asyncio
+async def test_cypher_resolve_path_query(
+    package_client: AsyncGenerator[Neo4jClient, Any], neo4j_driver: AsyncGenerator[AsyncDriver, Any]
+):
+    driver = await anext(neo4j_driver)
+    client = await anext(package_client)
+    await client.register_models([CypherResolvingNode, CypherResolvingRelationship])
+
+    async with driver.session() as session:
+        await session.run(
+            "CREATE (:TestNode {name: $start})-[:TEST_RELATIONSHIP {kind: 'awesome'}]->(:TestNode {name: $end}) ",
+            {"start": "start", "end": "end"},
+        )
+
+    unresolved_results, _ = await client.cypher(
+        "MATCH path = (:TestNode)-[:TEST_RELATIONSHIP]->(:TestNode) RETURN path", resolve_models=False
+    )
+
+    assert len(unresolved_results) == 1
+    assert len(unresolved_results[0]) == 1
+    assert isinstance(unresolved_results[0][0], Path)
+    assert isinstance(cast(Path, unresolved_results[0][0]).start_node, Node)
+    assert isinstance(cast(Path, unresolved_results[0][0]).end_node, Node)
+    assert isinstance(cast(Path, unresolved_results[0][0]).relationships[0], Relationship)
+
+    resolved_results, _ = await client.cypher(
+        "MATCH path = (:TestNode)-[:TEST_RELATIONSHIP]->(:TestNode) RETURN path", resolve_models=True
+    )
+
+    assert len(resolved_results) == 1
+    assert len(resolved_results[0]) == 1
+    assert isinstance(resolved_results[0][0], Path)
+    assert isinstance(cast(Path, unresolved_results[0][0]).start_node, CypherResolvingNode)
+    # assert isinstance(cast(Path, unresolved_results[0][0]).end_node, CypherResolvingNode)
+    # assert isinstance(cast(Path, unresolved_results[0][0]).relationships[0], CypherResolvingRelationship)
 
 
 @pytest.mark.asyncio

@@ -29,7 +29,7 @@ class ClientRelationshipModel(RelationshipModel):
         type = "TEST_RELATIONSHIP"
 
 
-class CypherResolvingModel(NodeModel):
+class CypherResolvingNode(NodeModel):
     name: str
 
     class Settings:

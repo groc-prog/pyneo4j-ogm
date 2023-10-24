@@ -25,7 +25,7 @@ from typing import (
     cast,
 )
 
-from pydantic import BaseModel, PrivateAttr, root_validator
+from pydantic import BaseModel, Field, PrivateAttr, root_validator
 
 from pyneo4j_ogm.exceptions import (
     ModelImportFailure,
@@ -94,17 +94,17 @@ class ModelBase(Generic[V], BaseModel):
     It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
     """
 
-    __settings__: BaseModelSettings
+    __settings__: BaseModelSettings = BaseModelSettings()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _db_properties: Dict[str, Any] = PrivateAttr(default_factory=dict)
     _destroyed: bool = PrivateAttr(default=False)
-    _element_id: Optional[str] = PrivateAttr(default=None)
+    element_id: Optional[str] = Field(default=None)
     Settings: ClassVar[Type[BaseModelSettings]]
 
     @root_validator()
     def _validate_reserved_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        for value in ["element_id", "modified_properties", "model_settings"]:
+        for value in ["modified_properties", "model_settings"]:
             if value in values:
                 raise ReservedPropertyName(value)
 
@@ -138,10 +138,10 @@ class ModelBase(Generic[V], BaseModel):
     def __str__(self) -> str:
         if self._destroyed:
             hydration_msg = "destroyed"
-        elif self._element_id is None:
+        elif self.element_id is None:
             hydration_msg = "not hydrated"
         else:
-            hydration_msg = self._element_id
+            hydration_msg = self.element_id
 
         return f"{self.__class__.__name__}({hydration_msg})"
 
@@ -166,7 +166,7 @@ class ModelBase(Generic[V], BaseModel):
 
         logger.debug("Exporting model %s", self.__class__.__name__)
         model_dict = json.loads(self.json(*args, **kwargs))
-        model_dict["element_id"] = self._element_id
+        model_dict["element_id"] = self.element_id
 
         if convert_to_camel_case:
             logger.debug("Converting keys to camel case")
@@ -206,7 +206,7 @@ class ModelBase(Generic[V], BaseModel):
             import_model = cast(Dict[str, Any], cls._convert_keys_to_snake_case(model))
 
         instance = cls(**import_model)
-        instance._element_id = import_model["element_id"]
+        instance.element_id = import_model["element_id"]
         return instance
 
     @classmethod
@@ -369,3 +369,4 @@ class ModelBase(Generic[V], BaseModel):
         validate_assignment = True
         revalidate_instances = "always"
         arbitrary_types_allowed = True
+        underscore_attrs_are_private = True

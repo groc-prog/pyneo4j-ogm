@@ -65,7 +65,7 @@ def ensure_alive(func):
         if getattr(self, "_destroyed", False):
             raise InstanceDestroyed()
 
-        if getattr(self, "_element_id", None) is None:
+        if getattr(self, "element_id", None) is None:
             raise InstanceNotHydrated()
 
         return func(self, *args, **kwargs)
@@ -79,7 +79,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
     model.
     """
 
-    __settings__: NodeModelSettings
+    __settings__: NodeModelSettings = NodeModelSettings()
     _relationships_properties: Set[str] = PrivateAttr()
     Settings: ClassVar[Type[NodeModelSettings]]
 
@@ -128,7 +128,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             Dict[str, Any]: The deflated model instance.
         """
         logger.debug("Deflating model %s to storable dictionary", self)
-        deflated: Dict[str, Any] = json.loads(self.json(exclude=self._relationships_properties))
+        deflated: Dict[str, Any] = json.loads(self.json(exclude={*self._relationships_properties, "__settings__"}))
 
         # Serialize nested BaseModel or dict instances to JSON strings
         for key, value in deflated.items():
@@ -173,7 +173,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 inflated[property_name] = property_value
 
         instance = cls(**inflated)
-        setattr(instance, "_element_id", node.element_id)
+        setattr(instance, "element_id", node.element_id)
         return instance
 
     @hooks
@@ -211,7 +211,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             raise NoResultsFound()
 
         logger.debug("Hydrating instance values")
-        setattr(self, "_element_id", getattr(cast(T, results[0][0]), "_element_id"))
+        setattr(self, "element_id", getattr(cast(T, results[0][0]), "element_id"))
 
         logger.debug("Resetting modified properties")
         self._db_properties = self.dict()
@@ -250,7 +250,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 {f"SET {set_query}" if set_query != "" else ""}
                 RETURN n
             """,
-            parameters={"element_id": self._element_id, **deflated},
+            parameters={"element_id": self.element_id, **deflated},
         )
 
         logger.debug("Checking if query returned a result")
@@ -279,7 +279,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 DETACH DELETE n
                 RETURN count(n)
             """,
-            parameters={"element_id": self._element_id},
+            parameters={"element_id": self.element_id},
         )
 
         logger.debug("Checking if query returned a result")
@@ -306,7 +306,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 WHERE elementId(n) = $element_id
                 RETURN n
             """,
-            parameters={"element_id": self._element_id},
+            parameters={"element_id": self.element_id},
         )
 
         logger.debug("Checking if query returned a result")
@@ -407,7 +407,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 RETURN {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}
             """,
             parameters={
-                "element_id": self._element_id,
+                "element_id": self.element_id,
                 **self._query_builder.parameters,
             },
         )
@@ -425,7 +425,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     if result is None or result_list[0] is None:
                         continue
 
-                    instance_element_id = getattr(result, "_element_id")
+                    instance_element_id = getattr(result, "element_id")
                     if instance_element_id in added_nodes:
                         continue
 
@@ -435,7 +435,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                         target_instance = [
                             instance
                             for instance in instances
-                            if getattr(result_list[0], "_element_id") == getattr(instance, "_element_id")
+                            if getattr(result_list[0], "element_id") == getattr(instance, "element_id")
                         ][0]
                         relationship_property = getattr(target_instance, meta[index])
                         nodes = cast(List[str], getattr(relationship_property, "_nodes"))
@@ -563,7 +563,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 if result is not None:
                     relationship_property = getattr(instance, meta[index + 1])
                     nodes = cast(List[str], getattr(relationship_property, "_nodes"))
-                    element_id = getattr(result, "_element_id")
+                    element_id = getattr(result, "element_id")
 
                     if element_id not in added_nodes:
                         # Add model instance to nodes list and mark it as added
@@ -646,7 +646,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     if result is None or result_list[0] is None:
                         continue
 
-                    instance_element_id = getattr(result, "_element_id")
+                    instance_element_id = getattr(result, "element_id")
                     if instance_element_id in added_nodes:
                         continue
 
@@ -656,7 +656,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                         target_instance = [
                             instance
                             for instance in instances
-                            if getattr(result_list[0], "_element_id") == getattr(instance, "_element_id")
+                            if getattr(result_list[0], "element_id") == getattr(instance, "element_id")
                         ][0]
                         relationship_property = getattr(target_instance, meta[index])
                         nodes = cast(List[str], getattr(relationship_property, "_nodes"))
@@ -750,7 +750,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         for key, value in update.items():
             setattr(new_instance, key, value)
-        setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
+        setattr(new_instance, "element_id", getattr(old_instance, "element_id", None))
 
         deflated = new_instance.deflate()
         set_query = ", ".join(
@@ -767,9 +767,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 WHERE elementId(n) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
             """,
-            parameters={"element_id": new_instance._element_id, **deflated},
+            parameters={"element_id": new_instance.element_id, **deflated},
         )
-        logger.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
+        logger.info("Successfully updated node %s", getattr(new_instance, "element_id"))
 
         if new:
             return new_instance
@@ -849,7 +849,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.info(
             "Successfully updated %s nodes %s",
             len(old_instances),
-            [getattr(instance, "_element_id") for instance in old_instances],
+            [getattr(instance, "element_id") for instance in old_instances],
         )
         logger.debug("Building instances from results")
         if new:

@@ -3,7 +3,7 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 
 
 ## ⚡️ Quick start <a name="quick-start"></a>
-Before we can start to interact with our database, we have to take care of some setup. First, we have to connect to our database with the `connect()` method of the `Neo4jClient` class. This can be done by creating a new instance of the `Neo4jClient` class and passing the connection details as keyword arguments. This class is our entry point to the library and will be used to interact with our database.
+Before we can start to interact with our database, we have to take care of some setup. First, we have to connect to our database with the `connect()` method from the `Neo4jClient` class. This can be done by creating a new instance of the `Neo4jClient` class and passing the connection details as keyword arguments. This class is our entry point to the library and will be used to interact with our database.
 
 ```python
 from pyneo4j_ogm import Neo4jClient
@@ -141,7 +141,7 @@ async def main():
 asyncio.run(main())
 ```
 
-> **Note**: This script should run `as is`. You may have to change the `uri` and `auth` parameters in the `connect()` method call to match the ones needed for your own database.
+> **Note**: This script should run `as is`. You mus change the `uri` and `auth` parameters in the `connect()` method call to match the ones needed for your own database before starting the script.
 
 
 ## 📚 Documentation <a name="documentation"></a>
@@ -174,7 +174,7 @@ asyncio.run(main())
 ### Basic concepts <a name="basic-concepts"></a>
 If you have worked with other ORM's like `sqlalchemy` or `beanie` before, you will find that this library is very similar to them. The main idea is to work with nodes and relationships in a **structured and easy-to-use** way instead of writing out complex cypher queries and tons of boilerplate for simple operations.
 
-The concept of this library builds on the idea of defining nodes and relationships present in the graph database as **Python classes**. This allows for easy and structured access to the data in the database. These classes provide a robust foundation for working with a Neo4j database. On top of that, the library provides additional features like a `custom query filters` and `automatic model resolution from queries` out of the box. All of this is done in a **asynchronous** way using the asynchronous driver provided by Neo4j.
+The concept of this library builds on the idea of defining nodes and relationships present in the graph database as **Python classes**. This allows for easy and structured access to the data. These classes provide a robust foundation for working with a Neo4j database using methods for common queries, a filter API, model resolution and more.
 
 In the following sections we will take a look at all of the features of this library and how to use them.
 
@@ -182,11 +182,11 @@ In the following sections we will take a look at all of the features of this lib
 
 
 ### Database client <a name="database-client"></a>
-The `Neo4jClient` class is the the heart of this library. It is used to connect to a database instance, register models and execute queries. Under the hood, every class uses the client you connected to a database with to execute queries. It is also possible to use multiple client instances to connect to multiple databases at the same time by initializing multiple instances of the `Neo4jClient` class.
+The `Neo4jClient` class is the brains of the library. It is used to connect to a database instance, register models and execute queries. Under the hood, every class uses the client to execute queries. It is also possible to use multiple client instances to connect to multiple databases at the same time by initializing multiple instances of the `Neo4jClient` class.
 
 
 #### Connecting to a database instance <a name="connecting-to-a-database-instance"></a>
-Before you can interact with anything this library offers in any way, you have to connect to a database instance. You can do this by creating a new instance of the `Neo4jClient` class and calling the `connect()` method on it. The `connect()` method takes a few arguments:
+Before you can interact with anything this library offers in any way, you have to connect to a database. You can do this by creating a new instance of the `Neo4jClient` class and calling the `connect()` method on it. The `connect()` method takes a few arguments:
 
 - `uri`: The connection URI to the database instance.
 - `skip_constraints`: Whether the client should skip creating any constraints defined on models when registering them. Defaults to `False`.
@@ -206,11 +206,11 @@ client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<passwor
 client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
 ```
 
-After connecting the client, you will be able to run queries against the database instance. Should you try to run a query without connecting to a database instance first, you will get a `NotConnectedToDatabase` exception.
+After connecting the client, you will be able to run queries against the database. Should you try to run a query without connecting to a database instance first, you will get a `NotConnectedToDatabase` exception.
 
 
 #### Closing an existing connection <a name="closing-an-existing-connection"></a>
-Once you are done working with a database instance, you can close the connection to it by calling the `close()` method on the client instance. This will close the connection to the database and free up any resources used by the client. Here is an example of how to close a connection to a database instance:
+Once you are done working with a database and the client is no longer needed, you can close the connection to it by calling the `close()` method on the client instance. This will close the connection to the database and free up any resources used by the client. Here is an example of how to close a connection to a database instance:
 
 ```python
 # Do some work with the database instance ...
