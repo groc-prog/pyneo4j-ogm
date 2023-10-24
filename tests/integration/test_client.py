@@ -153,13 +153,17 @@ async def test_cypher_resolve_model_query(
     async with driver.session() as session:
         await session.run("CREATE (n:TestNode) SET n.name = $name", {"name": "TestName"})
 
-    unresolved_results, _ = await client.cypher("MATCH (n:TestNode) RETURN n", resolve_models=False)
+    unresolved_results, _ = await client.cypher(
+        "MATCH (n:TestNode) WHERE n.name = $name RETURN n", {"name": "TestName"}, resolve_models=False
+    )
 
     assert len(unresolved_results) == 1
     assert len(unresolved_results[0]) == 1
     assert isinstance(unresolved_results[0][0], Node)
 
-    resolved_results, _ = await client.cypher("MATCH (n:TestNode) RETURN n", resolve_models=True)
+    resolved_results, _ = await client.cypher(
+        "MATCH (n:TestNode) WHERE n.name = $name RETURN n", {"name": "TestName"}, resolve_models=True
+    )
 
     assert len(resolved_results) == 1
     assert len(resolved_results[0]) == 1
@@ -229,9 +233,9 @@ async def test_cypher_resolve_path_query(
     assert len(resolved_results) == 1
     assert len(resolved_results[0]) == 1
     assert isinstance(resolved_results[0][0], Path)
-    assert isinstance(cast(Path, unresolved_results[0][0]).start_node, CypherResolvingNode)
-    # assert isinstance(cast(Path, unresolved_results[0][0]).end_node, CypherResolvingNode)
-    # assert isinstance(cast(Path, unresolved_results[0][0]).relationships[0], CypherResolvingRelationship)
+    assert isinstance(cast(Path, resolved_results[0][0]).start_node, CypherResolvingNode)
+    assert isinstance(cast(Path, resolved_results[0][0]).end_node, CypherResolvingNode)
+    assert isinstance(cast(Path, resolved_results[0][0]).relationships[0], CypherResolvingRelationship)
 
 
 @pytest.mark.asyncio

@@ -642,7 +642,7 @@ class Neo4jClient:
             return query_result
         elif isinstance(query_result, (Node, Relationship)):
             logger.debug("Query result %s is a node or relationship, resolving", query_result)
-            labels = set(query_result.labels) if isinstance(query_result, Node) else set(query_result.type)
+            labels = set(query_result.labels) if isinstance(query_result, Node) else {query_result.type}
 
             for model in list(self.models):
                 model_labels: set[str] = set()
@@ -653,7 +653,7 @@ class Neo4jClient:
                     if labels == model_labels:
                         return model.inflate(cast(Node, query_result))
                 elif issubclass(model, RelationshipModel):
-                    model_labels = set(getattr(model.__settings__, "type"))
+                    model_labels = {getattr(model.__settings__, "type")}
 
                     if labels == model_labels:
                         return model.inflate(cast(Relationship, query_result))
