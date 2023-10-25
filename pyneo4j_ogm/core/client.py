@@ -70,15 +70,19 @@ class Neo4jClient:
     Singleton database client class used to run different operations on the database.
     """
 
-    _builder: QueryBuilder = QueryBuilder()
+    _builder: QueryBuilder
     _driver: Optional[AsyncDriver]
     _session: Optional[AsyncSession]
     _transaction: Optional[AsyncTransaction]
     _skip_constraints: bool
     _skip_indexes: bool
     _batch_enabled: bool = False
-    models: Set[Type[NodeModel | RelationshipModel]] = set()
+    models: Set[Type[NodeModel | RelationshipModel]]
     uri: str
+
+    def __init__(self) -> None:
+        self._builder = QueryBuilder()
+        self.models = set()
 
     def connect(
         self,
