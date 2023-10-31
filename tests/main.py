@@ -34,6 +34,9 @@ class Developer(NodeModel):
         allow_multiple=True,
     )
 
+    class Settings:
+        auto_fetch_nodes = True
+
 
 class Coffee(NodeModel):
     """
@@ -71,7 +74,7 @@ async def main():
     await developer.coffee.connect(coffee, {"likes_it": True})
     await developer.dev.connect(dev2, {"likes_it": False})
 
-    drink = await Drinks.find_one({"likes_it": True})
+    developer = await Developer.find_many({"name": "John"}, auto_fetch_models=[Coffee])
 
     await client.close()
 

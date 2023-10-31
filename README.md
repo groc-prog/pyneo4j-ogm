@@ -192,6 +192,10 @@ asyncio.run(main())
         - [Filters ](#filters-)
         - [Projections ](#projections-)
         - [Auto-fetching nodes ](#auto-fetching-nodes-)
+      - [Model.find\_many() ](#modelfind_many-)
+        - [Filters ](#filters--1)
+        - [Projections ](#projections--1)
+        - [Auto-fetching nodes ](#auto-fetching-nodes--1)
 
 ### Basic concepts <a name="basic-concepts"></a>
 
@@ -566,7 +570,7 @@ print(developer.age)  # 24
 
 #### Model.find_one() <a name="model-find-one"></a>
 
-The `find_one()` method can be used to find a single node or relationship in the graph. If multiple results are matched, the first one is returned. This method returns a single instance of the model or `None` if no results were found.
+The `find_one()` method can be used to find a single node or relationship in the graph. If multiple results are matched, the first one is returned. This method returns a single instance/dictionary or `None` if no results were found.
 
 ##### Filters <a name="model-find-one-filters"></a>
 
@@ -575,6 +579,11 @@ The `find_one()` method takes a mandatory `filters` argument, which can be used 
 ```python
 # Return the first encountered node where the name property equals `John`
 developer = await Developer.find_one({"name": "John"})
+
+print(developer) # <Developer>
+
+# Or if no match was found
+print(developer) # None
 ```
 
 ##### Projections <a name="model-find-one-projections"></a>
@@ -585,11 +594,13 @@ developer = await Developer.find_one({"name": "John"})
 # Return a dictionary with the developers name at the `dev_name` key instead
 # of a model instance
 developer = await Developer.find_one({"name": "John"}, {"dev_name": "name"})
+
+print(developer) # {"dev_name": "John"}
 ```
 
 ##### Auto-fetching nodes <a name="model-find-one-auto-fetching-nodes"></a>
 
-If the `auto_fetch_nodes` setting is set to `True` and no projections are defined, nodes of defined relationship properties will be automatically fetched when getting a model instance from the database. Auto-fetched nodes are available at the `instance.<relationship-property>.nodes` property. If no specific models or `None` are passed to the `find_one()` method's `auto_fetch_models` argument when `auto_fetch_nodes` is set to `True`, nodes from all defined relationship properties are fetched.
+The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship properties when running the `find_one()` query. For more about auto-fetching, see [`Auto-fetching relationship properties`](#query-auto-fetching).
 
 ```python
 # Returns a developer instance with `instance.<property>.nodes` properties already fetched
@@ -608,4 +619,57 @@ print(developer.coffee.nodes) # [<Coffee>, <Coffee>, ...]
 print(developer.other_property.nodes) # []
 ```
 
-> **Note**: The `auto_fetch_nodes` setting is only available for NodeModels.
+> **Note**: The `auto_fetch_nodes` and `auto_fetch_models` setting is only available for classes which inherit from the `NodeModel` class.
+
+#### Model.find_many() <a name="model-find-many"></a>
+
+The `find_many()` method can be used to find a multiple nodes or relationships in the graph. This method always returns a list of instances/dictionaries or an empty list if no results were found.
+
+##### Filters <a name="model-find-many-filters"></a>
+
+Just like the `find_one()` method, the `find_many()` method also takes (optional) filters. For more about filters, see the [`Filtering queries`](#query-filters) section.
+
+```python
+# Returns all `Developer` nodes where the name property includes the letter `o`
+developers = await Developer.find_many({"name": {"$contains": "o"}})
+
+print(developers) # [<Developer>, <Developer>, ...]
+
+# Or if no matches were found
+print(developers) # []
+```
+
+##### Projections <a name="model-find-many-projections"></a>
+
+`Projections` can be used to only return specific parts of the models as a dictionaries. For more information about projections, see the [`Projections`](#query-projections) section.
+
+```python
+# Returns dictionaries with the developers name at the `dev_name` key instead
+# of model instances
+developers = await Developer.find_many({"name": "John"}, {"dev_name": "name"})
+
+print(developers) # [{"dev_name": "John"}, {"dev_name": "John"}, ...]
+```
+
+##### Auto-fetching nodes <a name="model-find-many-auto-fetching-nodes"></a>
+
+The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship properties when running the `find_many()` query. For more about auto-fetching, see [`Auto-fetching relationship properties`](#query-auto-fetching).
+
+```python
+# Returns developer instances with `instance.<property>.nodes` properties already fetched
+developers = await Developer.find_many({"name": "John"}, auto_fetch_nodes=True)
+
+print(developers[0].coffee.nodes) # [<Coffee>, <Coffee>, ...]
+print(developers[0].other_property.nodes) # [<OtherModel>, <OtherModel>, ...]
+
+# Returns developer instances with only the `instance.coffee.nodes` property already fetched
+developers = await Developer.find_many({"name": "John"}, auto_fetch_nodes=True, auto_fetch_models=[Coffee])
+
+# Auto-fetch models can also be passed as strings
+developers = await Developer.find_many({"name": "John"}, auto_fetch_nodes=True, auto_fetch_models=["Coffee"])
+
+print(developers[0].coffee.nodes) # [<Coffee>, <Coffee>, ...]
+print(developers[0].other_property.nodes) # []
+```
+
+> **Note**: The `auto_fetch_nodes` and `auto_fetch_models` setting is only available for classes which inherit from the `NodeModel` class.
