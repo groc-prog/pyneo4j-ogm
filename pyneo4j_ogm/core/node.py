@@ -79,7 +79,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
     model.
     """
 
-    __settings__: NodeModelSettings = NodeModelSettings()
+    __settings__: NodeModelSettings
     _relationships_properties: Set[str] = PrivateAttr()
     Settings: ClassVar[Type[NodeModelSettings]]
 
@@ -99,9 +99,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
         super().__init_subclass__()
 
         # Check if node labels is set, if not fall back to model name
-        labels = getattr(cls.__settings__, "labels", None)
+        labels: Union[Set[str], None] = getattr(cls.__settings__, "labels", None)
 
-        if labels is None:
+        if labels is None or (labels is not None and len(labels) == 0):
             logger.warning(
                 "No labels have been defined for model %s, using model name as label",
                 cls.__name__,

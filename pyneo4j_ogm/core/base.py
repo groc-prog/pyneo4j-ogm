@@ -94,7 +94,7 @@ class ModelBase(Generic[V], BaseModel):
     It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
     """
 
-    __settings__: BaseModelSettings = BaseModelSettings()
+    __settings__: BaseModelSettings = PrivateAttr()
     _client: Neo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _db_properties: Dict[str, Any] = PrivateAttr(default_factory=dict)

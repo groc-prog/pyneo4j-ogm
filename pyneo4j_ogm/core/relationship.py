@@ -72,7 +72,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     functionality like de-/inflation and validation.
     """
 
-    __settings__: RelationshipModelSettings = RelationshipModelSettings()
+    __settings__: RelationshipModelSettings
     start_node_element_id: Optional[str] = Field(default=None)
     end_node_element_id: Optional[str] = Field(default=None)
     Settings: ClassVar[Type[RelationshipModelSettings]]

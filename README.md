@@ -70,7 +70,7 @@ await client.register_models([Developer, Coffee, Drinks])
 
 > **Note**: This step can be skipped in certain cases, but it is recommended to always register your models with the client. Skipping this step will result in you loosing a big portion of the library's functionality (Like working with your models).
 
-Finally, we can start to interact with our database. Let's create a new `Developer` node and a `Coffee` node and connect them with a `DRINKS` relationship.
+Finally, we can start to work with our database. Let's create a new `Developer` node and a `Coffee` node and connect them with a `DRINKS` relationship.
 
 ```python
 # Create a new developer node
@@ -129,13 +129,18 @@ class Drinks(RelationshipModel):
 
 
 async def main():
+  # Connect to the database and register the models
   client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
   await client.register_models([Developer, Coffee, Drinks])
 
+  # Create new developer and coffee nodes and connect them with a DRINKS relationship
   developer = await Developer(name="John Doe", age=25).create()
   coffee = await Coffee(name="Espresso").create()
 
   await developer.coffee.connect(coffee, {"likes_it": True})
+
+  # Close connection again
+  await client.close()
 
 # Run the main function
 asyncio.run(main())
