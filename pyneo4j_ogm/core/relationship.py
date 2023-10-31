@@ -320,8 +320,9 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         Args:
             filters (RelationshipFilters): Expressions applied to the query.
-            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
-                projection will result in the whole model instance being returned. Defaults to None.
+            projections (Dict[str, str], optional): The properties to project from the relationship. The keys define
+                the new keys in the projection and the value defines the model property to be projected. A invalid
+                or empty projection will result in the whole model instance being returned. Defaults to None.
 
         Raises:
             MissingFilters: Raised if no filters are provided.
@@ -389,8 +390,9 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Args:
             filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults to
                 None.
-            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
-                projection will result in the whole model instance being returned. Defaults to None.
+            projections (Dict[str, str], optional): The properties to project from the relationship. The keys define
+                the new keys in the projection and the value defines the model property to be projected. A invalid
+                or empty projection will result in the whole model instance being returned. Defaults to None.
             options (QueryOptions | None, optional): Options for modifying the query result. Defaults to None.
 
         Returns:
