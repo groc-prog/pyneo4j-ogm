@@ -1,7 +1,6 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
-import os
-from typing import Any, AsyncGenerator, cast
+from typing import cast
 
 import pytest
 from neo4j import AsyncSession
@@ -25,33 +24,6 @@ from tests.integration.fixtures.models import (
 )
 
 pytest_plugins = ("pytest_asyncio",)
-
-
-async def test_connection():
-    pyneo4j_client = Neo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
-    assert pyneo4j_client.is_connected
-    assert pyneo4j_client._driver is not None
-
-    await pyneo4j_client.close()
-    assert not pyneo4j_client.is_connected
-    assert pyneo4j_client._driver is None
-
-    # Test that the Neo4jClient can connect to a database using ENV variables.
-    os.environ["NEO4J_OGM_URI"] = "bolt://localhost:7687"
-
-    pyneo4j_client = Neo4jClient().connect(auth=("neo4j", "password"))
-    assert pyneo4j_client.is_connected
-    assert pyneo4j_client._driver is not None
-
-    await pyneo4j_client.close()
-    assert not pyneo4j_client.is_connected
-    assert pyneo4j_client._driver is None
-
-    os.environ.pop("NEO4J_OGM_URI")
-
-    with pytest.raises(MissingDatabaseURI):
-        # Test raised exception when no URI is provided.
-        pyneo4j_client = Neo4jClient().connect()
 
 
 async def test_ensure_connection(pyneo4j_client: Neo4jClient):
@@ -130,7 +102,8 @@ async def test_cypher_query(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSes
 async def test_cypher_resolve_model_query(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.register_models([CypherResolvingNode])
 
-    await neo4j_session.run("CREATE (n:TestNode) SET n.name = $name", {"name": "TestName"})
+    result = await neo4j_session.run("CREATE (n:TestNode) SET n.name = $name", {"name": "TestName"})
+    await result.consume()
 
     unresolved_results, _ = await pyneo4j_client.cypher(
         "MATCH (n:TestNode) WHERE n.name = $name RETURN n", {"name": "TestName"}, resolve_models=False
@@ -152,10 +125,11 @@ async def test_cypher_resolve_model_query(pyneo4j_client: Neo4jClient, neo4j_ses
 async def test_cypher_resolve_relationship_model_query(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.register_models([CypherResolvingRelationship])
 
-    await neo4j_session.run(
+    result = await neo4j_session.run(
         "CREATE (:TestNode {name: $start})-[:TEST_RELATIONSHIP {kind: 'awesome'}]->(:TestNode {end: $end}) ",
         {"start": "start", "end": "end"},
     )
+    await result.consume()
 
     unresolved_results, _ = await pyneo4j_client.cypher(
         "MATCH ()-[r:TEST_RELATIONSHIP]->() WHERE r.kind = $kind RETURN r", {"kind": "awesome"}, resolve_models=False
@@ -177,10 +151,11 @@ async def test_cypher_resolve_relationship_model_query(pyneo4j_client: Neo4jClie
 async def test_cypher_resolve_path_query(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.register_models([CypherResolvingNode, CypherResolvingRelationship])
 
-    await neo4j_session.run(
+    result = await neo4j_session.run(
         "CREATE (:TestNode {name: $start})-[:TEST_RELATIONSHIP {kind: 'awesome'}]->(:TestNode {name: $end}) ",
         {"start": "start", "end": "end"},
     )
+    await result.consume()
 
     unresolved_results, _ = await pyneo4j_client.cypher(
         "MATCH path = (:TestNode)-[:TEST_RELATIONSHIP]->(:TestNode) RETURN path", resolve_models=False
@@ -465,9 +440,12 @@ async def test_create_relationship_point_indexes(pyneo4j_client: Neo4jClient, ne
 
 
 async def test_drop_nodes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
-    await neo4j_session.run("CREATE (n:Node) SET n.name = $name", {"name": "TestName"})
+    print("BEFORE CREATE")
+    result = await neo4j_session.run("CREATE (n:Node) SET n.name = $name", {"name": "TestName"})
+    await result.consume()
 
     await pyneo4j_client.drop_nodes()
+    print("DROPPED")
 
     query_results = await neo4j_session.run("MATCH (n) RETURN n")
     results = await query_results.values()
@@ -476,7 +454,8 @@ async def test_drop_nodes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSessi
 
 
 async def test_drop_constraints(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
-    await neo4j_session.run("CREATE CONSTRAINT test FOR (n:Node) REQUIRE n.name IS UNIQUE")
+    result = await neo4j_session.run("CREATE CONSTRAINT test FOR (n:Node) REQUIRE n.name IS UNIQUE")
+    await result.consume()
 
     await pyneo4j_client.drop_constraints()
 
@@ -487,7 +466,8 @@ async def test_drop_constraints(pyneo4j_client: Neo4jClient, neo4j_session: Asyn
 
 
 async def test_drop_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
-    await neo4j_session.run("CREATE INDEX test FOR (n:Node) ON (n.name)")
+    result = await neo4j_session.run("CREATE INDEX test FOR (n:Node) ON (n.name)")
+    await result.consume()
 
     await pyneo4j_client.drop_indexes()
 

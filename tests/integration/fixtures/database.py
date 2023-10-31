@@ -18,6 +18,7 @@ async def pyneo4j_client():
     await client.drop_constraints()
     await client.drop_indexes()
     await client.drop_nodes()
+    print("AFTER DROP")
 
     yield client
 
