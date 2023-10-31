@@ -42,7 +42,6 @@ else:
 
 P = ParamSpec("P")
 T = TypeVar("T", bound="NodeModel")
-U = TypeVar("U")
 
 
 def ensure_alive(func):
@@ -325,7 +324,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
-        auto_fetch_models: Optional[List[Union[str, T]]] = None,
+        auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
         Gets all connected nodes which match the provided `filters` parameter over multiple hops.
@@ -337,7 +336,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             options (QueryOptions, optional): The options to apply to the query. Defaults to None.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
                 identical option defined in `Settings`. Defaults to False.
-            auto_fetch_models (List[Union[str, T]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
+            auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
                 to be set to `True` for this to have any effect. Defaults to [].
 
         Returns:
@@ -464,7 +463,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         filters: NodeFilters,
         projections: Optional[Dict[str, str]] = None,
         auto_fetch_nodes: bool = False,
-        auto_fetch_models: Optional[List[Union[str, T]]] = None,
+        auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
     ) -> Optional[Union[T, Dict[str, Any]]]:
         """
         Finds the first node that matches `filters` and returns it. If no matching node is found,
@@ -472,11 +471,12 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         Args:
             filters (NodeFilters): The filters to apply to the query.
-            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
-                projection will result in the whole model instance being returned. Defaults to None.
+            projections (Dict[str, str], optional): The properties to project from the node. The keys define the new keys
+                in the projection and the value defines the model property to be projected. A invalid or empty projection
+                will result in the whole model instance being returned. Defaults to None.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
                 identical option defined in `Settings`. Can not be used with projections. Defaults to False.
-            auto_fetch_models (List[Union[str, T]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
+            auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
                 to be set to `True` for this to have any effect. Defaults to [].
 
         Raises:
@@ -507,6 +507,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         do_auto_fetch = all(
             [
+                projections is None,
                 auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
                 len(match_queries) != 0,
                 len(return_queries) != 0,
@@ -540,7 +541,14 @@ class NodeModel(ModelBase[NodeModelSettings]):
             )
 
         logger.debug("Checking if query returned a result")
-        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+        if any(
+            [
+                len(results) == 0,
+                len(results[0]) == 0,
+                results[0][0] is None,
+                isinstance(results[0][0], dict) and len(results[0][0]) == 0,
+            ]
+        ):
             return None
 
         logger.debug("Checking if node has to be parsed to instance")
@@ -580,7 +588,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
-        auto_fetch_models: Optional[List[Union[str, T]]] = None,
+        auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
         Finds the all nodes that matches `filters` and returns them. If no matches are found, an
@@ -593,7 +601,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             options (QueryOptions, optional): The options to apply to the query. Defaults to None.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
                 identical option defined in `Settings`. Defaults to False.
-            auto_fetch_models (List[Union[str, T]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
+            auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
                 to be set to `True` for this to have any effect. Defaults to [].
 
         Returns:
@@ -616,6 +624,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         do_auto_fetch = all(
             [
+                projections is None,
                 auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
                 len(match_queries) != 0,
                 len(return_queries) != 0,
@@ -976,13 +985,13 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
     @classmethod
     def _build_auto_fetch(
-        cls, nodes_to_fetch: List[Union[str, T]] | None = None, ref: str = "n"
+        cls, nodes_to_fetch: List[Union[str, Type["NodeModel"]]] | None = None, ref: str = "n"
     ) -> Tuple[List[str], List[str]]:
         """
         Builds the auto-fetch query for the instance.
 
         Args:
-            nodes_to_fetch (List[Union[str, T]] | None): The nodes to fetch. Can contain the actual Model of the Node
+            nodes_to_fetch (List[Union[str, Type["NodeModel"]]] | None): The nodes to fetch. Can contain the actual Model of the Node
                 or the model name as a string. If None, all nodes will be fetched. Defaults to None.
             ref (str, optional): The reference to use for the node. Defaults to "n".
 

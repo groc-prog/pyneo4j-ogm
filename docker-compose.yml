@@ -1,7 +1,7 @@
-version: '3.8'
+version: "3.8"
 
 services:
- neo4j:
+  neo4j:
     hostname: neo4j
     image: neo4j:latest
     restart: always

@@ -8,6 +8,7 @@ from pyneo4j_ogm import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
 )
+from pyneo4j_ogm.core.client import EntityType, IndexType
 
 
 class Developer(NodeModel):
@@ -20,6 +21,13 @@ class Developer(NodeModel):
 
     coffee: RelationshipProperty["Coffee", "Drinks"] = RelationshipProperty(
         target_model="Coffee",
+        relationship_model="Drinks",
+        direction=RelationshipPropertyDirection.OUTGOING,
+        cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
+        allow_multiple=True,
+    )
+    dev: RelationshipProperty["Developer", "Drinks"] = RelationshipProperty(
+        target_model="Developer",
         relationship_model="Drinks",
         direction=RelationshipPropertyDirection.OUTGOING,
         cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
@@ -45,17 +53,29 @@ class Drinks(RelationshipModel):
 
 async def main():
     # Connect to the database and register the models
-    client = Neo4jClient().connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
+    client = Neo4jClient()
+    client.connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
+    await client.drop_constraints()
+    await client.drop_indexes()
+    await client.drop_nodes()
     await client.register_models([Developer, Coffee, Drinks])
 
-    # Create new developer and coffee nodes and connect them with a DRINKS relationship
-    developer = await Developer(name="John Doe", age=25).create()
+    # Update instance with new values
+    developer = await Developer(name="John", age=25).create()
+    dev2 = await Developer(name="Jenny", age=22).create()
+
+    # Create a new coffee node
     coffee = await Coffee(name="Espresso").create()
 
+    # Connect the developer and coffee nodes with a DRINKS relationship
     await developer.coffee.connect(coffee, {"likes_it": True})
+    await developer.dev.connect(dev2, {"likes_it": False})
 
-    # Close connection again
+    drink = await Drinks.find_one({"likes_it": True})
+
     await client.close()
+
+    print("Done!")
 
 
 # Run the main function

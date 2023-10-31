@@ -1,8 +1,15 @@
 # Neo4j Object Graph Mapper for Python
+
 A asynchronous library for working with Neo4j and Python 3.10+. This library aims to solve the problem of repeating the same queries over and over again by providing a simple way to define your models and their relationships. It is built on top of the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html) and [`pydantic 1.10`](https://docs.pydantic.dev/1.10/).
 
+## Todo's
+
+- [ ] Add more documentation
+- [ ] Add more tests
+- [ ] Make warnings optional (for example when using the name of the model as the label/type)
 
 ## ⚡️ Quick start <a name="quick-start"></a>
+
 Before we can start to interact with our database, we have to take care of some setup. First, we have to connect to our database with the `connect()` method from the `Neo4jClient` class. This can be done by creating a new instance of the `Neo4jClient` class and passing the connection details as keyword arguments. This class is our entry point to the library and will be used to interact with our database.
 
 ```python
@@ -74,13 +81,13 @@ Finally, we can start to work with our database. Let's create a new `Developer` 
 
 ```python
 # Create a new developer node
-developer = await Developer.create(name="John Doe", age=25)
+developer = await Developer(name="John Doe", age=25).create()
 
 # Create a new coffee node
-coffee = await Coffee.create(name="Espresso")
+coffee = await Coffee(name="Espresso").create()
 
 # Connect the developer and coffee nodes with a DRINKS relationship
-await developer.coffee.connect(coffee, likes_it=True)
+await developer.coffee.connect(coffee, {"likes_it": True})
 ```
 
 So if we put it all together, our code should look something like this:
@@ -89,77 +96,81 @@ So if we put it all together, our code should look something like this:
 import asyncio
 
 from pyneo4j_ogm import (
-  Neo4jClient,
-  NodeModel,
-  RelationshipModel,
-  RelationshipProperty,
-  RelationshipPropertyDirection,
-  RelationshipPropertyCardinality
+    Neo4jClient,
+    NodeModel,
+    RelationshipModel,
+    RelationshipProperty,
+    RelationshipPropertyCardinality,
+    RelationshipPropertyDirection,
 )
 
 
 class Developer(NodeModel):
-  """
-  A model representing a developer node in the graph.
-  """
-  name: str
-  age: int
+    """
+    A model representing a developer node in the graph.
+    """
 
-  coffee: RelationshipProperty["Coffee", "Drinks"] = RelationshipProperty(
-    target_model="Coffee",
-    relationship_model="Drinks",
-    direction=RelationshipPropertyDirection.OUTGOING,
-    cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
-    allow_multiple=True,
-  )
+    name: str
+    age: int
+
+    coffee: RelationshipProperty["Coffee", "Drinks"] = RelationshipProperty(
+        target_model="Coffee",
+        relationship_model="Drinks",
+        direction=RelationshipPropertyDirection.OUTGOING,
+        cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
+        allow_multiple=True,
+    )
 
 
 class Coffee(NodeModel):
-  """
-  A model representing a coffee node in the graph.
-  """
-  name: str
+    """
+    A model representing a coffee node in the graph.
+    """
+
+    name: str
 
 
 class Drinks(RelationshipModel):
-  """
-  A model representing a DRINKS relationship between a developer and a coffee node.
-  """
-  likes_it: bool
+    """
+    A model representing a DRINKS relationship between a developer and a coffee node.
+    """
+
+    likes_it: bool
 
 
 async def main():
-  # Connect to the database and register the models
-  client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
-  await client.register_models([Developer, Coffee, Drinks])
+    # Connect to the database and register the models
+    client = Neo4jClient().connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
+    await client.register_models([Developer, Coffee, Drinks])
 
-  # Create new developer and coffee nodes and connect them with a DRINKS relationship
-  developer = await Developer(name="John Doe", age=25).create()
-  coffee = await Coffee(name="Espresso").create()
+    # Create new developer and coffee nodes and connect them with a DRINKS relationship
+    developer = await Developer(name="John Doe", age=25).create()
+    coffee = await Coffee(name="Espresso").create()
 
-  await developer.coffee.connect(coffee, {"likes_it": True})
+    await developer.coffee.connect(coffee, {"likes_it": True})
 
-  # Close connection again
-  await client.close()
+    # Close connection again
+    await client.close()
+
 
 # Run the main function
 asyncio.run(main())
 ```
 
-> **Note**: This script should run `as is`. You mus change the `uri` and `auth` parameters in the `connect()` method call to match the ones needed for your own database before starting the script.
-
+> **Note**: This script should run `as is`. You must change the `uri` and `auth` parameters in the `connect()` method call to match the ones needed for your own database before starting the script.
 
 ## 📚 Documentation <a name="documentation"></a>
 
-
 ### Table of contents <a name="table-of-contents"></a>
+
 - [Neo4j Object Graph Mapper for Python](#neo4j-object-graph-mapper-for-python)
+  - [Todo's](#todos)
   - [⚡️ Quick start ](#️-quick-start-)
   - [📚 Documentation ](#-documentation-)
     - [Table of contents ](#table-of-contents-)
     - [Basic concepts ](#basic-concepts-)
     - [Database client ](#database-client-)
-      - [Connecting to a database instance ](#connecting-to-a-database-instance-)
+      - [Connecting to a database ](#connecting-to-a-database-)
       - [Closing an existing connection ](#closing-an-existing-connection-)
       - [Registering models ](#registering-models-)
       - [Executing Cypher queries ](#executing-cypher-queries-)
@@ -173,33 +184,40 @@ asyncio.run(main())
         - [NodeModel specific settings ](#nodemodel-specific-settings-)
         - [RelationshipModel specific settings ](#relationshipmodel-specific-settings-)
         - [How to use model settings ](#how-to-use-model-settings-)
-      - [Model methods ](#model-methods-)
-
+    - [Model methods ](#model-methods-)
+      - [Instance.update() ](#instanceupdate-)
+      - [Instance.delete() ](#instancedelete-)
+      - [Instance.refresh() ](#instancerefresh-)
+      - [Model.find\_one() ](#modelfind_one-)
+        - [Filters ](#filters-)
+        - [Projections ](#projections-)
+        - [Auto-fetching nodes ](#auto-fetching-nodes-)
 
 ### Basic concepts <a name="basic-concepts"></a>
+
 If you have worked with other ORM's like `sqlalchemy` or `beanie` before, you will find that this library is very similar to them. The main idea is to work with nodes and relationships in a **structured and easy-to-use** way instead of writing out complex cypher queries and tons of boilerplate for simple operations.
 
 The concept of this library builds on the idea of defining nodes and relationships present in the graph database as **Python classes**. This allows for easy and structured access to the data. These classes provide a robust foundation for working with a Neo4j database using methods for common queries, a filter API, model resolution and more.
 
-In the following sections we will take a look at all of the features of this library and how to use them.
+In the following sections we will take a look at all of the features this library has to offer and how to use them.
 
-> **Note:** All of the examples in this documentation assume that you have already connected to a database instance and registered your models with the client instance. The models used in the following examples will build upon the ones defined in the [`Quick start`](#quick-start) section.
-
+> **Note:** All of the examples in this documentation assume that you have already connected to a database and registered your models with the client instance. The models used in the following examples will build upon the ones defined in the [`Quick start`](#quick-start) section.
 
 ### Database client <a name="database-client"></a>
-The `Neo4jClient` class is the brains of the library. It is used to connect to a database instance, register models and execute queries. Under the hood, every class uses the client to execute queries. It is also possible to use multiple client instances to connect to multiple databases at the same time by initializing multiple instances of the `Neo4jClient` class.
 
+The `Neo4jClient` class is the brains of the library. It is used to connect to a database instance, register models and execute queries. Under the hood, every class uses the client to execute queries.
 
-#### Connecting to a database instance <a name="connecting-to-a-database-instance"></a>
+#### Connecting to a database <a name="connecting-to-a-database"></a>
+
 Before you can interact with anything this library offers in any way, you have to connect to a database. You can do this by creating a new instance of the `Neo4jClient` class and calling the `connect()` method on it. The `connect()` method takes a few arguments:
 
-- `uri`: The connection URI to the database instance.
+- `uri`: The connection URI to the database.
 - `skip_constraints`: Whether the client should skip creating any constraints defined on models when registering them. Defaults to `False`.
 - `skip_indexes`: Whether the client should skip creating any indexes defined on models when registering them. Defaults to `False`.
 - `*args`: Additional arguments that are passed directly to Neo4j's `AsyncDriver.driver()` method.
 - `**kwargs`: Additional keyword arguments that are passed directly to Neo4j's `AsyncDriver.driver()` method.
 
-The `connect()` method returns the client instance itself, so you can chain it right after the instantiation of the class. Here is an example of how to connect to a database instance:
+The `connect()` method returns the client instance itself, so you can chain it right after the instantiation of the class. Here is an example of how to connect to a database:
 
 ```python
 from pyneo4j_ogm import Neo4jClient
@@ -211,10 +229,10 @@ client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<passwor
 client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
 ```
 
-After connecting the client, you will be able to run queries against the database. Should you try to run a query without connecting to a database instance first, you will get a `NotConnectedToDatabase` exception.
-
+After connecting the client, you will be able to run queries against the database. Should you try to run a query without connecting to a database first, you will get a `NotConnectedToDatabase` exception.
 
 #### Closing an existing connection <a name="closing-an-existing-connection"></a>
+
 Once you are done working with a database and the client is no longer needed, you can close the connection to it by calling the `close()` method on the client instance. This will close the connection to the database and free up any resources used by the client. Here is an example of how to close a connection to a database instance:
 
 ```python
@@ -225,8 +243,8 @@ await client.close()
 
 Once you closed the client, it will be seen as `disconnected` and if you try to run any further queries with it, you will get a `NotConnectedToDatabase` exception.
 
-
 #### Registering models <a name="registering-models"></a>
+
 As mentioned before, the basic concept is to work with models which reflect the nodes and relationships inside the graph. In order to work with these models, you have to register them with the client. You can do this by calling the `register_models()` method on the client and passing in your models as a list. Let's take a look at an example:
 
 ```python
@@ -237,13 +255,15 @@ await client.register_models([Developer, Coffee, Drinks])
 
 This is a crucial step, because if you don't register your models with the client, you won't be able to work with them in any way. Should you try to work with a model that is not registered with the client instance, you will get a `UnregisteredModel` exception. This exception also gets raised if a database model defines a relationship property with other (unregistered) models as a target or relationship model. For more information about relationship properties, see the [`Relationship properties on node models`](#relationship-properties-on-node-models) section.
 
+> **Note**: If you don't explicitly define labels for node models or a type for a relationship model, you will see a warning in the console. This is because the library will use the name of the model as the label/type. This is not recommended, because most of the time you will want to define your own labels/types.
+
 If you have defined any indexes or constraints on your models, they will be created automatically when registering them (if not disabled when the client got initialized).
 
 If you don't register your models with the client, you will still be able to run cypher queries directly with the client, but you will `loose automatic model resolution` from queries. This means that, instead of database models, the raw Neo4j classes are returned.
 
-
 #### Executing Cypher queries <a name="executing-cypher-queries"></a>
-Node- and RelationshipModels provide many methods for commonly used cypher queries, but sometimes you might want to execute a custom cypher with more complex logic. For this purpose, the client instance provides a `cypher()` method that allows you to execute custom cypher queries. The `cypher()` method takes a three arguments:
+
+Node- and RelationshipModels provide many methods for commonly used cypher queries, but sometimes you might want to execute a custom cypher with more complex logic. For this purpose, the client instance provides a `cypher()` method that allows you to execute custom cypher queries. The `cypher()` method takes three arguments:
 
 - `query`: The cypher query to execute.
 - `parameters`: A dictionary containing the parameters to pass to the query.
@@ -268,9 +288,9 @@ print(results) # [["John Doe", 25]]
 print(meta) # ["developer_name", "d.age"]
 ```
 
-
 #### Batching cypher queries <a name="batching-cypher-queries"></a>
-Since Neo4j is ACID compliant, it is possible to batch multiple cypher queries into a single transaction. This can be useful if you want to execute multiple queries at once and make sure that either all of them succeed or none of them. The client provides a `batch()` method that allows you to batch multiple cypher queries into a single transaction. The `batch()` method has to be called with a context manager like in the following example:
+
+Since Neo4j is ACID compliant, it is possible to batch multiple cypher queries into a single transaction. This can be useful if you want to execute multiple queries at once and make sure that either all of them succeed or none of them do. The client provides a `batch()` method that allows you to batch multiple cypher queries into a single transaction. The `batch()` method has to be called with a asynchronous context manager like in the following example:
 
 ```python
 # Create a new client instance and connect ...
@@ -293,8 +313,9 @@ async with client.batch():
   coffee = await Coffee(name="Americano").create()
 ```
 
-#### Manual indexing and constraints <a name="working-with-indexes-and-constraints"></a>
-By default, the client will automatically create any indexes and constraints defined on models when registering them. If you want to disable this behavior, you can do so by passing the `skip_indexes` and `skip_constraints` arguments to the `connect()` method when connecting to a database instance.
+#### Manual indexing and constraints <a name="manual-indexing-and-constraints"></a>
+
+By default, the client will automatically create any indexes and constraints defined on models when registering them. If you want to disable this behavior, you can do so by passing the `skip_indexes` and `skip_constraints` arguments to the `connect()` method when connecting your client to a database.
 
 If you want to create custom indexes and constraints, or want to add additional indexes/constraints later on (which should probably be done on the models themselves), you can do so by calling the `create_index()` and `create_constraint()` methods on the client.
 
@@ -310,8 +331,8 @@ The `create_constraint()` method also takes similar arguments as the `create_ind
 
 - `name`: The name of the constraint to create.
 - `entity_type`: The entity type the constraint is created for. Can be either **EntityType.NODE** or **EntityType.RELATIONSHIP**.
-- `properties`: A list of properties to create the index for.
-- `labels_or_type`: The node labels or relationship type the index is created for.
+- `properties`: A list of properties to create the constraint for.
+- `labels_or_type`: The node labels or relationship type the constraint is created for.
 
 Here is an example of how to use the methods:
 
@@ -325,24 +346,24 @@ await client.create_index("node_text_index", EntityType.NODE, IndexType.RANGE, [
 await client.create_constraint("relationship_constraint", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], "TEST_RELATIONSHIP")
 ```
 
-
 #### Client utilities <a name="client-utilities"></a>
+
 The database client also provides a few utility methods and properties that can be useful when writing automated scripts or tests. These methods are:
 
-- `is_connected()`: Returns whether the client is connected to a database instance.
+- `is_connected()`: Returns whether the client is currently connected to a database.
 - `drop_nodes()`: Drops all nodes from the database.
 - `drop_constraints()`: Drops all constraints from the database.
 - `drop_indexes()`: Drops all indexes from the database.
 
-
 ### Model configuration <a name="model-configuration"></a>
+
 Both Node- and RelationshipModels provide a few configuration options that can be used to define indexes, constraints and other settings for the model. These options can be used to easily define how nodes and relationships are created in the database.
 
 Since this library uses `pydantic` under the hood, all of the configuration options available for pydantic models are also available for Node- and RelationshipModels. For more information about the configuration options available for pydantic models, see the [`pydantic docs`](https://docs.pydantic.dev/1.10/).
 
-
 #### Defining node and relationship properties <a name="defining-node-and-relationship-properties"></a>
-Node- and RelationshipModels are defined in the same way as pydantic models. The only difference is that you have to use the `NodeModel` and `RelationshipModel` classes instead of the `BaseModel` class. Here is an example of how to define a simple NodeModel:
+
+Node- and RelationshipModels are defined in the same way as pydantic models. The only difference is that you have to use the `NodeModel` and `RelationshipModel` classes instead of pydantic's `BaseModel` class. Here is an example of how to define a simple NodeModel:
 
 ```python
 from pyneo4j_ogm import NodeModel
@@ -373,8 +394,8 @@ CREATE (d:Developer {id: "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6", name: "John Doe
 
 > **Note:** Everything mentioned above also applies to `RelationshipModels`.
 
-
 #### Defining indexes and constraints on model properties <a name="defining-indexes-and-constraints-on-model-properties"></a>
+
 This library provides a convenient way to define indexes and constraints on model properties. This can be done by using the `WithOptions` method instead of the datatype when defining the properties of your model. The `WithOptions` method takes a few arguments:
 
 - `property_type`: The datatype of the property.
@@ -397,55 +418,76 @@ class Developer(NodeModel):
   id: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
   name: WithOptions(str, text_index=True)
   age: int
-  likes_his_job: bool
+  likes_his_job: WithOptions(bool) # Has no effect since no indexes or constraints are defined
 ```
 
-In the example above, we defined a `text index` on the `name` property and a `uniqueness constraint` on the `email` property. If you want to define multiple indexes or constraints on a single property, you can do so by passing multiple arguments to the `WithOptions` method. Note that you can still use the full power of pydantic like validators and default values when defining indexes and constraints on model properties.
+In the example above, we defined a `text index` on the `name` property and a `uniqueness constraint` on the `id` property. If you want to define multiple indexes or constraints on a single property, you can do so by passing multiple arguments to the `WithOptions` method. Note that you can still use the full power of pydantic like validators and default values when defining indexes and constraints on model properties.
 
 > **Note:** Everything mentioned above also applies to `RelationshipModels`.
 
-
 #### Defining settings for a model <a name="defining-settings-for-a-model"></a>
+
 It is possible to define a number of settings for a model. These settings can be used to configure how nodes and relationships are created in the database and how you can interact with them. Settings are defined with a nested class called `Settings`. Class attributes act as the settings defined on the model. The following settings are available for Node- and RelationshipModels:
 
 | Setting name          | Type                          | Description                                                                                                                                                                                                                                                                                                                              |
 | --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `exclude_from_export` | **Set[str]**                  | Can be used to always exclude a property from being exported when using the `export_model()` method on a model.                                                                                                                                                                                                                          |
+| `exclude_from_export` | **Set[str]**                  | Can be used to always exclude a property from being exported when using the `export_model()` method on a model. Any `RelationshipProperty attributes` on a model are `automatically added` (only for node models). Defaults to `set()`.                                                                                                  |
 | `pre_hooks`           | **Dict[str, List[Callable]]** | A dictionary where the key is the name of the method for which to register the hook and the value is a list of hook functions. The hook function can be sync or async. All hook functions receive the exact same arguments as the method they are registered for and the current model instance as the first argument. Defaults to `{}`. |
 | `post_hooks`          | **Dict[str, List[Callable]]** | Same as **pre_hooks**, but the hook functions are executed after the method they are registered for. Additionally, the result of the method is passed to the hook as the second argument. Defaults to `{}`.                                                                                                                              |
 
+##### NodeModel specific settings <a name="node-model-specific-settings"></a>
 
+NodeModels have two additional settings, `labels` and `auto_fetch_nodes`.
 
-##### NodeModel specific settings <a name="nodemodel-specific-settings"></a>
-NodeModels have two additional setting, `labels` and `auto_fetch_nodes`.
+| Setting name       | Type         | Description                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `labels`           | **Set[str]** | A set of labels to use for the node. If no labels are defined, the name of the model will be used as the label. Defaults to the `model name` split by `_`.                                                                                                                                                                                                                            |
+| `auto_fetch_nodes` | **bool**     | Whether to automatically fetch nodes of defined relationship properties when getting a model instance from the database. Auto-fetched nodes are available at the `instance.<relationship-property>.nodes` property. If no specific models are passed to a method when this setting is set to `True`, nodes from all defined relationship properties are fetched. Defaults to `False`. |
 
-| Setting name       | Type         | Description                                                                                                                                                                                                                              |
-| ------------------ | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `labels`           | **Set[str]** | A set of labels to use for the node. If no labels are defined, the name of the model will be used as the label. Defaults to `None`.                                                                                                      |
-| `auto_fetch_nodes` | **bool**     | Whether to automatically fetch nodes of defined relationship properties when getting a model instance from the database. Auto-fetched nodes are available at the `instance.<relationship-property>.nodes` property. Defaults to `False`. |
-
-> **Note:** When no labels are defined for a NodeModel, the name of the model will be used and converted to **PascalCase** to stay in line with the style guide for cypher.
-
+> **Note:** When no labels are defined for a NodeModel, the name of the model will be used and converted to **PascalCase** to stay in line with the style guide for cypher. Additionally, you will receive a warning in the console (since most of the time it's not the best to use the model name as a label).
 
 ##### RelationshipModel specific settings <a name="relationshipmodel-specific-settings"></a>
+
 For RelationshipModels, the `labels` setting is not available, since relationships don't have labels in Neo4j. Instead, the `type` setting can be used to define the type of the relationship. If no type is defined, the name of the model name will be used as the type.
 
-> **Note:** When no type is defined for a RelationshipModel, the name of the model will be used and converted to **SCREAMING_SNAKE_CASE** to stay in line with the style guide for cypher.
+| Setting name | Type    | Description                                                                                                                        |
+| ------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `type`       | **str** | The type of the relationship to use. If no type is defined, the model name will be used as the type. Defaults to the `model name`. |
 
+> **Note:** When no type is defined for a RelationshipModel, the name of the model will be used and converted to **SCREAMING_SNAKE_CASE** to stay in line with the style guide for cypher. Additionally, you will receive a warning in the console (since most of the time it's not the best to use the model name as a type).
 
 ##### How to use model settings <a name="how-to-use-model-settings"></a>
-Now, after we have taken a look at all of the available settings, let's take a look at how to use them:
 
+Now, after we have taken a look at all of the available settings, let's take a look at how to use them:
 
 ```python
 class Developer(NodeModel):
   ...
 
+  coffee: RelationshipProperty["Coffee", "Drinks"] = RelationshipProperty(
+    target_model="Coffee",
+    relationship_model="Drinks",
+    direction=RelationshipPropertyDirection.OUTGOING,
+    cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
+    allow_multiple=True,
+  )
+
   class Settings:
-    # Nodes of this model will have the labels "Developer" and "Python"
+    # Nodes of this model will have the labels `Developer` and `Python`
     labels = {"Developer", "Python"}
-    # The "likes_his_job" property will always be excluded from being exported
-    exclude_from_export = {"likes_his_job"}
+    # Coffee nodes connected a Developer node will always be fetched
+    auto_fetch_nodes = True
+
+
+class Coffee(NodeModel):
+  ...
+
+  class Settings:
+    # Since no labels have been defined, the labels for nodes of this class will
+    # be `Coffee`
+
+    # The `name` property will always be excluded from being exported
+    exclude_from_export = {"name"}
 
 
 def print_drink(self, result, *args, **kwargs):
@@ -457,17 +499,113 @@ class Drinks(RelationshipModel):
   ...
 
   class Settings:
-    # The type of the relationship will be "DRINKS"
-    type = "DRINKS"
-    # The "print_drink" method will be executed after the "find_one" method
+    # The type of the relationship will be `DRINKS_LOTS_OF`
+    type = "DRINKS_LOTS_OF"
+    # The `print_drink` method will be executed after the `find_one` method
     post_hooks = {"find_one": [print_drink]}
 ```
 
+### Model methods <a name="model-methods"></a>
 
-#### Model methods <a name="model-methods"></a>
 Node- and RelationshipModels provide a number of methods for commonly used cypher queries. In the following sections we will take a look at all of the methods available on Node- and RelationshipModels.
 
-> **Note:** All of the methods mentioned below are available on both Node- and RelationshipModels unless stated otherwise. If a method is defined using **Instance.method()**, the method is to be called on a instance if a model. If a method is defined using **Model.method()**, the method is to be called on the model itself.
+> **Note:** All of the methods mentioned below are available on both Node- and RelationshipModels unless stated otherwise. If a method is defined using **Instance.method()**, the method is to be called on a instance of a model. If a method is defined using **Model.method()**, the method is to be called on the model itself.
 
+#### Instance.update() <a name="instance-update"></a>
 
+The `update()` method can be used to sync the modified properties of a node or relationship model with the corresponding entity inside the graph. This method takes no arguments.
 
+```python
+developer = await Developer(
+  name="John",
+  age=24
+).create()
+
+# Update instance with new values
+developer.age = 27
+
+# Syncs node in graph with properties from local instance
+await developer.update()
+```
+
+#### Instance.delete() <a name="instance-delete"></a>
+
+The `delete()` method can be used to delete the graph entity tied to the current model instance. This method takes no arguments and returns nothing. Once deleted, the model instance will be marked as `destroyed` and any further operations on it will raise a `InstanceDestroyed` exception.
+
+```python
+developer = await Developer(
+  name="John",
+  age=24
+).create()
+
+# Deletes node in database, instance is now seen as `destroyed`
+await developer.delete()
+
+developer.age = 27
+await developer.update() # Raises a `InstanceDestroyed` exception
+```
+
+#### Instance.refresh() <a name="instance-refresh"></a>
+
+Syncs your local instance with the properties from the corresponding graph entity. This method takes no arguments. This method can be useful if you want to make sure that your local instance is always up-to-date with the graph entity and should always be called when importing a model instance from a dictionary.
+
+```python
+developer = await Developer(
+  name="John",
+  age=24
+).create()
+
+# Something on the local instance changes
+developer.age = 27
+print(developer.age)  # 27
+
+await developer.refresh()
+
+print(developer.age)  # 24
+```
+
+#### Model.find_one() <a name="model-find-one"></a>
+
+The `find_one()` method can be used to find a single node or relationship in the graph. If multiple results are matched, the first one is returned. This method returns a single instance of the model or `None` if no results were found.
+
+##### Filters <a name="model-find-one-filters"></a>
+
+The `find_one()` method takes a mandatory `filters` argument, which can be used to filter the results. For more about filters, see the [`Filtering queries`](#query-filters) section.
+
+```python
+# Return the first encountered node where the name property equals `John`
+developer = await Developer.find_one({"name": "John"})
+```
+
+##### Projections <a name="model-find-one-projections"></a>
+
+`Projections` can be used to only return specific parts of the model as a dictionary. This can be useful if you only need a few properties of a model and don't want to fetch the whole model from the database. For more information about projections, see the [`Projections`](#query-projections) section.
+
+```python
+# Return a dictionary with the developers name at the `dev_name` key instead
+# of a model instance
+developer = await Developer.find_one({"name": "John"}, {"dev_name": "name"})
+```
+
+##### Auto-fetching nodes <a name="model-find-one-auto-fetching-nodes"></a>
+
+If the `auto_fetch_nodes` setting is set to `True` and no projections are defined, nodes of defined relationship properties will be automatically fetched when getting a model instance from the database. Auto-fetched nodes are available at the `instance.<relationship-property>.nodes` property. If no specific models or `None` are passed to the `find_one()` method's `auto_fetch_models` argument when `auto_fetch_nodes` is set to `True`, nodes from all defined relationship properties are fetched.
+
+```python
+# Returns a developer instance with `instance.<property>.nodes` properties already fetched
+developer = await Developer.find_one({"name": "John"}, auto_fetch_nodes=True)
+
+print(developer.coffee.nodes) # [<Coffee>, <Coffee>, ...]
+print(developer.other_property.nodes) # [<OtherModel>, <OtherModel>, ...]
+
+# Returns a developer instance with only the `instance.coffee.nodes` property already fetched
+developer = await Developer.find_one({"name": "John"}, auto_fetch_nodes=True, auto_fetch_models=[Coffee])
+
+# Auto-fetch models can also be passed as strings
+developer = await Developer.find_one({"name": "John"}, auto_fetch_nodes=True, auto_fetch_models=["Coffee"])
+
+print(developer.coffee.nodes) # [<Coffee>, <Coffee>, ...]
+print(developer.other_property.nodes) # []
+```
+
+> **Note**: The `auto_fetch_nodes` setting is only available for NodeModels.
