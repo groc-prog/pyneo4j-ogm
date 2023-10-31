@@ -12,7 +12,6 @@ from pyneo4j_ogm.exceptions import (
     InvalidEntityType,
     InvalidIndexType,
     InvalidLabelOrType,
-    MissingDatabaseURI,
     NotConnectedToDatabase,
 )
 from tests.integration.fixtures.database import neo4j_session, pyneo4j_client
