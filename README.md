@@ -619,11 +619,11 @@ print(developer.coffee.nodes) # [<Coffee>, <Coffee>, ...]
 print(developer.other_property.nodes) # []
 ```
 
-> **Note**: The `auto_fetch_nodes` and `auto_fetch_models` setting is only available for classes which inherit from the `NodeModel` class.
+> **Note**: The `auto_fetch_nodes` and `auto_fetch_models` parameters are only available for classes which inherit from the `NodeModel` class.
 
 #### Model.find_many() <a name="model-find-many"></a>
 
-The `find_many()` method can be used to find a multiple nodes or relationships in the graph. This method always returns a list of instances/dictionaries or an empty list if no results were found.
+The `find_many()` method can be used to find multiple nodes or relationships in the graph. This method always returns a list of instances/dictionaries or an empty list if no results were found.
 
 ##### Filters <a name="model-find-many-filters"></a>
 
@@ -641,7 +641,7 @@ print(developers) # []
 
 ##### Projections <a name="model-find-many-projections"></a>
 
-`Projections` can be used to only return specific parts of the models as a dictionaries. For more information about projections, see the [`Projections`](#query-projections) section.
+`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](#query-projections) section.
 
 ```python
 # Returns dictionaries with the developers name at the `dev_name` key instead
@@ -672,4 +672,4 @@ print(developers[0].coffee.nodes) # [<Coffee>, <Coffee>, ...]
 print(developers[0].other_property.nodes) # []
 ```
 
-> **Note**: The `auto_fetch_nodes` and `auto_fetch_models` setting is only available for classes which inherit from the `NodeModel` class.
+> **Note**: The `auto_fetch_nodes` and `auto_fetch_models` parametets are only available for classes which inherit from the `NodeModel` class.
