@@ -6,7 +6,8 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 
 - [ ] Add more documentation
 - [ ] Add more tests
-- [ ] Make warnings optional (for example when using the name of the model as the label/type)
+- [ ] Add setting for automstic create/update timestamps for models
+- [ ] Make warnings optional (for example when using the name of the model as the label/type) via model setting
 
 ## ⚡️ Quick start <a name="quick-start"></a>
 
