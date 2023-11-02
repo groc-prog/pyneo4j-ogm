@@ -92,64 +92,6 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
             setattr(cls.__settings__, "type", relationship_type.upper())
 
-    def deflate(self) -> Dict[str, Any]:
-        """
-        Deflates the current model instance into a python dictionary which can be stored in Neo4j.
-
-        Returns:
-            Dict[str, Any]: The deflated model instance
-        """
-        logger.debug("Deflating model %s to storable dictionary", self)
-        deflated: Dict[str, Any] = json.loads(self.json(exclude={"__settings__"}))
-
-        # Serialize nested BaseModel or dict instances to JSON strings
-        for key, value in deflated.items():
-            if isinstance(value, (dict, BaseModel)):
-                deflated[key] = json.dumps(value)
-            if isinstance(value, list):
-                deflated[key] = [json.dumps(item) if isinstance(item, (dict, BaseModel)) else item for item in value]
-
-        return deflated
-
-    @classmethod
-    def inflate(cls: Type[T], relationship: Relationship) -> T:
-        """
-        Inflates a relationship instance into a instance of the current model.
-
-        Args:
-            relationship (Relationship): Relationship to inflate
-
-        Raises:
-            InflationFailure: Raised if inflating the relationship fails
-
-        Returns:
-            T: A new instance of the current model with the properties from the relationship instance
-        """
-        inflated: Dict[str, Any] = {}
-
-        def try_property_parsing(property_value: str) -> Union[str, Dict[str, Any], BaseModel]:
-            try:
-                return json.loads(property_value)
-            except:
-                return property_value
-
-        logger.debug("Inflating relationship %s to model instance", relationship)
-        for node_property in relationship.items():
-            property_name, property_value = node_property
-
-            if isinstance(property_value, str):
-                inflated[property_name] = try_property_parsing(property_value)
-            elif isinstance(property_value, list):
-                inflated[property_name] = [try_property_parsing(item) for item in property_value]
-            else:
-                inflated[property_name] = property_value
-
-        instance = cls(**inflated)
-        setattr(instance, "element_id", relationship.element_id)
-        setattr(instance, "start_node_element_id", cast(Node, relationship.start_node).element_id)
-        setattr(instance, "end_node_element_id", cast(Node, relationship.end_node).element_id)
-        return instance
-
     @hooks
     @ensure_alive
     async def update(self) -> None:
@@ -159,7 +101,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Raises:
             NoResultsFound: Raised if the query did not return the updated relationship.
         """
-        deflated = self.deflate()
+        deflated = self._deflate()
 
         logger.info(
             "Updating relationship %s of model %s with current properties %s",
@@ -370,7 +312,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if relationship has to be parsed to instance")
         if isinstance(results[0][0], Relationship):
-            return cls.inflate(relationship=results[0][0])
+            return cls._inflate(relationship=results[0][0])
         elif isinstance(results[0][0], list):
             return results[0][0][0]
 
@@ -437,7 +379,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                     continue
 
                 if isinstance(result, Relationship):
-                    instances.append(cls.inflate(relationship=result))
+                    instances.append(cls._inflate(relationship=result))
                 elif isinstance(result, list):
                     instances.extend(result)
                 else:
@@ -519,7 +461,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         setattr(new_instance, "start_node_element_id", getattr(old_instance, "start_node_element_id", None))
         setattr(new_instance, "end_node_element_id", getattr(old_instance, "end_node_element_id", None))
 
-        deflated = new_instance.deflate()
+        deflated = new_instance._deflate()
         set_query = ", ".join(
             [
                 f"r.{property_name} = ${property_name}"
@@ -601,7 +543,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                     continue
 
                 if isinstance(results[0][0], Relationship):
-                    old_instances.append(cls.inflate(relationship=results[0][0]))
+                    old_instances.append(cls._inflate(relationship=results[0][0]))
                 else:
                     old_instances.append(result)
 
@@ -618,7 +560,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             if key in cls.__fields__:
                 setattr(new_instance, key, value)
 
-        deflated_properties = new_instance.deflate()
+        deflated_properties = new_instance._deflate()
 
         # Update instances
         results, _ = await cls._client.cypher(
@@ -789,3 +731,61 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             raise NoResultsFound()
 
         return results[0][0]
+
+    def _deflate(self) -> Dict[str, Any]:
+        """
+        Deflates the current model instance into a python dictionary which can be stored in Neo4j.
+
+        Returns:
+            Dict[str, Any]: The deflated model instance
+        """
+        logger.debug("Deflating model %s to storable dictionary", self)
+        deflated: Dict[str, Any] = json.loads(self.json(exclude={"__settings__"}))
+
+        # Serialize nested BaseModel or dict instances to JSON strings
+        for key, value in deflated.items():
+            if isinstance(value, (dict, BaseModel)):
+                deflated[key] = json.dumps(value)
+            if isinstance(value, list):
+                deflated[key] = [json.dumps(item) if isinstance(item, (dict, BaseModel)) else item for item in value]
+
+        return deflated
+
+    @classmethod
+    def _inflate(cls: Type[T], relationship: Relationship) -> T:
+        """
+        Inflates a relationship instance into a instance of the current model.
+
+        Args:
+            relationship (Relationship): Relationship to inflate
+
+        Raises:
+            InflationFailure: Raised if inflating the relationship fails
+
+        Returns:
+            T: A new instance of the current model with the properties from the relationship instance
+        """
+        inflated: Dict[str, Any] = {}
+
+        def try_property_parsing(property_value: str) -> Union[str, Dict[str, Any], BaseModel]:
+            try:
+                return json.loads(property_value)
+            except:
+                return property_value
+
+        logger.debug("Inflating relationship %s to model instance", relationship)
+        for node_property in relationship.items():
+            property_name, property_value = node_property
+
+            if isinstance(property_value, str):
+                inflated[property_name] = try_property_parsing(property_value)
+            elif isinstance(property_value, list):
+                inflated[property_name] = [try_property_parsing(item) for item in property_value]
+            else:
+                inflated[property_name] = property_value
+
+        instance = cls(**inflated)
+        setattr(instance, "element_id", relationship.element_id)
+        setattr(instance, "start_node_element_id", cast(Node, relationship.start_node).element_id)
+        setattr(instance, "end_node_element_id", cast(Node, relationship.end_node).element_id)
+        return instance

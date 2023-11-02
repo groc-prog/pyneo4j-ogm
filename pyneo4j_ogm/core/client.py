@@ -655,12 +655,12 @@ class Neo4jClient:
                     model_labels = set(getattr(model.__settings__, "labels"))
 
                     if labels == model_labels:
-                        return model.inflate(cast(Node, query_result))
+                        return model._inflate(cast(Node, query_result))
                 elif issubclass(model, RelationshipModel):
                     model_labels = {getattr(model.__settings__, "type")}
 
                     if labels == model_labels:
-                        return model.inflate(cast(Relationship, query_result))
+                        return model._inflate(cast(Relationship, query_result))
 
             logger.debug("No model found for query result %s", query_result)
             return None

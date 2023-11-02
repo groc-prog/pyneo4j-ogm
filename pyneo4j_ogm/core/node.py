@@ -119,62 +119,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 cls._relationships_properties.add(property_name)
                 cls.__settings__.exclude_from_export.add(property_name)
 
-    def deflate(self) -> Dict[str, Any]:
-        """
-        Deflates the current model instance into a python dictionary which can be stored in Neo4j.
-
-        Returns:
-            Dict[str, Any]: The deflated model instance.
-        """
-        logger.debug("Deflating model %s to storable dictionary", self)
-        deflated: Dict[str, Any] = json.loads(self.json(exclude={*self._relationships_properties, "__settings__"}))
-
-        # Serialize nested BaseModel or dict instances to JSON strings
-        for key, value in deflated.items():
-            if isinstance(value, (dict, BaseModel)):
-                deflated[key] = json.dumps(value)
-            if isinstance(value, list):
-                deflated[key] = [json.dumps(item) if isinstance(item, (dict, BaseModel)) else item for item in value]
-
-        return deflated
-
-    @classmethod
-    def inflate(cls: Type[T], node: Node) -> T:
-        """
-        Inflates a node instance into a instance of the current model.
-
-        Args:
-            node (Node): Node to inflate.
-
-        Raises:
-            InflationFailure: Raised if inflating the node fails.
-
-        Returns:
-            T: A new instance of the current model with the properties from the node instance.
-        """
-        inflated: Dict[str, Any] = {}
-
-        def try_property_parsing(property_value: str) -> Union[str, Dict[str, Any], BaseModel]:
-            try:
-                return json.loads(property_value)
-            except:
-                return property_value
-
-        logger.debug("Inflating node %s to model instance", node)
-        for node_property in node.items():
-            property_name, property_value = node_property
-
-            if isinstance(property_value, str):
-                inflated[property_name] = try_property_parsing(property_value)
-            elif isinstance(property_value, list):
-                inflated[property_name] = [try_property_parsing(item) for item in property_value]
-            else:
-                inflated[property_name] = property_value
-
-        instance = cls(**inflated)
-        setattr(instance, "element_id", node.element_id)
-        return instance
-
     @hooks
     async def create(self: T) -> T:
         """
@@ -188,7 +132,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             T: The current model instance.
         """
         logger.info("Creating new node from model instance %s", self.__class__.__name__)
-        deflated_properties = self.deflate()
+        deflated_properties = self._deflate()
 
         set_query = (
             f"SET {', '.join(f'n.{property_name} = ${property_name}' for property_name in deflated_properties.keys())}"
@@ -227,7 +171,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Raises:
             NoResultsFound: Raised if the query did not return the updated node.
         """
-        deflated = self.deflate()
+        deflated = self._deflate()
 
         logger.info(
             "Updating node %s with current properties %s",
@@ -430,7 +374,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
                         continue
 
                     if index == 0 and target_node_model is not None:
-                        instances.append(target_node_model.inflate(node=result) if isinstance(result, Node) else result)
+                        instances.append(
+                            target_node_model._inflate(node=result) if isinstance(result, Node) else result
+                        )
                     else:
                         target_instance = [
                             instance
@@ -449,7 +395,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                         continue
 
                     if isinstance(result, Node):
-                        instances.append(self.inflate(node=result))
+                        instances.append(self._inflate(node=result))
                     elif isinstance(result, list):
                         instances.extend(result)
                     else:
@@ -554,7 +500,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if node has to be parsed to instance")
         if isinstance(results[0][0], Node):
-            instance = cls.inflate(node=results[0][0])
+            instance = cls._inflate(node=results[0][0])
         elif isinstance(results[0][0], list):
             instance = results[0][0][0]
         else:
@@ -662,7 +608,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                         continue
 
                     if index == 0:
-                        instances.append(cls.inflate(node=result) if isinstance(result, Node) else result)
+                        instances.append(cls._inflate(node=result) if isinstance(result, Node) else result)
                     else:
                         target_instance = [
                             instance
@@ -694,7 +640,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                         continue
 
                     if isinstance(result, Node):
-                        instances.append(cls.inflate(node=result))
+                        instances.append(cls._inflate(node=result))
                     elif isinstance(result, list):
                         instances.extend(result)
                     else:
@@ -764,7 +710,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 setattr(new_instance, key, value)
         setattr(new_instance, "element_id", getattr(old_instance, "element_id", None))
 
-        deflated = new_instance.deflate()
+        deflated = new_instance._deflate()
         set_query = ", ".join(
             [
                 f"n.{property_name} = ${property_name}"
@@ -833,7 +779,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 if result is None:
                     continue
 
-                old_instances.append(cls.inflate(node=result) if isinstance(result, Node) else result)
+                old_instances.append(cls._inflate(node=result) if isinstance(result, Node) else result)
 
         logger.debug("Checking if query returned a result")
         if len(old_instances) == 0:
@@ -847,7 +793,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             if key in cls.__fields__:
                 setattr(new_instance, key, value)
 
-        deflated_properties = new_instance.deflate()
+        deflated_properties = new_instance._deflate()
 
         # Update instances
         results, _ = await cls._client.cypher(
@@ -987,6 +933,62 @@ class NodeModel(ModelBase[NodeModelSettings]):
             raise NoResultsFound()
 
         return results[0][0]
+
+    def _deflate(self) -> Dict[str, Any]:
+        """
+        Deflates the current model instance into a python dictionary which can be stored in Neo4j.
+
+        Returns:
+            Dict[str, Any]: The deflated model instance.
+        """
+        logger.debug("Deflating model %s to storable dictionary", self)
+        deflated: Dict[str, Any] = json.loads(self.json(exclude={*self._relationships_properties, "__settings__"}))
+
+        # Serialize nested BaseModel or dict instances to JSON strings
+        for key, value in deflated.items():
+            if isinstance(value, (dict, BaseModel)):
+                deflated[key] = json.dumps(value)
+            if isinstance(value, list):
+                deflated[key] = [json.dumps(item) if isinstance(item, (dict, BaseModel)) else item for item in value]
+
+        return deflated
+
+    @classmethod
+    def _inflate(cls: Type[T], node: Node) -> T:
+        """
+        Inflates a node instance into a instance of the current model.
+
+        Args:
+            node (Node): Node to inflate.
+
+        Raises:
+            InflationFailure: Raised if inflating the node fails.
+
+        Returns:
+            T: A new instance of the current model with the properties from the node instance.
+        """
+        inflated: Dict[str, Any] = {}
+
+        def try_property_parsing(property_value: str) -> Union[str, Dict[str, Any], BaseModel]:
+            try:
+                return json.loads(property_value)
+            except:
+                return property_value
+
+        logger.debug("Inflating node %s to model instance", node)
+        for node_property in node.items():
+            property_name, property_value = node_property
+
+            if isinstance(property_value, str):
+                inflated[property_name] = try_property_parsing(property_value)
+            elif isinstance(property_value, list):
+                inflated[property_name] = [try_property_parsing(item) for item in property_value]
+            else:
+                inflated[property_name] = property_value
+
+        instance = cls(**inflated)
+        setattr(instance, "element_id", node.element_id)
+        return instance
 
     @classmethod
     def _build_auto_fetch(

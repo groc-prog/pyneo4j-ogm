@@ -148,7 +148,7 @@ class ModelBase(Generic[V], BaseModel):
     def export_model(self, convert_to_camel_case: bool = False, *args, **kwargs) -> Dict[str, Any]:
         """
         Export the model to a dictionary containing standard python types. This method accepts all
-        arguments of `pydantic.BaseModel.dict()`.
+        arguments of `pydantic.BaseModel.json()`.
 
         Args:
             convert_to_camel_case (bool, optional): If set to True, the keys of the dictionary will be converted to

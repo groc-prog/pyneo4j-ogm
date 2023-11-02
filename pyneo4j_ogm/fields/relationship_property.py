@@ -271,7 +271,7 @@ class RelationshipProperty(Generic[T, U]):
 
         # Build properties if relationship is defined as model
         relationship_instance = cast(U, self._relationship_model).validate(properties if properties is not None else {})
-        deflated_properties: Dict[str, Any] = relationship_instance.deflate()
+        deflated_properties: Dict[str, Any] = relationship_instance._deflate()
 
         relationship_query = self._query_builder.relationship_match(
             direction=self._direction,
@@ -521,7 +521,7 @@ class RelationshipProperty(Generic[T, U]):
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NotConnectedToSourceNode()
 
-        deflated_properties = cast(U, results[0][0]).deflate()
+        deflated_properties = cast(U, results[0][0])._deflate()
 
         logger.debug("Deleting relationship between source node and old node")
         await self._client.cypher(
@@ -692,7 +692,9 @@ class RelationshipProperty(Generic[T, U]):
                         continue
 
                     if index == 0 and target_node_model is not None:
-                        instances.append(target_node_model.inflate(node=result) if isinstance(result, Node) else result)
+                        instances.append(
+                            target_node_model._inflate(node=result) if isinstance(result, Node) else result
+                        )
                     else:
                         target_instance = [
                             instance
@@ -711,7 +713,7 @@ class RelationshipProperty(Generic[T, U]):
                         continue
 
                     if isinstance(result, Node) and target_node_model is not None:
-                        instances.append(target_node_model.inflate(node=result))
+                        instances.append(target_node_model._inflate(node=result))
                     elif isinstance(result, list):
                         instances.extend(result)
                     else:
