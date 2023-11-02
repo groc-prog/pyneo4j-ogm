@@ -74,7 +74,7 @@ async def main():
     await developer.coffee.connect(coffee, {"likes_it": True})
     await developer.dev.connect(dev2, {"likes_it": False})
 
-    developer = await Developer.find_many({"name": "John"}, auto_fetch_models=[Coffee])
+    developer = await Developer.update_many({"name": "Foo", "foo": "bar"}, {"age": 25}, new=True)
 
     await client.close()
 

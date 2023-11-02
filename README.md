@@ -8,6 +8,7 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 - [ ] Add more tests
 - [ ] Add setting for automstic create/update timestamps for models
 - [ ] Make warnings optional (for example when using the name of the model as the label/type) via model setting
+- [ ] Add migrations
 
 ## ⚡️ Quick start <a name="quick-start"></a>
 
@@ -190,13 +191,30 @@ asyncio.run(main())
       - [Instance.delete() ](#instancedelete-)
       - [Instance.refresh() ](#instancerefresh-)
       - [Model.find\_one() ](#modelfind_one-)
-        - [Filters ](#filters-)
         - [Projections ](#projections-)
         - [Auto-fetching nodes ](#auto-fetching-nodes-)
       - [Model.find\_many() ](#modelfind_many-)
-        - [Filters ](#filters--1)
+        - [Filters ](#filters-)
         - [Projections ](#projections--1)
         - [Auto-fetching nodes ](#auto-fetching-nodes--1)
+      - [Model.update\_one() ](#modelupdate_one-)
+        - [Returning the updated entity ](#returning-the-updated-entity-)
+      - [Model.update\_many() ](#modelupdate_many-)
+        - [Filters ](#filters--1)
+        - [Returning the updated entity ](#returning-the-updated-entity--1)
+      - [Model.delete\_one() ](#modeldelete_one-)
+      - [Model.delete\_many() ](#modeldelete_many-)
+          - [Filters ](#filters--2)
+      - [Model.count() ](#modelcount-)
+        - [Filters ](#filters--3)
+      - [Instance.export\_model() ](#instanceexport_model-)
+        - [Case conversion ](#case-conversion-)
+      - [Instance.import\_model() ](#instanceimport_model-)
+        - [Case conversion ](#case-conversion--1)
+      - [Model.register\_pre\_hooks() ](#modelregister_pre_hooks-)
+        - [Overwriting existing hooks ](#overwriting-existing-hooks-)
+      - [Model.register\_post\_hooks() ](#modelregister_post_hooks-)
+      - [Model.model\_settings() ](#modelmodel_settings-)
 
 ### Basic concepts <a name="basic-concepts"></a>
 
@@ -514,7 +532,7 @@ class Drinks(RelationshipModel):
 
 Node- and RelationshipModels provide a number of methods for commonly used cypher queries. In the following sections we will take a look at all of the methods available on Node- and RelationshipModels.
 
-> **Note:** All of the methods mentioned below are available on both Node- and RelationshipModels unless stated otherwise. If a method is defined using **Instance.method()**, the method is to be called on a instance of a model. If a method is defined using **Model.method()**, the method is to be called on the model itself.
+> **Note:** If a method is defined using **Instance.method()**, the method is to be called on a instance of a model. If a method is defined using **Model.method()**, the method is to be called on the model itself. Should a method only be available for either a NodeModel or RelationshipModel class, it will be defined as **NodeModel.method()** or **RelationshipModel.method()**.
 
 #### Instance.update() <a name="instance-update"></a>
 
@@ -573,9 +591,7 @@ print(developer.age)  # 24
 
 The `find_one()` method can be used to find a single node or relationship in the graph. If multiple results are matched, the first one is returned. This method returns a single instance/dictionary or `None` if no results were found.
 
-##### Filters <a name="model-find-one-filters"></a>
-
-The `find_one()` method takes a mandatory `filters` argument, which can be used to filter the results. For more about filters, see the [`Filtering queries`](#query-filters) section.
+This method takes a mandatory `filters` argument, which is used to filter the results. For more about filters, see the [`Filtering queries`](#query-filters) section.
 
 ```python
 # Return the first encountered node where the name property equals `John`
@@ -673,4 +689,248 @@ print(developers[0].coffee.nodes) # [<Coffee>, <Coffee>, ...]
 print(developers[0].other_property.nodes) # []
 ```
 
-> **Note**: The `auto_fetch_nodes` and `auto_fetch_models` parametets are only available for classes which inherit from the `NodeModel` class.
+> **Note**: The `auto_fetch_nodes` and `auto_fetch_models` parameters are only available for classes which inherit from the `NodeModel` class.
+
+#### Model.update_one() <a name="model-update-one"></a>
+
+The `update_one()` method finds the first matching graph entity and updates it with the provided properties. If no match was found, nothing is updated and `None` is returned. Properties provided in the update parameter, which have not been defined on the model, will be ignored.
+
+This method takes two mandatory arguments:
+
+- `update`: A dictionary containing the properties to update.
+- `filters`: A dictionary containing the filters to use when searching for a match. For more about filters, see the [`Filtering queries`](#query-filters) section.
+
+```python
+# Updates the `age` property to `30` in the first encountered node where the name property equals `John`
+# The `i_do_not_exist` property will be ignored since it has not been defined on the model
+developer = await Developer.update_one({"age": 30, "i_do_not_exist": True}, {"name": "John"})
+
+print(developer) # <Developer age=25>
+
+# Or if no match was found
+print(developer) # None
+```
+
+##### Returning the updated entity <a name="model-update-one-new"></a>
+
+By default, the `update_one()` method returns the model instance before the update. If you want to return the updated model instance instead, you can do so by passing the `new` parameter to the method and setting it to `True`.
+
+```python
+# Updates the `age` property to `30` in the first encountered node where the name property equals `John`
+# and returns the updated node
+developer = await Developer.update_one({"age": 30}, {"name": "John"}, True)
+
+print(developer) # <Developer age=30>
+```
+
+#### Model.update_many() <a name="model-update-many"></a>
+
+The `update_many()` method finds all matching graph entity and updates them with the provided properties. If no match was found, nothing is updated and a `empty list` is returned. Properties provided in the update parameter, which have not been defined on the model, will be ignored.
+
+This method takes one mandatory argument `update` which defines which properties to update with which values.
+
+```python
+# Updates the `age` property of all `Developer` nodes to 40
+developers = await Developer.update_many({"age": 40})
+
+print(developers) # [<Developer age=25>, <Developer age=23>, ...]
+
+# Or if no matches were found
+print(developers) # []
+```
+
+##### Filters <a name="model-update-many-filters"></a>
+
+Optionally, a `filters` argument can be provided, which defines which entities to update. For more about filters, see the [`Filtering queries`](#query-filters) section.
+
+```python
+# Updates all `Developer` nodes where the age property is between `22` and `30`
+# to `40`
+developers = await Developer.update_many({"age": 40}, {"age": {"$gte": 22, "$lte": 30}})
+
+print(developers) # [<Developer age=25>, <Developer age=23>, ...]
+```
+
+##### Returning the updated entity <a name="model-update-many-new"></a>
+
+By default, the `update_many()` method returns the model instances before the update. If you want to return the updated model instances instead, you can do so by passing the `new` parameter to the method and setting it to `True`.
+
+```python
+# Updates all `Developer` nodes where the age property is between `22` and `30`
+# to `40` and return the updated nodes
+developers = await Developer.update_many({"age": 40}, {"age": {"$gte": 22, "$lte": 30}})
+
+print(developers) # [<Developer age=40>, <Developer age=40>, ...]
+```
+
+#### Model.delete_one() <a name="model-delete-one"></a>
+
+The `delete_one()` method finds the first matching graph entity and deletes it. Unlike others, this method returns the number of deleted entities instead of the deleted entity itself. If no match was found, nothing is deleted and `0` is returned.
+
+This method takes one mandatory argument `filters` which defines which entity to delete. For more about filters, see the [`Filtering queries`](#query-filters) section.
+
+```python
+# Deletes the first `Developer` node where the name property equals `John`
+count = await Developer.delete_one({"name": "John"})
+
+print(count) # 1
+
+# Or if no match was found
+print(count) # 0
+```
+
+#### Model.delete_many() <a name="model-delete-many"></a>
+
+The `delete_many()` method finds all matching graph entity and deletes them. Like the `delete_one()` method, this method returns the number of deleted entities instead of the deleted entity itself. If no match was found, nothing is deleted and `0` is returned.
+
+```python
+# Deletes all `Developer` nodes
+count = await Developer.delete_many()
+
+print(count) # However many nodes matched the filter
+
+# Or if no match was found
+print(count) # 0
+```
+
+###### Filters <a name="model-delete-many-filters"></a>
+
+Optionally, a `filters` argument can be provided, which defines which entities to delete. For more about filters, see the [`Filtering queries`](#query-filters) section.
+
+```python
+# Deletes all `Developer` nodes where the age property is greater than `65`
+count = await Developer.delete_many({"age": {"$gt": 65}})
+
+print(count) # However many nodes matched the filter
+```
+
+#### Model.count() <a name="model-count"></a>
+
+The `count()` method returns the total number of entities of this model in the graph.
+
+```python
+# Returns the total number of `Developer` nodes inside the database
+count = await Developer.count()
+
+print(count) # However many nodes matched the filter
+
+# Or if no match was found
+print(count) # 0
+```
+
+##### Filters <a name="model-count-filters"></a>
+
+Optionally, a `filters` argument can be provided, which defines which entities to delete. For more about filters, see the [`Filtering queries`](#query-filters) section.
+
+```python
+# Counts all `Developer` nodes where the name property contains the letters `oH`
+# The `i` in `icontains` means that the filter is case insensitive
+count = await Developer.count({"name": {"$icontains": "oH"}})
+
+print(count) # However many nodes matched the filter
+```
+
+
+#### Instance.export_model() <a name="instance-export-model"></a>
+
+Export the model instance to a dictionary containing standard python types. Since this method uses `pydantic.BaseModel.json()` internally, all arguments it accepts are also accepted by this method.
+
+```python
+developer = await Developer(
+  name="John",
+  age=24
+).create()
+
+# Export the model instance to a dictionary
+developer_dict = developer.export_model()
+
+print(developer_dict) # {"element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:6", "name": "John", "age": 24}
+```
+
+##### Case conversion <a name="instance-export-model-case-conversion"></a>
+
+By default, the `export_model()` will just convert the model instance to a dictionary. If you want to convert the keys of the dictionary to `camelCase` when exporting it, you can do so by passing the `convert_to_camel_case` argument to the method and setting it to `True`.
+
+> **Note**: This argument is very opinionated and you will probably not need it in most cases.
+
+```python
+developer = await Developer(
+  name="John",
+  age=24,
+  some_multi_level_property=True
+).create()
+
+# Export the model instance to a dictionary with camelCase keys
+developer_dict = developer.export_model(convert_to_camel_case=True)
+
+print(developer_dict) # {"elementId": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:6", "name": "John", "age": 24, "someMultiLevelProperty": True}
+```
+
+#### Instance.import_model() <a name="instance-import-model"></a>
+
+Since you can export a model instance to a dictionary, it is also possible to import a model instance from a dictionary. This can be useful if you want to import a model instance from JSON and use a method on it straight away.
+
+> **Note**: Since this method converts the provided dictionary directly to a database model, the `element_id` key must be provided in the dictionary. This is because the library needs to know which entity the model belongs to when importing it. If you don't want to provide the `element_id` key, you can use pydantic's native methods for importing/exporting models and then call the `Model.find_one()` method.
+
+```python
+developer_dict = {
+  "element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:6",
+  "name": "John",
+  "age": 24
+}
+
+# Import the model instance from the dictionary
+# After this import, any method can be called on the instance
+developer = await Developer.import_model(developer_dict)
+
+print(developer) # <Developer element_id="4:08f8a347-1856-487c-8705-26d2b4a69bb7:6" name="John", age=24>
+```
+
+##### Case conversion <a name="instance-import-model-case-conversion"></a>
+
+By default, the `import_model()` will just try to import the model. If you converted the keys of the dictionary to `camelCase` when exporting it or get them from a JSON response, you need to pass the `convert_to_snake_case` argument as `True` to let the library know about it.
+
+```python
+developer_dict = {
+  "element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:6",
+  "name": "John",
+  "age": 24,
+  "someMultiLevelProperty": True
+}
+
+# Import the model instance from the dictionary
+# After this import, any method can be called on the instance
+developer = await Developer.import_model(developer_dict, convert_to_snake_case=True)
+
+print(developer) # <Developer element_id="4:08f8a347-1856-487c-8705-26d2b4a69bb7:6" name="John", age=24, some_multi_level_property=True>
+```
+
+#### Model.register_pre_hooks() <a name="model-register-pre-hooks"></a>
+
+Allows you to manually define pre-hooks for methods like described in the [`Defining settings for a model`](#defining-settings-for-a-model) section.
+
+```python
+def print_name(self, *args, **kwargs):
+  print(self.name)
+
+# Registers the `print_name` method as a pre-hook for the `update_one` method
+Developer.register_pre_hooks({"update_one": print_name})
+```
+
+##### Overwriting existing hooks <a name="model-register-pre-hooks-overwrite"></a>
+
+You can choose to overwrite all hooks previously defined for the model by providing the `overwrite` parameter as `True`. This will clear all previously defined hooks, regardless of whether they were defined using this method or model settings.
+
+#### Model.register_post_hooks() <a name="model-register-post-hooks"></a>
+
+Same behavior as [`Model.register_pre_hooks()`](#model-register-pre-hooks), but the hooks are registered as `post-hooks`.
+
+#### Model.model_settings() <a name="model-model-settings"></a>
+
+Returns the settings defined for the current model.
+
+```python
+model_settings = Developer.model_settings()
+
+print(model_settings) # <NodeModelSettings labels={"Developer", "Python"}, auto_fetch_nodes=False, ...>
+```
