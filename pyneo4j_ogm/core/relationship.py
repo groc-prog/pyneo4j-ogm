@@ -512,7 +512,8 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         new_instance = cls(**old_instance.dict())
 
         for key, value in update.items():
-            setattr(new_instance, key, value)
+            if key in cls.__fields__:
+                setattr(new_instance, key, value)
 
         setattr(new_instance, "element_id", getattr(old_instance, "element_id", None))
         setattr(new_instance, "start_node_element_id", getattr(old_instance, "start_node_element_id", None))
@@ -612,7 +613,10 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         # Try and parse update values into random instance to check validation
         logger.debug("Creating instance copy with new values %s", update)
         new_instance = cls(**old_instances[0].dict())
-        new_instance.__dict__.update(update)
+
+        for key, value in update.items():
+            if key in cls.__fields__:
+                setattr(new_instance, key, value)
 
         deflated_properties = new_instance.deflate()
 
