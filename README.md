@@ -1,19 +1,20 @@
 # Neo4j Object Graph Mapper for Python
 
-A asynchronous library for working with Neo4j and Python 3.10+. This library aims to solve the problem of repeating the same queries over and over again by providing a simple way to define your models and their relationships. It is built on top of the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html) and [`pydantic 1.10`](https://docs.pydantic.dev/1.10/).
+A asynchronous library for working with Neo4j and Python 3.10+. This library aims to solve the problem of repeating the same queries over and over again by providing a simple way to define your models and their relationships. It is built on top of the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html) and [`Pydantic 1.10`](https://docs.pydantic.dev/1.10/).
 
 ## Todo's
 
 - [ ] Add more documentation
 - [ ] Add more tests
-- [ ] Add setting for automstic create/update timestamps for models
+- [ ] Add setting for automatic create/update timestamps for models, timestamps will be overwritten if also defined on model
 - [ ] Make warnings optional (for example when using the name of the model as the label/type) via model setting
 - [ ] Add migrations
 - [ ] Make internal ID available and raise Exception if a ID property gets defined
-- [ ] Set a requirement von min. Neo4j database version
+- [ ] Set a requirement for min. Neo4j database version
 - [ ] Add upsert-like functionality to find_one()
 - [ ] Add MIT license
 - [ ] Add some metadata to pyproject.toml before first release
+- [ ] Add support for Pydantic v2
 
 ## ⚡️ Quick start <a name="quick-start"></a>
 
