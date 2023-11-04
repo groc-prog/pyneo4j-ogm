@@ -25,13 +25,9 @@ from typing import (
     cast,
 )
 
-from pydantic import BaseModel, Field, PrivateAttr, root_validator
+from pydantic import BaseModel, PrivateAttr
 
-from pyneo4j_ogm.exceptions import (
-    ModelImportFailure,
-    ReservedPropertyName,
-    UnregisteredModel,
-)
+from pyneo4j_ogm.exceptions import ModelImportFailure, UnregisteredModel
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
@@ -99,16 +95,9 @@ class ModelBase(Generic[V], BaseModel):
     _query_builder: QueryBuilder = PrivateAttr()
     _db_properties: Dict[str, Any] = PrivateAttr(default_factory=dict)
     _destroyed: bool = PrivateAttr(default=False)
-    element_id: Optional[str] = Field(default=None)
+    _element_id: Optional[str] = PrivateAttr(default=None)
+    _id: Optional[int] = PrivateAttr(default=None)
     Settings: ClassVar[Type[BaseModelSettings]]
-
-    @root_validator()
-    def _validate_reserved_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        for value in ["modified_properties", "model_settings"]:
-            if value in values:
-                raise ReservedPropertyName(value)
-
-        return values
 
     def __init__(self, *args, **kwargs) -> None:
         if not hasattr(self, "_client"):
@@ -138,10 +127,10 @@ class ModelBase(Generic[V], BaseModel):
     def __str__(self) -> str:
         if self._destroyed:
             hydration_msg = "destroyed"
-        elif self.element_id is None:
+        elif self._element_id is None:
             hydration_msg = "not hydrated"
         else:
-            hydration_msg = self.element_id
+            hydration_msg = self._element_id
 
         return f"{self.__class__.__name__}({hydration_msg})"
 
@@ -166,7 +155,8 @@ class ModelBase(Generic[V], BaseModel):
 
         logger.debug("Exporting model %s", self.__class__.__name__)
         model_dict = json.loads(self.json(*args, **kwargs))
-        model_dict["element_id"] = self.element_id
+        model_dict["element_id"] = self._element_id
+        model_dict["id"] = self._id
 
         if convert_to_camel_case:
             logger.debug("Converting keys to camel case")
@@ -185,7 +175,7 @@ class ModelBase(Generic[V], BaseModel):
                 camel case to snake case. Defaults to False.
 
         Raises:
-            ModelImportFailure: If the model does not contain an `element_id` key.
+            ModelImportFailure: If the model does not contain an `element_id` or `id` key.
 
         Returns:
             T: An instance of the model.
@@ -197,6 +187,7 @@ class ModelBase(Generic[V], BaseModel):
             [
                 "elementId" not in model and from_camel_case,
                 "element_id" not in model and not from_camel_case,
+                "id" not in model and from_camel_case,
             ]
         ):
             raise ModelImportFailure()
@@ -206,7 +197,8 @@ class ModelBase(Generic[V], BaseModel):
             import_model = cast(Dict[str, Any], cls._convert_keys_to_snake_case(model))
 
         instance = cls(**import_model)
-        instance.element_id = import_model["element_id"]
+        instance._element_id = import_model["element_id"]
+        instance._id = import_model["id"]
         return instance
 
     @classmethod
@@ -359,6 +351,26 @@ class ModelBase(Generic[V], BaseModel):
                 modified_properties.append(property_name)
 
         return modified_properties
+
+    @property
+    def element_id(self) -> Optional[str]:
+        """
+        Returns the element ID of the instance or None if the instance has not been hydrated.
+
+        Returns:
+            str: The element ID of the instance or None if the instance has not been hydrated.
+        """
+        return self._element_id
+
+    @property
+    def id(self) -> Optional[int]:
+        """
+        Returns the ID of the instance or None if the instance has not been hydrated.
+
+        Returns:
+            int: The ID of the instance or None if the instance has not been hydrated.
+        """
+        return self._id
 
     class Config:
         """

@@ -163,20 +163,11 @@ class MissingFilters(Neo4jOGMException):
 
 class ModelImportFailure(Neo4jOGMException):
     """
-    Exception which gets raised when a model dict is imported, but does not have a element_id key.
+    Exception which gets raised when a model dict is imported, but does not have a element_id or id key.
     """
 
     def __init__(self, *args: object) -> None:
-        super().__init__("Missing 'element_id' key in model dict.", *args)
-
-
-class ReservedPropertyName(Neo4jOGMException):
-    """
-    Exception which gets raised when a model defined a property name which is reserved.
-    """
-
-    def __init__(self, property_name: str, *args: object) -> None:
-        super().__init__(f"{property_name} is reserved for internal use.", *args)
+        super().__init__("Missing 'element_id' or 'id' key in model dict.", *args)
 
 
 class InvalidRelationshipHops(Neo4jOGMException):

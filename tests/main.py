@@ -71,12 +71,17 @@ async def main():
     coffee = await Coffee(name="Espresso").create()
 
     # Connect the developer and coffee nodes with a DRINKS relationship
-    await developer.coffee.connect(coffee, {"likes_it": True})
-    await developer.dev.connect(dev2, {"likes_it": False})
+    drink1 = await developer.coffee.connect(coffee, {"likes_it": True})
+    drink2 = await developer.dev.connect(dev2, {"likes_it": False})
 
-    developer = await Developer.update_many({"name": "Foo", "foo": "bar"}, {"age": 25}, new=True)
+    # developer = await Developer.update_many({"name": "Foo", "foo": "bar"}, {"age": 25}, new=True)
 
     await client.close()
+
+    print(developer.element_id)
+    print(developer.id)
+    print(coffee.element_id)
+    print(coffee.id)
 
     print("Done!")
 

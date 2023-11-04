@@ -11,7 +11,7 @@ from functools import wraps
 from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node, Relationship
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, PrivateAttr
 
 from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.core.node import NodeModel
@@ -54,9 +54,11 @@ def ensure_alive(func):
 
         if any(
             [
-                getattr(self, "element_id", None) is None,
-                getattr(self, "start_node_element_id", None) is None,
-                getattr(self, "end_node_element_id", None) is None,
+                getattr(self, "_element_id", None) is None,
+                getattr(self, "_start_node_element_id", None) is None,
+                getattr(self, "_start_node_id", None) is None,
+                getattr(self, "_end_node_element_id", None) is None,
+                getattr(self, "_end_node_id", None) is None,
             ]
         ):
             raise InstanceNotHydrated()
@@ -73,8 +75,10 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     """
 
     __settings__: RelationshipModelSettings
-    start_node_element_id: Optional[str] = Field(default=None)
-    end_node_element_id: Optional[str] = Field(default=None)
+    _start_node_element_id: Optional[str] = PrivateAttr(default=None)
+    _start_node_id: Optional[int] = PrivateAttr(default=None)
+    _end_node_element_id: Optional[str] = PrivateAttr(default=None)
+    _end_node_id: Optional[int] = PrivateAttr(default=None)
     Settings: ClassVar[Type[RelationshipModelSettings]]
 
     def __init_subclass__(cls) -> None:
@@ -105,7 +109,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.info(
             "Updating relationship %s of model %s with current properties %s",
-            self.element_id,
+            self._element_id,
             self.__class__.__name__,
             deflated,
         )
@@ -125,7 +129,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 RETURN r
             """,
             parameters={
-                "element_id": self.element_id,
+                "element_id": self._element_id,
                 **deflated,
             },
         )
@@ -156,13 +160,13 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 DELETE r
             """,
             parameters={
-                "element_id": self.element_id,
+                "element_id": self._element_id,
             },
         )
 
         logger.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
-        logger.info("Deleted relationship %s", self.element_id)
+        logger.info("Deleted relationship %s", self._element_id)
 
     @hooks
     @ensure_alive
@@ -180,7 +184,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 WHERE elementId(r) = $element_id
                 RETURN r
             """,
-            parameters={"element_id": self.element_id},
+            parameters={"element_id": self._element_id},
         )
 
         logger.debug("Checking if query returned a result")
@@ -203,7 +207,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns:
             Type[NodeModel]: A instance of the start node model.
         """
-        logger.info("Getting start node %s for relationship %s", self.start_node_element_id, self)
+        logger.info("Getting start node %s for relationship %s", self._start_node_element_id, self)
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
@@ -211,7 +215,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 RETURN start
             """,
             parameters={
-                "element_id": self.element_id,
+                "element_id": self._element_id,
             },
         )
 
@@ -233,7 +237,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns:
             Type[NodeModel]: A instance of the end node model.
         """
-        logger.info("Getting end node %s for relationship %s", self.end_node_element_id, self)
+        logger.info("Getting end node %s for relationship %s", self._end_node_element_id, self)
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start", end_node_ref="end")}
@@ -241,7 +245,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 RETURN end
             """,
             parameters={
-                "element_id": self.element_id,
+                "element_id": self._element_id,
             },
         )
 
@@ -457,9 +461,11 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             if key in cls.__fields__:
                 setattr(new_instance, key, value)
 
-        setattr(new_instance, "element_id", getattr(old_instance, "element_id", None))
-        setattr(new_instance, "start_node_element_id", getattr(old_instance, "start_node_element_id", None))
-        setattr(new_instance, "end_node_element_id", getattr(old_instance, "end_node_element_id", None))
+        setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
+        setattr(new_instance, "_start_node_element_id", getattr(old_instance, "_start_node_element_id", None))
+        setattr(new_instance, "_start_node_id", getattr(old_instance, "_start_node_id", None))
+        setattr(new_instance, "_end_node_element_id", getattr(old_instance, "_end_node_element_id", None))
+        setattr(new_instance, "_end_node_id", getattr(old_instance, "_end_node_id", None))
 
         deflated = new_instance._deflate()
         set_query = ", ".join(
@@ -477,12 +483,12 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 {f"SET {set_query}" if set_query != "" else ""}
             """,
             parameters={
-                "element_id": new_instance.element_id,
+                "element_id": new_instance._element_id,
                 **deflated,
             },
         )
 
-        logger.info("Successfully updated relationship %s", getattr(new_instance, "element_id"))
+        logger.info("Successfully updated relationship %s", getattr(new_instance, "_element_id"))
         return new_instance if new else old_instance
 
     @classmethod
@@ -576,7 +582,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         logger.info(
             "Successfully updated %s relationships %s",
             len(old_instances),
-            [getattr(instance, "element_id") for instance in old_instances],
+            [getattr(instance, "_element_id") for instance in old_instances],
         )
         if new:
             instances: List[T] = []
@@ -785,7 +791,51 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 inflated[property_name] = property_value
 
         instance = cls(**inflated)
-        setattr(instance, "element_id", relationship.element_id)
-        setattr(instance, "start_node_element_id", cast(Node, relationship.start_node).element_id)
-        setattr(instance, "end_node_element_id", cast(Node, relationship.end_node).element_id)
+
+        setattr(instance, "_element_id", relationship.element_id)
+        setattr(instance, "_start_node_element_id", cast(Node, relationship.start_node).element_id)
+        setattr(instance, "_start_node_id", cast(Node, relationship.start_node).id)
+        setattr(instance, "_end_node_element_id", cast(Node, relationship.end_node).element_id)
+        setattr(instance, "_end_node_id", cast(Node, relationship.end_node).id)
+
         return instance
+
+    @property
+    def start_node_element_id(self) -> Optional[str]:
+        """
+        Returns the element ID of the start node or None if the instance has not been hydrated.
+
+        Returns:
+            str: The element ID of the start node or None if the instance has not been hydrated.
+        """
+        return self._start_node_element_id
+
+    @property
+    def start_node_id(self) -> Optional[int]:
+        """
+        Returns the ID of the start node or None if the instance has not been hydrated.
+
+        Returns:
+            int: The ID of the start node or None if the instance has not been hydrated.
+        """
+        return self._start_node_id
+
+    @property
+    def end_node_element_id(self) -> Optional[str]:
+        """
+        Returns the element ID of the end node or None if the instance has not been hydrated.
+
+        Returns:
+            str: The element ID of the end node or None if the instance has not been hydrated.
+        """
+        return self._end_node_element_id
+
+    @property
+    def end_node_id(self) -> Optional[int]:
+        """
+        Returns the ID of the end node or None if the instance has not been hydrated.
+
+        Returns:
+            int: The ID of the end node or None if the instance has not been hydrated.
+        """
+        return self._end_node_id

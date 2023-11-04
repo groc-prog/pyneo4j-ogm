@@ -233,8 +233,8 @@ class RelationshipProperty(Generic[T, U]):
                 RETURN r
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
-                "end_element_id": getattr(node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(node, "_element_id", None),
             },
         )
 
@@ -265,8 +265,8 @@ class RelationshipProperty(Generic[T, U]):
 
         logger.info(
             "Creating relationship between target node %s and source node %s",
-            getattr(node, "element_id", None),
-            getattr(self._source_node, "element_id", None),
+            getattr(node, "_element_id", None),
+            getattr(self._source_node, "_element_id", None),
         )
 
         # Build properties if relationship is defined as model
@@ -304,8 +304,8 @@ class RelationshipProperty(Generic[T, U]):
                 RETURN r
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
-                "end_element_id": getattr(node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(node, "_element_id", None),
                 **deflated_properties,
             },
         )
@@ -331,8 +331,8 @@ class RelationshipProperty(Generic[T, U]):
 
         logger.info(
             "Deleting relationships between target node %s and source node %s",
-            getattr(node, "element_id", None),
-            getattr(self._source_node, "element_id", None),
+            getattr(node, "_element_id", None),
+            getattr(self._source_node, "_element_id", None),
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
@@ -351,8 +351,8 @@ class RelationshipProperty(Generic[T, U]):
                 RETURN count(r)
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
-                "end_element_id": getattr(node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(node, "_element_id", None),
             },
             resolve_models=False,
         )
@@ -360,8 +360,8 @@ class RelationshipProperty(Generic[T, U]):
         if len(count_results) == 0 or len(count_results[0]) == 0 or count_results[0][0] is None:
             logger.debug(
                 "No relationships found between source node %s and target node %s",
-                getattr(self._source_node, "element_id", None),
-                getattr(node, "element_id", None),
+                getattr(self._source_node, "_element_id", None),
+                getattr(node, "_element_id", None),
             )
             return 0
 
@@ -373,8 +373,8 @@ class RelationshipProperty(Generic[T, U]):
                 DELETE r
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
-                "end_element_id": getattr(node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(node, "_element_id", None),
             },
         )
 
@@ -391,7 +391,7 @@ class RelationshipProperty(Generic[T, U]):
         """
         logger.info(
             "Deleting all relationships associated with source node %s",
-            getattr(self._source_node, "element_id", None),
+            getattr(self._source_node, "_element_id", None),
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
@@ -410,7 +410,7 @@ class RelationshipProperty(Generic[T, U]):
                 RETURN count(r)
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
             },
             resolve_models=False,
         )
@@ -418,7 +418,7 @@ class RelationshipProperty(Generic[T, U]):
         if len(count_results) == 0 or len(count_results[0]) == 0 or count_results[0][0] is None:
             logger.debug(
                 "No relationships found for source node %s",
-                getattr(self._source_node, "element_id", None),
+                getattr(self._source_node, "_element_id", None),
             )
             return 0
 
@@ -430,7 +430,7 @@ class RelationshipProperty(Generic[T, U]):
                 DELETE r
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
             },
         )
 
@@ -457,8 +457,8 @@ class RelationshipProperty(Generic[T, U]):
 
         logger.info(
             "Replacing old node %s with new node %s",
-            getattr(old_node, "element_id", None),
-            getattr(new_node, "element_id", None),
+            getattr(old_node, "_element_id", None),
+            getattr(new_node, "_element_id", None),
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
@@ -477,8 +477,8 @@ class RelationshipProperty(Generic[T, U]):
                 RETURN r
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
-                "end_element_id": getattr(new_node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(new_node, "_element_id", None),
             },
         )
 
@@ -500,8 +500,8 @@ class RelationshipProperty(Generic[T, U]):
                 DELETE r
             """,
                 parameters={
-                    "start_element_id": getattr(self._source_node, "element_id", None),
-                    "end_element_id": getattr(new_node, "element_id", None),
+                    "start_element_id": getattr(self._source_node, "_element_id", None),
+                    "end_element_id": getattr(new_node, "_element_id", None),
                 },
             )
 
@@ -513,8 +513,8 @@ class RelationshipProperty(Generic[T, U]):
                 RETURN r
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
-                "end_element_id": getattr(old_node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(old_node, "_element_id", None),
             },
         )
 
@@ -531,8 +531,8 @@ class RelationshipProperty(Generic[T, U]):
                 DELETE r
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
-                "end_element_id": getattr(old_node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(old_node, "_element_id", None),
             },
         )
 
@@ -561,8 +561,8 @@ class RelationshipProperty(Generic[T, U]):
                 RETURN r
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
-                "end_element_id": getattr(new_node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
+                "end_element_id": getattr(new_node, "_element_id", None),
                 **deflated_properties,
             },
         )
@@ -579,7 +579,7 @@ class RelationshipProperty(Generic[T, U]):
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
-        auto_fetch_models: Optional[List[Union[str, T]]] = None,
+        auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
         Finds the all nodes that matches `filters` and are connected to the source node.
@@ -671,7 +671,7 @@ class RelationshipProperty(Generic[T, U]):
                 RETURN {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}
             """,
             parameters={
-                "start_element_id": getattr(self._source_node, "element_id", None),
+                "start_element_id": getattr(self._source_node, "_element_id", None),
                 **self._query_builder.parameters,
             },
         )
@@ -687,7 +687,7 @@ class RelationshipProperty(Generic[T, U]):
                     if result is None or result_list[0] is None:
                         continue
 
-                    instance_element_id = getattr(result, "element_id")
+                    instance_element_id = getattr(result, "_element_id")
                     if instance_element_id in added_nodes:
                         continue
 
@@ -699,7 +699,7 @@ class RelationshipProperty(Generic[T, U]):
                         target_instance = [
                             instance
                             for instance in instances
-                            if getattr(result_list[0], "element_id") == getattr(instance, "element_id")
+                            if getattr(result_list[0], "_element_id") == getattr(instance, "_element_id")
                         ][0]
                         relationship_property = getattr(target_instance, meta[index])
                         nodes = cast(List[str], getattr(relationship_property, "_nodes"))
@@ -763,9 +763,9 @@ class RelationshipProperty(Generic[T, U]):
         for node in nodes_to_check:
             logger.debug(
                 "Checking if node %s is alive and of correct type",
-                getattr(node, "element_id", None),
+                getattr(node, "_element_id", None),
             )
-            if getattr(node, "element_id", None) is None:
+            if getattr(node, "_element_id", None) is None:
                 raise InstanceNotHydrated()
 
             if getattr(node, "_destroyed", True):
@@ -777,7 +777,7 @@ class RelationshipProperty(Generic[T, U]):
                     actual_type=node.__class__.__name__,
                 )
 
-        if getattr(self._source_node, "element_id", None) is None:
+        if getattr(self._source_node, "_element_id", None) is None:
             raise InstanceNotHydrated()
 
     async def _ensure_cardinality(self) -> None:
@@ -805,7 +805,7 @@ class RelationshipProperty(Generic[T, U]):
                         WHERE elementId(start) = $start_element_id
                         RETURN count(r)
                     """,
-                    parameters={"start_element_id": getattr(self._source_node, "element_id", None)},
+                    parameters={"start_element_id": getattr(self._source_node, "_element_id", None)},
                 )
 
                 if results[0][0] > 0:
