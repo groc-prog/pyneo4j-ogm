@@ -124,15 +124,24 @@ class ModelBase(Generic[V], BaseModel):
 
         return super().__init_subclass__()
 
-    def __str__(self) -> str:
-        if self._destroyed:
-            hydration_msg = "destroyed"
-        elif self._element_id is None:
-            hydration_msg = "not hydrated"
-        else:
-            hydration_msg = self._element_id
+    def __eq__(self, other: Any) -> bool:
+        instance_type = type(self)
+        if not isinstance(other, instance_type):
+            return False
 
-        return f"{self.__class__.__name__}({hydration_msg})"
+        if hasattr(self, "_element_id") and hasattr(other, "_element_id"):
+            return self._element_id == other._element_id
+
+        return False
+
+    def __ne__(self, other: Any) -> bool:
+        return not self.__eq__(other)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(element_id={self._element_id}, destroyed={self._destroyed})"
+
+    def __str__(self) -> str:
+        return self.__repr__()
 
     def export_model(self, convert_to_camel_case: bool = False, *args, **kwargs) -> Dict[str, Any]:
         """
