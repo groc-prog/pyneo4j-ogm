@@ -101,7 +101,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         labels: Union[Set[str], None] = getattr(cls.__settings__, "labels", None)
 
         if labels is None or (labels is not None and len(labels) == 0):
-            logger.warning(
+            logger.info(
                 "No labels have been defined for model %s, using model name as label",
                 cls.__name__,
             )

@@ -7,11 +7,10 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 - [ ] Add more documentation
 - [ ] Add more tests
 - [ ] Add setting for automatic create/update timestamps for models, timestamps will be overwritten if also defined on model
-- [ ] Make warnings optional (for example when using the name of the model as the label/type) via model setting
-- [ ] Add migrations
-- [ ] Make internal ID available and raise Exception if a ID property gets defined
-- [ ] Set a requirement for min. Neo4j database version
+- [x] Make labels/type fallback a info log instead of a warning log
+- [x] Make internal ID available and raise Exception if a ID property gets defined
 - [ ] Add upsert-like functionality to find_one()
+- [ ] Add migrations
 - [ ] Add MIT license
 - [ ] Add some metadata to pyproject.toml before first release
 - [ ] Add support for Pydantic v2

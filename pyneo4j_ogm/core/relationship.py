@@ -91,7 +91,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         # Check if relationship type is set, else fall back to class name
         if type_ is None:
-            logger.warning("No type has been defined for model %s, using model name as type", cls.__name__)
+            logger.info("No type has been defined for model %s, using model name as type", cls.__name__)
             # Convert class name to upper snake case
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
             setattr(cls.__settings__, "type", relationship_type.upper())

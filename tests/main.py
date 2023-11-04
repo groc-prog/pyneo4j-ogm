@@ -78,10 +78,8 @@ async def main():
 
     await client.close()
 
-    print(developer.element_id)
-    print(developer.id)
-    print(coffee.element_id)
-    print(coffee.id)
+    print(developer)
+    print(coffee)
 
     print("Done!")
 
