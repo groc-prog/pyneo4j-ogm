@@ -130,12 +130,11 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.ref_name }}
+
       - name: Python Semantic Release
-        run: |
-          pip install python-semantic-release
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          semantic-release publish
+        uses: python-semantic-release/python-semantic-release@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish package distributions to PyPI
         id: pypi-publish
