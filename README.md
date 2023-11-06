@@ -1,15 +1,18 @@
 # Neo4j Object Graph Mapper for Python
 
-A asynchronous library for working with Neo4j and Python 3.10+. This library aims to solve the problem of repeating the same queries over and over again by providing a simple way to define your models and their relationships. It is built on top of the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html) and [`Pydantic 1.10`](https://docs.pydantic.dev/1.10/).
+A asynchronous library for working with Neo4j and Python 3.10+. This library aims to solve the problem of repeating the same queries over and over again by providing a simple way to define your models and their relationships. It is built on top of the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html), [`Pydantic 1.10`](https://docs.pydantic.dev/1.10/) and [`Neo4j 5+`](https://neo4j.com/docs/).
 
 ## Todo's
 
 - [ ] Add more documentation
 - [ ] Add more tests
+- [ ] Enforce Neo4j version 5+
+- [ ] Allow dirs to be passed to register_models (will register all models found in dir and subdirs)
 - [ ] Add setting for automatic create/update timestamps for models, timestamps will be overwritten if also defined on model
 - [x] Make labels/type fallback a info log instead of a warning log
 - [x] Make internal ID available and raise Exception if a ID property gets defined
 - [ ] Add upsert-like functionality to find_one()
+- [ ] Add bookmark support
 - [ ] Add migrations
 - [ ] Add MIT license
 - [ ] Add some metadata to pyproject.toml before first release
@@ -195,31 +198,39 @@ asyncio.run(main())
       - [Instance.update() ](#instanceupdate-)
       - [Instance.delete() ](#instancedelete-)
       - [Instance.refresh() ](#instancerefresh-)
-      - [Model.find\_one() ](#modelfind_one-)
+      - [Model.find_one() ](#modelfind_one-)
         - [Projections ](#projections-)
         - [Auto-fetching nodes ](#auto-fetching-nodes-)
-      - [Model.find\_many() ](#modelfind_many-)
+      - [Model.find_many() ](#modelfind_many-)
         - [Filters ](#filters-)
         - [Projections ](#projections--1)
+        - [Query options ](#query-options-)
         - [Auto-fetching nodes ](#auto-fetching-nodes--1)
-      - [Model.update\_one() ](#modelupdate_one-)
+      - [Model.update_one() ](#modelupdate_one-)
         - [Returning the updated entity ](#returning-the-updated-entity-)
-      - [Model.update\_many() ](#modelupdate_many-)
+      - [Model.update_many() ](#modelupdate_many-)
         - [Filters ](#filters--1)
         - [Returning the updated entity ](#returning-the-updated-entity--1)
-      - [Model.delete\_one() ](#modeldelete_one-)
-      - [Model.delete\_many() ](#modeldelete_many-)
-          - [Filters ](#filters--2)
+      - [Model.delete_one() ](#modeldelete_one-)
+      - [Model.delete_many() ](#modeldelete_many-)
+        - [Filters ](#filters--2)
       - [Model.count() ](#modelcount-)
         - [Filters ](#filters--3)
-      - [Instance.export\_model() ](#instanceexport_model-)
+      - [Instance.export_model() ](#instanceexport_model-)
         - [Case conversion ](#case-conversion-)
-      - [Instance.import\_model() ](#instanceimport_model-)
+      - [Instance.import_model() ](#instanceimport_model-)
         - [Case conversion ](#case-conversion--1)
-      - [Model.register\_pre\_hooks() ](#modelregister_pre_hooks-)
+      - [Model.register_pre_hooks() ](#modelregister_pre_hooks-)
         - [Overwriting existing hooks ](#overwriting-existing-hooks-)
-      - [Model.register\_post\_hooks() ](#modelregister_post_hooks-)
-      - [Model.model\_settings() ](#modelmodel_settings-)
+      - [Model.register_post_hooks() ](#modelregister_post_hooks-)
+      - [Model.model_settings() ](#modelmodel_settings-)
+      - [NodeModelInstance.create() ](#nodemodelinstancecreate-)
+      - [NodeModelInstance.find_connected_nodes() ](#nodemodelinstancefind_connected_nodes-)
+        - [Projections ](#projections--2)
+        - [Query options ](#query-options--1)
+        - [Auto-fetching nodes ](#auto-fetching-nodes--2)
+      - [RelationshipModelInstance.start_node() ](#relationshipmodelinstancestart_node-)
+      - [RelationshipModelInstance.end_node() ](#relationshipmodelinstanceend_node-)
 
 ### Basic concepts <a name="basic-concepts"></a>
 
@@ -673,6 +684,17 @@ developers = await Developer.find_many({"name": "John"}, {"dev_name": "name"})
 print(developers) # [{"dev_name": "John"}, {"dev_name": "John"}, ...]
 ```
 
+##### Query options <a name="model-find-many-query-options"></a>
+
+`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](#query-options) section.
+
+```python
+# Skips the first 10 results and returns the next 20
+developers = await Developer.find_many({"name": "John"}, options={"limit": 20, "skip": 10})
+
+print(developers) # [<Developer>, <Developer>, ...]
+```
+
 ##### Auto-fetching nodes <a name="model-find-many-auto-fetching-nodes"></a>
 
 The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship properties when running the `find_many()` query. For more about auto-fetching, see [`Auto-fetching relationship properties`](#query-auto-fetching).
@@ -825,7 +847,7 @@ print(count) # 0
 
 ##### Filters <a name="model-count-filters"></a>
 
-Optionally, a `filters` argument can be provided, which defines which entities to delete. For more about filters, see the [`Filtering queries`](#query-filters) section.
+Optionally, a `filters` argument can be provided, which defines which entities to count. For more about filters, see the [`Filtering queries`](#query-filters) section.
 
 ```python
 # Counts all `Developer` nodes where the name property contains the letters `oH`
@@ -834,7 +856,6 @@ count = await Developer.count({"name": {"$icontains": "oH"}})
 
 print(count) # However many nodes matched the filter
 ```
-
 
 #### Instance.export_model() <a name="instance-export-model"></a>
 
@@ -938,4 +959,167 @@ Returns the settings defined for the current model.
 model_settings = Developer.model_settings()
 
 print(model_settings) # <NodeModelSettings labels={"Developer", "Python"}, auto_fetch_nodes=False, ...>
+```
+
+#### NodeModelInstance.create() <a name="node-model-instance-create"></a>
+
+> **Note**: This method is only available for classes inheriting from the `NodeModel` class.
+
+The `create()` method allows you to create a new node from a given model instance. All properties defined on the instance will be carried over to the corresponding node inside the graph. After this method has successfully finished, the instance saved to the database will be seen as `hydrated` and other methods such as `update()`, `refresh()`, usw. will be available.
+
+```python
+# Creates a node inside the graph with the properties and labels
+# from the model below
+developer = await Developer(
+  name="John",
+  age=24
+).create()
+
+print(developer) # <Developer age=24, name="John">
+```
+
+#### NodeModelInstance.find_connected_nodes() <a name="node-model-instance-find-connected-nodes"></a>
+
+> **Note**: This method is only available for classes inheriting from the `NodeModel` class.
+
+The `find_connected_nodes()` method can be used to find nodes over multiple hops. It returns all matched nodes with the defined relationships in the given hop range or an empty list if no nodes where found. The method requires you to define the labels of the nodes you want to find inside the filters. For more about filters, see the [`Filtering queries`](#query-filters) section.
+
+```python
+# Picture a structure inside the graph like this:
+# `(:Producer)-[:SELLS_TO]->(:Barista)-[:PRODUCES]->(:Coffee)-[:CONSUMED_BY]->(:Developer)`
+
+# If we want to get all `Developer` nodes connected to a `Producer` node over the `Barista` and `Coffee` nodes,
+# where the `Barista` created the coffee with love, we can do so like this:
+producer = await Producer.find_one({"name": "Coffee Inc."})
+
+if producer is None:
+  # No producer found, do something else
+
+developers = await producer.find_connected_nodes({
+  "$node": {
+    "$labels": ["Developer", "Python"],
+    # You can use all available filters here as well
+  },
+  # You can define filters on specific relationships inside the path
+  "$relationships": [
+    {
+      # Here we define a filter for all `PRODUCES` relationships
+      # Only nodes where the with_love property is set to `True` will be returned
+      "$type": "PRODUCES",
+      "with_love": True
+    }
+  ]
+})
+
+print(developers) # [<Developer>, <Developer>, ...]
+
+# Or if no matches were found
+print(developers) # []
+```
+
+##### Projections <a name="node-model-find-connected-nodes-projections"></a>
+
+`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](#query-projections) section.
+
+```python
+# Returns dictionaries with the developers name at the `dev_name` key instead
+# of model instances
+developers = await producer.find_connected_nodes(
+  {
+    "$node": {
+      "$labels": ["Developer", "Python"],
+    },
+    "$relationships": [
+      {
+        "$type": "PRODUCES",
+        "with_love": True
+      }
+    ]
+  },
+  {
+    "dev_name": "name"
+  }
+)
+
+print(developers) # [{"dev_name": "John"}, {"dev_name": "John"}, ...]
+```
+
+##### Query options <a name="node-model-find-connected-nodes-query-options"></a>
+
+`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](#query-options) section.
+
+```python
+# Skips the first 10 results and returns the next 20
+developers = await producer.find_connected_nodes(
+  {
+    "$node": {
+      "$labels": ["Developer", "Python"],
+    },
+    "$relationships": [
+      {
+        "$type": "PRODUCES",
+        "with_love": True
+      }
+    ]
+  },
+  options={"limit": 20, "skip": 10}
+)
+
+print(developers) # [<Developer>, <Developer>, ...]
+```
+
+##### Auto-fetching nodes <a name="node-model-find-connected-nodes-auto-fetching-nodes"></a>
+
+The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship properties when running the `find_connected_nodes()` query. For more about auto-fetching, see [`Auto-fetching relationship properties`](#query-auto-fetching).
+
+```python
+# Skips the first 10 results and returns the next 20
+developers = await producer.find_connected_nodes(
+  {
+    "$node": {
+      "$labels": ["Developer", "Python"],
+    },
+    "$relationships": [
+      {
+        "$type": "PRODUCES",
+        "with_love": True
+      }
+    ]
+  },
+  auto_fetch_nodes=True
+)
+
+print(developers[0].coffee.nodes) # [<Coffee>, <Coffee>, ...]
+print(developers[0].other_property.nodes) # [<OtherModel>, <OtherModel>, ...]
+
+# Returns developer instances with only the `instance.coffee.nodes` property already fetched
+developers = await Developer.find_many({"name": "John"}, auto_fetch_nodes=True, auto_fetch_models=[Coffee])
+
+# Auto-fetch models can also be passed as strings
+developers = await Developer.find_many({"name": "John"}, auto_fetch_nodes=True, auto_fetch_models=["Coffee"])
+
+print(developers[0].coffee.nodes) # [<Coffee>, <Coffee>, ...]
+print(developers[0].other_property.nodes) # []
+```
+
+#### RelationshipModelInstance.start_node() <a name="relationship-model-instance-start-node"></a>
+
+This method returns the start node of the current relationship instance. This method takes no arguments.
+
+```python
+# The `coffee_relationship` variable is a relationship instance created somewhere above
+start_node = await coffee_relationship.start_node()
+
+print(start_node) # <Coffee>
+```
+
+#### RelationshipModelInstance.end_node() <a name="relationship-model-instance-end-node"></a>
+
+This method returns the end node of the current relationship instance. This method takes no arguments.
+
+```python
+# The `coffee_relationship` variable is a relationship instance created somewhere above
+end_node = await coffee_relationship.end_node()
+
+print(end_node) # <Developer>
 ```
