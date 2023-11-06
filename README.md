@@ -198,39 +198,39 @@ asyncio.run(main())
       - [Instance.update() ](#instanceupdate-)
       - [Instance.delete() ](#instancedelete-)
       - [Instance.refresh() ](#instancerefresh-)
-      - [Model.find_one() ](#modelfind_one-)
+      - [Model.find\_one() ](#modelfind_one-)
         - [Projections ](#projections-)
         - [Auto-fetching nodes ](#auto-fetching-nodes-)
-      - [Model.find_many() ](#modelfind_many-)
+      - [Model.find\_many() ](#modelfind_many-)
         - [Filters ](#filters-)
         - [Projections ](#projections--1)
         - [Query options ](#query-options-)
         - [Auto-fetching nodes ](#auto-fetching-nodes--1)
-      - [Model.update_one() ](#modelupdate_one-)
+      - [Model.update\_one() ](#modelupdate_one-)
         - [Returning the updated entity ](#returning-the-updated-entity-)
-      - [Model.update_many() ](#modelupdate_many-)
+      - [Model.update\_many() ](#modelupdate_many-)
         - [Filters ](#filters--1)
         - [Returning the updated entity ](#returning-the-updated-entity--1)
-      - [Model.delete_one() ](#modeldelete_one-)
-      - [Model.delete_many() ](#modeldelete_many-)
-        - [Filters ](#filters--2)
+      - [Model.delete\_one() ](#modeldelete_one-)
+      - [Model.delete\_many() ](#modeldelete_many-)
+          - [Filters ](#filters--2)
       - [Model.count() ](#modelcount-)
         - [Filters ](#filters--3)
-      - [Instance.export_model() ](#instanceexport_model-)
+      - [Instance.export\_model() ](#instanceexport_model-)
         - [Case conversion ](#case-conversion-)
-      - [Instance.import_model() ](#instanceimport_model-)
+      - [Instance.import\_model() ](#instanceimport_model-)
         - [Case conversion ](#case-conversion--1)
-      - [Model.register_pre_hooks() ](#modelregister_pre_hooks-)
+      - [Model.register\_pre\_hooks() ](#modelregister_pre_hooks-)
         - [Overwriting existing hooks ](#overwriting-existing-hooks-)
-      - [Model.register_post_hooks() ](#modelregister_post_hooks-)
-      - [Model.model_settings() ](#modelmodel_settings-)
+      - [Model.register\_post\_hooks() ](#modelregister_post_hooks-)
+      - [Model.model\_settings() ](#modelmodel_settings-)
       - [NodeModelInstance.create() ](#nodemodelinstancecreate-)
-      - [NodeModelInstance.find_connected_nodes() ](#nodemodelinstancefind_connected_nodes-)
+      - [NodeModelInstance.find\_connected\_nodes() ](#nodemodelinstancefind_connected_nodes-)
         - [Projections ](#projections--2)
         - [Query options ](#query-options--1)
         - [Auto-fetching nodes ](#auto-fetching-nodes--2)
-      - [RelationshipModelInstance.start_node() ](#relationshipmodelinstancestart_node-)
-      - [RelationshipModelInstance.end_node() ](#relationshipmodelinstanceend_node-)
+      - [RelationshipModelInstance.start\_node() ](#relationshipmodelinstancestart_node-)
+      - [RelationshipModelInstance.end\_node() ](#relationshipmodelinstanceend_node-)
 
 ### Basic concepts <a name="basic-concepts"></a>
 
@@ -965,7 +965,7 @@ print(model_settings) # <NodeModelSettings labels={"Developer", "Python"}, auto_
 
 > **Note**: This method is only available for classes inheriting from the `NodeModel` class.
 
-The `create()` method allows you to create a new node from a given model instance. All properties defined on the instance will be carried over to the corresponding node inside the graph. After this method has successfully finished, the instance saved to the database will be seen as `hydrated` and other methods such as `update()`, `refresh()`, usw. will be available.
+The `create()` method allows you to create a new node from a given model instance. All properties defined on the instance will be carried over to the corresponding node inside the graph. After this method has successfully finished, the instance saved to the database will be seen as `hydrated` and other methods such as `update()`, `refresh()`, etc. will be available.
 
 ```python
 # Creates a node inside the graph with the properties and labels
@@ -982,11 +982,11 @@ print(developer) # <Developer age=24, name="John">
 
 > **Note**: This method is only available for classes inheriting from the `NodeModel` class.
 
-The `find_connected_nodes()` method can be used to find nodes over multiple hops. It returns all matched nodes with the defined relationships in the given hop range or an empty list if no nodes where found. The method requires you to define the labels of the nodes you want to find inside the filters. For more about filters, see the [`Filtering queries`](#query-filters) section.
+The `find_connected_nodes()` method can be used to find nodes over multiple hops. It returns all matched nodes with the defined labels in the given hop range or an empty list if no nodes where found. The method requires you to define the labels of the nodes you want to find inside the filters (You can only define the labels of `one model` at a time). For more about filters, see the [`Filtering queries`](#query-filters) section.
 
 ```python
-# Picture a structure inside the graph like this:
-# `(:Producer)-[:SELLS_TO]->(:Barista)-[:PRODUCES]->(:Coffee)-[:CONSUMED_BY]->(:Developer)`
+# Picture a structure like this inside the graph:
+# (:Producer)-[:SELLS_TO]->(:Barista)-[:PRODUCES {with_love: bool}]->(:Coffee)-[:CONSUMED_BY]->(:Developer)
 
 # If we want to get all `Developer` nodes connected to a `Producer` node over the `Barista` and `Coffee` nodes,
 # where the `Barista` created the coffee with love, we can do so like this:
@@ -1093,16 +1093,45 @@ print(developers[0].coffee.nodes) # [<Coffee>, <Coffee>, ...]
 print(developers[0].other_property.nodes) # [<OtherModel>, <OtherModel>, ...]
 
 # Returns developer instances with only the `instance.coffee.nodes` property already fetched
-developers = await Developer.find_many({"name": "John"}, auto_fetch_nodes=True, auto_fetch_models=[Coffee])
+developers = await producer.find_connected_nodes(
+  {
+    "$node": {
+      "$labels": ["Developer", "Python"],
+    },
+    "$relationships": [
+      {
+        "$type": "PRODUCES",
+        "with_love": True
+      }
+    ]
+  },
+  auto_fetch_nodes=True,
+  auto_fetch_models=[Coffee]
+)
 
-# Auto-fetch models can also be passed as strings
-developers = await Developer.find_many({"name": "John"}, auto_fetch_nodes=True, auto_fetch_models=["Coffee"])
+developers = await producer.find_connected_nodes(
+  {
+    "$node": {
+      "$labels": ["Developer", "Python"],
+    },
+    "$relationships": [
+      {
+        "$type": "PRODUCES",
+        "with_love": True
+      }
+    ]
+  },
+  auto_fetch_nodes=True,
+  auto_fetch_models=["Coffee"]
+)
 
 print(developers[0].coffee.nodes) # [<Coffee>, <Coffee>, ...]
 print(developers[0].other_property.nodes) # []
 ```
 
 #### RelationshipModelInstance.start_node() <a name="relationship-model-instance-start-node"></a>
+
+> **Note**: This method is only available for classes inheriting from the `RelationshipModel` class.
 
 This method returns the start node of the current relationship instance. This method takes no arguments.
 
@@ -1114,6 +1143,8 @@ print(start_node) # <Coffee>
 ```
 
 #### RelationshipModelInstance.end_node() <a name="relationship-model-instance-end-node"></a>
+
+> **Note**: This method is only available for classes inheriting from the `RelationshipModel` class.
 
 This method returns the end node of the current relationship instance. This method takes no arguments.
 
