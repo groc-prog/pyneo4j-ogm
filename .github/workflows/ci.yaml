@@ -121,6 +121,9 @@ jobs:
       github.ref == 'refs/heads/main' &&
       !contains ( github.event.head_commit.message, 'chore(release)' )
     concurrency: release
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pyneo4j-ogm
     permissions:
       id-token: write
       contents: write
@@ -137,11 +140,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish package distributions to PyPI
-        id: pypi-publish
-
-        if: steps.release.outputs.released == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          verbose: true
-          user: ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_PASSWORD }}
+          repository-url: https://test.pypi.org/legacy/
