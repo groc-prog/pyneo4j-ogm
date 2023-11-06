@@ -122,8 +122,8 @@ PatternRelationshipOperators = TypedDict(
     total=True,
 )
 
-NodePattern = Union[Dict[str, QueryOperators], PatternNodeOperators]
-RelationshipPattern = Union[Dict[str, QueryOperators], PatternRelationshipOperators]
+NodePattern = Union[Dict[str, Union[QueryOperators, QueryDataTypes]], PatternNodeOperators]
+RelationshipPattern = Union[Dict[str, Union[QueryOperators, QueryDataTypes]], PatternRelationshipOperators]
 
 PatternOperator = TypedDict(
     "PatternOperator",
@@ -137,12 +137,9 @@ PatternOperator = TypedDict(
 )
 
 
-MultiHopRelationshipOperators = TypedDict(
-    "MultiHopRelationshipOperators",
-    {"$elementId": Optional[str], "$id": Optional[int], "$type": str},
+MultiHopRelationship = TypedDict(
+    "MultiHopRelationship", {"$elementId": Optional[str], "$id": Optional[int], "$type": str}, total=False
 )
-
-MultiHopRelationship = Union[Dict[str, QueryOperators], MultiHopRelationshipOperators]
 
 # We need to define different interfaces for nodes and relationships to not show invalid operants
 # for the model type.
@@ -160,7 +157,7 @@ QueryRelationshipPropertyOperators = TypedDict(
         "$elementId": str,
         "$id": int,
         "$patterns": List[PatternOperator],
-        "$relationship": Union[Dict[str, QueryOperators], QueryRelationshipOperators],
+        "$relationship": Union[Dict[str, Union[QueryOperators, QueryDataTypes]], QueryRelationshipOperators],
     },
     total=False,
 )
@@ -183,8 +180,8 @@ MultiHopFilters = TypedDict(
     {
         "$minHops": Optional[int],
         "$maxHops": Optional[Union[int, Literal["*"]]],
-        "$node": Union[Dict[str, QueryOperators], MultiHopNode],
-        "$relationships": Optional[List[MultiHopRelationship]],
+        "$node": Union[Dict[str, Union[QueryOperators, QueryDataTypes]], MultiHopNode],
+        "$relationships": Optional[List[Union[Dict[str, Union[QueryOperators, QueryDataTypes]], MultiHopRelationship]]],
     },
     total=False,
 )
