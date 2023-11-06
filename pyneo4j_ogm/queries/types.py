@@ -191,4 +191,4 @@ class QueryOptions(TypedDict, total=False):
     limit: int
     skip: int
     sort: Union[List[str], str]
-    order: str
+    order: QueryOptionsOrder
