@@ -312,22 +312,20 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if auto_fetch_nodes:
             logger.debug("Auto-fetching nodes is enabled, checking if model with target labels is registered")
 
+            labels: Optional[List[str]] = None
+
+            if "$node" in filters and "$labels" in filters["$node"]:
+                labels = cast(List[str], filters["$node"]["$labels"])
+
             for model in self._client.models:
-                if (
-                    hasattr(model.__settings__, "labels")
-                    and list(getattr(model.__settings__, "labels", [])) == filters["$node"]["$labels"]
-                ):
+                if hasattr(model.__settings__, "labels") and list(getattr(model.__settings__, "labels", [])) == labels:
                     target_node_model = cast(T, model)
                     break
 
             if target_node_model is None:
-                logger.warning(
-                    "No model with labels %s is registered, disabling auto-fetch", filters["$node"]["$labels"]
-                )
+                logger.warning("No model with labels %s is registered, disabling auto-fetch", labels)
             else:
-                logger.debug(
-                    "Model with labels %s is registered, building auto-fetch query", filters["$node"]["$labels"]
-                )
+                logger.debug("Model with labels %s is registered, building auto-fetch query", labels)
                 match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
                     ref="m", nodes_to_fetch=auto_fetch_models
                 )
@@ -489,13 +487,11 @@ class NodeModel(ModelBase[NodeModelSettings]):
             )
 
         logger.debug("Checking if query returned a result")
-        if any(
-            [
-                len(results) == 0,
-                len(results[0]) == 0,
-                results[0][0] is None,
-                isinstance(results[0][0], dict) and len(results[0][0]) == 0,
-            ]
+        if (
+            len(results) == 0
+            or len(results[0]) == 0
+            or results[0][0] is None
+            or (isinstance(results[0][0], dict) and len(results[0][0]) == 0)
         ):
             return None
 

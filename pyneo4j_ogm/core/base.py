@@ -208,6 +208,7 @@ class ModelBase(Generic[V], BaseModel):
         instance = cls(**import_model)
         instance._element_id = import_model["element_id"]
         instance._id = import_model["id"]
+
         return instance
 
     @classmethod
