@@ -20,6 +20,15 @@ class NotConnectedToDatabase(Neo4jOGMException):
         super().__init__("Client is not connected to a database", *args)
 
 
+class UnsupportedNeo4jVersion(Neo4jOGMException):
+    """
+    Exception which gets raised if the client tries to connect to a Neo4j database with an unsupported version.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Only Neo4j 5+ is supported.", *args)
+
+
 class MissingDatabaseURI(Neo4jOGMException):
     """
     Exception which gets raised if the client is initialized without providing a connection.

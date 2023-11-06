@@ -19,6 +19,7 @@ from pyneo4j_ogm.exceptions import (
     MissingDatabaseURI,
     NotConnectedToDatabase,
     TransactionInProgress,
+    UnsupportedNeo4jVersion,
 )
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
@@ -84,7 +85,7 @@ class Neo4jClient:
         self._builder = QueryBuilder()
         self.models = set()
 
-    def connect(
+    async def connect(
         self,
         uri: Optional[str] = None,
         *args,
@@ -121,8 +122,16 @@ class Neo4jClient:
 
         logger.info("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, *args, **kwargs)
-        logger.info("Connected to database")
 
+        logger.debug("Checking Neo4j version")
+        server_info = await self._driver.get_server_info()
+
+        version = server_info.agent.split("/")[1]
+
+        if int(version.split(".")[0]) < 5:
+            raise UnsupportedNeo4jVersion()
+
+        logger.info("Connected to database")
         return self
 
     @ensure_connection

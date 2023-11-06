@@ -34,7 +34,7 @@ async def test_ensure_connection(pyneo4j_client: Neo4jClient):
         await pyneo4j_client.close()
         await pyneo4j_client.cypher("MATCH (n) RETURN n")
 
-    pyneo4j_client.connect("bolt://localhost:7687", auth=("neo4j", "password"))
+    await pyneo4j_client.connect("bolt://localhost:7687", auth=("neo4j", "password"))
     results, _ = await pyneo4j_client.cypher("MATCH (n) RETURN n")
     assert results == []
 

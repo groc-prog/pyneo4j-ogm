@@ -12,7 +12,7 @@ async def pyneo4j_client():
     """
     Create a Neo4jClient instance from the package for the test session.
     """
-    client = Neo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
+    client = await Neo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
 
     # Drop all nodes, indexes, and constraints from the database.
     await client.drop_constraints()

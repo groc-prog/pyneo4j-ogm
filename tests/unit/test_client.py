@@ -10,8 +10,9 @@ from pyneo4j_ogm.exceptions import MissingDatabaseURI
 pytest_plugins = ("pytest_asyncio",)
 
 
+@pytest.mark.asyncio
 async def test_connection():
-    pyneo4j_client = Neo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
+    pyneo4j_client = await Neo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
     assert pyneo4j_client.is_connected
     assert pyneo4j_client._driver is not None
 
@@ -22,7 +23,7 @@ async def test_connection():
     # Test that the Neo4jClient can connect to a database using ENV variables.
     os.environ["NEO4J_OGM_URI"] = "bolt://localhost:7687"
 
-    pyneo4j_client = Neo4jClient().connect(auth=("neo4j", "password"))
+    pyneo4j_client = await Neo4jClient().connect(auth=("neo4j", "password"))
     assert pyneo4j_client.is_connected
     assert pyneo4j_client._driver is not None
 
@@ -34,4 +35,4 @@ async def test_connection():
 
     with pytest.raises(MissingDatabaseURI):
         # Test raised exception when no URI is provided.
-        pyneo4j_client = Neo4jClient().connect()
+        pyneo4j_client = await Neo4jClient().connect()

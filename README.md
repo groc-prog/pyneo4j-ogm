@@ -4,13 +4,9 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 
 ## Todo's and missing features <a name="todos-and-missing-features"></a>
 
-- [x] Add more documentation
 - [ ] Add more tests
-- [ ] Enforce Neo4j version 5+
 - [ ] Allow dirs to be passed to register_models (will register all models found in dir and subdirs)
 - [ ] Add setting for automatic create/update timestamps for models, timestamps will be overwritten if also defined on model
-- [x] Make labels/type fallback a info log instead of a warning log
-- [x] Make internal ID available and raise Exception if a ID property gets defined
 - [ ] Add upsert-like functionality to find_one()
 - [ ] Add bookmark support
 - [ ] Add migrations
@@ -27,11 +23,11 @@ from pyneo4j_ogm import Neo4jClient
 
 # Initialize the client class and call the `.connect()` method
 client = Neo4jClient()
-client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
+await client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
 
 # The `.connect()` allows to be chained right after the instantiation of the class
 # for more convenience.
-client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
+client = await Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
 ```
 
 Next, we need to define our models. Models are used to represent data in our database. They are defined by inheriting from either the `NodeModel` or `RelationshipModel` class, depending on the type of graph entity we want our data to represent. Let's create a `Developer` who `DRINKS` some `Coffee`:
@@ -150,7 +146,7 @@ class Drinks(RelationshipModel):
 
 async def main():
     # Connect to the database and register the models
-    client = Neo4jClient().connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
+    client = await Neo4jClient().connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
     await client.register_models([Developer, Coffee, Drinks])
 
     # Create new developer and coffee nodes and connect them with a DRINKS relationship
@@ -289,10 +285,10 @@ The `connect()` method returns the client instance itself, so you can chain it r
 from pyneo4j_ogm import Neo4jClient
 
 client = Neo4jClient()
-client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
+await client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
 
 # Or chained right after the instantiation of the class
-client = Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
+client = await Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
 ```
 
 After connecting the client, you will be able to run queries against the database. Should you try to run a query without connecting to a database first, you will get a `NotConnectedToDatabase` exception.
