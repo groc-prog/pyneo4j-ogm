@@ -2,9 +2,9 @@
 
 A asynchronous library for working with Neo4j and Python 3.10+. This library aims to solve the problem of repeating the same queries over and over again by providing a simple way to define your models and their relationships. It is built on top of the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html), [`Pydantic 1.10`](https://docs.pydantic.dev/1.10/) and [`Neo4j 5+`](https://neo4j.com/docs/).
 
-## Todo's
+## Todo's and missing features <a name="todos-and-missing-features"></a>
 
-- [ ] Add more documentation
+- [x] Add more documentation
 - [ ] Add more tests
 - [ ] Enforce Neo4j version 5+
 - [ ] Allow dirs to be passed to register_models (will register all models found in dir and subdirs)
@@ -174,7 +174,7 @@ asyncio.run(main())
 ### Table of contents <a name="table-of-contents"></a>
 
 - [Neo4j Object Graph Mapper for Python](#neo4j-object-graph-mapper-for-python)
-  - [Todo's](#todos)
+  - [Todo's and missing features ](#todos-and-missing-features-)
   - [⚡️ Quick start ](#️-quick-start-)
   - [📚 Documentation ](#-documentation-)
     - [Table of contents ](#table-of-contents-)
@@ -245,6 +245,19 @@ asyncio.run(main())
         - [Projections ](#projections--3)
         - [Query options ](#query-options--2)
         - [Auto-fetching nodes ](#auto-fetching-nodes--3)
+    - [Query filters ](#query-filters-)
+      - [Operators ](#operators-)
+        - [Comparison operators ](#comparison-operators-)
+        - [String operators ](#string-operators-)
+        - [List operators ](#list-operators-)
+        - [Logical operators ](#logical-operators-)
+        - [Element operators ](#element-operators-)
+      - [Pattern matching ](#pattern-matching-)
+      - [Multi-hop filters ](#multi-hop-filters-)
+    - [Query projections ](#query-projections-)
+    - [Query options ](#query-options--3)
+    - [Auto-fetching relationship properties ](#auto-fetching-relationship-properties-)
+    - [Logging ](#logging-)
 
 ### Basic concepts <a name="basic-concepts"></a>
 
@@ -306,7 +319,7 @@ As mentioned before, the basic concept is to work with models which reflect the 
 await client.register_models([Developer, Coffee, Drinks])
 ```
 
-This is a crucial step, because if you don't register your models with the client, you won't be able to work with them in any way. Should you try to work with a model that is not registered with the client instance, you will get a `UnregisteredModel` exception. This exception also gets raised if a database model defines a relationship property with other (unregistered) models as a target or relationship model. For more information about relationship properties, see the [`Relationship properties on node models`](#relationship-properties-on-node-models) section.
+This is a crucial step, because if you don't register your models with the client, you won't be able to work with them in any way. Should you try to work with a model that is not registered with the client instance, you will get a `UnregisteredModel` exception. This exception also gets raised if a database model defines a relationship property with other (unregistered) models as a target or relationship model. For more information about relationship properties, see the [`Relationship properties`](#relationship-properties) section.
 
 > **Note**: If you don't explicitly define labels for node models or a type for a relationship model, you will see a warning in the console. This is because the library will use the name of the model as the label/type. This is not recommended, because most of the time you will want to define your own labels/types.
 
@@ -1220,7 +1233,7 @@ class Developer(NodeModel):
 
 Relationship-properties provide a number of methods to interact with the relationship inside the graph. We will take a look at all of them in the following section.
 
-> **Note**: In the following, the terms `source node` and `target node` will be used. Source node refers to the `node instance the method is called on` and target node refers to the `node instance provided to the method`.
+> **Note**: In the following, the terms `source node` and `target node` will be used. Source node refers to the `node instance the method is called on` and target node refers to the `node instance the source node is connected to`.
 
 ##### RelationshipProperty.relationship() <a name="relationship-property-relationship"></a>
 
@@ -1278,7 +1291,7 @@ print(coffee_relationship_count) # However many relationships were deleted
 
 ##### RelationshipProperty.replace() <a name="relationship-property-replace"></a>
 
-Replaces a given relationship between the source node and one target node with a new relationship to another target node, carrying over all properties defined in the relationship. Returns the replaced relationship
+Replaces a given relationship between the source node and one target node with a new relationship to another target node, carrying over all properties defined in the relationship. Returns the replaced relationship.
 
 ```python
 # The `developer`, `coffee_latte` and `coffee_americano` variables have been defined somewhere above
@@ -1286,7 +1299,7 @@ Replaces a given relationship between the source node and one target node with a
 # Currently there is a relationship defined between the `developer` and `coffee_latte` nodes where
 # the `likes_it` property is set to `True`
 
-# Moves the relationship to `coffee_latte` to `coffee_americano`
+# Moves the relationship from `coffee_latte` to `coffee_americano`
 coffee_relationship = await developer.coffee.replace(coffee_latte, coffee_americano)
 
 print(coffee_relationship) # <Drinks likes_it=True>
@@ -1295,6 +1308,16 @@ print(coffee_relationship) # <Drinks likes_it=True>
 ##### RelationshipProperty.find_connected_nodes() <a name="relationship-property-find-connected-nodes"></a>
 
 Finds and returns all connected nodes for the given relationship property. This method always returns a list of instances/dictionaries or an empty list if no results were found.
+
+```python
+# Returns all `Coffee` nodes
+coffees = await developer.coffee.find_connected_nodes()
+
+print(coffees) # [<Coffee>, <Coffee>, ...]
+
+# Or if no matches were found
+print(coffees) # []
+```
 
 ##### Filters <a name="model-find-many-filters"></a>
 
@@ -1305,9 +1328,6 @@ You can pass filters using the `filters` argument to filter the returned nodes. 
 coffees = await developer.coffee.find_connected_nodes({"sugar": True})
 
 print(coffees) # [<Coffee>, <Coffee>, ...]
-
-# Or if no matches were found
-print(coffees) # []
 ```
 
 ##### Projections <a name="model-find-many-projections"></a>
@@ -1315,9 +1335,9 @@ print(coffees) # []
 `Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](#query-projections) section.
 
 ```python
-# Returns dictionaries with the coffees `sugar` property at the `contains_sugar` key instead
+# Returns dictionaries with the coffee's `sugar` property at the `contains_sugar` key instead
 # of model instances
-coffees = await developer.coffee.find_connected_nodes({"sugar": True})
+coffees = await developer.coffee.find_connected_nodes({"sugar": True}, {"contains_sugar": "sugar"})
 
 print(coffees) # [{"contains_sugar": True}, {"contains_sugar": False}, ...]
 ```
@@ -1344,7 +1364,7 @@ coffees = await developer.coffee.find_connected_nodes({"sugar": True}, auto_fetc
 print(coffees[0].developer.nodes) # [<Developer>, <Developer>, ...]
 print(coffees[0].other_property.nodes) # [<OtherModel>, <OtherModel>, ...]
 
-# Returns developer instances with only the `instance.coffee.nodes` property already fetched
+# Returns coffee instances with only the `instance.developer.nodes` property already fetched
 coffees = await developer.coffee.find_connected_nodes({"sugar": True}, auto_fetch_nodes=True, auto_fetch_models=[Developer])
 
 # Auto-fetch models can also be passed as strings
@@ -1353,3 +1373,257 @@ coffees = await developer.coffee.find_connected_nodes({"sugar": True}, auto_fetc
 print(coffees[0].developer.nodes) # [<Developer>, <Developer>, ...]
 print(coffees[0].other_property.nodes) # []
 ```
+
+### Query filters <a name="query-filters"></a>
+
+By now, you have probably seen the use of filters in some examples of this documentation. In this section we will look at what filters are available, how to use them and how to combine them.
+
+> **Note**: All filters have full type support and IDE autocompletion.
+
+#### Operators <a name="query-filters-operators"></a>
+
+If you have worked with [`MongoDB's query operators`](https://docs.mongodb.com/manual/reference/operator/query/) before, you will probably get familiar with the filters pretty quickly, since they are heavily inspired by them. Like in MongoDB, we can roughly categorize the filters into five categories:
+
+- Comparison operators
+- String operators
+- List operators
+- Logical operators
+- Element operators
+
+##### Comparison operators <a name="query-filters-comparison-operators"></a>
+
+Comparison operators are used to compare two values.
+
+| Operator | Description                                                             | Usage example                                                           |
+| -------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `$eq`    | Matches values that are **equal** to a specified value.                 | `{"name": {"$eq": "John"}}` or the shortened version `{"name": "John"}` |
+| `$neq`   | Matches values that are **not** equal to a specified value.             | `{"name": {"$neq": "John"}}`                                            |
+| `$gt`    | Matches values that are **greater than** a specified value.             | `{"age": {"$gt": 25}}`                                                  |
+| `$gte`   | Matches values that are **greater than or equal** to a specified value. | `{"age": {"$gte": 25}}`                                                 |
+| `$lt`    | Matches values that are **less than** a specified value.                | `{"age": {"$lt": 25}}`                                                  |
+| `$lte`   | Matches values that are **less than or equal** to a specified value.    | `{"age": {"$lte": 25}}`                                                 |
+| `$in`    | Matches values that are **in a given list** of values.                  | `{"age": {"$in": [25, 27, 39]}}`                                        |
+| `$nin`   | Matches values that are **not in a given list** of values.              | `{"age": {"$nin": [25, 27, 39]}}`                                       |
+
+##### String operators <a name="query-filters-string-operators"></a>
+
+String operators are used to compare strings.
+
+| Operator       | Description                                                                   | Usage example                      |
+| -------------- | ----------------------------------------------------------------------------- | ---------------------------------- |
+| `$contains`    | Matches values that **contain** a specified substring.                        | `{"name": {"$contains": "hn"}}`    |
+| `$icontains`   | Matches values that **contain** a specified substring (case-insensitive).     | `{"name": {"$icontains": "hN"}}`   |
+| `$startsWith`  | Matches values that **starts with** a specified substring.                    | `{"name": {"$startsWith": "Jo"}}`  |
+| `$istartsWith` | Matches values that **starts with** a specified substring (case-insensitive). | `{"name": {"$istartsWith": "jO"}}` |
+| `$endsWith`    | Matches values that **ends with** a specified substring.                      | `{"name": {"$endsWith": "hn"}}`    |
+| `$iendsWith`   | Matches values that **ends with** a specified substring (case-insensitive).   | `{"name": {"$iendsWith": "Hn"}}`   |
+| `$regex`       | Matches values that match Neo4j's **regular expressions**.                    | `{"name": {"$regex": "Jo.*"}}`     |
+
+##### List operators <a name="query-filters-list-operators"></a>
+
+List operators are used to compare lists and their items.
+
+| Operator | Description                                                                                                                             | Usage example                                                                                     |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `$all`   | Matches lists that **contain all** elements specified in the query.                                                                     | `{"project_ids": {"$all": [25, 27, 39]}}`                                                         |
+| `$size`  | Matches lists that have the **given size** specified in the query. Can be `combined with comparison operators` like `$gt`, `$lte`, etc. | `{"project_ids": {"$size": 2}}` or combined with others `{"project_ids": {"$size": {"$gte": 4}}}` |
+
+##### Logical operators <a name="query-filters-logical-operators"></a>
+
+Logical operators are used to combine multiple filters or negate them.
+
+| Operator | Description                                                                                                            | Usage example                                    |
+| -------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `$not`   | Inverts the effect of a filter expression and returns results that do not match the filter expression.                 | `{"name": {"$not": {"$contains": "hn"}}}`        |
+| `$and`   | Joins query clauses with a logical **AND** returns all nodes that match the conditions of both clauses.                | `{"age": {"$and": [{"$gte": 20}, {"$lt": 45}]}}` |
+| `$or`    | Joins query clauses with a logical **OR** returns all nodes that match the conditions of either clause.                | `{"age": {"$or": [{"$lte": 20}, {"$gt": 45}]}}`  |
+| `$xor`   | Joins query clauses with a logical **XOR** returns all nodes that match the conditions of either clause, but not both. | `{"age": {"$xor": [{"$lte": 20}, {"$gt": 45}]}}` |
+
+##### Element operators <a name="query-filters-element-operators"></a>
+
+Element operators are Neo4j-specific operators which can be used to filter by a variety of different properties.
+
+| Operator     | Description                                                                                 | Usage example                                                |
+| ------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `$exists`    | Matches nodes where the given property exists.                                              | `{"name": {"$exists": True}}`                                |
+| `$elementId` | Matches nodes where the given element id matches.                                           | `{"$elementId": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:6"}` |
+| `$id`        | Matches nodes where the given id matches.                                                   | `{"$id": 6}`                                                 |
+| `$labels`    | Matches nodes where the given labels match Only available for node filters.                 | `{"$labels": ["Developer", "Python"]}`                       |
+| `$type`      | Matches relationships where the given type matches Only available for relationship filters. | `{"$type": "PRODUCES"}`                                      |
+
+#### Pattern matching <a name="query-filters-pattern-matching"></a>
+
+Pattern matching is a Neo4j-specific feature which allows you to match nodes and relationships based on their relationships to other nodes. In this case you can use the $patterns operator. Pattern filters allow you to specify a pattern of nodes and relationships that must be met in order for the node to be matched.
+
+Pattern filters are specified as a list of dictionaries, where each dictionary represents a pattern. Each pattern can specify the following keys:
+
+- `$node`: Filters applied to the target node. Expects a dictionary containing basic filters.
+- `$relationship`: Filters applied to the relationship between the source node and the target node. Expects a dictionary containing basic filters.
+- `$direction`: The direction of the pattern. Can be either INCOMING,OUTGOING or BOTH.
+- `$exists`: A boolean value indicating whether the pattern must exist or not.
+
+To make this easier to understand, let's take a look at an example:
+
+```python
+# We want to get all developers who don't drink coffee, this means we have to
+# filter our `Developer` nodes based on the relationships they have to `Coffee` nodes
+developers = await Developer.find_many({
+  "$patterns": [
+    {
+      "$exists": False,
+      "$node": {
+        "$labels": ["Coffee"]
+      },
+    }
+  ]
+})
+
+# Will only print developers who don't have a relationship to a coffee node
+print(developers) # [<Developer>, <Developer>, ...]
+```
+
+We can take this even further by defining multiple patterns, relationship filters and directions:
+
+```python
+# This time we want to get all developers who drink coffee and liked it
+# At the same time, these developers should be friends with a developer called `Jenny`
+
+# So we have to filter our `Developer` nodes based on the relationships they have to `Coffee` nodes
+# and the relationships they have to other `Developer` nodes where the name property equals `Jenny`
+developers = await Developer.find_many({
+  "$patterns": [
+    {
+        # The developer must like coffee
+        "$exists": True,
+        "$node": {"$labels": ["Coffee"]},
+        "$relationship": {"$type": "DRINKS", "likes_it": True},
+    },
+    {
+        # The developer must be friends with a developer called `Jenny`
+        "$exists": True,
+        # `$direction` defines the relationship direction from one `Developer` node to
+        # another `Developer` node. By defining this, we also rule out relationships
+        # from `Jenny` to other developers
+        "$direction": RelationshipMatchDirection.OUTGOING,
+        "$node": {"$labels": ["Developer"], "name": "Jenny"},
+        "$relationship": {"$type": "IS_FRIENDS_WITH"},
+    },
+  ]
+})
+
+# Will only print developers who have a relationship to a coffee node and a relationship
+# to a developer called `Jenny`
+print(developers) # [<Developer>, <Developer>, ...]
+```
+
+#### Multi-hop filters <a name="query-filters-multi-hop-filters"></a>
+
+Multi-hop filters are a special type of filter only available for [`NodeModel.find_connected_nodes()`](#nodemodelinstancefind_connected_nodes). It allows you to specify filter parameters on the target node and all relationships between them. To define this filter, you have a few operators you can define:
+
+- `$node`: Filters applied to the target node. Expects a dictionary containing basic filters. Can not contain pattern yet.
+- `$minHops`: The minimum number of hops between the source node and the target node. Must be greater than 0.
+- `$maxHops`: The maximum number of hops between the source node and the target node. You can pass "\*" as a value to define no upper limit. Must be greater than 1.
+- `$relationships`: A list of relationship filters. Each filter is a dictionary containing basic filters and must define a $type operator.
+
+You guessed it, we shall do an example once more! Take a look at the following example:
+
+```python
+# Picture a structure like this inside the graph:
+# (:Producer)-[:SELLS_TO]->(:Barista)-[:PRODUCES {with_love: bool}]->(:Coffee)-[:CONSUMED_BY]->(:Developer)
+
+# If we want to get all `Developer` nodes connected to a `Producer` node over the `Barista` and `Coffee` nodes,
+# where the `Barista` created the coffee with love, we can do so like this:
+producer = await Producer.find_one({"name": "Coffee Inc."})
+
+if producer is None:
+  # No producer found, do something else
+
+developers = await producer.find_connected_nodes({
+  "$node": {
+    "$labels": ["Developer", "Python"],
+    # You can use all available filters here as well
+  },
+  # You can define filters on specific relationships inside the path
+  "$relationships": [
+    {
+      # Here we define a filter for all `PRODUCES` relationships
+      # Only nodes where the with_love property is set to `True` will be returned
+      "$type": "PRODUCES",
+      "with_love": True
+    }
+  ]
+})
+
+print(developers) # [<Developer>, <Developer>, ...]
+
+# Or if no matches were found
+print(developers) # []
+```
+
+### Query projections <a name="query-projections"></a>
+
+Projections are used to only return specific parts of the models as dictionaries. They are defined as a dictionary where the key is the name of the property in the returned dictionary and the value is the name of the property on the model instance. This can be useful if you have large models but only need to return a specific property.
+
+In the following example, we will return a dictionary with a `dev_name` key, which get's mapped to the models `name` property and a `dev_age` key, which get's mapped to the models `age` property. Any defined mapping which does not exist on the model will have `None` as it's value
+
+```python
+developer = await Developer.find_one({"name": "John"}, {"dev_name": "name", "dev_age": "age", "i_do_not_exist": "some_non_existing_property"})
+
+print(developer) # {"dev_name": "John", "dev_age": 24, "i_do_not_exist": None}
+```
+
+### Query options <a name="query-options"></a>
+
+Query options are used to define how results are returned from the query. They provide some basic functionality for easily implementing pagination, sorting, etc. They are defined as a dictionary where the key is the name of the option and the value is the value of the option. The following options are available:
+
+- `limit`: Limits the number of returned results.
+- `skip`: Skips the first `n` results.
+- `sort`: Sorts the results by the given property. Can be either a string or a list of strings. If a list is provided, the results will be sorted by the first property and then by the second property, etc.
+- `order`: Defines the sort direction. Can be either `ASC` or `DESC`. Defaults to `ASC`.
+
+```python
+# Returns 50 results, skips the first 10 and sorts them by the `name` property in descending order
+developers = await Developer.find_many({}, options={"limit": 50, "skip": 10, "sort": "name", "order": QueryOptionsOrder.DESCENDING})
+
+print(len(developers)) # 50
+print(developers) # [<Developer>, <Developer>, ...]
+```
+
+### Auto-fetching relationship properties <a name="query-auto-fetching"></a>
+
+You have the option to automatically fetch all defined relationship properties of matched nodes. This will populate the `instance.<property>.nodes` attribute with the fetched nodes. This can be useful in situations where you need to fetch a specific node and get all of it's related nodes at the same time.
+
+> **Note**: Auto-fetching nodes with many relationships can be very expensive and slow down your queries. Use it with caution.
+
+To enable this behavior, you can either set the `auto_fetch_nodes` parameter to `True` or set the `auto_fetch_nodes setting` in the model settings to `True`, but doing so will `always enable auto-fetching`.
+
+You can also define which relationship properties to fetch by providing the fetched models to the `auto_fetch_models` parameter. This can be useful if you only want to fetch specific relationship properties.
+
+Now, let's take a look at an example:
+
+```python
+# Fetches everything defined in the relationship properties of the current matched node
+developer = await Developer.find_one({"name": "John"}, auto_fetch_nodes=True)
+
+# All nodes for all defined relationship properties are now fetched
+print(developer.coffee.nodes) # [<Coffee>, <Coffee>, ...]
+print(developer.developer.nodes) # [<Developer>, <Developer>, ...]
+print(developer.other_property.nodes) # [<OtherModel>, <OtherModel>, ...]
+```
+
+With the `auto_fetch_models` parameter, we can define which relationship properties to fetch:
+
+```python
+# Only fetch nodes for `Coffee` and `Developer` models defined in relationship properties
+# The models can also be passed as strings, where the string is the model's name
+developer = await Developer.find_one({"name": "John"}, auto_fetch_nodes=True, auto_fetch_models=[Coffee, "Developer"])
+
+# Only the defined models have been fetched
+print(developer.coffee.nodes) # [<Coffee>, <Coffee>, ...]
+print(developer.developer.nodes) # [<Developer>, <Developer>, ...]
+print(developer.other_property.nodes) # []
+```
+
+### Logging <a name="logging"></a>
+
+You can control the log level and whether to log to the console or not by setting the `PYNEO4J_OGM_LOG_LEVEL` and `PYNEO4J_OGM_ENABLE_LOGGING` as environment variables. The available levels are the same as provided by the build-in `logging` module. The default log level is `WARNING` and logging to the console is enabled by default.
