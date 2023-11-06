@@ -3,7 +3,7 @@ Types used to describe queries.
 """
 from datetime import date, datetime, time, timedelta
 from enum import Enum
-from typing import Dict, List, Literal, Optional, TypedDict, Union
+from typing import Any, Dict, List, Literal, TypedDict, Union
 
 
 class QueryOptionsOrder(str, Enum):
@@ -111,35 +111,30 @@ QueryOperators = TypedDict(
 )
 
 PatternNodeOperators = TypedDict(
-    "PatternNodeElementOperators",
+    "PatternNodeOperators",
     {"$elementId": str, "$id": int, "$labels": List[str]},
-    total=True,
+    total=False,
 )
 
 PatternRelationshipOperators = TypedDict(
-    "PatternRelationshipElementOperators",
+    "PatternRelationshipOperators",
     {"$elementId": str, "$id": int, "$type": Union[str, List[str]]},
-    total=True,
+    total=False,
 )
-
-NodePattern = Union[Dict[str, Union[QueryOperators, QueryDataTypes]], PatternNodeOperators]
-RelationshipPattern = Union[Dict[str, Union[QueryOperators, QueryDataTypes]], PatternRelationshipOperators]
 
 PatternOperator = TypedDict(
     "PatternOperator",
     {
         "$exists": bool,
         "$direction": RelationshipMatchDirection,
-        "$relationship": RelationshipPattern,
-        "$node": NodePattern,
+        "$relationship": Union[Dict[str, Union[QueryOperators, QueryDataTypes]], PatternRelationshipOperators],
+        "$node": Union[Dict[str, Union[QueryOperators, QueryDataTypes]], PatternNodeOperators],
     },
     total=False,
 )
 
 
-MultiHopRelationship = TypedDict(
-    "MultiHopRelationship", {"$elementId": Optional[str], "$id": Optional[int], "$type": str}, total=False
-)
+MultiHopRelationship = TypedDict("MultiHopRelationship", {"$elementId": str, "$id": int, "$type": str}, total=False)
 
 # We need to define different interfaces for nodes and relationships to not show invalid operants
 # for the model type.
@@ -164,12 +159,12 @@ QueryRelationshipPropertyOperators = TypedDict(
 
 MultiHopNode = TypedDict(
     "MultiHopNode",
-    {"$elementId": Optional[str], "$id": Optional[int], "$labels": List[str]},
+    {"$elementId": str, "$id": int, "$labels": List[str]},
     total=False,
 )
 
 # The actual interfaces used to describe query filters
-NodeFilters = Union[Dict[str, Union[QueryOperators, QueryDataTypes]], QueryNodeOperators]
+NodeFilters = Union[Dict[str, Union[QueryOperators, QueryDataTypes, Any]], QueryNodeOperators]
 RelationshipFilters = Union[Dict[str, Union[QueryOperators, QueryDataTypes]], QueryRelationshipOperators]
 RelationshipPropertyFilters = Union[
     Dict[str, Union[QueryOperators, QueryDataTypes]], QueryRelationshipPropertyOperators
@@ -178,10 +173,10 @@ RelationshipPropertyFilters = Union[
 MultiHopFilters = TypedDict(
     "MultiHopFilters",
     {
-        "$minHops": Optional[int],
-        "$maxHops": Optional[Union[int, Literal["*"]]],
+        "$minHops": int,
+        "$maxHops": Union[int, Literal["*"]],
         "$node": Union[Dict[str, Union[QueryOperators, QueryDataTypes]], MultiHopNode],
-        "$relationships": Optional[List[Union[Dict[str, Union[QueryOperators, QueryDataTypes]], MultiHopRelationship]]],
+        "$relationships": List[Union[Dict[str, Union[QueryOperators, QueryDataTypes]], MultiHopRelationship]],
     },
     total=False,
 )
