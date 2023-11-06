@@ -7,7 +7,6 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 - [ ] Add more tests
 - [ ] Add bookmark support
 - [ ] Add migrations
-- [ ] Add some metadata to pyproject.toml before first release
 - [ ] Add support for Pydantic v2
 
 ## ⚡️ Quick start <a name="quick-start"></a>
