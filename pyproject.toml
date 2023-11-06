@@ -5,6 +5,7 @@ description = ""
 authors = ["groc-prog <marc.troisner@gmail.com>"]
 readme = "README.md"
 license = "MIT"
+keywords = ["neo4j", "python", "orm", "ogm", "async", "asynchronous", "database", "graph-database", "pydantic"]
 packages = [{ include = "pyneo4j_ogm" }]
 
 [tool.poetry.dependencies]
