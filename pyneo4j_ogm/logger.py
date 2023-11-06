@@ -2,15 +2,15 @@
 Logging configuration for the OGM.
 
 Logging is controlled by two environment variables:
-- NEO4J_OGM_LOG_LEVEL: the log level to use (default: WARNING)
-- NEO4J_OGM_ENABLE_LOGGING: whether to enable logging (default: True)
+- : the log level to use (default: WARNING)
+- PYNEO4J_OGM_ENABLE_LOGGING: whether to enable logging (default: True)
 """
 import logging
 from os import environ
 
 # Get log level and whether to enable logging from environment variables
-enable_logging = environ.get("NEO4J_OGM_ENABLE_LOGGING", "True").lower() == "true"
-log_level = int(environ.get("NEO4J_OGM_LOG_LEVEL", logging.WARNING))
+enable_logging = environ.get("PYNEO4J_OGM_ENABLE_LOGGING", "True").lower() == "true"
+log_level = int(environ.get("PYNEO4J_OGM_LOG_LEVEL", logging.WARNING))
 
 logger = logging.getLogger("pyneo4j-ogm")
 logger.setLevel(log_level)
