@@ -1,0 +1,49 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Pytest: Unit- and integration-tests",
+      "type": "shell",
+      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/coverage tests",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true
+      }
+    },
+    {
+      "label": "Pytest: Unit tests",
+      "type": "shell",
+      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/unit/coverage tests/unit",
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true
+      }
+    },
+    {
+      "label": "Pytest: Integration tests",
+      "type": "shell",
+      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/integration/coverage tests/integration",
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true
+      }
+    }
+  ]
+}

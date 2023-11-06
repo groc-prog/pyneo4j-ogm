@@ -1,14 +1,48 @@
 [tool.poetry]
-name = "neo4j-ogm"
-version = "0.1.0"
+name = "pyneo4j-ogm"
+version = "0.0.0"
 description = ""
 authors = ["groc-prog <marc.troisner@gmail.com>"]
 readme = "README.md"
-packages = [{include = "neo4j_ogm"}]
+license = "MIT"
+keywords = ["neo4j", "python", "orm", "ogm", "async", "asynchronous", "database", "graph-database", "pydantic"]
+packages = [{ include = "pyneo4j_ogm" }]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
+pydantic = "^1.10.9"
+neo4j = "^5.9.0"
 
+[tool.poetry.group.dev.dependencies]
+pylint = "^2.17.5"
+black = "^23.7.0"
+pytest = "^7.4.0"
+pre-commit = "^3.3.3"
+pytest-asyncio = "^0.21.1"
+pyright = "^1.1.325"
+isort = "^5.12.0"
+pytest-cov = "^4.1.0"
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:tool.poetry.version"]
+branch = "main"
+upload_to_PyPI = false
+upload_to_release = true
+build_command = "pip install poetry && poetry build"
+commit_author = "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["build", "chore", "ci", "docs", "feat", "fix", "perf", "style", "refactor", "test"]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+
+[tool.black]
+line-length = 120
+target-version = ["py310", "py311"]
+workers = 4
+
+[tool.isort]
+profile = "black"
 
 [build-system]
 requires = ["poetry-core"]
