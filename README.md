@@ -5,12 +5,8 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 ## Todo's and missing features <a name="todos-and-missing-features"></a>
 
 - [ ] Add more tests
-- [ ] Allow dirs to be passed to register_models (will register all models found in dir and subdirs)
-- [ ] Add setting for automatic create/update timestamps for models, timestamps will be overwritten if also defined on model
-- [ ] Add upsert-like functionality to find_one()
 - [ ] Add bookmark support
 - [ ] Add migrations
-- [ ] Add MIT license
 - [ ] Add some metadata to pyproject.toml before first release
 - [ ] Add support for Pydantic v2
 
