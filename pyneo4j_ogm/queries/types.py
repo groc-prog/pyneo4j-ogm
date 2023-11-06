@@ -168,6 +168,7 @@ QueryRelationshipPropertyOperators = TypedDict(
 MultiHopNode = TypedDict(
     "MultiHopNode",
     {"$elementId": Optional[str], "$id": Optional[int], "$labels": List[str]},
+    total=False,
 )
 
 # The actual interfaces used to describe query filters
@@ -185,6 +186,7 @@ MultiHopFilters = TypedDict(
         "$node": Union[Dict[str, QueryOperators], MultiHopNode],
         "$relationships": Optional[List[MultiHopRelationship]],
     },
+    total=False,
 )
 
 
