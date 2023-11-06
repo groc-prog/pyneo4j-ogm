@@ -7,7 +7,40 @@ on:
     branches: [main]
 
 jobs:
-  quality:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      POETRY_VERSION: "1.5.1"
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.10.6, 3.11]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python Poetry
+        uses: abatilo/actions-poetry@v2.3.0
+
+      - name: Configure poetry
+        shell: bash
+        run: python -m poetry config virtualenvs.in-project true
+
+      - name: View poetry version
+        run: poetry --version
+
+      - name: Install dependencies
+        run: python -m poetry install
+
+      - name: Run linter
+        run: poetry run pylint --rcfile=.pylintrc pyneo4j_ogm tests
+
+  type-check:
     runs-on: ubuntu-latest
     env:
       POETRY_VERSION: "1.5.1"
@@ -40,10 +73,7 @@ jobs:
       - name: Run type-checker
         run: poetry run pyright
 
-      - name: Run linter
-        run: poetry run pylint --rcfile=.pylintrc pyneo4j_ogm tests
-
-  tests:
+  test:
     runs-on: ubuntu-latest
     services:
       neo4j:
@@ -85,7 +115,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: [quality, tests]
+    needs: [lint, type-check, test]
     if: |
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
