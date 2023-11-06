@@ -188,7 +188,7 @@ asyncio.run(main())
       - [Manual indexing and constraints ](#manual-indexing-and-constraints-)
       - [Client utilities ](#client-utilities-)
     - [Model configuration ](#model-configuration-)
-      - [Defining node and relationship properties ](#defining-node-and-relationship-properties-)
+      - [Defining node properties ](#defining-node-properties-)
       - [Defining indexes and constraints on model properties ](#defining-indexes-and-constraints-on-model-properties-)
       - [Defining settings for a model ](#defining-settings-for-a-model-)
         - [NodeModel specific settings ](#nodemodel-specific-settings-)
@@ -231,6 +231,20 @@ asyncio.run(main())
         - [Auto-fetching nodes ](#auto-fetching-nodes--2)
       - [RelationshipModelInstance.start\_node() ](#relationshipmodelinstancestart_node-)
       - [RelationshipModelInstance.end\_node() ](#relationshipmodelinstanceend_node-)
+    - [Model properties ](#model-properties-)
+    - [Relationship-properties ](#relationship-properties-)
+      - [Defining relationship properties ](#defining-relationship-properties-)
+      - [Relationship-property methods ](#relationship-property-methods-)
+        - [RelationshipProperty.relationship() ](#relationshippropertyrelationship-)
+        - [RelationshipProperty.connect() ](#relationshippropertyconnect-)
+        - [RelationshipProperty.disconnect() ](#relationshippropertydisconnect-)
+        - [RelationshipProperty.disconnect\_all() ](#relationshippropertydisconnect_all-)
+        - [RelationshipProperty.replace() ](#relationshippropertyreplace-)
+        - [RelationshipProperty.find\_connected\_nodes() ](#relationshippropertyfind_connected_nodes-)
+        - [Filters ](#filters--4)
+        - [Projections ](#projections--3)
+        - [Query options ](#query-options--2)
+        - [Auto-fetching nodes ](#auto-fetching-nodes--3)
 
 ### Basic concepts <a name="basic-concepts"></a>
 
@@ -400,7 +414,7 @@ Both Node- and RelationshipModels provide a few configuration options that can b
 
 Since this library uses `pydantic` under the hood, all of the configuration options available for pydantic models are also available for Node- and RelationshipModels. For more information about the configuration options available for pydantic models, see the [`pydantic docs`](https://docs.pydantic.dev/1.10/).
 
-#### Defining node and relationship properties <a name="defining-node-and-relationship-properties"></a>
+#### Defining node properties <a name="defining-node-properties"></a>
 
 Node- and RelationshipModels are defined in the same way as pydantic models. The only difference is that you have to use the `NodeModel` and `RelationshipModel` classes instead of pydantic's `BaseModel` class. Here is an example of how to define a simple NodeModel:
 
@@ -1153,4 +1167,189 @@ This method returns the end node of the current relationship instance. This meth
 end_node = await coffee_relationship.end_node()
 
 print(end_node) # <Developer>
+```
+
+### Model properties <a name="model-properties"></a>
+
+Node- and RelationshipModels have a few pre-defined properties which reflect the entity inside the graph and are used internally in queries. These properties are:
+
+- `element_id`: The element id of the entity inside the graph. This property is used internally to identify the entity inside the graph.
+- `id`: The id of the entity inside the graph.
+- `modified_properties`: A set of properties which have been modified on the model instance since it was last synced with the graph entity.
+
+The `RelationshipModel` class has some additional properties:
+
+- `start_node_element_id`: The element id of the start node of the relationship.
+- `start_node_id`: The ID of the start node of the relationship.
+- `end_node_element_id`: The element id of the end node of the relationship.
+- `end_node_id`: The ID of the end node of the relationship.
+
+### Relationship-properties <a name="relationship-properties"></a>
+
+> **Note**: Relationship-properties are only available for classes which inherit from the `NodeModel` class.
+
+#### Defining relationship properties <a name="defining-relationship-properties"></a>
+
+Relationship-properties are used to define relationships between nodes. They are defined as a class attribute on a node model and reflect the relationship to another node model. Relationship-properties are defined using the `RelationshipProperty` class. Let's take a look at an example:
+
+```python
+class Developer(NodeModel):
+
+    # Here we define a relationship to one or more `Coffee` nodes, both the target
+    # and relationship model can be defined as strings (Has to be the exact name of the model)
+
+    # Notice that the `RelationshipProperty` class takes two type arguments, the first
+    # one being the target model and the second one being the relationship model
+    coffee: RelationshipProperty["Coffee", "Drinks"] = RelationshipProperty(
+        # The target model is the model we want to connect to
+        target_model="Coffee",
+        # The relationship model is the model which defines the relationship
+        relationship_model=Drinks,
+        # The direction of the relationship inside the graph
+        direction=RelationshipPropertyDirection.OUTGOING,
+        # Cardinality defines how many nodes can be connected to the relationship
+        # **Note**: This only softly enforces cardinality and has to be defined on
+        # both models defining the relationship for it to work in both directions
+        cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
+        # Whether to allow multiple connections to the same node
+        allow_multiple=True,
+    )
+```
+
+#### Relationship-property methods <a name="relationship-property-methods"></a>
+
+Relationship-properties provide a number of methods to interact with the relationship inside the graph. We will take a look at all of them in the following section.
+
+> **Note**: In the following, the terms `source node` and `target node` will be used. Source node refers to the `node instance the method is called on` and target node refers to the `node instance provided to the method`.
+
+##### RelationshipProperty.relationship() <a name="relationship-property-relationship"></a>
+
+Returns the relationship between the source node and the target node. The method expects a single argument `node` which has to be the target node of the relationship. If no relationship was found, `None` is returned.
+
+```python
+# The `developer` and `coffee` variables have been defined somewhere above
+
+# Returns the relationship between the two nodes
+coffee_relationship = await developer.coffee.relationship(coffee)
+
+print(coffee_relationship) # <Drinks>
+
+# Or if no relationship was found
+print(coffee_relationship) # None
+```
+
+##### RelationshipProperty.connect() <a name="relationship-property-connect"></a>
+
+Connects the given target node to the source node. The method expects the target node as the first argument, and optional properties as the second argument. The properties provided will be carried over to the relationship inside the graph. If the relationship already exists, nothing will happen. The returned value will be the created relationship.
+
+```python
+# The `developer` and `coffee` variables have been defined somewhere above
+
+coffee_relationship = await developer.coffee.connect(coffee, {"likes_it": True})
+
+print(coffee_relationship) # <Drinks>
+```
+
+##### RelationshipProperty.disconnect() <a name="relationship-property-disconnect"></a>
+
+Disconnects the target node from the source node and deletes the relationship between them. The only argument to the method is the target node. If the relationship does not exist, nothing will happen. The returned value will be the number of deleted relationships.
+
+> **Note**: If `allow_multiple` was set to `True` and multiple relationships to the target node exist, all of them will be deleted.
+
+```python
+# The `developer` and `coffee` variables have been defined somewhere above
+
+coffee_relationship_count = await developer.coffee.disconnect(coffee)
+
+print(coffee_relationship_count) # However many relationships were deleted
+```
+
+##### RelationshipProperty.disconnect_all() <a name="relationship-property-disconnect-all"></a>
+
+Disconnects all target nodes from the source node and deletes all relationships between them. Returns the number of deleted relationships.
+
+```python
+# The `developer` and `coffee` variables have been defined somewhere above
+
+coffee_relationship_count = await developer.coffee.disconnect_all()
+
+print(coffee_relationship_count) # However many relationships were deleted
+```
+
+##### RelationshipProperty.replace() <a name="relationship-property-replace"></a>
+
+Replaces a given relationship between the source node and one target node with a new relationship to another target node, carrying over all properties defined in the relationship. Returns the replaced relationship
+
+```python
+# The `developer`, `coffee_latte` and `coffee_americano` variables have been defined somewhere above
+
+# Currently there is a relationship defined between the `developer` and `coffee_latte` nodes where
+# the `likes_it` property is set to `True`
+
+# Moves the relationship to `coffee_latte` to `coffee_americano`
+coffee_relationship = await developer.coffee.replace(coffee_latte, coffee_americano)
+
+print(coffee_relationship) # <Drinks likes_it=True>
+```
+
+##### RelationshipProperty.find_connected_nodes() <a name="relationship-property-find-connected-nodes"></a>
+
+Finds and returns all connected nodes for the given relationship property. This method always returns a list of instances/dictionaries or an empty list if no results were found.
+
+##### Filters <a name="model-find-many-filters"></a>
+
+You can pass filters using the `filters` argument to filter the returned nodes. For more about filters, see the [`Filtering queries`](#query-filters) section.
+
+```python
+# Returns all `Coffee` nodes where the `sugar` property is set to `True`
+coffees = await developer.coffee.find_connected_nodes({"sugar": True})
+
+print(coffees) # [<Coffee>, <Coffee>, ...]
+
+# Or if no matches were found
+print(coffees) # []
+```
+
+##### Projections <a name="model-find-many-projections"></a>
+
+`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](#query-projections) section.
+
+```python
+# Returns dictionaries with the coffees `sugar` property at the `contains_sugar` key instead
+# of model instances
+coffees = await developer.coffee.find_connected_nodes({"sugar": True})
+
+print(coffees) # [{"contains_sugar": True}, {"contains_sugar": False}, ...]
+```
+
+##### Query options <a name="model-find-many-query-options"></a>
+
+`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](#query-options) section.
+
+```python
+# Skips the first 10 results and returns the next 20
+coffees = await developer.coffee.find_connected_nodes({"sugar": True}, options={"limit": 20, "skip": 10})
+
+print(coffees) # [<Coffee>, <Coffee>, ...]
+```
+
+##### Auto-fetching nodes <a name="model-find-many-auto-fetching-nodes"></a>
+
+The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship properties when running the `find_many()` query. For more about auto-fetching, see [`Auto-fetching relationship properties`](#query-auto-fetching).
+
+```python
+# Returns coffee instances with `instance.<property>.nodes` properties already fetched
+coffees = await developer.coffee.find_connected_nodes({"sugar": True}, auto_fetch_nodes=True)
+
+print(coffees[0].developer.nodes) # [<Developer>, <Developer>, ...]
+print(coffees[0].other_property.nodes) # [<OtherModel>, <OtherModel>, ...]
+
+# Returns developer instances with only the `instance.coffee.nodes` property already fetched
+coffees = await developer.coffee.find_connected_nodes({"sugar": True}, auto_fetch_nodes=True, auto_fetch_models=[Developer])
+
+# Auto-fetch models can also be passed as strings
+coffees = await developer.coffee.find_connected_nodes({"sugar": True}, auto_fetch_nodes=True, auto_fetch_models=["Developer"])
+
+print(coffees[0].developer.nodes) # [<Developer>, <Developer>, ...]
+print(coffees[0].other_property.nodes) # []
 ```
