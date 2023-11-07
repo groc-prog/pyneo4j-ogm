@@ -152,7 +152,9 @@ class QueryBuilder:
         self.query["where"] = " AND ".join([query for query in where_queries if query != ""])
         self.parameters = self._operator_builder.parameters
 
-    def multi_hop_filters(self, filters: MultiHopFilters, start_ref: str = "n", end_ref: str = "m") -> None:
+    def multi_hop_filters(
+        self, filters: MultiHopFilters, start_ref: str = "n", end_ref: str = "m", rel_ref: str = "r"
+    ) -> None:
         """
         Builds the filters for a multi hop query.
 
@@ -160,6 +162,7 @@ class QueryBuilder:
             filters (Dict[str, Any]): The filters to build.
             start_ref (str, optional): The reference to the start node. Defaults to "n".
             end_ref (str, optional): The reference to the end node. Defaults to "m".
+            rel_ref (str, optional): The reference to the relationship. Defaults to "r".
         """
         logger.debug("Building multi hop filters %s", filters)
         self._operator_builder.ref = start_ref
@@ -174,7 +177,6 @@ class QueryBuilder:
         self._operator_builder.remove_invalid_expressions(validated_filters)
 
         original_ref = deepcopy(self._operator_builder.ref)
-        relationship_ref = self._operator_builder.build_param_var()
 
         # Build path match
         relationship_match = self.relationship_match(
@@ -196,7 +198,7 @@ class QueryBuilder:
 
         # Build relationship filters
         where_relationship_queries: Dict[str, str] = {}
-        self._operator_builder.ref = relationship_ref
+        self._operator_builder.ref = rel_ref
 
         if "$relationships" in validated_filters:
             for relationship in validated_filters["$relationships"]:
@@ -214,9 +216,9 @@ class QueryBuilder:
 
         if len(where_relationship_queries.keys()) > 0:
             relationship_where_query = f"""
-                ALL({relationship_ref} IN relationships(path) WHERE
-                    CASE type({relationship_ref})
-                        {"".join([f"WHEN '{relationship_name}' THEN {relationship_query}" for relationship_name, relationship_query in where_relationship_queries.items()])}
+                ALL({rel_ref} IN relationships(path) WHERE
+                    CASE type({rel_ref})
+                        {" ".join([f"WHEN '{relationship_name}' THEN {relationship_query}" for relationship_name, relationship_query in where_relationship_queries.items()])}
                         ELSE true
                     END
                 )"""
