@@ -12,7 +12,7 @@ def hook_function():
     pass
 
 
-def test_normalize_hooks():
+def test_normalize_hooks_validator():
     hooks = {
         "hook_list": [hook_function, "not a function"],
         "hook_function": hook_function,

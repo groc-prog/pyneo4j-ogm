@@ -5,7 +5,7 @@ from pydantic import BaseModel, Extra, root_validator
 from pyneo4j_ogm.queries.validators import _normalize_fields, _normalize_labels
 
 
-def test_normalize_fields():
+def test_normalize_fields_validator():
     class TestModel(BaseModel):
         attr: str
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
@@ -28,7 +28,7 @@ def test_normalize_fields():
     assert not hasattr(test_model, "invalid_operator")
 
 
-def test_normalize_labels():
+def test_normalize_labels_validator():
     class TestModel(BaseModel):
         pass
 

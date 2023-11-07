@@ -11,4 +11,8 @@ def query_builder():
     """
     Fixture for providing a QueryBuilder instance.
     """
-    return QueryBuilder()
+    builder = QueryBuilder()
+    builder.reset_query()
+    builder.parameters = {}
+
+    return builder

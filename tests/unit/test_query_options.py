@@ -2,7 +2,7 @@
 
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 from pyneo4j_ogm.queries.types import QueryOptionsOrder
-from tests.unit.fixtures.query_builder import query_builder
+from tests.fixtures.query_builder import query_builder
 
 
 def test_query_options_with_empty_options(query_builder: QueryBuilder):

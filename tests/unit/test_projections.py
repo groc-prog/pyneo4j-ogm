@@ -1,7 +1,7 @@
 # pylint: disable=invalid-name, redefined-outer-name, unused-import, missing-module-docstring
 
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
-from tests.unit.fixtures.query_builder import query_builder
+from tests.fixtures.query_builder import query_builder
 
 
 def test_build_projections_with_empty_projections(query_builder: QueryBuilder):

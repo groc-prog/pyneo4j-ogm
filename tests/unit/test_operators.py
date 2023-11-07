@@ -1,7 +1,8 @@
 # pylint: disable=invalid-name, redefined-outer-name, unused-import, missing-module-docstring
 
 from pyneo4j_ogm.queries.operators import Operators
-from tests.unit.fixtures.operators import operators_builder
+from tests.fixtures.operators_builder import operators_builder
+from tests.utils.string_utils import assert_string_equality
 
 
 def test_reset_state(operators_builder: Operators):
@@ -207,9 +208,12 @@ def test_patterns_operator(operators_builder: Operators):
             "$exists": True,
         }
     )
-    assert (
-        query_string
-        == "EXISTS {MATCH (n)-[_n_0]->(_n_1) WHERE _n_1.name = $_n_2 AND ALL(i IN labels(_n_1) WHERE i IN $_n_3)}"
+    assert_string_equality(
+        query_string,
+        """
+        EXISTS {MATCH (n)-[_n_0]->(_n_1) WHERE _n_1.name = $_n_2 AND
+        ALL(i IN labels(_n_1) WHERE i IN $_n_3)}
+        """,
     )
     assert operators_builder.parameters == {"_n_2": "John", "_n_3": ["A", "B"]}
 
@@ -221,7 +225,13 @@ def test_patterns_operator(operators_builder: Operators):
             "$exists": False,
         }
     )
-    assert query_string == "NOT EXISTS {MATCH (n)<-[_n_0]-(_n_1) WHERE _n_0.valid = $_n_2 AND type(_n_0) = $_n_3}"
+    assert_string_equality(
+        query_string,
+        """
+        NOT EXISTS {MATCH (n)<-[_n_0]-(_n_1) WHERE _n_0.valid = $_n_2 AND
+        type(_n_0) = $_n_3}
+        """,
+    )
     assert operators_builder.parameters == {"_n_2": True, "_n_3": "VALIDATION"}
 
     operators_builder.reset_state()
@@ -233,9 +243,13 @@ def test_patterns_operator(operators_builder: Operators):
             "$exists": False,
         }
     )
-    assert (
-        query_string
-        == "NOT EXISTS {MATCH (n)-[_n_0]-(_n_1) WHERE _n_1.name = $_n_2 AND ALL(i IN labels(_n_1) WHERE i IN $_n_3) AND _n_0.valid = $_n_4 AND type(_n_0) = $_n_5}"  # pylint: disable=line-too-long
+    assert_string_equality(
+        query_string,
+        """
+        NOT EXISTS {MATCH (n)-[_n_0]-(_n_1) WHERE _n_1.name = $_n_2 AND
+        ALL(i IN labels(_n_1) WHERE i IN $_n_3) AND
+        _n_0.valid = $_n_4 AND type(_n_0) = $_n_5}
+        """,
     )
     assert operators_builder.parameters == {"_n_2": "John", "_n_3": ["A", "B"], "_n_4": True, "_n_5": "VALIDATION"}
 
@@ -286,9 +300,17 @@ def test_build_string_operators(operators_builder: Operators):
             "g": {"$regex": "\\bg\\w*"},
         }
     )
-    assert (
-        query_string
-        == "toLower(n.a) CONTAINS toLower($_n_0) AND n.b CONTAINS $_n_1 AND toLower(n.c) STARTS WITH toLower($_n_2) AND n.d STARTS WITH $_n_3 AND toLower(n.e) ENDS WITH toLower($_n_4) AND n.f ENDS WITH $_n_5 AND n.g =~ $_n_6"  # pylint: disable=line-too-long
+    assert_string_equality(
+        query_string,
+        """
+        toLower(n.a) CONTAINS toLower($_n_0) AND
+        n.b CONTAINS $_n_1 AND
+        toLower(n.c) STARTS WITH toLower($_n_2) AND
+        n.d STARTS WITH $_n_3 AND
+        toLower(n.e) ENDS WITH toLower($_n_4) AND
+        n.f ENDS WITH $_n_5 AND
+        n.g =~ $_n_6
+        """,
     )
     assert operators_builder.parameters == {
         "_n_0": "a",
@@ -305,9 +327,9 @@ def test_build_list_operators(operators_builder: Operators):
     query_string = operators_builder.build_operators(
         {"a": {"$in": [1, 2]}, "b": {"$nin": ["a", "b"]}, "c": {"$all": [1, 2]}}
     )
-    assert (
-        query_string
-        == "ANY(i IN n.a WHERE i IN $_n_0) AND NONE(i IN n.b WHERE i IN $_n_1) AND ALL(i IN n.c WHERE i IN $_n_2)"
+    assert_string_equality(
+        query_string,
+        "ANY(i IN n.a WHERE i IN $_n_0) AND NONE(i IN n.b WHERE i IN $_n_1) AND ALL(i IN n.c WHERE i IN $_n_2)",
     )
     assert operators_builder.parameters == {
         "_n_0": [1, 2],
@@ -326,9 +348,9 @@ def test_build_size_operators(operators_builder: Operators):
             "e": {"$size": {"$lte": 5}},
         }
     )
-    assert (
-        query_string
-        == "SIZE(n.a) = $_n_0 AND SIZE(n.b) > $_n_1 AND SIZE(n.c) >= $_n_2 AND SIZE(n.d) < $_n_3 AND SIZE(n.e) <= $_n_4"
+    assert_string_equality(
+        query_string,
+        "SIZE(n.a) = $_n_0 AND SIZE(n.b) > $_n_1 AND SIZE(n.c) >= $_n_2 AND SIZE(n.d) < $_n_3 AND SIZE(n.e) <= $_n_4",
     )
     assert operators_builder.parameters == {
         "_n_0": 1,
@@ -349,9 +371,14 @@ def test_build_logical_operators(operators_builder: Operators):
             "d": {"$not": {"$eq": 1}},
         }
     )
-    assert (
-        query_string
-        == "(n.a = $_n_0 OR n.a = $_n_1) AND (n.b = $_n_2 AND n.b = $_n_3) AND (n.c = $_n_4 XOR n.c = $_n_5) AND NOT(n.d = $_n_6)"  # pylint: disable=line-too-long
+    assert_string_equality(
+        query_string,
+        """
+        (n.a = $_n_0 OR n.a = $_n_1) AND
+        (n.b = $_n_2 AND n.b = $_n_3) AND
+        (n.c = $_n_4 XOR n.c = $_n_5) AND
+        NOT(n.d = $_n_6)
+        """,
     )
     assert operators_builder.parameters == {
         "_n_0": 1,
@@ -395,9 +422,13 @@ def test_build_combined_operators(operators_builder: Operators):
             ],
         }
     )
-    assert (
-        query_string
-        == "n.a = $_n_0 AND (n.b > $_n_1 AND n.b < $_n_2) AND EXISTS {MATCH (n)-[_n_3]->(_n_4) WHERE _n_4.name = $_n_5 AND ALL(i IN labels(_n_4) WHERE i IN $_n_6)}"  # pylint: disable=line-too-long
+    assert_string_equality(
+        query_string,
+        """
+        n.a = $_n_0 AND
+        (n.b > $_n_1 AND n.b < $_n_2) AND
+        EXISTS {MATCH (n)-[_n_3]->(_n_4) WHERE _n_4.name = $_n_5 AND ALL(i IN labels(_n_4) WHERE i IN $_n_6)}
+        """,
     )
     assert operators_builder.parameters == {"_n_0": "John", "_n_1": 18, "_n_2": 30, "_n_5": "John", "_n_6": ["A", "B"]}
 
