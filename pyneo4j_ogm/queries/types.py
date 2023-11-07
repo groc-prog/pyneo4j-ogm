@@ -165,9 +165,9 @@ MultiHopNode = TypedDict(
 
 # The actual interfaces used to describe query filters
 NodeFilters = Union[Dict[str, Union[QueryOperators, QueryDataTypes, Any]], QueryNodeOperators]
-RelationshipFilters = Union[Dict[str, Union[QueryOperators, QueryDataTypes]], QueryRelationshipOperators]
+RelationshipFilters = Union[Dict[str, Union[QueryOperators, QueryDataTypes, Any]], QueryRelationshipOperators]
 RelationshipPropertyFilters = Union[
-    Dict[str, Union[QueryOperators, QueryDataTypes]], QueryRelationshipPropertyOperators
+    Dict[str, Union[QueryOperators, QueryDataTypes, Any]], QueryRelationshipPropertyOperators
 ]
 
 MultiHopFilters = TypedDict(
