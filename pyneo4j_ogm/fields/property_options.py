@@ -39,7 +39,4 @@ def WithOptions(
         _point_index: bool = point_index
         _unique: bool = unique
 
-        def __new__(cls, *args, **kwargs) -> object:
-            return property_type.__new__(property_type, *args, **kwargs)
-
     return PropertyWithOptions
