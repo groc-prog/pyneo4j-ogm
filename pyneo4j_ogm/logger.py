@@ -2,7 +2,7 @@
 Logging configuration for the OGM.
 
 Logging is controlled by two environment variables:
-- : the log level to use (default: WARNING)
+- PYNEO4J_OGM_LOG_LEVEL: the log level to use (default: WARNING)
 - PYNEO4J_OGM_ENABLE_LOGGING: whether to enable logging (default: True)
 """
 import logging
