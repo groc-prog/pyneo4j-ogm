@@ -329,10 +329,10 @@ class QueryOptionModel(BaseModel):
     Validator model for query options.
     """
 
-    limit: Optional[int] = Field(gt=0)
-    skip: Optional[int] = Field(ge=0)
-    sort: Optional[List[str]]
-    order: Optional[QueryOptionsOrder]
+    limit: Optional[int] = Field(default=None, gt=0)
+    skip: Optional[int] = Field(default=None, ge=0)
+    sort: Optional[Union[List[str], str]] = Field(default=None)
+    order: Optional[QueryOptionsOrder] = Field(default=None)
 
     @validator("sort", pre=True)
     def sort_to_list(cls, value: Optional[Union[str, List[str]]]) -> Optional[List[str]]:
