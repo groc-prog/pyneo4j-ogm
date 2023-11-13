@@ -3,6 +3,7 @@
 
 import os
 from typing import cast
+from unittest.mock import patch
 
 import pytest
 from neo4j import AsyncSession
@@ -18,8 +19,10 @@ from pyneo4j_ogm.exceptions import (
     InvalidLabelOrType,
     MissingDatabaseURI,
     NotConnectedToDatabase,
+    TransactionInProgress,
 )
 from pyneo4j_ogm.fields.property_options import WithOptions
+from pyneo4j_ogm.logger import logger
 from tests.fixtures.db_clients import neo4j_session, pyneo4j_client
 
 pytest_plugins = ("pytest_asyncio",)
@@ -535,6 +538,17 @@ async def test_drop_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncS
     assert len(results) == 0
 
 
+async def test_batch(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
+    async with pyneo4j_client.batch():
+        await pyneo4j_client.cypher("CREATE (n:Node) SET n.name = $name", parameters={"name": "TestName"})
+        await pyneo4j_client.cypher("CREATE (n:Node) SET n.name = $name", parameters={"name": "TestName2"})
+
+    query_results = await neo4j_session.run("MATCH (n) RETURN n")
+    results = await query_results.values()
+
+    assert len(results) == 2
+
+
 async def test_batch_exception(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     with pytest.raises(Exception):
         async with pyneo4j_client.batch():
@@ -547,3 +561,18 @@ async def test_batch_exception(pyneo4j_client: Pyneo4jClient, neo4j_session: Asy
     results = await query_results.values()
 
     assert len(results) == 0
+
+
+async def test_transaction_in_progress_exception(pyneo4j_client: Pyneo4jClient):
+    await pyneo4j_client._begin_transaction()
+
+    with pytest.raises(TransactionInProgress):
+        await pyneo4j_client._begin_transaction()
+
+
+async def test_logger_warning(pyneo4j_client: Pyneo4jClient):
+    await pyneo4j_client.create_constraint("test", EntityType.NODE, ["test"], ["Test"])
+
+    with patch.object(logger, "warning") as mock_warning:
+        await pyneo4j_client.drop_indexes()
+        assert mock_warning.call_count == 2
