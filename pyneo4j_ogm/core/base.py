@@ -343,19 +343,19 @@ class ModelBase(Generic[V], BaseModel):
         return model_dict
 
     @property
-    def modified_properties(self) -> List[str]:
+    def modified_properties(self) -> Set[str]:
         """
-        Returns a list of properties which have been modified since the instance was hydrated.
+        Returns a set of properties which have been modified since the instance was hydrated.
 
         Returns:
-            List[str]: A list of properties which have been modified.
+            Set[str]: A set of properties which have been modified.
         """
-        modified_properties = []
+        modified_properties = set()
         current_properties = self.dict()
 
         for property_name, property_value in self._db_properties.items():
             if current_properties[property_name] != property_value:
-                modified_properties.append(property_name)
+                modified_properties.add(property_name)
 
         return modified_properties
 
