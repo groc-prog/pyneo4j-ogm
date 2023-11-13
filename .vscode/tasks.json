@@ -44,6 +44,32 @@
         "panel": "shared",
         "showReuseMessage": true
       }
+    },
+    {
+      "label": "Pyright",
+      "type": "shell",
+      "command": "poetry run pyright pyneo4j_ogm tests",
+      "group": {
+        "kind": "none"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true
+      }
+    },
+    {
+      "label": "Pylint",
+      "type": "shell",
+      "command": "poetry run pylint pyneo4j_ogm tests",
+      "group": {
+        "kind": "none"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true
+      }
     }
   ]
 }
