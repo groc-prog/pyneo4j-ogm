@@ -55,31 +55,49 @@ def hooks(func):
         Callable: The decorated method.
     """
 
-    @wraps(func)
-    async def wrapper(self, *args, **kwargs):
-        settings: BaseModelSettings = getattr(self, "__settings__")
+    if iscoroutinefunction(func):
 
-        # Run pre hooks if defined
-        logger.debug("Checking pre hooks for %s", func.__name__)
-        if func.__name__ in settings.pre_hooks:
-            for hook_function in settings.pre_hooks[func.__name__]:
-                if iscoroutinefunction(hook_function):
+        @wraps(func)
+        async def wrapper(self, *args, **kwargs):  # type: ignore
+            settings: BaseModelSettings = getattr(self, "__settings__")
+
+            # Run pre hooks if defined
+            logger.debug("Checking pre hooks for %s", func.__name__)
+            if func.__name__ in settings.pre_hooks:
+                for hook_function in settings.pre_hooks[func.__name__]:
                     await hook_function(self, *args, **kwargs)
-                else:
+
+            result = await func(self, *args, **kwargs)
+
+            # Run post hooks if defined
+            logger.debug("Checking post hooks for %s", func.__name__)
+            if func.__name__ in settings.post_hooks:
+                for hook_function in settings.post_hooks[func.__name__]:
+                    await hook_function(self, result, *args, **kwargs)
+
+            return result
+
+    else:
+
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            settings: BaseModelSettings = getattr(self, "__settings__")
+
+            # Run pre hooks if defined
+            logger.debug("Checking pre hooks for %s", func.__name__)
+            if func.__name__ in settings.pre_hooks:
+                for hook_function in settings.pre_hooks[func.__name__]:
                     hook_function(self, *args, **kwargs)
 
-        result = await func(self, *args, **kwargs)
+            result = func(self, *args, **kwargs)
 
-        # Run post hooks if defined
-        logger.debug("Checking post hooks for %s", func.__name__)
-        if func.__name__ in settings.post_hooks:
-            for hook_function in settings.post_hooks[func.__name__]:
-                if iscoroutinefunction(hook_function):
-                    await hook_function(self, result, *args, **kwargs)
-                else:
+            # Run post hooks if defined
+            logger.debug("Checking post hooks for %s", func.__name__)
+            if func.__name__ in settings.post_hooks:
+                for hook_function in settings.post_hooks[func.__name__]:
                     hook_function(self, result, *args, **kwargs)
 
-        return result
+            return result
 
     return wrapper
 
