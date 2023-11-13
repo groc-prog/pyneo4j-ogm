@@ -9,7 +9,7 @@ from neo4j import AsyncSession
 from neo4j.exceptions import CypherSyntaxError
 from neo4j.graph import Node, Path, Relationship
 
-from pyneo4j_ogm.core.client import EntityType, IndexType, Neo4jClient
+from pyneo4j_ogm.core.client import EntityType, IndexType, Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
@@ -40,7 +40,7 @@ class CypherResolvingRelationship(RelationshipModel):
 
 
 async def test_connection():
-    pyneo4j_client = await Neo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
+    pyneo4j_client = await Pyneo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
     assert pyneo4j_client.is_connected
     assert pyneo4j_client._driver is not None
 
@@ -48,10 +48,10 @@ async def test_connection():
     assert not pyneo4j_client.is_connected
     assert pyneo4j_client._driver is None
 
-    # Test that the Neo4jClient can connect to a database using ENV variables.
+    # Test that the Pyneo4jClient can connect to a database using ENV variables.
     os.environ["NEO4J_OGM_URI"] = "bolt://localhost:7687"
 
-    pyneo4j_client = await Neo4jClient().connect(auth=("neo4j", "password"))
+    pyneo4j_client = await Pyneo4jClient().connect(auth=("neo4j", "password"))
     assert pyneo4j_client.is_connected
     assert pyneo4j_client._driver is not None
 
@@ -63,12 +63,12 @@ async def test_connection():
 
     with pytest.raises(MissingDatabaseURI):
         # Test raised exception when no URI is provided.
-        pyneo4j_client = await Neo4jClient().connect()
+        pyneo4j_client = await Pyneo4jClient().connect()
 
 
-async def test_ensure_connection(pyneo4j_client: Neo4jClient):
+async def test_ensure_connection(pyneo4j_client: Pyneo4jClient):
     with pytest.raises(NotConnectedToDatabase):
-        pyneo4j_client = Neo4jClient()
+        pyneo4j_client = Pyneo4jClient()
         await pyneo4j_client.cypher("MATCH (n) RETURN n")
 
     with pytest.raises(NotConnectedToDatabase):
@@ -80,7 +80,7 @@ async def test_ensure_connection(pyneo4j_client: Neo4jClient):
     assert results == []
 
 
-async def test_register_models(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_register_models(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     class ClientNodeModel(NodeModel):
         a: WithOptions(str, unique=True)
         b: WithOptions(str, range_index=True)
@@ -140,7 +140,7 @@ async def test_register_models(pyneo4j_client: Neo4jClient, neo4j_session: Async
     assert index_results[11][7] == ["d"]
 
 
-async def test_cypher_query(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_cypher_query(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     results, meta = await pyneo4j_client.cypher(
         "CREATE (n:Node) SET n.name = $name RETURN n", parameters={"name": "TestName"}
     )
@@ -157,7 +157,7 @@ async def test_cypher_query(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSes
     assert result["n"]["name"] == "TestName"
 
 
-async def test_cypher_resolve_model_query(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_cypher_resolve_model_query(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.register_models([CypherResolvingNode])
 
     result = await neo4j_session.run("CREATE (n:TestNode) SET n.name = $name", {"name": "TestName"})
@@ -180,7 +180,7 @@ async def test_cypher_resolve_model_query(pyneo4j_client: Neo4jClient, neo4j_ses
     assert isinstance(resolved_results[0][0], CypherResolvingNode)
 
 
-async def test_cypher_resolve_relationship_model_query(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_cypher_resolve_relationship_model_query(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.register_models([CypherResolvingRelationship])
 
     result = await neo4j_session.run(
@@ -206,7 +206,7 @@ async def test_cypher_resolve_relationship_model_query(pyneo4j_client: Neo4jClie
     assert isinstance(resolved_results[0][0], CypherResolvingRelationship)
 
 
-async def test_cypher_resolve_path_query(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_cypher_resolve_path_query(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.register_models([CypherResolvingNode, CypherResolvingRelationship])
 
     result = await neo4j_session.run(
@@ -238,12 +238,12 @@ async def test_cypher_resolve_path_query(pyneo4j_client: Neo4jClient, neo4j_sess
     assert isinstance(cast(Path, resolved_results[0][0]).relationships[0], CypherResolvingRelationship)
 
 
-async def test_cypher_query_exception(pyneo4j_client: Neo4jClient):
+async def test_cypher_query_exception(pyneo4j_client: Pyneo4jClient):
     with pytest.raises(CypherSyntaxError):
         await pyneo4j_client.cypher("MATCH n RETURN n", parameters={"a": 1})
 
 
-async def test_invalid_constraints(pyneo4j_client: Neo4jClient):
+async def test_invalid_constraints(pyneo4j_client: Pyneo4jClient):
     with pytest.raises(InvalidLabelOrType):
         await pyneo4j_client.create_constraint("invalid_node_constraint", EntityType.NODE, ["prop_a", "prop_b"], "Test")
 
@@ -258,7 +258,7 @@ async def test_invalid_constraints(pyneo4j_client: Neo4jClient):
         )
 
 
-async def test_create_node_constraints(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_node_constraints(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.create_constraint("node_constraint", EntityType.NODE, ["prop_a", "prop_b"], ["Test", "Node"])
 
     node_constraint_results = await neo4j_session.run("SHOW CONSTRAINTS")
@@ -277,7 +277,7 @@ async def test_create_node_constraints(pyneo4j_client: Neo4jClient, neo4j_sessio
     assert node_constraints[1][5] == ["prop_a", "prop_b"]
 
 
-async def test_create_relationship_constraints(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_relationship_constraints(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.create_constraint(
         "relationship_constraint", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], "TEST_RELATIONSHIP"
     )
@@ -292,7 +292,7 @@ async def test_create_relationship_constraints(pyneo4j_client: Neo4jClient, neo4
     assert node_constraints[0][5] == ["prop_a", "prop_b"]
 
 
-async def test_invalid_indexes(pyneo4j_client: Neo4jClient):
+async def test_invalid_indexes(pyneo4j_client: Pyneo4jClient):
     with pytest.raises(InvalidIndexType):
         await pyneo4j_client.create_index(
             "invalid_node_index", EntityType.NODE, "Not valid", ["prop_a", "prop_b"], ["Test", "Node"]  # type: ignore
@@ -318,7 +318,7 @@ async def test_invalid_indexes(pyneo4j_client: Neo4jClient):
         )
 
 
-async def test_create_node_range_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_node_range_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.create_index(
         "node_range_index", EntityType.NODE, IndexType.RANGE, ["prop_a", "prop_b"], ["Test", "Node"]
     )
@@ -339,7 +339,7 @@ async def test_create_node_range_indexes(pyneo4j_client: Neo4jClient, neo4j_sess
     assert index_results[1][7] == ["prop_a", "prop_b"]
 
 
-async def test_create_relationship_range_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_relationship_range_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     with pytest.raises(InvalidLabelOrType):
         await pyneo4j_client.create_index(
             "invalid_relationship_index",
@@ -363,7 +363,7 @@ async def test_create_relationship_range_indexes(pyneo4j_client: Neo4jClient, ne
     assert index_results[0][7] == ["prop_a", "prop_b"]
 
 
-async def test_create_node_text_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_node_text_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.create_index(
         "node_text_index", EntityType.NODE, IndexType.TEXT, ["prop_a", "prop_b"], ["Test", "Node"]
     )
@@ -396,7 +396,7 @@ async def test_create_node_text_indexes(pyneo4j_client: Neo4jClient, neo4j_sessi
     assert index_results[3][7] == ["prop_b"]
 
 
-async def test_create_relationship_text_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_relationship_text_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.create_index(
         "relationship_text_index", EntityType.RELATIONSHIP, IndexType.TEXT, ["prop_a", "prop_b"], "REL"
     )
@@ -417,7 +417,7 @@ async def test_create_relationship_text_indexes(pyneo4j_client: Neo4jClient, neo
     assert index_results[1][7] == ["prop_b"]
 
 
-async def test_create_node_lookup_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_node_lookup_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.create_index(
         "node_lookup_index", EntityType.NODE, IndexType.LOOKUP, ["prop_a", "prop_b"], ["Test", "Node"]
     )
@@ -430,7 +430,7 @@ async def test_create_node_lookup_indexes(pyneo4j_client: Neo4jClient, neo4j_ses
     assert index_results[0][5] == EntityType.NODE
 
 
-async def test_create_relationship_lookup_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_relationship_lookup_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.create_index(
         "relationship_lookup_index", EntityType.RELATIONSHIP, IndexType.LOOKUP, ["prop_a", "prop_b"], "REL"
     )
@@ -443,7 +443,7 @@ async def test_create_relationship_lookup_indexes(pyneo4j_client: Neo4jClient, n
     assert index_results[0][5] == EntityType.RELATIONSHIP
 
 
-async def test_create_node_point_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_node_point_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.create_index(
         "node_point_index", EntityType.NODE, IndexType.POINT, ["prop_a", "prop_b"], ["Test", "Node"]
     )
@@ -476,7 +476,7 @@ async def test_create_node_point_indexes(pyneo4j_client: Neo4jClient, neo4j_sess
     assert index_results[3][7] == ["prop_b"]
 
 
-async def test_create_relationship_point_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_create_relationship_point_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     await pyneo4j_client.create_index(
         "relationship_point_index", EntityType.RELATIONSHIP, IndexType.POINT, ["prop_a", "prop_b"], "REL"
     )
@@ -497,7 +497,7 @@ async def test_create_relationship_point_indexes(pyneo4j_client: Neo4jClient, ne
     assert index_results[1][7] == ["prop_b"]
 
 
-async def test_drop_nodes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_drop_nodes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     print("BEFORE CREATE")
     result = await neo4j_session.run("CREATE (n:Node) SET n.name = $name", {"name": "TestName"})
     await result.consume()
@@ -511,7 +511,7 @@ async def test_drop_nodes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSessi
     assert len(results) == 0
 
 
-async def test_drop_constraints(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_drop_constraints(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     result = await neo4j_session.run("CREATE CONSTRAINT test FOR (n:Node) REQUIRE n.name IS UNIQUE")
     await result.consume()
 
@@ -523,7 +523,7 @@ async def test_drop_constraints(pyneo4j_client: Neo4jClient, neo4j_session: Asyn
     assert len(results) == 0
 
 
-async def test_drop_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_drop_indexes(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     result = await neo4j_session.run("CREATE INDEX test FOR (n:Node) ON (n.name)")
     await result.consume()
 
@@ -535,7 +535,7 @@ async def test_drop_indexes(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSes
     assert len(results) == 0
 
 
-async def test_batch_exception(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+async def test_batch_exception(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
     with pytest.raises(Exception):
         async with pyneo4j_client.batch():
             await pyneo4j_client.cypher("CREATE (n:Node) SET n.name = $name", parameters={"name": "TestName"})

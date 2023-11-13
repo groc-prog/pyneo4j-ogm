@@ -1,6 +1,6 @@
 # pylint: disable=missing-module-docstring
 
-from .core.client import Neo4jClient
+from .core.client import Pyneo4jClient
 from .core.node import NodeModel
 from .core.relationship import RelationshipModel
 from .fields.property_options import WithOptions

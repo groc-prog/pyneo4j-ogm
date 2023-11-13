@@ -33,9 +33,9 @@ from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 if TYPE_CHECKING:
-    from pyneo4j_ogm.core.client import Neo4jClient
+    from pyneo4j_ogm.core.client import Pyneo4jClient
 else:
-    Neo4jClient = object
+    Pyneo4jClient = object
 
 P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
@@ -91,7 +91,7 @@ class ModelBase(Generic[V], BaseModel):
     """
 
     __settings__: BaseModelSettings = PrivateAttr()
-    _client: Neo4jClient = PrivateAttr()
+    _client: Pyneo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _db_properties: Dict[str, Any] = PrivateAttr(default_factory=dict)
     _destroyed: bool = PrivateAttr(default=False)

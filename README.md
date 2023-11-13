@@ -11,18 +11,18 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 
 ## ⚡️ Quick start <a name="quick-start"></a>
 
-Before we can start to interact with our database, we have to take care of some setup. First, we have to connect to our database with the `connect()` method from the `Neo4jClient` class. This can be done by creating a new instance of the `Neo4jClient` class and passing the connection details as keyword arguments. This class is our entry point to the library and will be used to interact with our database.
+Before we can start to interact with our database, we have to take care of some setup. First, we have to connect to our database with the `connect()` method from the `Pyneo4jClient` class. This can be done by creating a new instance of the `Pyneo4jClient` class and passing the connection details as keyword arguments. This class is our entry point to the library and will be used to interact with our database.
 
 ```python
-from pyneo4j_ogm import Neo4jClient
+from pyneo4j_ogm import Pyneo4jClient
 
 # Initialize the client class and call the `.connect()` method
-client = Neo4jClient()
+client = Pyneo4jClient()
 await client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
 
 # The `.connect()` allows to be chained right after the instantiation of the class
 # for more convenience.
-client = await Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
+client = await Pyneo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
 ```
 
 Next, we need to define our models. Models are used to represent data in our database. They are defined by inheriting from either the `NodeModel` or `RelationshipModel` class, depending on the type of graph entity we want our data to represent. Let's create a `Developer` who `DRINKS` some `Coffee`:
@@ -67,7 +67,7 @@ class Drinks(RelationshipModel):
   likes_it: bool
 ```
 
-Now that we have our models defined, we have to let our client know about them. This can be done by calling the `register_models()` method of the `Neo4jClient` class and passing our models as a list.
+Now that we have our models defined, we have to let our client know about them. This can be done by calling the `register_models()` method of the `Pyneo4jClient` class and passing our models as a list.
 
 ```python
 # Client initialization and model definition happened here ...
@@ -97,7 +97,7 @@ So if we put it all together, our code should look something like this:
 import asyncio
 
 from pyneo4j_ogm import (
-    Neo4jClient,
+    Pyneo4jClient,
     NodeModel,
     RelationshipModel,
     RelationshipProperty,
@@ -141,7 +141,7 @@ class Drinks(RelationshipModel):
 
 async def main():
     # Connect to the database and register the models
-    client = await Neo4jClient().connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
+    client = await Pyneo4jClient().connect(uri="bolt://localhost:7687", auth=("neo4j", "password"))
     await client.register_models([Developer, Coffee, Drinks])
 
     # Create new developer and coffee nodes and connect them with a DRINKS relationship
@@ -262,11 +262,11 @@ In the following sections we will take a look at all of the features this librar
 
 ### Database client <a name="database-client"></a>
 
-The `Neo4jClient` class is the brains of the library. It is used to connect to a database instance, register models and execute queries. Under the hood, every class uses the client to execute queries.
+The `Pyneo4jClient` class is the brains of the library. It is used to connect to a database instance, register models and execute queries. Under the hood, every class uses the client to execute queries.
 
 #### Connecting to a database <a name="connecting-to-a-database"></a>
 
-Before you can interact with anything this library offers in any way, you have to connect to a database. You can do this by creating a new instance of the `Neo4jClient` class and calling the `connect()` method on it. The `connect()` method takes a few arguments:
+Before you can interact with anything this library offers in any way, you have to connect to a database. You can do this by creating a new instance of the `Pyneo4jClient` class and calling the `connect()` method on it. The `connect()` method takes a few arguments:
 
 - `uri`: The connection URI to the database.
 - `skip_constraints`: Whether the client should skip creating any constraints defined on models when registering them. Defaults to `False`.
@@ -277,13 +277,13 @@ Before you can interact with anything this library offers in any way, you have t
 The `connect()` method returns the client instance itself, so you can chain it right after the instantiation of the class. Here is an example of how to connect to a database:
 
 ```python
-from pyneo4j_ogm import Neo4jClient
+from pyneo4j_ogm import Pyneo4jClient
 
-client = Neo4jClient()
+client = Pyneo4jClient()
 await client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
 
 # Or chained right after the instantiation of the class
-client = await Neo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
+client = await Pyneo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
 ```
 
 After connecting the client, you will be able to run queries against the database. Should you try to run a query without connecting to a database first, you will get a `NotConnectedToDatabase` exception.

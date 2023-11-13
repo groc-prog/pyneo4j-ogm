@@ -20,7 +20,7 @@ from typing import (
 
 from neo4j.graph import Node
 
-from pyneo4j_ogm.core.client import Neo4jClient
+from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
@@ -104,7 +104,7 @@ def check_models_registered(func):
     @wraps(func)
     async def decorator(self: "RelationshipProperty", *args, **kwargs):
         source_node = getattr(self, "_source_node")
-        client: Neo4jClient = getattr(source_node, "_client")
+        client: Pyneo4jClient = getattr(source_node, "_client")
         target_model_name: str = getattr(self, "_target_model_name")
         relationship_model_name: str = getattr(self, "_relationship_model_name")
 
@@ -143,7 +143,7 @@ class RelationshipProperty(Generic[T, U]):
     Accepts two generic types, the first being the target node and the second being the relationship model.
     """
 
-    _client: Neo4jClient
+    _client: Pyneo4jClient
     _query_builder: QueryBuilder
     _target_model: Optional[Type[T]]
     _target_model_name: str
@@ -733,7 +733,7 @@ class RelationshipProperty(Generic[T, U]):
             UnregisteredModel: Raised if the source model has not been registered with the client.
         """
         self._registered_name = property_name
-        self._client = cast(Neo4jClient, getattr(source_model, "_client"))
+        self._client = cast(Pyneo4jClient, getattr(source_model, "_client"))
         self._query_builder = QueryBuilder()
         self._source_node = source_model
 

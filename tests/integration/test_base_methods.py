@@ -6,7 +6,7 @@ from typing import Optional, cast
 
 import pytest
 
-from pyneo4j_ogm.core.client import Neo4jClient
+from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import ModelImportFailure
@@ -47,7 +47,7 @@ class TestImportModel(NodeModel):
     my_prop: Optional[int]
 
 
-async def test_str_method(pyneo4j_client: Neo4jClient):
+async def test_str_method(pyneo4j_client: Pyneo4jClient):
     await pyneo4j_client.register_models([TestNode, TestRelationship])
 
     non_hydrated_node = TestNode()
@@ -61,7 +61,7 @@ async def test_str_method(pyneo4j_client: Neo4jClient):
     assert str(hydrated_node) == f"TestNode(element_id={hydrated_node.element_id}, destroyed=True)"
 
 
-async def test_eq_method(pyneo4j_client: Neo4jClient):
+async def test_eq_method(pyneo4j_client: Pyneo4jClient):
     await pyneo4j_client.register_models([TestNode, TestRelationship])
 
     node1 = await TestNode().create()
@@ -74,7 +74,7 @@ async def test_eq_method(pyneo4j_client: Neo4jClient):
     assert not node1 == relationship
 
 
-async def test_export_model(pyneo4j_client: Neo4jClient):
+async def test_export_model(pyneo4j_client: Pyneo4jClient):
     await pyneo4j_client.register_models([TestExportModel, TestExportModel2, TestExportModelRelationship])
 
     node = await TestExportModel().create()
@@ -84,7 +84,7 @@ async def test_export_model(pyneo4j_client: Neo4jClient):
     assert node.export_model(convert_to_camel_case=True) == {"elementId": node.element_id, "id": node.id, "myProp": 2}
 
 
-async def test_import_model(pyneo4j_client: Neo4jClient):
+async def test_import_model(pyneo4j_client: Pyneo4jClient):
     await pyneo4j_client.register_models([TestImportModel])
 
     model_dict = {
@@ -119,7 +119,7 @@ async def test_import_model(pyneo4j_client: Neo4jClient):
         )
 
 
-async def test_pre_hooks(pyneo4j_client: Neo4jClient):
+async def test_pre_hooks(pyneo4j_client: Pyneo4jClient):
     await pyneo4j_client.register_models([TestNode])
 
     TestNode.register_pre_hooks("test_hook", lambda: None)
@@ -150,7 +150,7 @@ async def test_pre_hooks(pyneo4j_client: Neo4jClient):
     TestNode.__settings__.pre_hooks["test_hook"] = []
 
 
-async def test_post_hooks(pyneo4j_client: Neo4jClient):
+async def test_post_hooks(pyneo4j_client: Pyneo4jClient):
     await pyneo4j_client.register_models([TestNode])
 
     TestNode.register_post_hooks("test_hook", lambda: None)

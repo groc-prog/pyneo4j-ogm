@@ -4,15 +4,15 @@ Fixture for setup/teardown of a Neo4j database for integration tests.
 import pytest
 from neo4j import AsyncGraphDatabase
 
-from pyneo4j_ogm.core.client import Neo4jClient
+from pyneo4j_ogm.core.client import Pyneo4jClient
 
 
 @pytest.fixture
 async def pyneo4j_client():
     """
-    Create a Neo4jClient instance from the package for the test session.
+    Create a Pyneo4jClient instance from the package for the test session.
     """
-    client = await Neo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
+    client = await Pyneo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
 
     # Drop all nodes, indexes, and constraints from the database.
     await client.drop_constraints()

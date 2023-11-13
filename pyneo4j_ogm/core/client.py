@@ -66,7 +66,7 @@ def ensure_connection(func: Callable):
     return decorator
 
 
-class Neo4jClient:
+class Pyneo4jClient:
     """
     Singleton database client class used to run different operations on the database.
     """
@@ -92,7 +92,7 @@ class Neo4jClient:
         skip_constraints: bool = False,
         skip_indexes: bool = False,
         **kwargs,
-    ) -> "Neo4jClient":
+    ) -> "Pyneo4jClient":
         """
         Establish a connection to a database.
 
@@ -109,7 +109,7 @@ class Neo4jClient:
                 not set
 
         Returns:
-            Neo4jClient: The client.
+            Pyneo4jClient: The client.
         """
         db_uri = uri if uri is not None else os.environ.get("NEO4J_OGM_URI", None)
 
@@ -693,7 +693,7 @@ class BatchManager:
     Class for handling batch transactions.
     """
 
-    def __init__(self, client: "Neo4jClient") -> None:
+    def __init__(self, client: "Pyneo4jClient") -> None:
         self._client = client
 
     async def __aenter__(self) -> None:
