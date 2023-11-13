@@ -2,7 +2,11 @@
 
 from pydantic import BaseModel, Extra, root_validator
 
-from pyneo4j_ogm.queries.validators import _normalize_fields, _normalize_labels
+from pyneo4j_ogm.queries.validators import (
+    QueryOptionModel,
+    _normalize_fields,
+    _normalize_labels,
+)
 
 
 def test_normalize_fields_validator():
@@ -35,3 +39,11 @@ def test_normalize_labels_validator():
     assert _normalize_labels(TestModel, None) is None
     assert _normalize_labels(TestModel, "label") == ["label"]
     assert _normalize_labels(TestModel, ["label1", "label2"]) == ["label1", "label2"]
+
+
+def test_query_options_sort():
+    options = QueryOptionModel(sort="name")
+    assert options.sort == ["name"]
+
+    options = QueryOptionModel(sort=["name", "age"])
+    assert options.sort == ["name", "age"]

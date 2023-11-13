@@ -16,53 +16,53 @@ from tests.fixtures.db_clients import neo4j_session, pyneo4j_client
 pytest_plugins = ("pytest_asyncio",)
 
 
-class TestNode(NodeModel):
+class NodeTestModel(NodeModel):
     pass
 
 
-class TestRelationship(RelationshipModel):
+class RelationshipTestModel(RelationshipModel):
     pass
 
 
-class TestExportModel2(NodeModel):
+class ModelExportTest2(NodeModel):
     pass
 
 
-class TestExportModelRelationship(RelationshipModel):
+class RelationshipExportTest(RelationshipModel):
     pass
 
 
-class TestExportModel(NodeModel):
+class ModelExportTest(NodeModel):
     my_prop: int = 2
     my_list: List[Dict] = [{"list_dict_prop": 1}]
 
-    model: RelationshipProperty[TestExportModel2, TestExportModelRelationship] = RelationshipProperty(
-        target_model=TestExportModel2,
-        relationship_model=TestExportModelRelationship,
+    model: RelationshipProperty[ModelExportTest2, RelationshipExportTest] = RelationshipProperty(
+        target_model=ModelExportTest2,
+        relationship_model=RelationshipExportTest,
         direction=RelationshipPropertyDirection.OUTGOING,
     )
 
 
 async def test_str_method(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([TestNode, TestRelationship])
+    await pyneo4j_client.register_models([NodeTestModel, RelationshipTestModel])
 
-    non_hydrated_node = TestNode()
-    hydrated_node = await TestNode().create()
+    non_hydrated_node = NodeTestModel()
+    hydrated_node = await NodeTestModel().create()
 
-    assert str(non_hydrated_node) == "TestNode(element_id=None, destroyed=False)"
-    assert str(hydrated_node) == f"TestNode(element_id={hydrated_node.element_id}, destroyed=False)"
+    assert str(non_hydrated_node) == "NodeTestModel(element_id=None, destroyed=False)"
+    assert str(hydrated_node) == f"NodeTestModel(element_id={hydrated_node.element_id}, destroyed=False)"
 
     await hydrated_node.delete()
 
-    assert str(hydrated_node) == f"TestNode(element_id={hydrated_node.element_id}, destroyed=True)"
+    assert str(hydrated_node) == f"NodeTestModel(element_id={hydrated_node.element_id}, destroyed=True)"
 
 
 async def test_eq_method(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([TestNode, TestRelationship])
+    await pyneo4j_client.register_models([NodeTestModel, RelationshipTestModel])
 
-    node1 = await TestNode().create()
-    node2 = await TestNode().create()
-    relationship = TestRelationship()
+    node1 = await NodeTestModel().create()
+    node2 = await NodeTestModel().create()
+    relationship = RelationshipTestModel()
 
     assert node1 == node1  # pylint: disable=comparison-with-itself
     assert node1 != node2
@@ -71,9 +71,9 @@ async def test_eq_method(pyneo4j_client: Pyneo4jClient):
 
 
 async def test_export_model(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([TestExportModel, TestExportModel2, TestExportModelRelationship])
+    await pyneo4j_client.register_models([ModelExportTest, ModelExportTest2, RelationshipExportTest])
 
-    node = await TestExportModel().create()
+    node = await ModelExportTest().create()
 
     assert node.export_model() == {
         "element_id": node.element_id,
@@ -95,9 +95,9 @@ async def test_export_model(pyneo4j_client: Pyneo4jClient):
 
 
 async def test_element_id(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([TestNode])
+    await pyneo4j_client.register_models([NodeTestModel])
 
-    node = TestNode()
+    node = NodeTestModel()
     assert node.element_id is None
 
     await node.create()
@@ -105,9 +105,9 @@ async def test_element_id(pyneo4j_client: Pyneo4jClient):
 
 
 async def test_id(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([TestNode])
+    await pyneo4j_client.register_models([NodeTestModel])
 
-    node = TestNode()
+    node = NodeTestModel()
     assert node.id is None
 
     await node.create()
