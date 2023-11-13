@@ -1,4 +1,5 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
+# pyright: reportGeneralTypeIssues=false
 
 import os
 from typing import cast
@@ -9,6 +10,8 @@ from neo4j.exceptions import CypherSyntaxError
 from neo4j.graph import Node, Path, Relationship
 
 from pyneo4j_ogm.core.client import EntityType, IndexType, Neo4jClient
+from pyneo4j_ogm.core.node import NodeModel
+from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
     InvalidEntityType,
     InvalidIndexType,
@@ -16,15 +19,24 @@ from pyneo4j_ogm.exceptions import (
     MissingDatabaseURI,
     NotConnectedToDatabase,
 )
+from pyneo4j_ogm.fields.property_options import WithOptions
 from tests.fixtures.db_clients import neo4j_session, pyneo4j_client
-from tests.utils.models import (
-    ClientNodeModel,
-    ClientRelationshipModel,
-    CypherResolvingNode,
-    CypherResolvingRelationship,
-)
 
 pytest_plugins = ("pytest_asyncio",)
+
+
+class CypherResolvingNode(NodeModel):
+    name: str
+
+    class Settings:
+        labels = {"TestNode"}
+
+
+class CypherResolvingRelationship(RelationshipModel):
+    kind: str
+
+    class Settings:
+        type = "TEST_RELATIONSHIP"
 
 
 async def test_connection():
@@ -69,6 +81,24 @@ async def test_ensure_connection(pyneo4j_client: Neo4jClient):
 
 
 async def test_register_models(pyneo4j_client: Neo4jClient, neo4j_session: AsyncSession):
+    class ClientNodeModel(NodeModel):
+        a: WithOptions(str, unique=True)
+        b: WithOptions(str, range_index=True)
+        c: WithOptions(str, text_index=True)
+        d: WithOptions(str, point_index=True)
+
+        class Settings:
+            labels = {"Test", "Node"}
+
+    class ClientRelationshipModel(RelationshipModel):
+        a: WithOptions(str, unique=True)
+        b: WithOptions(str, range_index=True)
+        c: WithOptions(str, text_index=True)
+        d: WithOptions(str, point_index=True)
+
+        class Settings:
+            type = "TEST_RELATIONSHIP"
+
     await pyneo4j_client.register_models([ClientNodeModel, ClientRelationshipModel])
 
     assert ClientNodeModel in pyneo4j_client.models
