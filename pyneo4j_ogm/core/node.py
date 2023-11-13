@@ -4,6 +4,7 @@ It provides base functionality like de-/inflation and validation and methods for
 the database for CRUD operations on nodes.
 """
 import json
+import re
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -105,12 +106,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 "No labels have been defined for model %s, using model name as label",
                 cls.__name__,
             )
-            words = cls.__name__.split("_")
-            pascal_str = "".join(word.capitalize() for word in words)
-            setattr(cls.__settings__, "labels", (pascal_str,))
-        elif labels is not None and isinstance(labels, str):
-            logger.debug("str class %s provided as labels, converting to tuple", labels)
-            setattr(cls.__settings__, "labels", (labels,))
+            fallback_labels = re.findall(r"[A-Z][^A-Z]*", cls.__name__)
+            setattr(cls.__settings__, "labels", set(fallback_labels))
 
         logger.debug("Collecting relationship properties for model %s", cls.__name__)
         for property_name, value in cls.__fields__.items():
