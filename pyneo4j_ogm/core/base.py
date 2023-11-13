@@ -129,10 +129,7 @@ class ModelBase(Generic[V], BaseModel):
         if not isinstance(other, instance_type):
             return False
 
-        if hasattr(self, "_element_id") and hasattr(other, "_element_id"):
-            return self._element_id == other._element_id
-
-        return False
+        return self._element_id == other._element_id
 
     def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
@@ -196,7 +193,7 @@ class ModelBase(Generic[V], BaseModel):
             [
                 "elementId" not in model and from_camel_case,
                 "element_id" not in model and not from_camel_case,
-                "id" not in model and from_camel_case,
+                "id" not in model,
             ]
         ):
             raise ModelImportFailure()
