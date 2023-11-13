@@ -20,7 +20,7 @@
     {
       "label": "Pytest: Unit tests",
       "type": "shell",
-      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/unit/coverage tests/unit",
+      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/coverage tests/unit",
       "group": {
         "kind": "test",
         "isDefault": false
@@ -34,7 +34,7 @@
     {
       "label": "Pytest: Integration tests",
       "type": "shell",
-      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/integration/coverage tests/integration",
+      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/coverage tests/integration",
       "group": {
         "kind": "test",
         "isDefault": false
