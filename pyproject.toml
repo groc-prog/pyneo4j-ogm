@@ -1,11 +1,24 @@
 [tool.poetry]
 name = "pyneo4j-ogm"
 version = "0.1.0"
-description = ""
+description = "Asynchronous Python OGM for Neo4j"
 authors = ["groc-prog <marc.troisner@gmail.com>"]
+maintainers = ["groc-prog <marc.troisner@gmail.com>"]
 readme = "README.md"
 license = "MIT"
 keywords = ["neo4j", "python", "orm", "ogm", "async", "asynchronous", "database", "graph-database", "pydantic"]
+homepage = "https://github.com/groc-prog/pyneo4j-ogm"
+repository = "https://github.com/groc-prog/pyneo4j-ogm"
+documentation = "https://github.com/groc-prog/pyneo4j-ogm#readme"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Topic :: Database",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
 packages = [{ include = "pyneo4j_ogm" }]
 
 [tool.poetry.dependencies]
