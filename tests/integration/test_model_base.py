@@ -1,17 +1,14 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 # pyright: reportGeneralTypeIssues=false
 
-import os
-from typing import Dict, List, Optional, cast
-
-import pytest
+from typing import Dict, List
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 from pyneo4j_ogm.queries.enums import RelationshipPropertyDirection
-from tests.fixtures.db_clients import neo4j_session, pyneo4j_client
+from tests.fixtures.db_clients import pyneo4j_client
 
 pytest_plugins = ("pytest_asyncio",)
 
