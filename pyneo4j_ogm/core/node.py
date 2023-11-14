@@ -594,11 +594,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             logger.debug("Adding auto-fetched nodes to relationship properties")
             for result_list in results:
                 for index, result in enumerate(result_list):
-                    if result is None or result_list[0] is None:
-                        continue
-
-                    instance_element_id = getattr(result, "_element_id")
-                    if instance_element_id in added_nodes:
+                    instance_element_id = getattr(result, "_element_id", None)
+                    if instance_element_id is None or instance_element_id in added_nodes:
                         continue
 
                     if index == 0:
@@ -630,14 +627,11 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
             for result_list in results:
                 for result in result_list:
-                    if result is None:
-                        continue
-
                     if isinstance(result, Node):
                         instances.append(cls._inflate(node=result))
                     elif isinstance(result, list):
                         instances.extend(result)
-                    else:
+                    elif isinstance(result, cls):
                         instances.append(result)
 
             return instances
@@ -703,6 +697,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             if key in cls.__fields__:
                 setattr(new_instance, key, value)
         setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
+        setattr(new_instance, "_id", getattr(old_instance, "_id", None))
 
         deflated = new_instance._deflate()
         set_query = ", ".join(

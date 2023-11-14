@@ -162,3 +162,20 @@ def test_multi_hop_filters_with_relationships(query_builder: QueryBuilder):
     assert query_builder.query["match"] == ", path = (n)-[r*]->(m)"
     assert normalized_builder_query == normalized_expected_query
     assert query_builder.parameters == {"_n_0": ["Node"], "_n_1": "Jenny", "_n_2": "type_a", "_n_3": "type_b"}
+
+
+def test_reset_query(query_builder: QueryBuilder):
+    query_builder.query = {
+        "match": "MATCH (n)",
+        "where": "WHERE n.name = 'John'",
+        "projections": "RETURN n",
+        "options": "ORDER BY n.age DESC",
+    }
+    query_builder.reset_query()
+
+    assert query_builder.query == {
+        "match": "",
+        "where": "",
+        "projections": "",
+        "options": "",
+    }
