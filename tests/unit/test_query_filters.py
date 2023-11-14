@@ -90,7 +90,7 @@ def test_relationship_property_all_filters_refs(query_builder: QueryBuilder):
 
 def test_invalid_multi_hop_filters(query_builder: QueryBuilder):
     with pytest.raises(ValidationError):
-        query_builder.multi_hop_filters({})
+        query_builder.multi_hop_filters({})  # type: ignore
 
     assert query_builder.query["where"] == ""
     assert query_builder.parameters == {}
