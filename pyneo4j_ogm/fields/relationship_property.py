@@ -18,7 +18,7 @@ from typing import (
     cast,
 )
 
-from neo4j.graph import Node
+from neo4j.graph import Node, Relationship
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
@@ -202,17 +202,17 @@ class RelationshipProperty(Generic[T, U]):
 
     @hooks
     @check_models_registered
-    async def relationship(self, node: T) -> Optional[U]:
+    async def relationships(self, node: T) -> List[U]:
         """
-        Gets the relationship between the current node instance and the provided node. If the nodes are not connected
-        the defined relationship, `None` will be returned.
+        Gets the relationships between the current node instance and the provided node. If the nodes are not connected,
+        `an empty` will be returned.
 
         Args:
             node (T): The node to which to get the relationship.
 
         Returns:
-            (U | None): Returns a `relationship model instance` describing relationship between
-                the nodes  or `None` if no relationship exists between the two.
+            (List[U]): Returns a list of `relationship model instances` describing relationships between
+                the nodes or `an empty list` if no relationships exist between the two.
         """
         self._ensure_alive(node)
 
@@ -230,7 +230,7 @@ class RelationshipProperty(Generic[T, U]):
             query=f"""
                 MATCH {match_query}
                 WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
-                RETURN r
+                RETURN DISTINCT r
             """,
             parameters={
                 "start_element_id": getattr(self._source_node, "_element_id", None),
@@ -238,9 +238,16 @@ class RelationshipProperty(Generic[T, U]):
             },
         )
 
-        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            return None
-        return results[0][0]
+        relationships: List[U] = []
+
+        for result_list in results:
+            for result in result_list:
+                if isinstance(result, cast(Type[U], self._relationship_model)):
+                    relationships.append(result)
+                elif isinstance(result, Relationship):
+                    relationships.append(cast(Type[U], self._relationship_model)._inflate(relationship=result))
+
+        return relationships
 
     @hooks
     @check_models_registered

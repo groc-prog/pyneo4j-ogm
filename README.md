@@ -5,6 +5,7 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 ## Todo's and missing features <a name="todos-and-missing-features"></a>
 
 - [ ] Add more tests
+- [ ] Add projections, options and filters to relationship properties `relationship` method
 - [ ] Improve documentation and fix typos
 - [ ] Add bookmark support
 - [ ] Add migrations
@@ -227,7 +228,7 @@ asyncio.run(main())
     - [Relationship-properties ](#relationship-properties-)
       - [Defining relationship properties ](#defining-relationship-properties-)
       - [Relationship-property methods ](#relationship-property-methods-)
-        - [RelationshipProperty.relationship() ](#relationshippropertyrelationship-)
+        - [RelationshipProperty.relationships() ](#relationshippropertyrelationships-)
         - [RelationshipProperty.connect() ](#relationshippropertyconnect-)
         - [RelationshipProperty.disconnect() ](#relationshippropertydisconnect-)
         - [RelationshipProperty.disconnect\_all() ](#relationshippropertydisconnect_all-)
@@ -1227,7 +1228,7 @@ Relationship-properties provide a number of methods to interact with the relatio
 
 > **Note**: In the following, the terms `source node` and `target node` will be used. Source node refers to the `node instance the method is called on` and target node refers to the `node instance the source node is connected to`.
 
-##### RelationshipProperty.relationship() <a name="relationship-property-relationship"></a>
+##### RelationshipProperty.relationships() <a name="relationship-property-relationship"></a>
 
 Returns the relationship between the source node and the target node. The method expects a single argument `node` which has to be the target node of the relationship. If no relationship was found, `None` is returned.
 
@@ -1235,7 +1236,7 @@ Returns the relationship between the source node and the target node. The method
 # The `developer` and `coffee` variables have been defined somewhere above
 
 # Returns the relationship between the two nodes
-coffee_relationship = await developer.coffee.relationship(coffee)
+coffee_relationship = await developer.coffee.relationships(coffee)
 
 print(coffee_relationship) # <Drinks>
 
