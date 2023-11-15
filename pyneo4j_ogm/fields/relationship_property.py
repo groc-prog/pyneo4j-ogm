@@ -612,7 +612,7 @@ class RelationshipProperty(Generic[T, U]):
             self._query_builder.build_projections(projections=projections, ref="end")
 
         projection_query = (
-            "DISTINCT end"
+            "RETURN DISTINCT end"
             if self._query_builder.query["projections"] == ""
             else self._query_builder.query["projections"]
         )
@@ -665,10 +665,10 @@ class RelationshipProperty(Generic[T, U]):
                 WHERE
                     elementId(start) = $start_element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
-                WITH end
+                WITH DISTINCT end
                 {self._query_builder.query['options']}
                 {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries) if do_auto_fetch else ""}
-                RETURN {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}
+                {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}
             """,
             parameters={
                 "start_element_id": getattr(self._source_node, "_element_id", None),

@@ -261,13 +261,13 @@ class NodeModel(ModelBase[NodeModelSettings]):
     @hooks
     @ensure_alive
     async def find_connected_nodes(
-        self: T,
+        self,
         filters: MultiHopFilters,
         projections: Optional[Dict[str, str]] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
-    ) -> List[Union[T, Dict[str, Any]]]:
+    ) -> List[Union["NodeModel", Dict[str, Any]]]:
         """
         Gets all connected nodes which match the provided `filters` parameter over multiple hops.
 
@@ -283,11 +283,11 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to [].
 
         Returns:
-            List[T | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected properties.
+            List["NodeModel" | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected properties.
         """
         do_auto_fetch: bool = False
         match_queries, return_queries = [], []
-        target_node_model: Optional[T] = None
+        target_node_model: Optional["NodeModel"] = None
 
         logger.info(
             "Getting connected nodes for node %s matching filters %s over multiple hops",
@@ -303,7 +303,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
             self._query_builder.build_projections(projections=projections, ref="m")
 
         projection_query = (
-            "DISTINCT m" if self._query_builder.query["projections"] == "" else self._query_builder.query["projections"]
+            "RETURN DISTINCT m"
+            if self._query_builder.query["projections"] == ""
+            else self._query_builder.query["projections"]
         )
 
         if auto_fetch_nodes:
@@ -316,7 +318,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
             for model in self._client.models:
                 if hasattr(model.__settings__, "labels") and list(getattr(model.__settings__, "labels", [])) == labels:
-                    target_node_model = cast(T, model)
+                    target_node_model = cast("NodeModel", model)
                     break
 
             if target_node_model is None:
@@ -341,10 +343,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 WHERE
                     elementId(n) = $element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
-                WITH m
+                WITH DISTINCT m
                 {self._query_builder.query['options']}
                 {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries) if do_auto_fetch else ""}
-                RETURN {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}
+                {projection_query}{f', {", ".join(return_queries)}' if do_auto_fetch else ''}
             """,
             parameters={
                 "element_id": self._element_id,
@@ -352,28 +354,29 @@ class NodeModel(ModelBase[NodeModelSettings]):
             },
         )
 
-        instances: List[Union[T, Dict[str, Any]]] = []
+        instances: List[Union["NodeModel", Dict[str, Any]]] = []
 
         logger.debug("Building instances from results")
         if do_auto_fetch:
             # Add auto-fetched nodes to relationship properties
-            added_nodes: Set[str] = set()
+            instance_map: Dict[str, Set[str]] = {}
 
             logger.debug("Adding auto-fetched nodes to relationship properties")
             for result_list in results:
                 for index, result in enumerate(result_list):
-                    if result is None or result_list[0] is None:
+                    target_instance_element_id = getattr(result_list[0], "_element_id", None)
+                    instance_element_id = getattr(result, "_element_id", None)
+
+                    if instance_element_id is None or target_instance_element_id is None:
                         continue
 
-                    instance_element_id = getattr(result, "_element_id")
-                    if instance_element_id in added_nodes:
-                        continue
-
-                    if index == 0 and target_node_model is not None:
+                    if index == 0 and target_node_model is not None and instance_element_id not in instance_map:
                         instances.append(
                             target_node_model._inflate(node=result) if isinstance(result, Node) else result
                         )
-                    else:
+
+                        instance_map[instance_element_id] = set()
+                    elif index != 0 and instance_element_id not in instance_map[target_instance_element_id]:
                         target_instance = [
                             instance
                             for instance in instances
@@ -383,7 +386,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                         nodes = cast(List[str], getattr(relationship_property, "_nodes"))
                         nodes.append(result)
 
-                    added_nodes.add(instance_element_id)
+                        instance_map[target_instance_element_id].add(instance_element_id)
         else:
             for result_list in results:
                 for result in result_list:
@@ -442,7 +445,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
         projection_query = (
-            "DISTINCT n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
+            "RETURN DISTINCT n"
+            if cls._query_builder.query["projections"] == ""
+            else cls._query_builder.query["projections"]
         )
 
         if cls._query_builder.query["where"] == "":
@@ -464,10 +469,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 query=f"""
                     MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                     WHERE {cls._query_builder.query['where']}
-                    WITH n
+                    WITH DISTINCT n
                     LIMIT 1
                     {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries)}
-                    RETURN {projection_query}, {', '.join(return_queries)}
+                    {projection_query}, {', '.join(return_queries)}
                 """,
                 parameters=cls._query_builder.parameters,
             )
@@ -477,7 +482,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 query=f"""
                     MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                     WHERE {cls._query_builder.query['where']}
-                    RETURN {projection_query}
+                    {projection_query}
                     LIMIT 1
                 """,
                 parameters=cls._query_builder.parameters,
@@ -561,7 +566,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         instances: List[Union[T, Dict[str, Any]]] = []
         projection_query = (
-            "DISTINCT n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
+            "RETURN DISTINCT n"
+            if cls._query_builder.query["projections"] == ""
+            else cls._query_builder.query["projections"]
         )
 
         do_auto_fetch = all(
@@ -580,27 +587,31 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 query=f"""
                     MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                     {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                    WITH n
+                    WITH DISTINCT n
                     {cls._query_builder.query['options']}
                     {" ".join(f"OPTIONAL MATCH {match_query}" for match_query in match_queries)}
-                    RETURN {projection_query}, {', '.join(return_queries)}
+                    {projection_query}, {', '.join(return_queries)}
                 """,
                 parameters=cls._query_builder.parameters,
             )
 
             # Add auto-fetched nodes to relationship properties
-            added_nodes: Set[str] = set()
+            instance_map: Dict[str, Set[str]] = {}
 
             logger.debug("Adding auto-fetched nodes to relationship properties")
             for result_list in results:
                 for index, result in enumerate(result_list):
+                    target_instance_element_id = getattr(result_list[0], "_element_id", None)
                     instance_element_id = getattr(result, "_element_id", None)
-                    if instance_element_id is None or instance_element_id in added_nodes:
+
+                    if instance_element_id is None or target_instance_element_id is None:
                         continue
 
-                    if index == 0:
+                    if index == 0 and instance_element_id not in instance_map:
                         instances.append(cls._inflate(node=result) if isinstance(result, Node) else result)
-                    else:
+
+                        instance_map[instance_element_id] = set()
+                    elif index != 0 and instance_element_id not in instance_map[target_instance_element_id]:
                         target_instance = [
                             instance
                             for instance in instances
@@ -610,7 +621,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                         nodes = cast(List[str], getattr(relationship_property, "_nodes"))
                         nodes.append(result)
 
-                    added_nodes.add(instance_element_id)
+                        instance_map[target_instance_element_id].add(instance_element_id)
 
             return instances
         else:
@@ -619,7 +630,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 query=f"""
                     MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                     {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                    RETURN {projection_query}
+                    {projection_query}
                     {cls._query_builder.query['options']}
                 """,
                 parameters=cls._query_builder.parameters,

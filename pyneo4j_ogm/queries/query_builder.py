@@ -367,7 +367,9 @@ class QueryBuilder:
             case _:
                 raise InvalidRelationshipDirection(direction)
 
-    def build_projections(self, projections: Dict[str, str], ref: str = "n") -> None:
+    def build_projections(
+        self, projections: Dict[str, Union[str, Literal["$elementId"], Literal["$id"]]], ref: str = "n"
+    ) -> None:
         """
         Builds a projection which only returns the node properties defined in the projection.
 
@@ -378,11 +380,20 @@ class QueryBuilder:
         if not isinstance(projections, dict):
             return
 
-        projection_queries: List[str] = [
-            f"{str(projection)}: {ref}.{str(property_name)}" for projection, property_name in projections.items()
-        ]
+        projection_queries: List[str] = []
+
+        for projection, property_name in projections.items():
+            if property_name == "$elementId":
+                projection_queries.append(f"{str(projection)}: elementId({ref})")
+            elif property_name == "$id":
+                projection_queries.append(f"{str(projection)}: ID({ref})")
+            else:
+                projection_queries.append(f"{str(projection)}: {ref}.{str(property_name)}")
 
         if len(projection_queries) > 0:
             self.query["projections"] = (
-                f"DISTINCT collect({{{', '.join(projection_queries)}}})" if len(projection_queries) > 0 else ""
+                f"""WITH DISTINCT {ref}
+                RETURN DISTINCT collect({{{', '.join(projection_queries)}}})"""
+                if len(projection_queries) > 0
+                else ""
             )
