@@ -312,6 +312,9 @@ class MultiHopFiltersModel(BaseModel):
     max_hops_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops", ge=1, default="*")
     node_: MultiHopNodeModel = Field(alias="$node")
     relationships_: Optional[List[MultiHopRelationshipOperatorsModel]] = Field(alias="$relationships")
+    direction_: Optional[RelationshipMatchDirection] = Field(
+        default=RelationshipMatchDirection.OUTGOING, alias="$direction"
+    )
 
     normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 

@@ -139,8 +139,11 @@ class Operators:
                 normalized[index] = self.normalize_expressions(expressions=expression, level=level + 1)
         elif isinstance(normalized, dict):
             for operator, expression in normalized.items():
+                # We don't need to do anything with the $direction operator
+                if operator == "$direction":
+                    continue
                 # Handle $relationships operators
-                if operator == "$relationships":
+                elif operator == "$relationships":
                     for index, relationship_expression in enumerate(expression):
                         cast(Dict[str, List[Any]], normalized)[operator][index] = self.normalize_expressions(
                             expressions=relationship_expression, level=0

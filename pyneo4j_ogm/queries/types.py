@@ -183,10 +183,11 @@ MultiHopFilters = TypedDict(
     {
         "$minHops": NotRequired[Optional[int]],
         "$maxHops": NotRequired[Optional[Union[int, Literal["*"]]]],
-        "$node": Union[Dict[str, Union[QueryOperators, QueryDataTypes]], MultiHopNode],
+        "$node": Union[Dict[str, Union[QueryOperators, QueryDataTypes, Any]], MultiHopNode],
         "$relationships": NotRequired[
-            Optional[List[Union[Dict[str, Union[QueryOperators, QueryDataTypes]], MultiHopRelationship]]]
+            Optional[List[Union[Dict[str, Union[QueryOperators, QueryDataTypes, Any]], MultiHopRelationship]]]
         ],
+        "$direction": NotRequired[Optional[RelationshipMatchDirection]],
     },
 )
 

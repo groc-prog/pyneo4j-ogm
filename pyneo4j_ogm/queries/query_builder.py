@@ -180,7 +180,9 @@ class QueryBuilder:
 
         # Build path match
         relationship_match = self.relationship_match(
-            direction=RelationshipMatchDirection.OUTGOING,
+            direction=validated_filters["$direction"]
+            if "$direction" in validated_filters
+            else RelationshipMatchDirection.OUTGOING,
             start_node_ref=start_ref,
             end_node_ref=end_ref,
             min_hops=validated_filters["$minHops"] if "$minHops" in validated_filters else None,
