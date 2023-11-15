@@ -797,6 +797,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         instance = cls(**inflated)
 
         setattr(instance, "_element_id", relationship.element_id)
+        setattr(instance, "_id", relationship.id)
         setattr(instance, "_start_node_element_id", cast(Node, relationship.start_node).element_id)
         setattr(instance, "_start_node_id", cast(Node, relationship.start_node).id)
         setattr(instance, "_end_node_element_id", cast(Node, relationship.end_node).element_id)
