@@ -31,6 +31,7 @@ from pyneo4j_ogm.exceptions import (
     InstanceNotHydrated,
     MissingFilters,
     NoResultsFound,
+    UnregisteredModel,
 )
 from pyneo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
@@ -322,7 +323,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     break
 
             if target_node_model is None:
-                logger.warning("No model with labels %s is registered, disabling auto-fetch", labels)
+                raise UnregisteredModel(f"with labels {labels}")
             else:
                 logger.debug("Model with labels %s is registered, building auto-fetch query", labels)
                 match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
@@ -393,9 +394,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     if result is None:
                         continue
 
-                    if isinstance(result, Node):
-                        instances.append(self._inflate(node=result))
-                    elif isinstance(result, list):
+                    if isinstance(result, list):
                         instances.extend(result)
                     else:
                         instances.append(result)
