@@ -1,5 +1,4 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
-# pyright: reportGeneralTypeIssues=false
 
 from typing import List
 from unittest.mock import patch

@@ -1,12 +1,9 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
-# pyright: reportGeneralTypeIssues=false
 
-import pytest
 from neo4j import AsyncSession
 from neo4j.graph import Node
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import MissingFilters, NoResultsFound
 from tests.fixtures.db_clients import neo4j_session, pyneo4j_client
 from tests.fixtures.models import SinglePropModel
 

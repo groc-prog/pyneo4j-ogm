@@ -1,7 +1,6 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
-# pyright: reportGeneralTypeIssues=false
 
-from typing import List
+from typing import List, cast
 from unittest.mock import patch
 
 import pytest
@@ -68,7 +67,12 @@ async def test_update_many_raw_results(pyneo4j_client: Pyneo4jClient):
 
     with patch.object(pyneo4j_client, "cypher") as mock_cypher:
         mock_nodes = [
-            Node(graph=Graph(), element_id=node1.element_id, id_=node1.id, properties={"my_prop": "value1"}),
+            Node(
+                graph=Graph(),
+                element_id=cast(str, node1.element_id),
+                id_=cast(int, node1.id),
+                properties={"my_prop": "value1"},
+            ),
             None,
         ]
         mock_cypher.return_value = (

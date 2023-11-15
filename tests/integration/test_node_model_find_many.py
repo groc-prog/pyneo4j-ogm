@@ -1,6 +1,6 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
-# pyright: reportGeneralTypeIssues=false
 
+from typing import Any, Dict, cast
 from unittest.mock import patch
 
 from neo4j.graph import Graph, Node
@@ -52,7 +52,12 @@ async def test_find_many_raw_result(pyneo4j_client: Pyneo4jClient):
     await node.create()
 
     with patch.object(pyneo4j_client, "cypher") as mock_cypher:
-        mock_nodes = Node(graph=Graph(), element_id=node.element_id, id_=node.id, properties={"my_prop": "value1"})
+        mock_nodes = Node(
+            graph=Graph(),
+            element_id=cast(str, node.element_id),
+            id_=cast(int, node.id),
+            properties={"my_prop": "value1"},
+        )
         mock_cypher.return_value = (
             [[mock_nodes, None]],
             [],
@@ -80,7 +85,7 @@ async def test_find_many_projections(pyneo4j_client: Pyneo4jClient):
     assert isinstance(found_nodes, list)
     assert len(found_nodes) == 2
     assert all(isinstance(node, dict) for node in found_nodes)
-    assert all("prop" in node for node in found_nodes)
+    assert all("prop" in cast(Dict[str, Any], node) for node in found_nodes)
 
 
 async def test_find_many_options(pyneo4j_client: Pyneo4jClient):

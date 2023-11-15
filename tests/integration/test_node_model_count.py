@@ -1,11 +1,8 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
-# pyright: reportGeneralTypeIssues=false
 
 from unittest.mock import patch
 
 import pytest
-from neo4j import AsyncSession
-from neo4j.graph import Node
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.exceptions import NoResultsFound
