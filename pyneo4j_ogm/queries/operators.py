@@ -4,8 +4,6 @@ Module for building operators which can be used in filters.
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union, cast
 
-from pyneo4j_ogm.queries.types import QueryDataTypes
-
 
 class Operators:
     """
@@ -34,7 +32,7 @@ class Operators:
     _property_name: Optional[str] = None
     _property_var_overwrite: Optional[str] = None
     ref: str = "n"
-    parameters: Dict[str, Union[QueryDataTypes, List[str]]] = {}
+    parameters: Dict[str, Union[Any, List[str]]] = {}
 
     def reset_state(self) -> None:
         self._parameter_indent = 0

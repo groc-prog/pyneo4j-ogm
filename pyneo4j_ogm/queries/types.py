@@ -1,7 +1,6 @@
 """
 Types used to describe queries.
 """
-from datetime import date, datetime, time, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 
@@ -28,7 +27,6 @@ class RelationshipMatchDirection(str, Enum):
 
 
 NumericQueryDataType = Union[int, float]
-QueryDataTypes = Union[bool, NumericQueryDataType, str, bytes, datetime, date, time, timedelta]
 
 # We need to define 5 different typed dictionaries here because the `$size` operator can only be
 # one of the following, which means we have to create a Union of the five listed below to not get
@@ -78,15 +76,15 @@ NumericLessThanEqualsOperator = TypedDict(
 QueryOperators = TypedDict(
     "QueryOperators",
     {
-        "$eq": Optional[QueryDataTypes],
-        "$neq": Optional[QueryDataTypes],
+        "$eq": Optional[Any],
+        "$neq": Optional[Any],
         "$gt": Optional[NumericQueryDataType],
         "$gte": Optional[NumericQueryDataType],
         "$lt": Optional[NumericQueryDataType],
         "$lte": Optional[NumericQueryDataType],
-        "$in": Optional[List[QueryDataTypes]],
-        "$nin": Optional[List[QueryDataTypes]],
-        "$all": Optional[List[QueryDataTypes]],
+        "$in": Optional[List[Any]],
+        "$nin": Optional[List[Any]],
+        "$all": Optional[List[Any]],
         "$size": Optional[
             Union[
                 NumericEqualsOperator,
@@ -131,10 +129,8 @@ PatternOperator = TypedDict(
     {
         "$exists": Optional[bool],
         "$direction": Optional[RelationshipMatchDirection],
-        "$relationship": Optional[
-            Union[Dict[str, Union[QueryOperators, QueryDataTypes]], PatternRelationshipOperators]
-        ],
-        "$node": Optional[Union[Dict[str, Union[QueryOperators, QueryDataTypes]], PatternNodeOperators]],
+        "$relationship": Optional[Union[Dict[str, Union[QueryOperators, Any]], PatternRelationshipOperators]],
+        "$node": Optional[Union[Dict[str, Union[QueryOperators, Any]], PatternNodeOperators]],
     },
     total=False,
 )
@@ -166,26 +162,24 @@ QueryRelationshipPropertyOperators = TypedDict(
         "$elementId": Optional[str],
         "$id": Optional[int],
         "$patterns": Optional[List[PatternOperator]],
-        "$relationship": Optional[Union[Dict[str, Union[QueryOperators, QueryDataTypes]], QueryRelationshipOperators]],
+        "$relationship": Optional[Union[Dict[str, Union[QueryOperators, Any]], QueryRelationshipOperators]],
     },
     total=False,
 )
 
 # The actual interfaces used to describe query filters
-NodeFilters = Union[Dict[str, Union[QueryOperators, QueryDataTypes, Any]], QueryNodeOperators]
-RelationshipFilters = Union[Dict[str, Union[QueryOperators, QueryDataTypes, Any]], QueryRelationshipOperators]
-RelationshipPropertyFilters = Union[
-    Dict[str, Union[QueryOperators, QueryDataTypes, Any]], QueryRelationshipPropertyOperators
-]
+NodeFilters = Union[Dict[str, Union[QueryOperators, Any, Any]], QueryNodeOperators]
+RelationshipFilters = Union[Dict[str, Union[QueryOperators, Any, Any]], QueryRelationshipOperators]
+RelationshipPropertyFilters = Union[Dict[str, Union[QueryOperators, Any, Any]], QueryRelationshipPropertyOperators]
 
 MultiHopFilters = TypedDict(
     "MultiHopFilters",
     {
         "$minHops": NotRequired[Optional[int]],
         "$maxHops": NotRequired[Optional[Union[int, Literal["*"]]]],
-        "$node": Union[Dict[str, Union[QueryOperators, QueryDataTypes, Any]], MultiHopNode],
+        "$node": Union[Dict[str, Union[QueryOperators, Any, Any]], MultiHopNode],
         "$relationships": NotRequired[
-            Optional[List[Union[Dict[str, Union[QueryOperators, QueryDataTypes, Any]], MultiHopRelationship]]]
+            Optional[List[Union[Dict[str, Union[QueryOperators, Any, Any]], MultiHopRelationship]]]
         ],
         "$direction": NotRequired[Optional[RelationshipMatchDirection]],
     },
