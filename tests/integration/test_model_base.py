@@ -7,7 +7,7 @@ from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 from pyneo4j_ogm.queries.enums import RelationshipPropertyDirection
-from tests.fixtures.db_clients import pyneo4j_client
+from tests.fixtures.db_setup import client
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -39,8 +39,8 @@ class ModelExportTest(NodeModel):
     )
 
 
-async def test_str_method(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([NodeTestModel, RelationshipTestModel])
+async def test_str_method(client: Pyneo4jClient):
+    await client.register_models([NodeTestModel, RelationshipTestModel])
 
     non_hydrated_node = NodeTestModel()
     hydrated_node = await NodeTestModel().create()
@@ -53,8 +53,8 @@ async def test_str_method(pyneo4j_client: Pyneo4jClient):
     assert str(hydrated_node) == f"NodeTestModel(element_id={hydrated_node.element_id}, destroyed=True)"
 
 
-async def test_eq_method(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([NodeTestModel, RelationshipTestModel])
+async def test_eq_method(client: Pyneo4jClient):
+    await client.register_models([NodeTestModel, RelationshipTestModel])
 
     node1 = await NodeTestModel().create()
     node2 = await NodeTestModel().create()
@@ -66,8 +66,8 @@ async def test_eq_method(pyneo4j_client: Pyneo4jClient):
     assert not node1 == relationship
 
 
-async def test_export_model(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([ModelExportTest, ModelExportTest2, RelationshipExportTest])
+async def test_export_model(client: Pyneo4jClient):
+    await client.register_models([ModelExportTest, ModelExportTest2, RelationshipExportTest])
 
     node = await ModelExportTest().create()
 
@@ -90,8 +90,8 @@ async def test_export_model(pyneo4j_client: Pyneo4jClient):
     }
 
 
-async def test_element_id(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([NodeTestModel])
+async def test_element_id(client: Pyneo4jClient):
+    await client.register_models([NodeTestModel])
 
     node = NodeTestModel()
     assert node.element_id is None
@@ -100,8 +100,8 @@ async def test_element_id(pyneo4j_client: Pyneo4jClient):
     assert node.element_id is not None
 
 
-async def test_id(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([NodeTestModel])
+async def test_id(client: Pyneo4jClient):
+    await client.register_models([NodeTestModel])
 
     node = NodeTestModel()
     assert node.id is None

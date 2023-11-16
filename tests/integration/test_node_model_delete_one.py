@@ -1,45 +1,40 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
+from typing import LiteralString, cast
+
 import pytest
 from neo4j import AsyncSession
 from neo4j.graph import Node
 
-from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.exceptions import MissingFilters, NoResultsFound
-from tests.fixtures.db_clients import neo4j_session, pyneo4j_client
-from tests.fixtures.models import SinglePropModel
+from tests.fixtures.db_setup import CoffeeShop, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
 
 
-async def test_delete_one(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
-    await pyneo4j_client.register_models([SinglePropModel])
-
-    node1 = SinglePropModel(my_prop="value1")
-    node2 = SinglePropModel(my_prop="value2")
-    await node1.create()
-    await node2.create()
-
-    count = await SinglePropModel.delete_one({"my_prop": "value1"})
+async def test_delete_one(session: AsyncSession, setup_test_data):
+    count = await CoffeeShop.delete_one({"tags": {"$in": ["cozy"]}})
     assert count == 1
 
-    results = await neo4j_session.run(
-        "MATCH (n:Test) WHERE elementId(n) = $element_id RETURN n", {"element_id": node1._element_id}
+    results = await session.run(
+        cast(
+            LiteralString,
+            f"""
+            MATCH (n:{':'.join(CoffeeShop.model_settings().labels)})
+            RETURN DISTINCT n
+            """,
+        ),
     )
     query_result: list[list[Node]] = await results.values()
 
-    assert len(query_result) == 0
+    assert len(query_result) == 2
 
 
-async def test_delete_one_no_match(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([SinglePropModel])
-
+async def test_delete_one_no_match(setup_test_data):
     with pytest.raises(NoResultsFound):
-        await SinglePropModel.delete_one({"my_prop": "value1"})
+        await CoffeeShop.delete_one({"tags": {"$in": ["oh-no"]}})
 
 
-async def test_delete_one_invalid_filter(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([SinglePropModel])
-
+async def test_delete_one_invalid_filter(setup_test_data):
     with pytest.raises(MissingFilters):
-        await SinglePropModel.delete_one({})
+        await CoffeeShop.delete_one({})

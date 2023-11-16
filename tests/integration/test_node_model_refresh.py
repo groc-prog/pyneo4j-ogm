@@ -1,6 +1,6 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
-from typing import List
+from typing import List, LiteralString, cast
 from unittest.mock import patch
 
 import pytest
@@ -9,40 +9,49 @@ from neo4j.graph import Node
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.exceptions import NoResultsFound
-from tests.fixtures.db_clients import neo4j_session, pyneo4j_client
-from tests.fixtures.models import SinglePropModel
+from tests.fixtures.db_setup import CoffeeShop, client, session
 
 pytest_plugins = ("pytest_asyncio",)
 
 
-async def test_refresh(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
-    await pyneo4j_client.register_models([SinglePropModel])
+async def test_refresh(client: Pyneo4jClient, session: AsyncSession):
+    await client.register_models([CoffeeShop])
 
-    node = SinglePropModel()
+    node = CoffeeShop(rating=5, tags=["modern", "trendy"])
     await node.create()
 
-    node.my_prop = "new value"
+    node.tags.append("neighborhood")
 
     await node.refresh()
-    assert node.my_prop == "default"
+    assert node.tags == ["modern", "trendy"]
 
-    results = await neo4j_session.run("MATCH (n:Test) RETURN n")
+    results = await session.run(
+        cast(
+            LiteralString,
+            f"""
+            MATCH (n:{':'.join(CoffeeShop.model_settings().labels)})
+            WHERE elementId(n) = $element_id
+            RETURN n
+            """,
+        ),
+        {"element_id": node._element_id},
+    )
     query_result: List[List[Node]] = await results.values()
 
     assert len(query_result) == 1
     assert len(query_result[0]) == 1
 
     node_result = query_result[0][0]
-    assert node_result["my_prop"] == "default"
+    assert node_result["tags"] == ["modern", "trendy"]
 
 
-async def test_refresh_no_result(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([SinglePropModel])
+async def test_refresh_no_result(client: Pyneo4jClient):
+    await client.register_models([CoffeeShop])
 
-    node = SinglePropModel()
+    node = CoffeeShop(rating=5, tags=["modern", "trendy"])
     await node.create()
 
-    with patch.object(pyneo4j_client, "cypher") as mock_cypher:
+    with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
         with pytest.raises(NoResultsFound):

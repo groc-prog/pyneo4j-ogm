@@ -1,8 +1,6 @@
 """
 Utility functions for asserting string tests.
 """
-
-
 from typing import Optional
 
 

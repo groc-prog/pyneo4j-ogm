@@ -430,7 +430,13 @@ def test_build_combined_operators(operators_builder: Operators):
         EXISTS {MATCH (n)-[_n_3]->(_n_4) WHERE _n_4.name = $_n_5 AND ALL(i IN labels(_n_4) WHERE i IN $_n_6)}
         """,
     )
-    assert operators_builder.parameters == {"_n_0": "John", "_n_1": 18, "_n_2": 30, "_n_5": "John", "_n_6": ["A", "B"]}
+    assert operators_builder.parameters == {
+        "_n_0": "John",
+        "_n_1": 18,
+        "_n_2": 30,
+        "_n_5": "John",
+        "_n_6": ["A", "B"],
+    }
 
 
 def test_invalid_filter_returns_none(operators_builder: Operators):

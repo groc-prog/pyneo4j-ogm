@@ -2,59 +2,17 @@
 
 import pytest
 
-from pyneo4j_ogm.core.node import NodeModel, ensure_alive
-from pyneo4j_ogm.core.relationship import RelationshipModel
+from pyneo4j_ogm.core.node import ensure_alive
 from pyneo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated
-from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
-from pyneo4j_ogm.queries.enums import RelationshipPropertyDirection
+from tests.fixtures.db_setup import CoffeeShop, Developer
 
 
-class LabelsTest(NodeModel):
-    pass
-
-    class Settings:
-        labels = set()
-
-
-class RelationshipPropertyNode(NodeModel):
-    pass
-
-
-class RelationshipPropertyRelationship(RelationshipModel):
-    pass
-
-
-class RelationshipPropertyTest(NodeModel):
-    my_prop: int = 1
-
-    rel_prop_one: RelationshipProperty[
-        RelationshipPropertyNode, RelationshipPropertyRelationship
-    ] = RelationshipProperty(
-        target_model=RelationshipPropertyNode,
-        relationship_model=RelationshipPropertyRelationship,
-        direction=RelationshipPropertyDirection.OUTGOING,
-    )
-    rel_prop_two: RelationshipProperty[
-        RelationshipPropertyNode, RelationshipPropertyRelationship
-    ] = RelationshipProperty(
-        target_model=RelationshipPropertyNode,
-        relationship_model=RelationshipPropertyRelationship,
-        direction=RelationshipPropertyDirection.OUTGOING,
-    )
-
-
-setattr(LabelsTest, "_client", None)
-setattr(RelationshipPropertyNode, "_client", None)
-setattr(RelationshipPropertyRelationship, "_client", None)
-setattr(RelationshipPropertyTest, "_client", None)
-
-
-def test_converting_labels():
-    assert LabelsTest.__settings__.labels == {"Labels", "Test"}
+def test_labels_fallback():
+    assert CoffeeShop.__settings__.labels == {"Coffee", "Shop"}
 
 
 def test_relationship_property_auto_exclude():
-    assert RelationshipPropertyTest.__settings__.exclude_from_export == {"rel_prop_one", "rel_prop_two"}
+    assert Developer.__settings__.exclude_from_export == {"colleagues", "coffee"}
 
 
 def test_ensure_alive_decorator():

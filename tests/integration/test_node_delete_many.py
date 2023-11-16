@@ -1,36 +1,36 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
+from typing import LiteralString, cast
+
 from neo4j import AsyncSession
 from neo4j.graph import Node
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from tests.fixtures.db_clients import neo4j_session, pyneo4j_client
-from tests.fixtures.models import SinglePropModel
+from tests.fixtures.db_setup import CoffeeShop, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
 
 
-async def test_delete_many(pyneo4j_client: Pyneo4jClient, neo4j_session: AsyncSession):
-    await pyneo4j_client.register_models([SinglePropModel])
-
-    node1 = SinglePropModel(my_prop="value1")
-    node2 = SinglePropModel(my_prop="value2")
-    node3 = SinglePropModel(my_prop="other")
-    await node1.create()
-    await node2.create()
-    await node3.create()
-
-    count = await SinglePropModel.delete_many({"my_prop": {"$contains": "value"}})
+async def test_delete_many(session: AsyncSession, setup_test_data):
+    count = await CoffeeShop.delete_many({"tags": {"$in": ["hipster"]}})
     assert count == 2
 
-    results = await neo4j_session.run("MATCH (n:Test) WHERE n.my_prop CONTAINS $val RETURN n", {"val": "value"})
+    results = await session.run(
+        cast(
+            LiteralString,
+            f"""
+            MATCH (n:{':'.join(CoffeeShop.model_settings().labels)})
+            RETURN DISTINCT n
+            """,
+        ),
+    )
     query_result: list[list[Node]] = await results.values()
 
-    assert len(query_result) == 0
+    assert len(query_result) == 1
 
 
-async def test_delete_many_no_match(pyneo4j_client: Pyneo4jClient):
-    await pyneo4j_client.register_models([SinglePropModel])
+async def test_delete_many_no_match(client: Pyneo4jClient):
+    await client.register_models([CoffeeShop])
 
-    count = await SinglePropModel.delete_many({"my_prop": "value1"})
+    count = await CoffeeShop.delete_many({"tags": {"$in": ["oh-no"]}})
     assert count == 0

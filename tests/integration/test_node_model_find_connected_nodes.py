@@ -1,241 +1,188 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
-
-import logging
-import os
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, cast
 
 import pytest
 
-from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.core.node import NodeModel
-from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import UnregisteredModel
-from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
-from pyneo4j_ogm.queries.enums import RelationshipPropertyDirection
 from pyneo4j_ogm.queries.types import RelationshipMatchDirection
-from tests.fixtures.db_clients import pyneo4j_client
+from tests.fixtures.db_setup import (
+    CoffeeShop,
+    Consumed,
+    Developer,
+    WorkedWith,
+    client,
+    session,
+    setup_test_data,
+)
 
 pytest_plugins = ("pytest_asyncio",)
 
 
-class RelatedOne(RelationshipModel):
-    counter: int = 1
+async def test_find_connected_nodes(setup_test_data):
+    node = await Developer.find_one({"uid": 3})
+    assert node is not None
 
-    class Settings:
-        type = "REL_ONE"
-
-
-class RelatedTwo(RelationshipModel):
-    kind = "a"
-
-    class Settings:
-        type = "REL_TWO"
-
-
-class FarRelatedOne(NodeModel):
-    val: str = "val"
-
-    related: RelationshipProperty["FarRelatedTwo", RelatedOne] = RelationshipProperty(
-        target_model="FarRelatedTwo",
-        relationship_model=RelatedOne,
-        direction=RelationshipPropertyDirection.OUTGOING,
+    results = await cast(Developer, node).find_connected_nodes(
+        {"$node": {"$labels": list(CoffeeShop.model_settings().labels), "tags": {"$in": ["cozy"]}}},
     )
 
-    class Settings:
-        labels = {"One"}
+    assert len(results) == 1
+    assert isinstance(results[0], CoffeeShop)
+    assert results[0].rating == 5
 
 
-class FarRelatedTwo(NodeModel):
-    val: str = "val"
+async def test_find_connected_nodes_filter_relationships(setup_test_data):
+    node = await Developer.find_one({"uid": 3})
+    assert node is not None
 
-    related_in: RelationshipProperty[FarRelatedOne, RelatedOne] = RelationshipProperty(
-        target_model=FarRelatedOne,
-        relationship_model=RelatedOne,
-        direction=RelationshipPropertyDirection.INCOMING,
-    )
-
-    related_out: RelationshipProperty["FarRelatedThree", RelatedTwo] = RelationshipProperty(
-        target_model="FarRelatedThree",
-        relationship_model=RelatedTwo,
-        direction=RelationshipPropertyDirection.OUTGOING,
-    )
-
-    class Settings:
-        labels = {"Two"}
-
-
-class FarRelatedThree(NodeModel):
-    val: str = "val"
-
-    related_in: RelationshipProperty[FarRelatedTwo, RelatedTwo] = RelationshipProperty(
-        target_model=FarRelatedTwo,
-        relationship_model=RelatedTwo,
-        direction=RelationshipPropertyDirection.INCOMING,
-    )
-
-    class Settings:
-        labels = {"Three"}
-
-
-@pytest.fixture(autouse=True)
-async def setup_graph(pyneo4j_client: Pyneo4jClient):
-    os.environ["PYNEO4J_OGM_LOG_LEVEL"] = str(logging.DEBUG)
-
-    await pyneo4j_client.register_models([FarRelatedOne, FarRelatedTwo, FarRelatedThree, RelatedOne, RelatedTwo])
-
-    start1 = FarRelatedOne(val="start_one")
-    start2 = FarRelatedOne(val="start_two")
-    middle1 = FarRelatedTwo(val="middleman_one")
-    middle2 = FarRelatedTwo(val="middleman_two")
-    end1 = FarRelatedThree(val="far_end_one")
-    end2 = FarRelatedThree(val="far_end_two")
-    end3 = FarRelatedThree(val="far_end_three")
-
-    await start1.create()
-    await start2.create()
-    await middle1.create()
-    await middle2.create()
-    await end1.create()
-    await end2.create()
-    await end3.create()
-
-    await start1.related.connect(middle1)
-    await start1.related.connect(middle2)
-    await middle1.related_in.connect(start1)
-    await middle2.related_in.connect(start1, {"counter": 5})
-    await middle2.related_in.connect(start2)
-    await middle1.related_out.connect(end1, {"kind": "b"})
-    await middle1.related_out.connect(end2)
-    await middle2.related_out.connect(end1)
-    await middle2.related_out.connect(end3, {"kind": "b"})
-
-    return start1, start2, middle1, middle2, end1, end2, end3
-
-
-async def test_find_connected_nodes(pyneo4j_client: Pyneo4jClient, setup_graph):
-    start: FarRelatedOne = setup_graph[0]
-
-    results = await start.find_connected_nodes(
-        {"$node": {"$labels": ["Three"], "val": {"$or": [{"$eq": "far_end_one"}, {"$eq": "far_end_two"}]}}},
-    )
-
-    assert len(results) == 2
-    assert all(isinstance(node, FarRelatedThree) for node in results)
-
-
-async def test_find_connected_nodes_filter_relationships(pyneo4j_client: Pyneo4jClient, setup_graph):
-    start: FarRelatedOne = setup_graph[0]
-    matched: FarRelatedOne = setup_graph[6]
-
-    results = await start.find_connected_nodes(
+    results = await cast(Developer, node).find_connected_nodes(
         {
-            "$node": {"$labels": ["Three"]},
-            "$relationships": [{"$type": "REL_ONE", "counter": {"$gt": 3}}, {"$type": "REL_TWO", "kind": "b"}],
+            "$node": {"$labels": list(CoffeeShop.model_settings().labels)},
+            "$relationships": [{"$type": "LIKES_TO_DRINK", "liked": True}],
+            "$minHops": 1,
+            "$maxHops": 2,
         },
     )
 
     assert len(results) == 1
-    assert isinstance(results[0], FarRelatedThree)
-    assert cast(FarRelatedThree, results[0])._element_id == matched._element_id
-    assert cast(FarRelatedThree, results[0])._id == matched._id
+    assert isinstance(results[0], CoffeeShop)
+    assert results[0].rating == 5
 
 
-async def test_find_connected_nodes_direction_incoming(pyneo4j_client: Pyneo4jClient, setup_graph):
-    start_outgoing: FarRelatedOne = setup_graph[0]
-    start_incoming: FarRelatedOne = setup_graph[5]
-    start_both: FarRelatedOne = setup_graph[1]
+async def test_find_connected_nodes_direction_incoming(setup_test_data):
+    node = await Developer.find_one({"uid": 3})
+    assert node is not None
 
-    results = await start_outgoing.find_connected_nodes(
+    results = await cast(Developer, node).find_connected_nodes(
         {
-            "$node": {"$labels": ["Three"]},
-            "$relationships": [{"$type": "REL_ONE", "counter": {"$gt": 3}}, {"$type": "REL_TWO", "kind": "b"}],
+            "$node": {"$labels": list(Developer.model_settings().labels)},
             "$direction": RelationshipMatchDirection.INCOMING,
+            "$minHops": 2,
+            "$maxHops": 2,
         },
     )
 
-    assert len(results) == 0
-
-    results = await start_incoming.find_connected_nodes(
-        {"$node": {"$labels": ["One"]}, "$direction": RelationshipMatchDirection.INCOMING},
-    )
-
-    assert len(results) == 1
-    assert isinstance(results[0], FarRelatedOne)
-    assert cast(FarRelatedOne, results[0])._element_id == start_outgoing._element_id
-    assert cast(FarRelatedOne, results[0])._id == start_outgoing._id
-
-    results = await start_both.find_connected_nodes(
-        {"$node": {"$labels": ["One"]}, "$direction": RelationshipMatchDirection.BOTH},
-    )
-
-    assert len(results) == 1
-    assert isinstance(results[0], FarRelatedOne)
-    assert cast(FarRelatedOne, results[0])._element_id == start_outgoing._element_id
-    assert cast(FarRelatedOne, results[0])._id == start_outgoing._id
+    assert len(results) == 2
 
 
-async def test_find_connected_nodes_projections(pyneo4j_client: Pyneo4jClient, setup_graph):
-    start: FarRelatedOne = setup_graph[0]
+async def test_find_connected_nodes_projections(setup_test_data):
+    node = await Developer.find_one({"uid": 3})
+    assert node is not None
 
-    results = await start.find_connected_nodes(
-        {"$node": {"$labels": ["Three"], "val": {"$or": [{"$eq": "far_end_one"}, {"$eq": "far_end_two"}]}}},
-        projections={"node_val": "val", "node_id": "$id"},
+    results = await cast(Developer, node).find_connected_nodes(
+        {
+            "$node": {"$labels": list(CoffeeShop.model_settings().labels)},
+            "$maxHops": 2,
+        },
+        projections={"coffee_rating": "rating"},
     )
 
     assert len(results) == 2
-    assert all(isinstance(node, dict) for node in results)
-    assert all("node_val" in cast(Dict[str, Any], node) for node in results)
-    assert all("node_id" in cast(Dict[str, Any], node) for node in results)
+    assert all(isinstance(result, dict) for result in results)
+    assert all("coffee_rating" in cast(Dict[str, Any], result) for result in results)
 
 
-async def test_find_connected_nodes_options(pyneo4j_client: Pyneo4jClient, setup_graph):
-    start: FarRelatedOne = setup_graph[0]
+async def test_find_connected_nodes_options(setup_test_data):
+    node = await Developer.find_one({"uid": 3})
+    assert node is not None
 
-    results = await start.find_connected_nodes(
-        {"$node": {"$labels": ["Three"], "val": {"$or": [{"$eq": "far_end_one"}, {"$eq": "far_end_two"}]}}},
+    results = await cast(Developer, node).find_connected_nodes(
+        {
+            "$node": {"$labels": list(CoffeeShop.model_settings().labels)},
+            "$maxHops": 2,
+        },
         options={"limit": 1},
     )
 
     assert len(results) == 1
+    assert all(isinstance(result, CoffeeShop) for result in results)
 
 
-async def test_find_connected_nodes_auto_fetch(pyneo4j_client: Pyneo4jClient, setup_graph):
-    start: FarRelatedOne = setup_graph[0]
+async def test_find_connected_nodes_auto_fetch(setup_test_data):
+    node = await CoffeeShop.find_one({"rating": 5})
+    assert node is not None
 
-    results = await start.find_connected_nodes(
-        {"$node": {"$labels": ["Three"], "val": {"$or": [{"$eq": "far_end_one"}, {"$eq": "far_end_two"}]}}},
+    results = await cast(CoffeeShop, node).find_connected_nodes(
+        {
+            "$node": {"$labels": list(Developer.model_settings().labels), "uid": 3},
+            "$direction": RelationshipMatchDirection.INCOMING,
+        },
         auto_fetch_nodes=True,
     )
 
-    assert len(results) == 2
-    assert all(isinstance(node, FarRelatedThree) for node in results)
-    assert all(len(node.related_in.nodes) > 0 for node in cast(List[FarRelatedThree], results))
+    assert len(results) == 1
+    assert isinstance(results[0], Developer)
+    assert len(results[0].colleagues.nodes) == 2
+    assert len(results[0].coffee.nodes) == 3
 
 
-async def test_find_connected_nodes_auto_fetch_models(pyneo4j_client: Pyneo4jClient, setup_graph):
-    start: FarRelatedOne = setup_graph[0]
+async def test_find_connected_nodes_auto_fetch_models(setup_test_data):
+    node = await CoffeeShop.find_one({"rating": 5})
+    assert node is not None
 
-    results = await start.find_connected_nodes(
-        {"$node": {"$labels": ["Three"], "val": {"$or": [{"$eq": "far_end_one"}, {"$eq": "far_end_two"}]}}},
+    results = await cast(CoffeeShop, node).find_connected_nodes(
+        {
+            "$node": {"$labels": list(Developer.model_settings().labels), "uid": 3},
+            "$direction": RelationshipMatchDirection.INCOMING,
+        },
         auto_fetch_nodes=True,
-        auto_fetch_models=[FarRelatedOne],
+        auto_fetch_models=[Developer],
     )
 
-    assert len(results) == 2
-    assert all(isinstance(node, FarRelatedThree) for node in results)
-    assert all(len(node.related_in.nodes) == 0 for node in cast(List[FarRelatedThree], results))
+    assert len(results) == 1
+    assert isinstance(results[0], Developer)
+    assert len(results[0].colleagues.nodes) == 2
+    assert len(results[0].coffee.nodes) == 0
 
 
-async def test_find_connected_nodes_auto_fetch_cancelled(pyneo4j_client: Pyneo4jClient, setup_graph):
-    start: FarRelatedOne = setup_graph[0]
-    pyneo4j_client.models = {model for model in pyneo4j_client.models if model != FarRelatedThree}
+async def test_find_connected_nodes_auto_fetch_models_as_string(setup_test_data):
+    node = await CoffeeShop.find_one({"rating": 5})
+    assert node is not None
+
+    results = await cast(CoffeeShop, node).find_connected_nodes(
+        {
+            "$node": {"$labels": list(Developer.model_settings().labels), "uid": 3},
+            "$direction": RelationshipMatchDirection.INCOMING,
+        },
+        auto_fetch_nodes=True,
+        auto_fetch_models=["Developer"],
+    )
+
+    assert len(results) == 1
+    assert isinstance(results[0], Developer)
+    assert len(results[0].colleagues.nodes) == 2
+    assert len(results[0].coffee.nodes) == 0
+
+
+async def test_find_connected_nodes_auto_fetch_models_unregistered_node(setup_test_data):
+    node = await CoffeeShop.find_one({"rating": 5})
+    assert node is not None
+
+    CoffeeShop._client.models.remove(Developer)
 
     with pytest.raises(UnregisteredModel):
-        results = await start.find_connected_nodes(
-            {"$node": {"$labels": ["Three"], "val": {"$or": [{"$eq": "far_end_one"}, {"$eq": "far_end_two"}]}}},
+        await cast(CoffeeShop, node).find_connected_nodes(
+            {
+                "$node": {"$labels": list(Developer.model_settings().labels), "uid": 3},
+                "$direction": RelationshipMatchDirection.INCOMING,
+            },
             auto_fetch_nodes=True,
+            auto_fetch_models=["Developer"],
         )
 
-        assert len(results) == 2
-        assert all(isinstance(node, FarRelatedThree) for node in results)
-        assert all(len(node.related_in.nodes) == 0 for node in cast(List[FarRelatedThree], results))
+
+async def test_find_connected_nodes_auto_fetch_models_unregistered_relationship(setup_test_data):
+    node = await CoffeeShop.find_one({"rating": 5})
+    assert node is not None
+
+    CoffeeShop._client.models.remove(WorkedWith)
+
+    with pytest.raises(UnregisteredModel):
+        await cast(CoffeeShop, node).find_connected_nodes(
+            {
+                "$node": {"$labels": list(Developer.model_settings().labels), "uid": 3},
+                "$direction": RelationshipMatchDirection.INCOMING,
+            },
+            auto_fetch_nodes=True,
+            auto_fetch_models=[Developer],
+        )

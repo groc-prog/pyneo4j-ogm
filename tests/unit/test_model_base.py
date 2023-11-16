@@ -9,39 +9,11 @@ from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.exceptions import ModelImportFailure, UnregisteredModel
 from pyneo4j_ogm.fields.settings import BaseModelSettings
+from tests.fixtures.db_setup import Developer
 
 
 def hook_func():
     pass
-
-
-class NodeTest(NodeModel):
-    pass
-
-
-class ModelImportTest(NodeModel):
-    my_prop: Optional[int]
-    my_list: Optional[List[Dict]]
-
-
-class ModifiedPropertiesTest(NodeModel):
-    a: str = "a"
-    b: int = 1
-    c: bool = True
-
-
-class ModelSettingsTest(NodeModel):
-    pass
-
-    class Settings:
-        exclude_from_export = {"exclude_from_export"}
-        pre_hooks = {"test_hook": [hook_func]}
-        post_hooks = {"test_hook": [hook_func, hook_func]}
-
-
-setattr(NodeTest, "_client", None)
-setattr(ModelImportTest, "_client", None)
-setattr(ModifiedPropertiesTest, "_client", None)
 
 
 def test_unregistered_model_exc():
@@ -50,64 +22,70 @@ def test_unregistered_model_exc():
 
 
 def test_pre_hooks():
-    NodeTest.register_pre_hooks("test_hook", lambda: None)
-    assert len(NodeTest.__settings__.pre_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in NodeTest.__settings__.pre_hooks["test_hook"])
-    NodeTest.__settings__.pre_hooks["test_hook"] = []
+    Developer.register_pre_hooks("test_hook", lambda: None)
+    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
+    Developer.__settings__.pre_hooks["test_hook"] = []
 
-    NodeTest.register_pre_hooks("test_hook", [lambda: None, lambda: None])
-    assert len(NodeTest.__settings__.pre_hooks["test_hook"]) == 2
-    assert all(callable(func) for func in NodeTest.__settings__.pre_hooks["test_hook"])
-    NodeTest.__settings__.pre_hooks["test_hook"] = []
+    Developer.register_pre_hooks("test_hook", [lambda: None, lambda: None])
+    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 2
+    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
+    Developer.__settings__.pre_hooks["test_hook"] = []
 
-    NodeTest.register_pre_hooks("test_hook", [lambda: None, "invalid"])  # type: ignore
-    assert len(NodeTest.__settings__.pre_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in NodeTest.__settings__.pre_hooks["test_hook"])
-    NodeTest.__settings__.pre_hooks["test_hook"] = []
+    Developer.register_pre_hooks("test_hook", [lambda: None, "invalid"])  # type: ignore
+    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
+    Developer.__settings__.pre_hooks["test_hook"] = []
 
-    NodeTest.register_pre_hooks("test_hook", lambda: None)
-    NodeTest.register_pre_hooks("test_hook", lambda: None, overwrite=True)
-    assert len(NodeTest.__settings__.pre_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in NodeTest.__settings__.pre_hooks["test_hook"])
-    NodeTest.__settings__.pre_hooks["test_hook"] = []
+    Developer.register_pre_hooks("test_hook", lambda: None)
+    Developer.register_pre_hooks("test_hook", lambda: None, overwrite=True)
+    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
+    Developer.__settings__.pre_hooks["test_hook"] = []
 
-    NodeTest.register_pre_hooks("test_hook", lambda: None)
-    NodeTest.register_pre_hooks("test_hook", lambda: None)
-    assert len(NodeTest.__settings__.pre_hooks["test_hook"]) == 2
-    assert all(callable(func) for func in NodeTest.__settings__.pre_hooks["test_hook"])
-    NodeTest.__settings__.pre_hooks["test_hook"] = []
+    Developer.register_pre_hooks("test_hook", lambda: None)
+    Developer.register_pre_hooks("test_hook", lambda: None)
+    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 2
+    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
+    Developer.__settings__.pre_hooks["test_hook"] = []
 
 
 def test_post_hooks():
-    NodeTest.register_post_hooks("test_hook", lambda: None)
-    assert len(NodeTest.__settings__.post_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in NodeTest.__settings__.post_hooks["test_hook"])
-    NodeTest.__settings__.post_hooks["test_hook"] = []
+    Developer.register_post_hooks("test_hook", lambda: None)
+    assert len(Developer.__settings__.post_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
+    Developer.__settings__.post_hooks["test_hook"] = []
 
-    NodeTest.register_post_hooks("test_hook", [lambda: None, lambda: None])
-    assert len(NodeTest.__settings__.post_hooks["test_hook"]) == 2
-    assert all(callable(func) for func in NodeTest.__settings__.post_hooks["test_hook"])
-    NodeTest.__settings__.post_hooks["test_hook"] = []
+    Developer.register_post_hooks("test_hook", [lambda: None, lambda: None])
+    assert len(Developer.__settings__.post_hooks["test_hook"]) == 2
+    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
+    Developer.__settings__.post_hooks["test_hook"] = []
 
-    NodeTest.register_post_hooks("test_hook", [lambda: None, "invalid"])  # type: ignore
-    assert len(NodeTest.__settings__.post_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in NodeTest.__settings__.post_hooks["test_hook"])
-    NodeTest.__settings__.post_hooks["test_hook"] = []
+    Developer.register_post_hooks("test_hook", [lambda: None, "invalid"])  # type: ignore
+    assert len(Developer.__settings__.post_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
+    Developer.__settings__.post_hooks["test_hook"] = []
 
-    NodeTest.register_post_hooks("test_hook", lambda: None)
-    NodeTest.register_post_hooks("test_hook", lambda: None, overwrite=True)
-    assert len(NodeTest.__settings__.post_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in NodeTest.__settings__.post_hooks["test_hook"])
-    NodeTest.__settings__.post_hooks["test_hook"] = []
+    Developer.register_post_hooks("test_hook", lambda: None)
+    Developer.register_post_hooks("test_hook", lambda: None, overwrite=True)
+    assert len(Developer.__settings__.post_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
+    Developer.__settings__.post_hooks["test_hook"] = []
 
-    NodeTest.register_post_hooks("test_hook", lambda: None)
-    NodeTest.register_post_hooks("test_hook", lambda: None)
-    assert len(NodeTest.__settings__.post_hooks["test_hook"]) == 2
-    assert all(callable(func) for func in NodeTest.__settings__.post_hooks["test_hook"])
-    NodeTest.__settings__.post_hooks["test_hook"] = []
+    Developer.register_post_hooks("test_hook", lambda: None)
+    Developer.register_post_hooks("test_hook", lambda: None)
+    assert len(Developer.__settings__.post_hooks["test_hook"]) == 2
+    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
+    Developer.__settings__.post_hooks["test_hook"] = []
 
 
 def test_import_model():
+    class ModelImportTest(NodeModel):
+        my_prop: Optional[int]
+        my_list: Optional[List[Dict]]
+
+    setattr(ModelImportTest, "_client", None)
+
     model_dict = {
         "element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18",
         "id": 13,
@@ -145,12 +123,27 @@ def test_import_model():
 
 
 def test_model_settings():
+    class ModelSettingsTest(NodeModel):
+        pass
+
+        class Settings:
+            exclude_from_export = {"exclude_from_export"}
+            pre_hooks = {"test_hook": [hook_func]}
+            post_hooks = {"test_hook": [hook_func, hook_func]}
+
     assert ModelSettingsTest.model_settings().exclude_from_export == {"exclude_from_export"}
     assert ModelSettingsTest.model_settings().pre_hooks == {"test_hook": [hook_func]}
     assert ModelSettingsTest.model_settings().post_hooks == {"test_hook": [hook_func, hook_func]}
 
 
 def test_modified_properties():
+    class ModifiedPropertiesTest(NodeModel):
+        a: str = "a"
+        b: int = 1
+        c: bool = True
+
+    setattr(ModifiedPropertiesTest, "_client", None)
+
     model = ModifiedPropertiesTest()
     model.a = "modified"
     assert model.modified_properties == {"a"}
