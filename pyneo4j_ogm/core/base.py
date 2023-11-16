@@ -46,7 +46,7 @@ V = TypeVar("V")
 def hooks(func):
     """
     Decorator which runs defined pre- and post hooks for the decorated method. The decorator expects the
-    hooks to have the name of the decorated method.
+    hooks to have the name of the decorated method. Both synchronous and asynchronous hooks are supported.
 
     Args:
         func (Callable): The method to decorate.
@@ -104,8 +104,8 @@ def hooks(func):
 
 class ModelBase(Generic[V], BaseModel):
     """
-    This class is a modified version of Pydantic's BaseModel class adjusted to the needs of the library.
-    It adds additional methods for exporting the model to a dictionary and importing from a dictionary.
+    Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
+    model types like registering hooks and exporting/importing models to/from dictionaries.
     """
 
     __settings__: BaseModelSettings = PrivateAttr()
@@ -122,7 +122,6 @@ class ModelBase(Generic[V], BaseModel):
             raise UnregisteredModel(model=self.__class__.__name__)
 
         super().__init__(*args, **kwargs)
-        self._db_properties = self.dict()
 
     def __init_subclass__(cls) -> None:
         setattr(cls, "_query_builder", QueryBuilder())
@@ -170,7 +169,6 @@ class ModelBase(Generic[V], BaseModel):
         Returns:
             Dict[str, Any]: The exported model as a dictionary.
         """
-        # Check if additional fields should be excluded
         logger.debug("Checking if additional fields should be excluded")
         if "exclude" in kwargs:
             kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self.__settings__.exclude_from_export)
@@ -191,7 +189,7 @@ class ModelBase(Generic[V], BaseModel):
     @classmethod
     def import_model(cls: Type[T], model: Dict[str, Any], from_camel_case: bool = False) -> T:
         """
-        Import a model from a dictionary.
+        Import a model from a dictionary. The imported model will be seen as hydrated.
 
         Args:
             model (Dict[str, Any]): The model to import.
@@ -246,6 +244,7 @@ class ModelBase(Generic[V], BaseModel):
         valid_hook_functions: List[Callable] = []
 
         logger.debug("Registering pre-hook for %s", hook_name)
+        # Normalize hooks to a list of functions
         if isinstance(hook_functions, list):
             for hook_function in hook_functions:
                 if callable(hook_function):
@@ -253,7 +252,6 @@ class ModelBase(Generic[V], BaseModel):
         elif callable(hook_functions):
             valid_hook_functions.append(hook_functions)
 
-        # Create key if it does not exist
         if hook_name not in cls.__settings__.pre_hooks:
             cls.__settings__.pre_hooks[hook_name] = []
 
@@ -285,6 +283,7 @@ class ModelBase(Generic[V], BaseModel):
         valid_hook_functions: List[Callable] = []
 
         logger.debug("Registering post-hook for %s", hook_name)
+        # Normalize hooks to a list of functions
         if isinstance(hook_functions, list):
             for hook_function in hook_functions:
                 if callable(hook_function):
@@ -292,7 +291,6 @@ class ModelBase(Generic[V], BaseModel):
         elif callable(hook_functions):
             valid_hook_functions.append(hook_functions)
 
-        # Create key if it does not exist
         if hook_name not in cls.__settings__.post_hooks:
             cls.__settings__.post_hooks[hook_name] = []
 

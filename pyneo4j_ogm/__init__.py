@@ -9,9 +9,3 @@ from .queries.enums import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
 )
-from .queries.types import (
-    MultiHopFilters,
-    NodeFilters,
-    QueryOptions,
-    RelationshipFilters,
-)

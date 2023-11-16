@@ -81,6 +81,10 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     _end_node_id: Optional[int] = PrivateAttr(default=None)
     Settings: ClassVar[Type[RelationshipModelSettings]]
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._db_properties = self.dict()
+
     def __init_subclass__(cls) -> None:
         setattr(cls, "__settings__", RelationshipModelSettings())
 

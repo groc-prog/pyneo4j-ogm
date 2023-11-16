@@ -93,6 +93,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             if hasattr(property_value, "_build_property"):
                 cast(RelationshipProperty, property_value)._build_property(self, property_name)
 
+        self._db_properties = self.dict(exclude=self._relationships_properties)
+
     def __init_subclass__(cls) -> None:
         setattr(cls, "_relationships_properties", set())
         setattr(cls, "__settings__", NodeModelSettings())
@@ -156,7 +158,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         setattr(self, "_id", getattr(cast(T, results[0][0]), "_id"))
 
         logger.debug("Resetting modified properties")
-        self._db_properties = self.dict()
+        self._db_properties = self.dict(exclude=self._relationships_properties)
         logger.info("Created new node %s", self)
 
         return self
@@ -200,7 +202,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             raise NoResultsFound()
 
         logger.debug("Resetting modified properties")
-        self._db_properties = self.dict()
+        self._db_properties = self.dict(exclude=self._relationships_properties)
         logger.info("Updated node %s", self)
 
     @hooks
@@ -442,7 +444,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if projections is not None:
             cls._query_builder.build_projections(projections=projections)
 
-        match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
         projection_query = (
             "RETURN DISTINCT n"
             if cls._query_builder.query["projections"] == ""
@@ -456,14 +457,14 @@ class NodeModel(ModelBase[NodeModelSettings]):
             [
                 projections is None,
                 auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
-                len(match_queries) != 0,
-                len(return_queries) != 0,
                 cls._query_builder.query["projections"] == "",
             ]
         )
 
         if do_auto_fetch:
             logger.debug("Querying database with auto-fetch")
+            match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
+
             results, meta = await cls._client.cypher(
                 query=f"""
                     MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
@@ -554,8 +555,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             List[T | Dict[str, Any]]: A list of model instances or dictionaries of the projected properties.
         """
         logger.info("Getting nodes of model %s matching filters %s", cls.__name__, filters)
-        match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
         cls._query_builder.reset_query()
+
         if filters is not None:
             cls._query_builder.node_filters(filters=filters)
         if options is not None:
@@ -574,14 +575,14 @@ class NodeModel(ModelBase[NodeModelSettings]):
             [
                 projections is None,
                 auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
-                len(match_queries) != 0,
-                len(return_queries) != 0,
                 cls._query_builder.query["projections"] == "",
             ]
         )
 
         if do_auto_fetch:
             logger.debug("Querying database with auto-fetch")
+            match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
+
             results, meta = await cls._client.cypher(
                 query=f"""
                     MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
@@ -1035,16 +1036,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 elif model.__name__ == getattr(relationship_property, "_target_model_name", None):
                     end_node_labels = list(cast(NodeModelSettings, model.__settings__).labels)
 
-            if relationship_type is None:
-                logger.debug(
-                    "Model for relationship used on property %s was not registered, skipping", defined_relationship
-                )
-                continue
-            if end_node_labels is None:
-                logger.debug(
-                    "Model for target node used on property %s was not registered, skipping", defined_relationship
-                )
-                continue
+            if relationship_type is None or end_node_labels is None:
+                raise UnregisteredModel(cls.__name__)
 
             return_queries.append(defined_relationship)
             match_queries.append(
