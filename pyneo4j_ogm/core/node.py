@@ -698,7 +698,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             return None
-        old_instance = results[0][0]
+
+        old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(node=results[0][0])
 
         # Update existing instance with values and save
         logger.debug("Creating instance copy with new values %s", update)
@@ -850,23 +851,23 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if cls._query_builder.query["where"] == "":
             raise MissingFilters()
 
-        results, _ = await cls._client.cypher(
+        result, _ = await cls._client.cypher(
             query=f"""
                 MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                 WHERE {cls._query_builder.query['where']}
                 WITH n LIMIT 1
                 DETACH DELETE n
-                RETURN DISTINCT n
+                RETURN count(n)
             """,
             parameters=cls._query_builder.parameters,
         )
 
         logger.debug("Checking if query returned a result")
-        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+        if len(result) == 0 or len(result[0]) == 0 or result[0][0] is None:
             raise NoResultsFound()
 
-        logger.info("Deleted node %s", cast(Node, results[0][0]).element_id)
-        return len(results)
+        logger.info("Deleted %s nodes", result[0][0])
+        return result[0][0]
 
     @classmethod
     @hooks
@@ -890,13 +891,17 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 DETACH DELETE n
-                RETURN DISTINCT n
+                RETURN count(n)
             """,
             parameters=cls._query_builder.parameters,
         )
 
+        logger.debug("Checking if query returned a result")
+        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            raise NoResultsFound()
+
         logger.info("Deleted %s nodes", len(results))
-        return len(results)
+        return results[0][0]
 
     @classmethod
     @hooks
@@ -948,8 +953,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
         for key, value in deflated.items():
             if isinstance(value, (dict, BaseModel)):
                 deflated[key] = json.dumps(value)
-            if isinstance(value, list):
-                deflated[key] = [json.dumps(item) if isinstance(item, (dict, BaseModel)) else item for item in value]
 
         return deflated
 
@@ -981,8 +984,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
             if isinstance(property_value, str):
                 inflated[property_name] = try_property_parsing(property_value)
-            elif isinstance(property_value, list):
-                inflated[property_name] = [try_property_parsing(item) for item in property_value]
             else:
                 inflated[property_name] = property_value
 

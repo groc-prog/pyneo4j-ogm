@@ -25,7 +25,7 @@ from typing import (
     cast,
 )
 
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel, PrivateAttr, root_validator
 
 from pyneo4j_ogm.exceptions import ModelImportFailure, UnregisteredModel
 from pyneo4j_ogm.fields.settings import BaseModelSettings
@@ -116,6 +116,19 @@ class ModelBase(Generic[V], BaseModel):
     _element_id: Optional[str] = PrivateAttr(default=None)
     _id: Optional[int] = PrivateAttr(default=None)
     Settings: ClassVar[Type[BaseModelSettings]]
+
+    @root_validator
+    def _check_list_properties(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Checks if all list properties are made of primitive types.
+        """
+        for key, value in values.items():
+            if isinstance(value, list):
+                for item in value:
+                    if not isinstance(item, (int, float, str, bool)):
+                        raise ValueError(f"List property {key} must be made of primitive types")
+
+        return values
 
     def __init__(self, *args, **kwargs) -> None:
         if not hasattr(self, "_client"):

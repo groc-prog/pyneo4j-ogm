@@ -459,7 +459,8 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             return None
-        old_instance = cast(T, results[0][0])
+
+        old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(relationship=results[0][0])
 
         # Update existing instance with values and save
         logger.debug("Creating instance copy with new values %s", update)
@@ -760,8 +761,6 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         for key, value in deflated.items():
             if isinstance(value, (dict, BaseModel)):
                 deflated[key] = json.dumps(value)
-            if isinstance(value, list):
-                deflated[key] = [json.dumps(item) if isinstance(item, (dict, BaseModel)) else item for item in value]
 
         return deflated
 
@@ -793,8 +792,6 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
             if isinstance(property_value, str):
                 inflated[property_name] = try_property_parsing(property_value)
-            elif isinstance(property_value, list):
-                inflated[property_name] = [try_property_parsing(item) for item in property_value]
             else:
                 inflated[property_name] = property_value
 
