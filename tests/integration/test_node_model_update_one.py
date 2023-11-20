@@ -1,10 +1,11 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
 from typing import List, LiteralString, cast
+from unittest.mock import patch
 
 import pytest
 from neo4j import AsyncSession
-from neo4j.graph import Node
+from neo4j.graph import Graph, Node
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.exceptions import MissingFilters
@@ -35,6 +36,32 @@ async def test_update_one(session: AsyncSession, setup_test_data):
 
     assert len(query_result) == 1
     assert query_result[0][0]["age"] == 50
+
+
+async def test_update_one_raw_result(client: Pyneo4jClient):
+    await client.register_models([Developer])
+
+    with patch.object(client, "cypher") as mock_cypher:
+        mock_node = Node(
+            graph=Graph(),
+            element_id="element-id",
+            id_=1,
+            properties={"age": 30, "uid": 1, "name": "John"},
+        )
+        mock_cypher.return_value = (
+            [[mock_node]],
+            [],
+        )
+
+        found_node = await Developer.find_one({"my_prop": "non-existent"})
+
+        assert found_node is not None
+        assert isinstance(found_node, Developer)
+        assert found_node._id == mock_node.id
+        assert found_node._element_id == mock_node.element_id
+        assert found_node.age == mock_node["age"]
+        assert found_node.uid == mock_node["uid"]
+        assert found_node.name == mock_node["name"]
 
 
 async def test_update_one_return_updated(setup_test_data):

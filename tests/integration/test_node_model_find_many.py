@@ -40,14 +40,14 @@ async def test_find_many_raw_result(client: Pyneo4jClient):
     await client.register_models([Coffee])
 
     with patch.object(client, "cypher") as mock_cypher:
-        mock_nodes = Node(
+        mock_node = Node(
             graph=Graph(),
-            element_id=cast(str, "element-id"),
-            id_=cast(int, 1),
+            element_id="element-id",
+            id_=1,
             properties={"flavor": "Espresso", "sugar": False, "milk": False, "note": '{"roast": "dark"}'},
         )
         mock_cypher.return_value = (
-            [[mock_nodes, None]],
+            [[mock_node, None]],
             [],
         )
 

@@ -184,3 +184,15 @@ async def setup_test_data(client: Pyneo4jClient, session: AsyncSession):
     CREATE (d4)-[:WAS_WORK_BUDDY_WITH {language: "Go"}]->(d3)
     """
     )
+
+    result = await session.run(
+        """
+    MATCH ()-[r]->()
+    WITH DISTINCT collect(r) as relationships
+    MATCH (n)
+    WITH DISTINCT collect(n) as nodes, relationships
+    RETURN nodes, relationships
+    """
+    )
+
+    yield result

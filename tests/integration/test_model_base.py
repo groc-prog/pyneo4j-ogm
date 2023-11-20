@@ -30,7 +30,7 @@ class RelationshipExportTest(RelationshipModel):
 
 class ModelExportTest(NodeModel):
     my_prop: int = 2
-    my_list: List[Dict] = [{"list_dict_prop": 1}]
+    my_list: List[int] = [1, 2]
 
     model: RelationshipProperty[ModelExportTest2, RelationshipExportTest] = RelationshipProperty(
         target_model=ModelExportTest2,
@@ -75,18 +75,18 @@ async def test_export_model(client: Pyneo4jClient):
         "element_id": node.element_id,
         "id": node.id,
         "my_prop": 2,
-        "my_list": [{"list_dict_prop": 1}],
+        "my_list": [1, 2],
     }
     assert node.export_model(exclude={"my_prop"}) == {
         "element_id": node.element_id,
         "id": node.id,
-        "my_list": [{"list_dict_prop": 1}],
+        "my_list": [1, 2],
     }
     assert node.export_model(convert_to_camel_case=True) == {
         "elementId": node.element_id,
         "id": node.id,
         "myProp": 2,
-        "myList": [{"listDictProp": 1}],
+        "myList": [1, 2],
     }
 
 

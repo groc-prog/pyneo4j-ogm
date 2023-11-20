@@ -52,8 +52,8 @@ async def test_update_many_raw_results(client: Pyneo4jClient):
         mock_nodes = [
             Node(
                 graph=Graph(),
-                element_id=cast(str, "element-id"),
-                id_=cast(int, 1),
+                element_id="element-id",
+                id_=1,
                 properties={"age": 30, "uid": 1, "name": "John"},
             ),
             None,

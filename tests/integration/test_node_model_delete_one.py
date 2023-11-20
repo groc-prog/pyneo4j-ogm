@@ -30,9 +30,22 @@ async def test_delete_one(session: AsyncSession, setup_test_data):
     assert len(query_result) == 2
 
 
-async def test_delete_one_no_match(setup_test_data):
-    with pytest.raises(NoResultsFound):
-        await CoffeeShop.delete_one({"tags": {"$in": ["oh-no"]}})
+async def test_delete_one_no_match(session: AsyncSession, setup_test_data):
+    results = await CoffeeShop.delete_one({"tags": {"$in": ["oh-no"]}})
+    assert results == 0
+
+    results = await session.run(
+        cast(
+            LiteralString,
+            f"""
+            MATCH (n:{':'.join(CoffeeShop.model_settings().labels)})
+            RETURN DISTINCT n
+            """,
+        ),
+    )
+    query_result: list[list[Node]] = await results.values()
+
+    assert len(query_result) == 3
 
 
 async def test_delete_one_invalid_filter(setup_test_data):

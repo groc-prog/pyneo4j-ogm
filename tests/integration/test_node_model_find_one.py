@@ -45,8 +45,8 @@ async def test_find_one_raw_result(client: Pyneo4jClient):
     with patch.object(client, "cypher") as mock_cypher:
         mock_node = Node(
             graph=Graph(),
-            element_id=cast(str, "element-id"),
-            id_=cast(int, 1),
+            element_id="element-id",
+            id_=1,
             properties={"age": 30, "uid": 1, "name": "John"},
         )
         mock_cypher.return_value = (

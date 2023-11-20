@@ -1,6 +1,6 @@
 # pylint: disable=invalid-name, redefined-outer-name, unused-import, missing-module-docstring, missing-class-docstring
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -82,7 +82,7 @@ def test_post_hooks():
 def test_import_model():
     class ModelImportTest(NodeModel):
         my_prop: Optional[int]
-        my_list: Optional[List[Dict]]
+        my_list: Optional[List[int]]
 
     setattr(ModelImportTest, "_client", None)
 
@@ -90,7 +90,7 @@ def test_import_model():
         "element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18",
         "id": 13,
         "my_prop": 2,
-        "my_list": [{"list_dict_prop": "test"}],
+        "my_list": [1, 2],
     }
 
     model = ModelImportTest.import_model(model_dict)
@@ -98,13 +98,13 @@ def test_import_model():
     assert model.element_id == "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18"
     assert model.id == 13
     assert model.my_prop == 2
-    assert model.my_list == [{"list_dict_prop": "test"}]
+    assert model.my_list == [1, 2]
 
     model_dict_converted = {
         "elementId": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18",
         "id": 13,
         "myProp": 2,
-        "myList": [{"listDictProp": "test"}],
+        "myList": [1, 2],
     }
 
     model_converted = ModelImportTest.import_model(model_dict_converted, from_camel_case=True)
@@ -112,7 +112,7 @@ def test_import_model():
     assert model_converted.element_id == "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18"
     assert model_converted.id == 13
     assert model_converted.my_prop == 2
-    assert model_converted.my_list == [{"list_dict_prop": "test"}]
+    assert model_converted.my_list == [1, 2]
 
     with pytest.raises(ModelImportFailure):
         ModelImportTest.import_model({"element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18"})
@@ -186,3 +186,19 @@ async def test_hooks_decorator():
 
     for hook_function in test_instance.__settings__.post_hooks["sync_test_func"]:
         hook_function.assert_called_once_with(test_instance, None)
+
+
+async def test_list_primitive_types():
+    class AllowedListModel(ModelBase):
+        list_field: List[Any] = [1, "a", True, 2.3]
+
+    class DisallowedListModel(ModelBase):
+        list_field: List[Any] = [{"test": True}, [1, 2]]
+
+    setattr(AllowedListModel, "_client", None)
+    setattr(DisallowedListModel, "_client", None)
+
+    AllowedListModel()
+
+    with pytest.raises(ValueError):
+        DisallowedListModel()
