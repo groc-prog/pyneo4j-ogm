@@ -9,7 +9,7 @@ from neo4j.graph import Graph, Node
 from typing_extensions import LiteralString
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import MissingFilters
+from pyneo4j_ogm.exceptions import InvalidFilters
 from tests.fixtures.db_setup import Developer, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
@@ -83,5 +83,5 @@ async def test_update_one_no_match(setup_test_data):
 async def test_update_one_missing_filters(client: Pyneo4jClient):
     await client.register_models([Developer])
 
-    with pytest.raises(MissingFilters):
+    with pytest.raises(InvalidFilters):
         await Developer.update_one({"my_prop": "updated"}, {})

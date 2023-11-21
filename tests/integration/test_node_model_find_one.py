@@ -7,7 +7,7 @@ import pytest
 from neo4j.graph import Graph, Node
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import MissingFilters, UnregisteredModel
+from pyneo4j_ogm.exceptions import InvalidFilters, UnregisteredModel
 from tests.fixtures.db_setup import (
     Coffee,
     Consumed,
@@ -68,7 +68,7 @@ async def test_find_one_raw_result(client: Pyneo4jClient):
 async def test_find_one_missing_filter(client: Pyneo4jClient):
     await client.register_models([Developer])
 
-    with pytest.raises(MissingFilters):
+    with pytest.raises(InvalidFilters):
         await Developer.find_one({})
 
 

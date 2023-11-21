@@ -4,9 +4,7 @@ A asynchronous library for working with Neo4j and Python 3.10+. This library aim
 
 ## Todo's and missing features <a name="todos-and-missing-features"></a>
 
-- [ ] Add more tests
-- [ ] Add projections, options and filters to relationship properties `relationship` method
-- [ ] Improve documentation and fix typos
+- [ ] Improve documentation, docstrings and fix typos
 - [ ] Add bookmark support
 - [ ] Add migrations
 - [ ] Add support for Pydantic v2

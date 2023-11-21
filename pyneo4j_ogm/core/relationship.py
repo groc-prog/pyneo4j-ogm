@@ -18,7 +18,7 @@ from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.exceptions import (
     InstanceDestroyed,
     InstanceNotHydrated,
-    MissingFilters,
+    InvalidFilters,
     NoResultsFound,
 )
 from pyneo4j_ogm.fields.settings import RelationshipModelSettings
@@ -275,7 +275,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 or empty projection will result in the whole model instance being returned. Defaults to None.
 
         Raises:
-            MissingFilters: Raised if no filters are provided.
+            InvalidFilters: Raised if no filters are provided.
 
         Returns:
             T | Dict[str, Any] | None: A instance of the model or None if no match is found or a dictionary if a
@@ -299,7 +299,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         )
 
         if cls._query_builder.query["where"] == "":
-            raise MissingFilters()
+            raise InvalidFilters()
 
         match_query = cls._query_builder.relationship_match(
             type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
@@ -418,7 +418,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 returned. Defaults to False.
 
         Raises:
-            MissingFilters: Raised if no filters are provided.
+            InvalidFilters: Raised if no filters are provided.
 
         Returns:
             T | None: By default, the old relationship instance is returned. If `new` is set to `True`, the result
@@ -440,7 +440,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         cls._query_builder.relationship_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
-            raise MissingFilters()
+            raise InvalidFilters()
 
         match_query = cls._query_builder.relationship_match(
             type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
@@ -629,7 +629,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         cls._query_builder.relationship_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
-            raise MissingFilters()
+            raise InvalidFilters()
 
         match_query = cls._query_builder.relationship_match(
             type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING

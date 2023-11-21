@@ -7,7 +7,7 @@ import pytest
 from neo4j.graph import Graph, Node, Relationship
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import MissingFilters
+from pyneo4j_ogm.exceptions import InvalidFilters
 from tests.fixtures.db_setup import WorkedWith, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
@@ -32,7 +32,7 @@ async def test_find_one_no_match(client: Pyneo4jClient, setup_test_data):
 async def test_find_one_missing_filter(client: Pyneo4jClient, setup_test_data):
     await client.register_models([WorkedWith])
 
-    with pytest.raises(MissingFilters):
+    with pytest.raises(InvalidFilters):
         await WorkedWith.find_one({})
 
 

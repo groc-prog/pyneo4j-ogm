@@ -1,5 +1,5 @@
 """
-Module for building operators which can be used in filters.
+Builds query operators from provided filters.
 """
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union, cast
@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 class Operators:
     """
-    This class builds parts of the query from given operators.
+    Builds parts of the query from given operators, which are provided as filters.
     """
 
     _parameter_indent: int = 0
@@ -40,13 +40,14 @@ class Operators:
 
     def build_operators(self, filters: Dict[str, Any]) -> Optional[str]:
         """
-        Builds the query for the provided filters.
+        Builds the operators from the provided filters and returns the generated query
+        string.
 
         Args:
-            filters (Dict[str, Any]): The filters to build the query for.
+            filters (Dict[str, Any]): The filters defining the operators.
 
         Returns:
-            Optional[str]: The query string for the provided filters or None if the filter is invalid.
+            Optional[str]: The query string for the provided filters or `None` if the filter is invalid.
         """
         where_queries: List[str] = []
 

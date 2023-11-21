@@ -1,47 +1,45 @@
 """
-Neo4jOGM exceptions raised by the client or the models.
+Pyneo4j exceptions raised by the client or model classes.
 """
 from typing import List
 
 
-class Neo4jOGMException(Exception):
+class Pyneo4jException(Exception):
     """
-    Base exception for all Neo4jOGM exceptions
+    Base exception for all Pyneo4j exceptions
     """
 
 
-class NotConnectedToDatabase(Neo4jOGMException):
+class NotConnectedToDatabase(Pyneo4jException):
     """
-    Exception which gets raised if the client tries to operate on a database without a valid.
-    connection.
+    A client tried to run a query without being connected to a database.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Client is not connected to a database", *args)
 
 
-class UnsupportedNeo4jVersion(Neo4jOGMException):
+class UnsupportedNeo4jVersion(Pyneo4jException):
     """
-    Exception which gets raised if the client tries to connect to a Neo4j database with an unsupported version.
+    A client tried to connect to a Neo4j database with a unsupported version (Neo4j 5+ is supported).
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Only Neo4j 5+ is supported.", *args)
 
 
-class MissingDatabaseURI(Neo4jOGMException):
+class MissingDatabaseURI(Pyneo4jException):
     """
-    Exception which gets raised if the client is initialized without providing a connection.
-    URI
+    A client tried to initialize without providing a connection URI.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Trying to initialize client without providing connection URI", *args)
 
 
-class InvalidEntityType(Neo4jOGMException):
+class InvalidEntityType(Pyneo4jException):
     """
-    Exception which gets raised if the client provides a invalid entity type
+    A invalid graph entity type was provided.
     """
 
     def __init__(self, available_types: List[str], entity_type: str, *args: object) -> None:
@@ -51,10 +49,9 @@ class InvalidEntityType(Neo4jOGMException):
         )
 
 
-class InvalidIndexType(Neo4jOGMException):
+class InvalidIndexType(Pyneo4jException):
     """
-    Exception which gets raised if the client provides a invalid index type when creating a new
-    index.
+    A invalid index type was provided.
     """
 
     def __init__(self, available_types: List[str], index_type: str, *args: object) -> None:
@@ -64,9 +61,9 @@ class InvalidIndexType(Neo4jOGMException):
         )
 
 
-class InvalidRelationshipDirection(Neo4jOGMException):
+class InvalidRelationshipDirection(Pyneo4jException):
     """
-    Exception which gets raised if a invalid relationship direction is provided.
+    A invalid relationship direction was provided.
     """
 
     def __init__(self, direction: str, *args: object) -> None:
@@ -77,36 +74,38 @@ class InvalidRelationshipDirection(Neo4jOGMException):
         )
 
 
-class InstanceNotHydrated(Neo4jOGMException):
+class InstanceNotHydrated(Pyneo4jException):
     """
-    Exception which gets raised when a query is run with a instance which has not been hydrated yet.
+    A model was used to run a query, but the instance was not hydrated.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Queries can not be run on instances which have not been hydrated", *args)
 
 
-class InstanceDestroyed(Neo4jOGMException):
+class InstanceDestroyed(Pyneo4jException):
     """
-    Exception which gets raised when a query is run with a instance which has been destroyed.
+    A model was used to run a query, but the instance was destroyed.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Queries can not be run on instances which have been destroyed", *args)
 
 
-class NoResultsFound(Neo4jOGMException):
+class NoResultsFound(Pyneo4jException):
     """
-    Exception which gets raised when a query returns no result.
+    A query should have returned results, but did not. This exception does not include a specific
+    reason for why it failed, as it is not possible to determine the reason.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("The query did not match any results.", *args)
 
 
-class UnregisteredModel(Neo4jOGMException):
+class UnregisteredModel(Pyneo4jException):
     """
-    Exception which gets raised when a model, which has not been registered, gets used.
+    A model used another node- or relationship model within a query, but the model was not
+    registered with the client.
     """
 
     def __init__(self, model: str, *args: object) -> None:
@@ -117,10 +116,10 @@ class UnregisteredModel(Neo4jOGMException):
         )
 
 
-class InvalidTargetNode(Neo4jOGMException):
+class InvalidTargetNode(Pyneo4jException):
     """
-    Exception which gets raised when a relationship property receives a target node of the wrong
-    model type.
+    A relationship-property method was called on a node model, but the target node was not of the
+    expected model type.
     """
 
     def __init__(self, expected_type: str, actual_type: str, *args: object) -> None:
@@ -130,37 +129,36 @@ class InvalidTargetNode(Neo4jOGMException):
         )
 
 
-class InvalidLabelOrType(Neo4jOGMException):
+class InvalidLabelOrType(Pyneo4jException):
     """
-    Exception which gets raised when invalid labels or a invalid type are passed to a method.
+    Invalid node label or relationship type was provided.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Invalid label or type", *args)
 
 
-class TransactionInProgress(Neo4jOGMException):
+class TransactionInProgress(Pyneo4jException):
     """
-    Exception which gets raised when a transaction is in progress, but another one is started.
+    A client tried to start a transaction, but a transaction is already in progress.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("A transaction is already in progress.", *args)
 
 
-class NotConnectedToSourceNode(Neo4jOGMException):
+class NotConnectedToSourceNode(Pyneo4jException):
     """
-    Exception which gets raised when a node is to be replaced by another, but the node is not
-    connected to the source node.
+    The `replace()` method was called with a node which is not connected to the source node.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Node not connected to source node.", *args)
 
 
-class MissingFilters(Neo4jOGMException):
+class InvalidFilters(Pyneo4jException):
     """
-    Exception which gets raised when a filter is required, but none or a invalid one is provided.
+    The method is missing filters or the filters are invalid.
     """
 
     def __init__(self, *args: object) -> None:
@@ -170,27 +168,28 @@ class MissingFilters(Neo4jOGMException):
         )
 
 
-class ModelImportFailure(Neo4jOGMException):
+class ModelImportFailure(Pyneo4jException):
     """
-    Exception which gets raised when a model dict is imported, but does not have a element_id or id key.
+    The model import failed because required keys were missing. These keys are 'element_id' or 'id'
+    or their respective camel-case variants.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Missing 'element_id' or 'id' key in model dict.", *args)
 
 
-class InvalidRelationshipHops(Neo4jOGMException):
+class InvalidRelationshipHops(Pyneo4jException):
     """
-    Exception which gets raised when a relationship hop is invalid.
+    A multi-hop relationship query was attempted, but the hops were invalid.
     """
 
     def __init__(self, *args: object) -> None:
         super().__init__("Invalid relationship hop. Hop must be positive integer or '*'.", *args)
 
 
-class CardinalityViolation(Neo4jOGMException):
+class CardinalityViolation(Pyneo4jException):
     """
-    Exception which gets raised when defined cardinality is violated.
+    A query would have violated a cardinality constraint.
     """
 
     def __init__(

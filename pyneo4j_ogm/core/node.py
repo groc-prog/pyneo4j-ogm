@@ -29,7 +29,7 @@ from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.exceptions import (
     InstanceDestroyed,
     InstanceNotHydrated,
-    MissingFilters,
+    InvalidFilters,
     NoResultsFound,
     UnregisteredModel,
 )
@@ -428,7 +428,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to [].
 
         Raises:
-            MissingFilters: Raised if no filters or invalid filters are provided.
+            InvalidFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
             T | Dict[str, Any] | None: A instance of the model or None if no match is found or a dictionary of the
@@ -452,7 +452,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         )
 
         if cls._query_builder.query["where"] == "":
-            raise MissingFilters()
+            raise InvalidFilters()
 
         do_auto_fetch = all(
             [
@@ -663,7 +663,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 returned. Defaults to False.
 
         Raises:
-            MissingFilters: Raised if no filters or invalid filters are provided.
+            InvalidFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
             T | None: By default, the old node instance is returned. If `new` is set to `True`, the result
@@ -685,7 +685,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         cls._query_builder.node_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
-            raise MissingFilters()
+            raise InvalidFilters()
 
         results, _ = await cls._client.cypher(
             query=f"""
@@ -837,7 +837,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         Raises:
             NoResultsFound: Raised if the query did not return the node.
-            MissingFilters: Raised if no filters or invalid filters are provided.
+            InvalidFilters: Raised if no filters or invalid filters are provided.
 
         Returns:
             int: The number of deleted nodes.
@@ -851,7 +851,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         cls._query_builder.node_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
-            raise MissingFilters()
+            raise InvalidFilters()
 
         result, _ = await cls._client.cypher(
             query=f"""

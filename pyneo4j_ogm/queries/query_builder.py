@@ -1,5 +1,5 @@
 """
-Module for building parts of queries related to filters and options.
+Builds parts of queries related to filters and options.
 """
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, TypedDict, Union, cast
@@ -38,7 +38,7 @@ class FilterQueries(TypedDict):
 
 class QueryBuilder:
     """
-    This class builds parts of the database query for available query filters and options.
+    Builds parts of the database query for available query filters and options.
     """
 
     _operator_builder: Operators = Operators()

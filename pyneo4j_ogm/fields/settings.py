@@ -1,5 +1,5 @@
 """
-Settings for NodeModel and RelationshipModel classes.
+Settings for model classes.
 """
 from typing import Callable, Dict, List, Optional, Set, Union
 
