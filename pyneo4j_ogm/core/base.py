@@ -1,7 +1,6 @@
 """
-This module contains a modified version of Pydantic's BaseModel class adjusted to the needs of the
-library. It adds additional methods for exporting the model to a dictionary and importing from a
-dictionary.
+Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
+model types like registering hooks and exporting/importing models to/from dictionaries.
 """
 import asyncio
 import json
@@ -123,6 +122,8 @@ class ModelBase(Generic[V], BaseModel):
     """
     Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
     model types like registering hooks and exporting/importing models to/from dictionaries.
+
+    Should not be used directly.
     """
 
     __settings__: BaseModelSettings = PrivateAttr()
@@ -193,8 +194,8 @@ class ModelBase(Generic[V], BaseModel):
         arguments of `pydantic.BaseModel.json()`.
 
         Args:
-            convert_to_camel_case (bool, optional): If set to True, the keys of the dictionary will be converted to
-                camel case. Defaults to False.
+            convert_to_camel_case (bool, optional): If set to `True`, the keys of the dictionary will be converted to
+                camel-case. Defaults to `False`.
 
         Returns:
             Dict[str, Any]: The exported model as a dictionary.
@@ -205,13 +206,13 @@ class ModelBase(Generic[V], BaseModel):
         else:
             kwargs["exclude"] = self.__settings__.exclude_from_export
 
-        logger.debug("Exporting model %s", self.__class__.__name__)
+        logger.info("Exporting model %s", self.__class__.__name__)
         model_dict = json.loads(self.json(*args, **kwargs))
         model_dict["element_id"] = self._element_id
         model_dict["id"] = self._id
 
         if convert_to_camel_case:
-            logger.debug("Converting keys to camel case")
+            logger.debug("Converting keys to camel-case")
             model_dict = cast(Dict[str, Any], self._convert_to_camel_case(model_dict))
 
         return model_dict
@@ -223,18 +224,19 @@ class ModelBase(Generic[V], BaseModel):
 
         Args:
             model (Dict[str, Any]): The model to import.
-            from_camel_case (bool, optional): If set to True, the keys of the dictionary will be converted from
-                camel case to snake case. Defaults to False.
+            from_camel_case (bool, optional): If set to `True`, the keys of the dictionary will be converted from
+                camel-case to snake-case. Defaults to `False`.
 
         Raises:
-            ModelImportFailure: If the model does not contain an `element_id` or `id` key.
+            ModelImportFailure: The model is missing the `element_id` or `id` key or their respective camel-case
+                variants.
 
         Returns:
             T: An instance of the model.
         """
         import_model = deepcopy(model)
 
-        logger.debug("Importing model %s", cls.__name__)
+        logger.info("Importing model %s", cls.__name__)
         if any(
             [
                 "elementId" not in model and from_camel_case,
@@ -248,6 +250,7 @@ class ModelBase(Generic[V], BaseModel):
             logger.debug("Converting keys from camel case")
             import_model = cast(Dict[str, Any], cls._convert_keys_to_snake_case(model))
 
+        logger.debug("Hydrating model %s", import_model["element_id"])
         instance = cls(**import_model)
         instance._element_id = import_model["element_id"]
         instance._id = import_model["id"]
@@ -269,11 +272,11 @@ class ModelBase(Generic[V], BaseModel):
             hook_functions (Union[List[Callable], Callable]): References of the functions to call if the hook is
                 triggered.
             overwrite (bool, optional): Whether to overwrite all defined hook functions if a new hooks function for
-                the same hook is registered. Defaults to False.
+                the same hook is registered. Defaults to `False`.
         """
         valid_hook_functions: List[Callable] = []
 
-        logger.debug("Registering pre-hook for %s", hook_name)
+        logger.info("Registering pre-hook for %s", hook_name)
         # Normalize hooks to a list of functions
         if isinstance(hook_functions, list):
             for hook_function in hook_functions:
@@ -308,11 +311,11 @@ class ModelBase(Generic[V], BaseModel):
             hook_functions (Union[List[Callable], Callable]): References of the functions to call if the hook is
                 triggered.
             overwrite (bool, optional): Whether to overwrite all defined hook functions if a new hooks function for
-                the same hook is registered. Defaults to False.
+                the same hook is registered. Defaults to `False`.
         """
         valid_hook_functions: List[Callable] = []
 
-        logger.debug("Registering post-hook for %s", hook_name)
+        logger.info("Registering post-hook for %s", hook_name)
         # Normalize hooks to a list of functions
         if isinstance(hook_functions, list):
             for hook_function in hook_functions:
@@ -345,7 +348,7 @@ class ModelBase(Generic[V], BaseModel):
     @classmethod
     def _convert_to_camel_case(cls, model_dict: Union[Dict[str, Any], List[Any]]) -> Union[Dict[str, Any], List[Any]]:
         """
-        Recursively convert all keys in a dictionary to camelCase.
+        Recursively convert all keys in a dictionary to camel-case.
 
         Args:
             model_dict (Union[Dict[str, Any], List[Any]]): The dictionary to convert.
@@ -369,13 +372,13 @@ class ModelBase(Generic[V], BaseModel):
         cls, model_dict: Union[Dict[str, Any], List[Any]]
     ) -> Union[Dict[str, Any], List[Any]]:
         """
-        Recursively convert all keys in a dictionary from camelCase to snake_case.
+        Recursively convert all keys in a dictionary from camel-case to snake-case.
 
         Args:
             model_dict (Union[Dict[str, Any], List[Any]]): The dictionary to convert.
 
         Returns:
-            Union[Dict[str, Any], List[Any]]: The dictionary with all keys converted to snake_case.
+            Union[Dict[str, Any], List[Any]]: The dictionary with all keys converted to snake-case.
         """
 
         def to_snake_case(key: str) -> str:
@@ -408,20 +411,20 @@ class ModelBase(Generic[V], BaseModel):
     @property
     def element_id(self) -> Optional[str]:
         """
-        Returns the element ID of the instance or None if the instance has not been hydrated.
+        Returns the element ID of the instance or `None` if the instance has not been hydrated.
 
         Returns:
-            str: The element ID of the instance or None if the instance has not been hydrated.
+            str | None: The element ID of the instance or `None` if the instance has not been hydrated.
         """
         return self._element_id
 
     @property
     def id(self) -> Optional[int]:
         """
-        Returns the ID of the instance or None if the instance has not been hydrated.
+        Returns the ID of the instance or `None` if the instance has not been hydrated.
 
         Returns:
-            int: The ID of the instance or None if the instance has not been hydrated.
+            int: The ID of the instance or `None` if the instance has not been hydrated.
         """
         return self._id
 

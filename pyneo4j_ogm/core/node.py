@@ -1,6 +1,6 @@
 """
-This module holds the base node class `NodeModel` which is used to define database models for nodes.
-It provides base functionality like de-/inflation and validation and methods for interacting with
+Holds the base node class `NodeModel` which is used to define database models for nodes.
+It provides base functionality like de-/inflation, validation and methods for interacting with
 the database for CRUD operations on nodes.
 """
 import json
@@ -54,8 +54,8 @@ def ensure_alive(func):
         func (Callable): The method to decorate.
 
     Raises:
-        InstanceDestroyed: Raised if the instance is destroyed.
-        InstanceNotHydrated: Raised if the instance is not hydrated.
+        InstanceDestroyed: If the instance is destroyed.
+        InstanceNotHydrated: If the instance is not hydrated.
 
     Returns:
         Callable: The decorated method.
@@ -78,6 +78,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
     """
     Base model for all node models. Every node model should inherit from this class to define a
     model.
+
+    Provides methods for interacting with the database for CRUD operations on nodes. Settings can
+    be defined by providing an inner class `Settings`. Settings can control the behavior of the
+    model and are defined in `pyneo4j_ogm.fields.settings.NodeModelSettings`.
     """
 
     __settings__: NodeModelSettings
@@ -123,15 +127,15 @@ class NodeModel(ModelBase[NodeModelSettings]):
     async def create(self: T) -> T:
         """
         Creates a new node from the current instance. After the method is finished, a newly created
-        instance is seen as `alive` and any methods can be called on it.
+        instance is seen as `hydrated` and all methods can be called on it.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the created node.
+            NoResultsFound: If the query should return a result but does not.
 
         Returns:
             T: The current model instance.
         """
-        logger.info("Creating new node from model instance %s", self.__class__.__name__)
+        logger.info("Creating new node from model %s", self.__class__.__name__)
         deflated_properties = self._deflate()
 
         set_query = (
@@ -167,10 +171,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
     @ensure_alive
     async def update(self) -> None:
         """
-        Updates the corresponding node in the database with the current instance values.
+        Updates the corresponding node in the graph with the current instance values.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the updated node.
+            NoResultsFound: If the query should return a result but does not.
         """
         deflated = self._deflate()
 
@@ -209,11 +213,11 @@ class NodeModel(ModelBase[NodeModelSettings]):
     @ensure_alive
     async def delete(self) -> None:
         """
-        Deletes the corresponding node in the database and marks this instance as destroyed. If
+        Deletes the corresponding node in the graph and marks this instance as destroyed. If
         another method is called on this instance, an `InstanceDestroyed` will be raised.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the updated node.
+            NoResultsFound: If the query should return a result but does not.
         """
         logger.info("Deleting node %s", self)
         results, _ = await self._client.cypher(
@@ -238,10 +242,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
     @ensure_alive
     async def refresh(self) -> None:
         """
-        Refreshes the current instance with the values from the database.
+        Refreshes the current instance with the corresponding values from the graph.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the current node.
+            NoResultsFound: If the query should return a result but does not.
         """
         logger.info("Refreshing node %s with values from database", self)
         results, _ = await self._client.cypher(
@@ -278,12 +282,12 @@ class NodeModel(ModelBase[NodeModelSettings]):
             filters (MultiHopFilters): The filters to apply to the query.
             projections (Dict[str, str], optional): The properties to project from the node. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
-                or empty projection will result in the whole model instance being returned. Defaults to None.
-            options (QueryOptions, optional): The options to apply to the query. Defaults to None.
+                or empty projection will result in the whole model instance being returned. Defaults to `None`.
+            options (QueryOptions, optional): The options to apply to the query. Defaults to `None`.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
-                identical option defined in `Settings`. Defaults to False.
+                identical option defined in `Settings`. Defaults to `False`.
             auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch.
-                `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to [].
+                `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
 
         Returns:
             List["NodeModel" | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected
@@ -421,14 +425,14 @@ class NodeModel(ModelBase[NodeModelSettings]):
             filters (NodeFilters): The filters to apply to the query.
             projections (Dict[str, str], optional): The properties to project from the node. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
-                or empty projection will result in the whole model instance being returned. Defaults to None.
+                or empty projection will result in the whole model instance being returned. Defaults to `None`.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
-                identical option defined in `Settings`. Can not be used with projections. Defaults to False.
+                identical option defined in `Settings`. Can not be used with projections. Defaults to `False`.
             auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch.
-                `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to [].
+                `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
 
         Raises:
-            InvalidFilters: Raised if no filters or invalid filters are provided.
+            InvalidFilters: If no filters or invalid filters are provided.
 
         Returns:
             T | Dict[str, Any] | None: A instance of the model or None if no match is found or a dictionary of the
@@ -463,7 +467,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         )
 
         if do_auto_fetch:
-            logger.debug("Querying database with auto-fetch")
+            logger.debug("Querying database with auto-fetch enabled")
             match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
 
             results, meta = await cls._client.cypher(
@@ -498,7 +502,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
         ):
             return None
 
-        logger.debug("Checking if node has to be parsed to instance")
         if isinstance(results[0][0], Node):
             instance = cls._inflate(node=results[0][0])
         elif isinstance(results[0][0], list):
@@ -542,15 +545,15 @@ class NodeModel(ModelBase[NodeModelSettings]):
         empty list is returned instead.
 
         Args:
-            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
+            filters (NodeFilters, optional): The filters to apply to the query. Defaults to `None`.
             projections (Dict[str, str], optional): The properties to project from the node. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
-                or empty projection will result in the whole model instance being returned. Defaults to None.
-            options (QueryOptions, optional): The options to apply to the query. Defaults to None.
+                or empty projection will result in the whole model instance being returned. Defaults to `None`.
+            options (QueryOptions, optional): The options to apply to the query. Defaults to `None`.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
-                identical option defined in `Settings`. Defaults to False.
+                identical option defined in `Settings`. Defaults to `False`.
             auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch.
-                `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to [].
+                `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
 
         Returns:
             List[T | Dict[str, Any]]: A list of model instances or dictionaries of the projected properties.
@@ -660,10 +663,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
             update (Dict[str, Any]): Values to update the node properties with.
             filters (NodeFilters): The filters to apply to the query.
             new (bool, optional): Whether to return the updated node. By default, the old node is
-                returned. Defaults to False.
+                returned. Defaults to `False`.
 
         Raises:
-            InvalidFilters: Raised if no filters or invalid filters are provided.
+            InvalidFilters: If no filters or invalid filters are provided.
 
         Returns:
             T | None: By default, the old node instance is returned. If `new` is set to `True`, the result
@@ -750,9 +753,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         Args:
             update (Dict[str, Any]): Values to update the node properties with.
-            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
+            filters (NodeFilters, optional): The filters to apply to the query. Defaults to `None`.
             new (bool, optional): Whether to return the updated nodes. By default, the old nodes
-                is returned. Defaults to False.
+                is returned. Defaults to `False`.
 
         Returns:
             List[T]: By default, the old node instances are returned. If `new` is set to `True`,
@@ -836,8 +839,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             filters (NodeFilters): The filters to apply to the query.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the node.
-            InvalidFilters: Raised if no filters or invalid filters are provided.
+            NoResultsFound: If the query should return a result but does not.
+            InvalidFilters: If no filters or invalid filters are provided.
 
         Returns:
             int: The number of deleted nodes.
@@ -878,7 +881,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Finds all nodes that match `filters` and deletes them.
 
         Args:
-            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
+            filters (NodeFilters, optional): The filters to apply to the query. Defaults to `None`.
 
         Returns:
             int: The number of deleted nodes.
@@ -912,7 +915,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Counts all nodes which match the provided `filters` parameter.
 
         Args:
-            filters (NodeFilters, optional): The filters to apply to the query. Defaults to None.
+            filters (NodeFilters, optional): The filters to apply to the query. Defaults to `None`.
 
         Returns:
             int: The number of nodes matched by the query.

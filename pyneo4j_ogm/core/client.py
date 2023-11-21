@@ -1,5 +1,5 @@
 """
-Database client for running queries against the connected database.
+Pyneo4j database client class for running operations on the database.
 """
 import os
 from enum import Enum
@@ -38,7 +38,7 @@ class IndexType(str, Enum):
 
 class EntityType(str, Enum):
     """
-    Available entity types.
+    Available graph entity types.
     """
 
     NODE = "NODE"
@@ -68,7 +68,11 @@ def ensure_connection(func: Callable):
 
 class Pyneo4jClient:
     """
-    Singleton database client class used to run different operations on the database.
+    Database client class for running operations on the database.
+
+    All models use a instance of this class to run operations on the database. Can also be used
+    directly to run queries and other operations against the database. Provides methods for
+    handling transactions/constraints/indexes and utility methods.
     """
 
     _builder: QueryBuilder
@@ -98,18 +102,17 @@ class Pyneo4jClient:
 
         Args:
             uri (str | None, optional): Connection URI. If not provided, will try to fall back to
-                NEO4J_URI environment variable. Defaults to None.
+                NEO4J_URI environment variable. Defaults to `None`.
             skip_constraints (bool, optional): Whether to skip creating constraints on models or
-                not. Defaults to False.
+                not. Defaults to `False`.
             skip_indexes (bool, optional): Whether to skip creating indexes on models or not.
-                Defaults to False.
+                Defaults to `False`.
 
         Raises:
-            MissingDatabaseURI: Raised if no uri is provided and the NEO4J_URI env variable is
-                not set
+            MissingDatabaseURI: If no uri is provided and the NEO4J_URI env variable is not set.
 
         Returns:
-            Pyneo4jClient: The client.
+            Pyneo4jClient: The client instance.
         """
         db_uri = uri if uri is not None else os.environ.get("NEO4J_OGM_URI", None)
 
@@ -140,10 +143,13 @@ class Pyneo4jClient:
         Registers models which are used with the client to resolve query results to their
         corresponding model instances.
 
+        If a model is not registered with the client, it can not be used with model methods and other
+        models can not use it with relationship-properties.
+
         Args:
             models (List[Type[NodeModel | RelationshipModel]]): A list of models to register.
         """
-        logger.debug("Registering models %s", models)
+        logger.info("Registering models %s", models)
 
         for model in models:
             if issubclass(model, (NodeModel, RelationshipModel)):
@@ -196,7 +202,7 @@ class Pyneo4jClient:
     @ensure_connection
     async def close(self) -> None:
         """
-        Closes the current connection to the client.
+        Closes the current connection to the database.
         """
         logger.info("Closing connection to database")
         await cast(AsyncDriver, self._driver).close()
@@ -215,9 +221,9 @@ class Pyneo4jClient:
 
         Args:
             query (str): Query to run.
-            parameters (Dict[str, Any]): Parameters passed to the transaction.
+            parameters (Dict[str, Any]): Parameters passed to the transaction. Defaults to `None`.
             resolve_models (bool, optional): Whether to try and resolve query results to their
-                corresponding database models or not. Defaults to True.
+                corresponding database models or not. Defaults to `True`.
 
         Returns:
             Tuple[List[List[Any]], List[str]]: A tuple containing the query result and the names
@@ -226,7 +232,7 @@ class Pyneo4jClient:
         if parameters is None:
             parameters = {}
 
-        logger.debug("Checking if transaction is open")
+        logger.debug("Checking for open transaction")
         if getattr(self, "_session", None) is None or getattr(self, "_transaction", None) is None:
             await self._begin_transaction()
 
@@ -253,7 +259,7 @@ class Pyneo4jClient:
             if self._batch_enabled is False:
                 await self._commit_transaction()
 
-            logger.debug("Returning results %s", results)
+            logger.debug("Query finished with results %s", results)
             return results, meta
         except Exception as exc:
             logger.error("Error running query %s", exc)
@@ -525,7 +531,7 @@ class Pyneo4jClient:
     @ensure_connection
     async def drop_nodes(self) -> None:
         """
-        Deletes all nodes in the database.
+        Deletes all nodes and relationships in the database.
         """
         logger.warning("Dropping all nodes")
         results, _ = await self.cypher(
@@ -576,8 +582,12 @@ class Pyneo4jClient:
         """
         Combine multiple transactions into a batch transaction.
 
+        Both client queries using the `.cypher()` method and all model methods called within the
+        context of the batch transaction will be combined into a single transaction. If any of the
+        queries fail, the entire batch transaction will be rolled back.
+
         Returns:
-            BatchManager: A class for managing batch transaction which can be used with a `with`
+            BatchManager: A class for managing batch transaction which must be used with a `with`
                 statement.
         """
         return BatchManager(self)
@@ -631,8 +641,7 @@ class Pyneo4jClient:
 
         Returns:
             Optional[Any]: The database model, if one is registered. If a path is the result, returns the `Path` class
-                with `Path.nodes` and `Path.relationships` resolved to the database models. If the result is generated
-                using `COLLECT`, the collected results will be resolved if a complete node or relationship is found.
+                with `Path.nodes` and `Path.relationships` resolved to the database models.
         """
         if isinstance(query_result, Path):
             logger.debug("Query result %s is a path, resolving nodes and relationship", query_result)
@@ -671,7 +680,7 @@ class Pyneo4jClient:
                     if labels == model_labels:
                         return model._inflate(cast(Relationship, query_result))
 
-            logger.debug("No model found for query result %s", query_result)
+            logger.debug("No registered model found for query result %s", query_result)
             return None
 
         logger.debug("Query result %s is not a node, relationship, or path, skipping", type(query_result))
@@ -694,6 +703,7 @@ class BatchManager:
     """
 
     def __init__(self, client: "Pyneo4jClient") -> None:
+        logger.info("Starting batch transaction")
         self._client = client
 
     async def __aenter__(self) -> None:
@@ -707,5 +717,5 @@ class BatchManager:
         else:
             await self._client._commit_transaction()
 
-        logger.debug("Batch transaction complete")
+        logger.info("Batch transaction complete")
         self._client._batch_enabled = False
