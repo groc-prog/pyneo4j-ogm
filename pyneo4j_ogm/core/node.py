@@ -286,7 +286,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to [].
 
         Returns:
-            List["NodeModel" | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected properties.
+            List["NodeModel" | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected
+                properties.
         """
         do_auto_fetch: bool = False
         match_queries, return_queries = [], []

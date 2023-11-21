@@ -1,10 +1,10 @@
 {
   "python.testing.pytestArgs": [
-    "--cov",
     "pyneo4j_ogm",
-    "--cov-report",
-    "html:tests/coverage",
-    "tests"
+    "tests",
+    "--asyncio-mode=auto",
+    "--cov",
+    "--cov-report=html:tests/coverage",
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
