@@ -1,8 +1,9 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
-from typing import LiteralString, cast
+from typing import cast
 
 from neo4j import AsyncSession
+from typing_extensions import LiteralString
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from tests.fixtures.db_setup import (

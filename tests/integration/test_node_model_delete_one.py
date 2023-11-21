@@ -1,10 +1,11 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
-from typing import LiteralString, cast
+from typing import cast
 
 import pytest
 from neo4j import AsyncSession
 from neo4j.graph import Node
+from typing_extensions import LiteralString
 
 from pyneo4j_ogm.exceptions import MissingFilters, NoResultsFound
 from tests.fixtures.db_setup import CoffeeShop, client, session, setup_test_data
