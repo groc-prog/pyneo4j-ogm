@@ -2,10 +2,12 @@
 Fixture for setup/teardown of a Neo4j database for integration tests.
 """
 # pylint: disable=redefined-outer-name, missing-class-docstring
+
 from typing import Any, Dict, List
 
 import pytest
 from neo4j import AsyncGraphDatabase, AsyncSession
+from neo4j.graph import Node
 
 from pyneo4j_ogm import (
     NodeModel,
@@ -200,3 +202,72 @@ async def setup_test_data(client: Pyneo4jClient, session: AsyncSession):
     await result.consume()
 
     yield result_values
+
+
+@pytest.fixture
+def dev_model_instances(setup_test_data):
+    john: Node = [
+        result
+        for result in setup_test_data[0][0]
+        if result.labels == Developer.model_settings().labels and result["uid"] == 1
+    ][0]
+    sam: Node = [
+        result
+        for result in setup_test_data[0][0]
+        if result.labels == Developer.model_settings().labels and result["uid"] == 2
+    ][0]
+    alice: Node = [
+        result
+        for result in setup_test_data[0][0]
+        if result.labels == Developer.model_settings().labels and result["uid"] == 3
+    ][0]
+    bob: Node = [
+        result
+        for result in setup_test_data[0][0]
+        if result.labels == Developer.model_settings().labels and result["uid"] == 4
+    ][0]
+
+    john_model = Developer._inflate(john)
+    sam_model = Developer._inflate(sam)
+    alice_model = Developer._inflate(alice)
+    bob_model = Developer._inflate(bob)
+
+    return john_model, sam_model, alice_model, bob_model
+
+
+@pytest.fixture
+def coffee_model_instances(setup_test_data):
+    latte: Node = [
+        result
+        for result in setup_test_data[0][0]
+        if result.labels == Coffee.model_settings().labels and result["flavor"] == "Latte"
+    ][0]
+    mocha: Node = [
+        result
+        for result in setup_test_data[0][0]
+        if result.labels == Coffee.model_settings().labels and result["flavor"] == "Mocha"
+    ][0]
+    espresso: Node = [
+        result
+        for result in setup_test_data[0][0]
+        if result.labels == Coffee.model_settings().labels and result["flavor"] == "Espresso"
+    ][0]
+
+    latte_model = Coffee._inflate(latte)
+    mocha_model = Coffee._inflate(mocha)
+    espresso_model = Coffee._inflate(espresso)
+
+    return latte_model, mocha_model, espresso_model
+
+
+@pytest.fixture
+def coffee_shop_model_instances(setup_test_data):
+    rating_five: Node = [
+        result
+        for result in setup_test_data[0][0]
+        if result.labels == CoffeeShop.model_settings().labels and result["rating"] == 5
+    ][0]
+
+    rating_five_model = CoffeeShop._inflate(rating_five)
+
+    return (rating_five_model,)
