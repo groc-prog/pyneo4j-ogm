@@ -2,6 +2,7 @@
 Relationship property class used to define relationships between the model this class is used on and a target node,
 which defines the other end of the relationship.
 """
+import asyncio
 from asyncio import iscoroutinefunction
 from functools import wraps
 from typing import (
@@ -39,7 +40,11 @@ from pyneo4j_ogm.queries.enums import (
     RelationshipPropertyDirection,
 )
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
-from pyneo4j_ogm.queries.types import QueryOptions, RelationshipPropertyFilters
+from pyneo4j_ogm.queries.types import (
+    QueryOptions,
+    RelationshipFilters,
+    RelationshipPropertyFilters,
+)
 
 P = ParamSpec("P")
 T = TypeVar("T", bound=NodeModel)
@@ -59,33 +64,66 @@ def hooks(func):
         Callable: The decorated method.
     """
 
-    @wraps(func)
-    async def decorator(self: "RelationshipProperty", *args, **kwargs):
-        source_node = getattr(self, "_source_node")
-        settings: RelationshipModelSettings = getattr(source_node, "__settings__")
-        hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
+    if iscoroutinefunction(func):
 
-        # Run pre hooks if defined
-        logger.debug("Checking pre hooks for %s", hook_name)
-        if hook_name in settings.pre_hooks:
-            for hook_function in settings.pre_hooks[hook_name]:
-                if iscoroutinefunction(hook_function):
-                    await hook_function(self, *args, **kwargs)
-                else:
-                    hook_function(self, *args, **kwargs)
+        @wraps(func)
+        async def decorator(self: "RelationshipProperty", *args, **kwargs):  # type: ignore
+            source_node = getattr(self, "_source_node")
+            settings: RelationshipModelSettings = getattr(source_node, "__settings__")
+            hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
 
-        result = await func(self, *args, **kwargs)
+            # Run pre hooks if defined
+            logger.debug("Checking pre hooks for %s", hook_name)
+            if hook_name in settings.pre_hooks:
+                for hook_function in settings.pre_hooks[hook_name]:
+                    if iscoroutinefunction(hook_function):
+                        await hook_function(self, *args, **kwargs)
+                    else:
+                        hook_function(self, *args, **kwargs)
 
-        # Run post hooks if defined
-        logger.debug("Checking post hooks for %s", hook_name)
-        if hook_name in settings.post_hooks:
-            for hook_function in settings.post_hooks[hook_name]:
-                if iscoroutinefunction(hook_function):
-                    await hook_function(self, result, *args, **kwargs)
-                else:
-                    hook_function(self, result, *args, **kwargs)
+            result = await func(self, *args, **kwargs)
 
-        return result
+            # Run post hooks if defined
+            logger.debug("Checking post hooks for %s", hook_name)
+            if hook_name in settings.post_hooks:
+                for hook_function in settings.post_hooks[hook_name]:
+                    if iscoroutinefunction(hook_function):
+                        await hook_function(self, result, *args, **kwargs)
+                    else:
+                        hook_function(self, result, *args, **kwargs)
+
+            return result
+
+    else:
+
+        @wraps(func)
+        def decorator(self: "RelationshipProperty", *args, **kwargs):
+            source_node = getattr(self, "_source_node")
+            settings: RelationshipModelSettings = getattr(source_node, "__settings__")
+            hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
+            loop = asyncio.get_event_loop()
+
+            # Run pre hooks if defined
+            logger.debug("Checking pre hooks for %s", hook_name)
+            if hook_name in settings.pre_hooks:
+                for hook_function in settings.pre_hooks[hook_name]:
+                    if iscoroutinefunction(hook_function):
+                        loop.run_until_complete(hook_function(self, *args, **kwargs))
+                    else:
+                        hook_function(self, *args, **kwargs)
+
+            result = func(self, *args, **kwargs)
+
+            # Run post hooks if defined
+            logger.debug("Checking post hooks for %s", hook_name)
+            if hook_name in settings.post_hooks:
+                for hook_function in settings.post_hooks[hook_name]:
+                    if iscoroutinefunction(hook_function):
+                        loop.run_until_complete(hook_function(self, result, *args, **kwargs))
+                    else:
+                        hook_function(self, result, *args, **kwargs)
+
+            return result
 
     return decorator
 
@@ -202,21 +240,46 @@ class RelationshipProperty(Generic[T, U]):
 
     @hooks
     @check_models_registered
-    async def relationships(self, node: T) -> List[U]:
+    async def relationships(
+        self,
+        node: T,
+        filters: Optional[RelationshipFilters] = None,
+        projections: Optional[Dict[str, str]] = None,
+        options: Optional[QueryOptions] = None,
+    ) -> List[U]:
         """
         Gets the relationships between the current node instance and the provided node. If the nodes are not connected,
         `an empty` will be returned.
 
         Args:
             node (T): The node to which to get the relationship.
+            filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults to
+                None.
+            projections (Dict[str, str], optional): The properties to project from the node. The keys define
+                the new keys in the projection and the value defines the model property to be projected. A invalid
+                or empty projection will result in the whole model instance being returned. Defaults to None.
+            options (QueryOptions, optional): The options to apply to the query. Defaults to None.
 
         Returns:
             (List[U]): Returns a list of `relationship model instances` describing relationships between
                 the nodes or `an empty list` if no relationships exist between the two.
         """
         self._ensure_alive(node)
+        self._query_builder.reset_query()
 
         logger.info("Getting relationship between target node %s and source node %s", node, self._source_node)
+        if filters is not None:
+            self._query_builder.relationship_filters(filters=filters)
+        if options is not None:
+            self._query_builder.query_options(options=options, ref="r")
+        if projections is not None:
+            self._query_builder.build_projections(projections=projections, ref="r")
+
+        projection_query = (
+            "RETURN DISTINCT r"
+            if self._query_builder.query["projections"] == ""
+            else self._query_builder.query["projections"]
+        )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
             type_=cast(U, self._relationship_model).__settings__.type,
@@ -226,15 +289,28 @@ class RelationshipProperty(Generic[T, U]):
             end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
         )
 
+        a = f"""
+                MATCH {match_query}
+                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
+                {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
+                {"WITH DISTINCT r" if self._query_builder.query['options'] != "" else ""}
+                {self._query_builder.query['options']}
+                {projection_query}
+            """
+
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {match_query}
                 WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
-                RETURN DISTINCT r
+                {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
+                {"WITH DISTINCT r" if self._query_builder.query['options'] != "" else ""}
+                {self._query_builder.query['options']}
+                {projection_query}
             """,
             parameters={
                 "start_element_id": getattr(self._source_node, "_element_id", None),
                 "end_element_id": getattr(node, "_element_id", None),
+                **self._query_builder.parameters,
             },
         )
 
@@ -242,10 +318,15 @@ class RelationshipProperty(Generic[T, U]):
 
         for result_list in results:
             for result in result_list:
+                if result is None:
+                    continue
+
                 if isinstance(result, cast(Type[U], self._relationship_model)):
                     relationships.append(result)
                 elif isinstance(result, Relationship):
                     relationships.append(cast(Type[U], self._relationship_model)._inflate(relationship=result))
+                elif projection_query != "":
+                    relationships.extend(result)
 
         return relationships
 
