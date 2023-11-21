@@ -249,7 +249,7 @@ class RelationshipProperty(Generic[T, U]):
     ) -> List[U]:
         """
         Gets the relationships between the current node instance and the provided node. If the nodes are not connected,
-        `an empty` will be returned.
+        `an empty list` will be returned.
 
         Args:
             node (T): The node to which to get the relationship.
@@ -288,15 +288,6 @@ class RelationshipProperty(Generic[T, U]):
             end_node_ref="end",
             end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
         )
-
-        a = f"""
-                MATCH {match_query}
-                WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
-                {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
-                {"WITH DISTINCT r" if self._query_builder.query['options'] != "" else ""}
-                {self._query_builder.query['options']}
-                {projection_query}
-            """
 
         results, _ = await self._client.cypher(
             query=f"""
@@ -526,7 +517,7 @@ class RelationshipProperty(Generic[T, U]):
 
     @hooks
     @check_models_registered
-    async def replace(self, old_node: T, new_node: T) -> U:
+    async def replace(self, old_node: T, new_node: T) -> List[U]:
         """
         Disconnects a old node and replaces it with a new node. All relationship properties will be carried over to
         the new relationship.
@@ -539,7 +530,7 @@ class RelationshipProperty(Generic[T, U]):
             NotConnectedToSourceNode: Raised if the old node is not connected to the source node.
 
         Returns:
-            U: The new relationship between the source node and the newly connected node.
+            List[U]: The new relationships between the source node and the newly connected node.
         """
         self._ensure_alive([old_node, new_node])
 
@@ -570,14 +561,7 @@ class RelationshipProperty(Generic[T, U]):
             },
         )
 
-        if all(
-            [
-                len(results) != 0,
-                len(results[0]) != 0,
-                results[0][0] is not None,
-                self._allow_multiple is False,
-            ]
-        ):
+        if len(results) != 0 and len(results[0]) != 0 and results[0][0] is not None and self._allow_multiple is False:
             logger.debug(
                 "New node is already connected and 'allow_multiple' is set to 'False', deleting old relationship"
             )
@@ -609,8 +593,6 @@ class RelationshipProperty(Generic[T, U]):
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise NotConnectedToSourceNode()
 
-        deflated_properties = cast(U, results[0][0])._deflate()
-
         logger.debug("Deleting relationship between source node and old node")
         await self._client.cypher(
             query=f"""
@@ -625,18 +607,33 @@ class RelationshipProperty(Generic[T, U]):
         )
 
         logger.debug("Creating relationship between source node and new node")
-        create_query = self._query_builder.relationship_match(
-            direction=self._direction,
-            type_=cast(U, self._relationship_model).__settings__.type,
-            start_node_ref="start",
-            end_node_ref="end",
-        )
+        create_queries: List[str] = []
+        set_queries: List[str] = []
+        return_queries: List[str] = []
+        query_parameters: Dict[str, Any] = {}
 
-        set_query = (
-            f"SET {', '.join([f'r.{property_name} = ${property_name}' for property_name in deflated_properties])}"
-            if len(deflated_properties.keys()) != 0
-            else ""
-        )
+        for result in results:
+            ref = f"r{cast(U, result[0]).id}"
+            deflated_properties = cast(U, result[0])._deflate()
+
+            return_queries.append(ref)
+            create_queries.append(
+                self._query_builder.relationship_match(
+                    ref=ref,
+                    direction=self._direction,
+                    type_=cast(U, self._relationship_model).__settings__.type,
+                    start_node_ref="start",
+                    end_node_ref="end",
+                )
+            )
+
+            for property_name in deflated_properties:
+                property_name_ref = f"_{ref}_{property_name}"
+
+                query_parameters[property_name_ref] = deflated_properties[property_name]
+                set_queries.append(f"{ref}.{property_name} = ${property_name_ref}")
+
+                query_parameters[f"_{ref}_{property_name}"] = deflated_properties[property_name]
 
         results, _ = await self._client.cypher(
             query=f"""
@@ -644,20 +641,18 @@ class RelationshipProperty(Generic[T, U]):
                     {self._query_builder.node_match(labels=list(cast(T, self._source_node).__settings__.labels), ref="start")},
                     {self._query_builder.node_match(labels=list(cast(Type[T], self._target_model).__settings__.labels), ref="end")}
                 WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
-                CREATE {create_query}
-                {set_query}
-                RETURN r
+                CREATE {', '.join(create_queries)}
+                {f"SET {', '.join(set_queries)}" if len(set_queries) != 0 else ""}
+                RETURN {', '.join(return_queries)}
             """,
             parameters={
                 "start_element_id": getattr(self._source_node, "_element_id", None),
                 "end_element_id": getattr(new_node, "_element_id", None),
-                **deflated_properties,
+                **query_parameters,
             },
         )
 
-        if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
-        return cast(U, results[0][0])
+        return cast(List[U], results[0])
 
     @hooks
     @check_models_registered
