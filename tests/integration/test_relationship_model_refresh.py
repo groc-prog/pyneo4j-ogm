@@ -16,9 +16,10 @@ pytest_plugins = ("pytest_asyncio",)
 async def test_refresh(client: Pyneo4jClient, setup_test_data):
     await client.register_models([WorkedWith])
 
-    setup_result = await setup_test_data.values()
     relationship: Relationship = [
-        result for result in setup_result[0][1] if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
+        result
+        for result in setup_test_data[0][1]
+        if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
     ][0]
 
     relationship_model = WorkedWith(**relationship)
@@ -37,9 +38,10 @@ async def test_refresh(client: Pyneo4jClient, setup_test_data):
 async def test_refresh_no_result(client: Pyneo4jClient, setup_test_data):
     await client.register_models([WorkedWith])
 
-    setup_result = await setup_test_data.values()
     relationship: Relationship = [
-        result for result in setup_result[0][1] if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
+        result
+        for result in setup_test_data[0][1]
+        if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
     ][0]
 
     relationship_model = WorkedWith(**relationship)

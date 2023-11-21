@@ -98,6 +98,22 @@ async def test_find_connected_nodes_options(setup_test_data):
     assert all(isinstance(result, CoffeeShop) for result in results)
 
 
+async def test_find_connected_nodes_options_and_projections(setup_test_data):
+    node = await Developer.find_one({"uid": 1})
+    assert node is not None
+
+    results = await cast(Developer, node).find_connected_nodes(
+        {
+            "$node": {"$labels": list(Developer.model_settings().labels)},
+        },
+        options={"skip": 1},
+        projections={"dev_name": "name"},
+    )
+
+    assert len(results) == 3
+    assert all(isinstance(result, dict) for result in results)
+
+
 async def test_find_connected_nodes_auto_fetch(setup_test_data):
     node = await CoffeeShop.find_one({"rating": 5})
     assert node is not None

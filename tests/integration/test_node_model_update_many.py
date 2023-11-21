@@ -32,6 +32,7 @@ async def test_update_many(session: AsyncSession, setup_test_data):
         {"age": 50},
     )
     query_result: List[List[Node]] = await results.values()
+    await results.consume()
 
     assert len(query_result) == 2
 

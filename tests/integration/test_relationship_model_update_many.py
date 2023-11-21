@@ -30,6 +30,8 @@ async def test_update_many(client: Pyneo4jClient, session: AsyncSession, setup_t
     )
 
     query_result = await results.values()
+    await results.consume()
+
     assert len(query_result) == 0
 
 

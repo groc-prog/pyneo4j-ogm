@@ -33,6 +33,7 @@ async def test_update_one(session: AsyncSession, setup_test_data):
         {"uid": 1},
     )
     query_result: List[List[Node]] = await results.values()
+    await results.consume()
 
     assert len(query_result) == 1
     assert query_result[0][0]["age"] == 50

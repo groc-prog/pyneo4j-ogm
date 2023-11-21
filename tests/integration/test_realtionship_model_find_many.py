@@ -1,6 +1,6 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring
 
-from typing import cast
+from typing import Dict, cast
 from unittest.mock import patch
 
 from neo4j.graph import Graph, Node, Relationship
@@ -85,3 +85,12 @@ async def test_find_many_options(client: Pyneo4jClient, setup_test_data):
     assert len(results) == 1
     assert all(isinstance(result, WorkedWith) for result in results)
     assert all(cast(WorkedWith, result).language == "Javascript" for result in results)
+
+
+async def test_find_many_options_and_projections(client: Pyneo4jClient, setup_test_data):
+    await client.register_models([WorkedWith])
+
+    results = await WorkedWith.find_many(options={"skip": 1}, projections={"lang": "language"})
+    assert len(results) == 6
+    assert all(isinstance(result, dict) for result in results)
+    assert all("lang" in cast(Dict, result) for result in results)

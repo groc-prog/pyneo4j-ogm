@@ -177,6 +177,7 @@ async def setup_test_data(client: Pyneo4jClient, session: AsyncSession):
     CREATE (d3)-[:LIKES_TO_DRINK {liked: False}]->(c1)
 
     CREATE (d1)-[:WAS_WORK_BUDDY_WITH {language: "Python"}]->(d2)
+    CREATE (d1)-[:WAS_WORK_BUDDY_WITH {language: "Java"}]->(d2)
     CREATE (d1)-[:WAS_WORK_BUDDY_WITH {language: "Python"}]->(d3)
     CREATE (d2)-[:WAS_WORK_BUDDY_WITH {language: "Lisp"}]->(d4)
     CREATE (d3)-[:WAS_WORK_BUDDY_WITH {language: "Javascript"}]->(d1)
@@ -195,4 +196,7 @@ async def setup_test_data(client: Pyneo4jClient, session: AsyncSession):
     """
     )
 
-    yield result
+    result_values = await result.values()
+    await result.consume()
+
+    yield result_values

@@ -17,9 +17,10 @@ pytest_plugins = ("pytest_asyncio",)
 async def test_update(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
     await client.register_models([WorkedWith])
 
-    setup_result = await setup_test_data.values()
     relationship: Relationship = [
-        result for result in setup_result[0][1] if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
+        result
+        for result in setup_test_data[0][1]
+        if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
     ][0]
 
     relationship_model = WorkedWith(**relationship)
@@ -47,6 +48,7 @@ async def test_update(client: Pyneo4jClient, session: AsyncSession, setup_test_d
         {"element_id": relationship_model._element_id},
     )
     query_result: List[List[Relationship]] = await results.values()
+    await results.consume()
 
     assert len(query_result) == 1
     assert len(query_result[0]) == 1
@@ -58,9 +60,10 @@ async def test_update(client: Pyneo4jClient, session: AsyncSession, setup_test_d
 async def test_update_no_result(client: Pyneo4jClient, setup_test_data):
     await client.register_models([WorkedWith])
 
-    setup_result = await setup_test_data.values()
     relationship: Relationship = [
-        result for result in setup_result[0][1] if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
+        result
+        for result in setup_test_data[0][1]
+        if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
     ][0]
 
     relationship_model = WorkedWith(**relationship)

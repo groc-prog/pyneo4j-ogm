@@ -28,6 +28,8 @@ async def test_delete_many(client: Pyneo4jClient, session: AsyncSession, setup_t
     )
 
     query_result = await results.values()
+    await results.consume()
+
     assert len(query_result) == 0
 
 
@@ -47,6 +49,8 @@ async def test_delete_many_no_match(client: Pyneo4jClient, session: AsyncSession
     )
 
     query_result = await results.values()
+    await results.consume()
+
     assert len(query_result) == 2
 
 

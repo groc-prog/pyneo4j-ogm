@@ -26,6 +26,7 @@ async def test_delete_one(session: AsyncSession, setup_test_data):
         ),
     )
     query_result: list[list[Node]] = await results.values()
+    await results.consume()
 
     assert len(query_result) == 2
 
@@ -44,6 +45,7 @@ async def test_delete_one_no_match(session: AsyncSession, setup_test_data):
         ),
     )
     query_result: list[list[Node]] = await results.values()
+    await results.consume()
 
     assert len(query_result) == 3
 

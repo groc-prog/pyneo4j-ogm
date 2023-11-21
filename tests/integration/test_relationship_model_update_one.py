@@ -32,6 +32,8 @@ async def test_update_one(client: Pyneo4jClient, session: AsyncSession, setup_te
     )
 
     query_result = await results.values()
+    await results.consume()
+
     assert len(query_result) == 1
 
 

@@ -75,6 +75,22 @@ async def test_find_many_options(setup_test_data):
     assert all(isinstance(node, Coffee) for node in found_nodes)
 
 
+async def test_find_many_projections_and_options(setup_test_data):
+    found_nodes = await Coffee.find_many(options={"skip": 1}, projections={"has_sugar": "sugar"})
+
+    assert isinstance(found_nodes, list)
+    assert len(found_nodes) == 4
+    assert all(isinstance(node, dict) for node in found_nodes)
+
+
+async def test_find_many_projections_and_options_auto_fetch(setup_test_data):
+    found_nodes = await Coffee.find_many(options={"skip": 1}, projections={"has_sugar": "sugar"}, auto_fetch_nodes=True)
+
+    assert isinstance(found_nodes, list)
+    assert len(found_nodes) == 4
+    assert all(isinstance(node, dict) for node in found_nodes)
+
+
 async def test_find_many_auto_fetch(setup_test_data):
     found_nodes = await Coffee.find_many({"flavor": "Mocha"}, auto_fetch_nodes=True)
 

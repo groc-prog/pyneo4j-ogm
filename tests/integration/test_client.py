@@ -264,6 +264,7 @@ async def test_create_node_constraints(client: Pyneo4jClient, session: AsyncSess
 
     node_constraint_results = await session.run("SHOW CONSTRAINTS")
     node_constraints = await node_constraint_results.values()
+    await node_constraint_results.consume()
 
     assert node_constraints[0][1] == "node_constraint_Node_prop_a_prop_b_unique_constraint"
     assert node_constraints[0][2] == "UNIQUENESS"
@@ -285,6 +286,7 @@ async def test_create_relationship_constraints(client: Pyneo4jClient, session: A
 
     node_constraint_results = await session.run("SHOW CONSTRAINTS")
     node_constraints = await node_constraint_results.values()
+    await node_constraint_results.consume()
 
     assert node_constraints[0][1] == "relationship_constraint_TEST_RELATIONSHIP_prop_a_prop_b_unique_constraint"
     assert node_constraints[0][2] == "RELATIONSHIP_UNIQUENESS"
@@ -326,6 +328,7 @@ async def test_create_node_range_indexes(client: Pyneo4jClient, session: AsyncSe
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
+    await query_results.consume()
 
     assert index_results[0][1] == "node_range_index_Node_prop_a_prop_b_range_index"
     assert index_results[0][4] == IndexType.RANGE
@@ -356,6 +359,7 @@ async def test_create_relationship_range_indexes(client: Pyneo4jClient, session:
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
+    await query_results.consume()
 
     assert index_results[0][1] == "relationship_range_index_REL_prop_a_prop_b_range_index"
     assert index_results[0][4] == IndexType.RANGE
@@ -371,6 +375,7 @@ async def test_create_node_text_indexes(client: Pyneo4jClient, session: AsyncSes
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
+    await query_results.consume()
 
     assert index_results[0][1] == "node_text_index_Node_prop_a_text_index"
     assert index_results[0][4] == IndexType.TEXT
@@ -404,6 +409,7 @@ async def test_create_relationship_text_indexes(client: Pyneo4jClient, session: 
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
+    await query_results.consume()
 
     assert index_results[0][1] == "relationship_text_index_REL_prop_a_text_index"
     assert index_results[0][4] == IndexType.TEXT
@@ -425,6 +431,7 @@ async def test_create_node_lookup_indexes(client: Pyneo4jClient, session: AsyncS
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
+    await query_results.consume()
 
     assert index_results[0][1] == "node_lookup_index_Test_Node_prop_a_prop_b_lookup_index"
     assert index_results[0][4] == IndexType.LOOKUP
@@ -438,6 +445,7 @@ async def test_create_relationship_lookup_indexes(client: Pyneo4jClient, session
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
+    await query_results.consume()
 
     assert index_results[0][1] == "relationship_lookup_index_REL_prop_a_prop_b_lookup_index"
     assert index_results[0][4] == IndexType.LOOKUP
@@ -451,6 +459,7 @@ async def test_create_node_point_indexes(client: Pyneo4jClient, session: AsyncSe
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
+    await query_results.consume()
 
     assert index_results[0][1] == "node_point_index_Node_prop_a_point_index"
     assert index_results[0][4] == IndexType.POINT
@@ -484,6 +493,7 @@ async def test_create_relationship_point_indexes(client: Pyneo4jClient, session:
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
+    await query_results.consume()
 
     assert index_results[0][1] == "relationship_point_index_REL_prop_a_point_index"
     assert index_results[0][4] == IndexType.POINT
@@ -508,6 +518,7 @@ async def test_drop_nodes(client: Pyneo4jClient, session: AsyncSession):
 
     query_results = await session.run("MATCH (n) RETURN n")
     results = await query_results.values()
+    await query_results.consume()
 
     assert len(results) == 0
 
@@ -520,6 +531,7 @@ async def test_drop_constraints(client: Pyneo4jClient, session: AsyncSession):
 
     query_results = await session.run("SHOW CONSTRAINTS")
     results = await query_results.values()
+    await query_results.consume()
 
     assert len(results) == 0
 
@@ -532,6 +544,7 @@ async def test_drop_indexes(client: Pyneo4jClient, session: AsyncSession):
 
     query_results = await session.run("SHOW INDEXES")
     results = await query_results.values()
+    await query_results.consume()
 
     assert len(results) == 0
 
@@ -543,6 +556,7 @@ async def test_batch(client: Pyneo4jClient, session: AsyncSession):
 
     query_results = await session.run("MATCH (n) RETURN n")
     results = await query_results.values()
+    await query_results.consume()
 
     assert len(results) == 2
 
@@ -557,6 +571,7 @@ async def test_batch_exception(client: Pyneo4jClient, session: AsyncSession):
 
     query_results = await session.run("MATCH (n) RETURN n")
     results = await query_results.values()
+    await query_results.consume()
 
     assert len(results) == 0
 

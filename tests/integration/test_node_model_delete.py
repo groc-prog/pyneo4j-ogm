@@ -36,6 +36,7 @@ async def test_delete(client: Pyneo4jClient, session: AsyncSession):
         {"element_id": node._element_id},
     )
     query_result: List[List[Node]] = await results.values()
+    await results.consume()
 
     assert len(query_result) == 0
 

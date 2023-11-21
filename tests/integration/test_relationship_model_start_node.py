@@ -22,9 +22,10 @@ pytest_plugins = ("pytest_asyncio",)
 async def test_start_node(client: Pyneo4jClient, setup_test_data):
     await client.register_models([WorkedWith])
 
-    setup_result = await setup_test_data.values()
     relationship: Relationship = [
-        result for result in setup_result[0][1] if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
+        result
+        for result in setup_test_data[0][1]
+        if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
     ][0]
     node = cast(Node, relationship.start_node)
 
@@ -46,9 +47,10 @@ async def test_start_node(client: Pyneo4jClient, setup_test_data):
 async def test_start_node_no_result(client: Pyneo4jClient, setup_test_data):
     await client.register_models([WorkedWith])
 
-    setup_result = await setup_test_data.values()
     relationship: Relationship = [
-        result for result in setup_result[0][1] if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
+        result
+        for result in setup_test_data[0][1]
+        if result.type == "WAS_WORK_BUDDY_WITH" and result["language"] == "Go"
     ][0]
 
     relationship_model = WorkedWith(**relationship)
