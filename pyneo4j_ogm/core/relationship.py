@@ -378,8 +378,8 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 MATCH {match_query}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 WITH DISTINCT r
-                {projection_query}
                 {cls._query_builder.query['options']}
+                {projection_query}
             """,
             parameters=cls._query_builder.parameters,
         )

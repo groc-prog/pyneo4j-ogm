@@ -3,6 +3,7 @@ This module contains a modified version of Pydantic's BaseModel class adjusted t
 library. It adds additional methods for exporting the model to a dictionary and importing from a
 dictionary.
 """
+import asyncio
 import json
 import re
 from asyncio import iscoroutinefunction
@@ -65,15 +66,24 @@ def hooks(func):
             logger.debug("Checking pre hooks for %s", func.__name__)
             if func.__name__ in settings.pre_hooks:
                 for hook_function in settings.pre_hooks[func.__name__]:
-                    await hook_function(self, *args, **kwargs)
+                    if iscoroutinefunction(hook_function):
+                        await hook_function(self, *args, **kwargs)
+                    else:
+                        hook_function(self, *args, **kwargs)
 
-            result = await func(self, *args, **kwargs)
+            if iscoroutinefunction(func):
+                result = await func(self, *args, **kwargs)
+            else:
+                result = func(self, *args, **kwargs)
 
             # Run post hooks if defined
             logger.debug("Checking post hooks for %s", func.__name__)
             if func.__name__ in settings.post_hooks:
                 for hook_function in settings.post_hooks[func.__name__]:
-                    await hook_function(self, result, *args, **kwargs)
+                    if iscoroutinefunction(hook_function):
+                        await hook_function(self, result, *args, **kwargs)
+                    else:
+                        hook_function(self, result, *args, **kwargs)
 
             return result
 
@@ -82,12 +92,16 @@ def hooks(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             settings: BaseModelSettings = getattr(self, "__settings__")
+            loop = asyncio.get_event_loop()
 
             # Run pre hooks if defined
             logger.debug("Checking pre hooks for %s", func.__name__)
             if func.__name__ in settings.pre_hooks:
                 for hook_function in settings.pre_hooks[func.__name__]:
-                    hook_function(self, *args, **kwargs)
+                    if iscoroutinefunction(hook_function):
+                        loop.run_until_complete(hook_function(self, *args, **kwargs))
+                    else:
+                        hook_function(self, *args, **kwargs)
 
             result = func(self, *args, **kwargs)
 
@@ -95,7 +109,10 @@ def hooks(func):
             logger.debug("Checking post hooks for %s", func.__name__)
             if func.__name__ in settings.post_hooks:
                 for hook_function in settings.post_hooks[func.__name__]:
-                    hook_function(self, result, *args, **kwargs)
+                    if iscoroutinefunction(hook_function):
+                        loop.run_until_complete(hook_function(self, result, *args, **kwargs))
+                    else:
+                        hook_function(self, result, *args, **kwargs)
 
             return result
 

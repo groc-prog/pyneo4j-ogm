@@ -630,8 +630,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 query=f"""
                     MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
                     {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
-                    {projection_query}
+                    {"WITH DISTINCT n" if cls._query_builder.query['options'] != "" else ""}
                     {cls._query_builder.query['options']}
+                    {projection_query}
                 """,
                 parameters=cls._query_builder.parameters,
             )
