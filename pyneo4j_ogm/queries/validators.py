@@ -295,7 +295,7 @@ class MultiHopNodeModel(BaseModel):
 
     class Config:
         """
-        Pydantic configuration
+        Pydantic configuration.
         """
 
         extra = Extra.allow
@@ -319,7 +319,7 @@ class MultiHopFiltersModel(BaseModel):
 
     class Config:
         """
-        Pydantic configuration
+        Pydantic configuration.
         """
 
         extra = Extra.allow

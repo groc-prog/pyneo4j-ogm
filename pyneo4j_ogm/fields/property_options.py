@@ -18,11 +18,11 @@ def WithOptions(
 
     Args:
         property_type (Type[T]): The property type to return for the model field.
-        range_index (bool, optional): Whether the property should have a `RANGE` index or not. Defaults to False.
-        text_index (bool, optional): Whether the property should have a `TEXT` index or not. Defaults to False.
-        point_index (bool, optional): Whether the property should have a `POINT` index or not. Defaults to False.
+        range_index (bool, optional): Whether the property should have a `RANGE` index or not. Defaults to `False`.
+        text_index (bool, optional): Whether the property should have a `TEXT` index or not. Defaults to `False`.
+        point_index (bool, optional): Whether the property should have a `POINT` index or not. Defaults to `False`.
         unique (bool, optional): Whether a `UNIQUENESS` constraint should be created for the property.
-            Defaults to False.
+            Defaults to `False`.
 
     Returns:
         Type[T]: A subclass of the provided type with extra attributes.

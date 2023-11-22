@@ -67,7 +67,7 @@ class QueryBuilder:
 
         Args:
             filters (Dict[str, Any]): The filters to build.
-            ref (str, optional): The reference to the node. Defaults to "n".
+            ref (str, optional): The reference to the node. Defaults to `'n'`.
         """
         logger.debug("Building node filters %s", filters)
         self._operator_builder.ref = ref
@@ -94,7 +94,7 @@ class QueryBuilder:
 
         Args:
             filters (Dict[str, Any]): The filters to build.
-            ref (str, optional): The reference to the relationship. Defaults to "r".
+            ref (str, optional): The reference to the relationship. Defaults to `'r'`.
         """
         logger.debug("Building relationship filters %s", filters)
         self._operator_builder.ref = ref
@@ -123,8 +123,8 @@ class QueryBuilder:
 
         Args:
             filters (Dict[str, Any]): The filters to build.
-            ref (str, optional): The reference to the relationship. Defaults to "r".
-            node_ref (str, optional): The reference to the node. Defaults to "end".
+            ref (str, optional): The reference to the relationship. Defaults to `'r'`.
+            node_ref (str, optional): The reference to the node. Defaults to `'end'`.
         """
         logger.debug("Building relationship property filters %s", filters)
         self._operator_builder.reset_state()
@@ -160,9 +160,9 @@ class QueryBuilder:
 
         Args:
             filters (Dict[str, Any]): The filters to build.
-            start_ref (str, optional): The reference to the start node. Defaults to "n".
-            end_ref (str, optional): The reference to the end node. Defaults to "m".
-            rel_ref (str, optional): The reference to the relationship. Defaults to "r".
+            start_ref (str, optional): The reference to the start node. Defaults to `'n'`.
+            end_ref (str, optional): The reference to the end node. Defaults to `'m'`.
+            rel_ref (str, optional): The reference to the relationship. Defaults to `'r'`.
         """
         logger.debug("Building multi hop filters %s", filters)
         self._operator_builder.ref = start_ref
@@ -237,7 +237,7 @@ class QueryBuilder:
 
         Args:
             options (QueryOptions): The options to build.
-            ref (str, optional): The reference to the node or relationship. Defaults to "n".
+            ref (str, optional): The reference to the node or relationship. Defaults to `'n'`.
         """
         logger.debug("Building query options %s", options)
 
@@ -305,16 +305,16 @@ class QueryBuilder:
 
         Args:
             type_ (str): The type of the relationship.
-            ref (str, optional): The reference to the relationship. Defaults to "r".
-            start_node_ref (Optional[str], optional): The reference to the start node. Defaults to None.
-            start_node_labels (Optional[List[str]], optional): The labels of the start node. Defaults to None.
-            end_node_ref (Optional[str], optional): The reference to the end node. Defaults to None.
-            end_node_labels (Optional[List[str]], optional): The labels of the end node. Defaults to None.
-            min_hops (Optional[Union[int, str]], optional): The minimum number of hops. Defaults to None.
-            max_hops (Optional[Union[int, str]], optional): The maximum number of hops. Defaults to None.
+            ref (str, optional): The reference to the relationship. Defaults to `'r'`.
+            start_node_ref (Optional[str], optional): The reference to the start node. Defaults to `None`.
+            start_node_labels (Optional[List[str]], optional): The labels of the start node. Defaults to `None`.
+            end_node_ref (Optional[str], optional): The reference to the end node. Defaults to `None`.
+            end_node_labels (Optional[List[str]], optional): The labels of the end node. Defaults to `None`.
+            min_hops (Optional[Union[int, str]], optional): The minimum number of hops. Defaults to `None`.
+            max_hops (Optional[Union[int, str]], optional): The maximum number of hops. Defaults to `None`.
 
         Raises:
-            InvalidRelationshipHops: Raised when the min_hops or max_hops are invalid.
+            InvalidRelationshipHops: If the min_hops or max_hops are invalid.
 
         Returns:
             str: The relationship to match.
@@ -374,7 +374,7 @@ class QueryBuilder:
         Builds a projection which only returns the node properties defined in the projection.
 
         Args:
-            ref (str): The reference to the node. Defaults to "n".
+            ref (str): The reference to the node. Defaults to `'n'`.
             projections (Dict[str, str]): The projections to build.
         """
         if not isinstance(projections, dict):

@@ -109,9 +109,9 @@ class Operators:
         Normalizes and formats the provided expressions into usable expressions for the builder.
 
         Args:
-            expressions (Union[Dict[str, Any], List[Any]]): The expressions to normalize
+            expressions (Union[Dict[str, Any], List[Any]]): The expressions to normalize.
             level (int, optional): The recursion depth level. Should not be modified outside the
-                function itself. Defaults to 0.
+                function itself. Defaults to `0`.
 
         Returns:
             Union[Dict[str, Any], List[Any]]: The normalized expressions.
@@ -179,7 +179,7 @@ class Operators:
         Args:
             expressions (Dict[str, Any]): The expression to check.
             level (int, optional): The recursion depth level. Should not be modified outside the
-                function itself. Defaults to 0.
+                function itself. Defaults to `0`.
         """
         operators_to_remove: List[str] = []
 
