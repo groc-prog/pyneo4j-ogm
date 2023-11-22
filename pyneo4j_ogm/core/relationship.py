@@ -1,7 +1,5 @@
 """
-RelationshipModel module for the Neo4j OGM.
-
-This module holds the base relationship class `RelationshipModel` which is used to define database models for
+Holds the base relationship class `RelationshipModel` which is used to define database models for
 relationships. It provides base functionality like de-/inflation and validation and methods for interacting with
 the database for CRUD operations on relationships.
 """
@@ -19,7 +17,8 @@ from pyneo4j_ogm.exceptions import (
     InstanceDestroyed,
     InstanceNotHydrated,
     InvalidFilters,
-    NoResultsFound,
+    NoResultFound,
+    UnexpectedEmptyResult,
 )
 from pyneo4j_ogm.fields.settings import RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
@@ -40,8 +39,8 @@ def ensure_alive(func):
         func (Callable): The method to decorate.
 
     Raises:
-        InstanceDestroyed: Raised if the instance is destroyed.
-        InstanceNotHydrated: Raised if the instance is not hydrated.
+        InstanceDestroyed: If the instance is destroyed.
+        InstanceNotHydrated: If the instance is not hydrated.
 
     Returns:
         Callable: The decorated method.
@@ -72,6 +71,10 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     """
     Base model for all relationship models. Every relationship model should inherit from this class to have needed base
     functionality like de-/inflation and validation.
+
+    Provides methods for interacting with the database for CRUD operations on relationships. Settings can be defined
+    by the inner class `Settings`. Settings control the behavior of the model and are defined in
+    `pyneo4j_ogm.fields.settings.RelationshipModelSettings`.
     """
 
     __settings__: RelationshipModelSettings
@@ -107,7 +110,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Updates the corresponding relationship in the database with the current instance values.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the updated relationship.
+            UnexpectedEmptyResult: If the query should return a result but does not.
         """
         deflated = self._deflate()
 
@@ -140,7 +143,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.debug("Resetting modified properties")
         self._db_properties = self.dict()
@@ -154,7 +157,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         method is called on this instance, an `InstanceDestroyed` will be raised.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the updated relationship.
+            UnexpectedEmptyResult: If the query should return a result but does not.
         """
         logger.info("Deleting relationship %s", self)
         await self._client.cypher(
@@ -179,7 +182,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Refreshes the current instance with the values from the database.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the current relationship.
+            UnexpectedEmptyResult: If the query should return a result but does not.
         """
         logger.info("Refreshing relationship %s with values from database", self)
         results, _ = await self._client.cypher(
@@ -193,7 +196,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.debug("Updating current instance")
         self.__dict__.update(results[0][0].__dict__)
@@ -206,7 +209,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns the start node the relationship belongs to.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the start node.
+            UnexpectedEmptyResult: If the query should return a result but does not.
 
         Returns:
             Type[NodeModel]: A instance of the start node model.
@@ -225,7 +228,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         return results[0][0]
 
@@ -236,7 +239,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns the end node the relationship belongs to.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the end node.
+            UnexpectedEmptyResult: If the query should return a result but does not.
 
         Returns:
             Type[NodeModel]: A instance of the end node model.
@@ -255,14 +258,17 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         return results[0][0]
 
     @classmethod
     @hooks
     async def find_one(
-        cls: Type[T], filters: RelationshipFilters, projections: Optional[Dict[str, str]] = None
+        cls: Type[T],
+        filters: RelationshipFilters,
+        projections: Optional[Dict[str, str]] = None,
+        raise_on_empty: bool = False,
     ) -> Optional[Union[T, Dict[str, Any]]]:
         """
         Finds the first relationship that matches `filters` and returns it. If no matching relationship is found,
@@ -272,10 +278,12 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             filters (RelationshipFilters): Expressions applied to the query.
             projections (Dict[str, str], optional): The properties to project from the relationship. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
-                or empty projection will result in the whole model instance being returned. Defaults to None.
+                or empty projection will result in the whole model instance being returned. Defaults to `None`.
+            raise_on_empty (bool, optional): Whether to raise a `NoResultFound` if no match is found.
 
         Raises:
-            InvalidFilters: Raised if no filters are provided.
+            InvalidFilters: If no filters or invalid filters are provided.
+            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             T | Dict[str, Any] | None: A instance of the model or None if no match is found or a dictionary if a
@@ -318,6 +326,8 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            if raise_on_empty:
+                raise NoResultFound(filters)
             return None
 
         logger.debug("Checking if relationship has to be parsed to instance")
@@ -337,15 +347,16 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         options: Optional[QueryOptions] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
-        Finds the all relationships that matches `filters` and returns them.
+        Finds the all relationships that matches `filters` and returns them. If no matching relationships are found,
+        an empty list is returned instead.
 
         Args:
             filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults to
-                None.
+                `None`.
             projections (Dict[str, str], optional): The properties to project from the relationship. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
-                or empty projection will result in the whole model instance being returned. Defaults to None.
-            options (QueryOptions | None, optional): Options for modifying the query result. Defaults to None.
+                or empty projection will result in the whole model instance being returned. Defaults to `None`.
+            options (QueryOptions | None, optional): Options for modifying the query result. Defaults to `None`.
 
         Returns:
             List[T | Dict[str, Any]]: A list of model instances or dictionaries if a projection is provided.
@@ -406,6 +417,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         update: Dict[str, Any],
         filters: RelationshipFilters,
         new: bool = False,
+        raise_on_empty: bool = False,
     ) -> Optional[T]:
         """
         Finds the first relationship that matches `filters` and updates it with the values defined by `update`. If
@@ -413,12 +425,15 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         Args:
             update (Dict[str, Any]): Values to update the relationship properties with.
-            filters (RelationshipFilters): Expressions applied to the query. Defaults to None.
+            filters (RelationshipFilters): Expressions applied to the query.
             new (bool, optional): Whether to return the updated relationship. By default, the old relationship is
-                returned. Defaults to False.
+                returned. Defaults to `False`.
+            raise_on_empty (bool, optional): Whether to raise a `NoResultFound` if no match is found. Defaults to
+                `False`.
 
         Raises:
-            InvalidFilters: Raised if no filters are provided.
+            InvalidFilters: If no filters or invalid filters are provided.
+            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             T | None: By default, the old relationship instance is returned. If `new` is set to `True`, the result
@@ -458,6 +473,8 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            if raise_on_empty:
+                raise NoResultFound(filters)
             return None
 
         old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(relationship=results[0][0])
@@ -513,9 +530,9 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         Args:
             update (Dict[str, Any]): Values to update the relationship properties with.
-            filters (RelationshipFilters): Expressions applied to the query. Defaults to None.
+            filters (RelationshipFilters): Expressions applied to the query. Defaults to `None`.
             new (bool, optional): Whether to return the updated relationships. By default, the old relationships is
-                returned. Defaults to False.
+                returned. Defaults to `False`.
 
         Returns:
             List[T]: By default, the old relationship instances are returned. If `new` is set to `True`, the
@@ -606,16 +623,19 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
     @classmethod
     @hooks
-    async def delete_one(cls: Type[T], filters: RelationshipFilters) -> int:
+    async def delete_one(cls: Type[T], filters: RelationshipFilters, raise_on_empty: bool = False) -> int:
         """
         Finds the first relationship that matches `filters` and deletes it. If no match is found, a
-        `NoResultsFound` is raised.
+        `UnexpectedEmptyResult` is raised.
 
         Args:
-            filters (RelationshipFilters): Expressions applied to the query. Defaults to None.
+            filters (RelationshipFilters): Expressions applied to the query. Defaults to `None`.
+            raise_on_empty (bool, optional): Whether to raise a `NoResultFound` if no match is found. Defaults to
+                `False`.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the relationship.
+            UnexpectedEmptyResult: If the query should return a result but does not.
+            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             int: The number of deleted relationships.
@@ -647,9 +667,11 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         )
 
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.info("Deleted %s relationships", results[0][0])
+        if results[0][0] == 0 and raise_on_empty:
+            raise NoResultFound(filters)
         return results[0][0]
 
     @classmethod
@@ -659,7 +681,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Finds all relationships that match `filters` and deletes them.
 
         Args:
-            filters (RelationshipFilters): Expressions applied to the query. Defaults to None.
+            filters (RelationshipFilters): Expressions applied to the query. Defaults to `None`.
 
         Returns:
             int: The number of deleted relationships.
@@ -690,7 +712,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.debug("Deleting relationships")
         await cls._client.cypher(
@@ -714,7 +736,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         Args:
             filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults
-                to None.
+                to `None`.
 
         Returns:
             int: The number of relationships matched by the query.
@@ -743,7 +765,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         return results[0][0]
 
@@ -752,7 +774,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Deflates the current model instance into a python dictionary which can be stored in Neo4j.
 
         Returns:
-            Dict[str, Any]: The deflated model instance
+            Dict[str, Any]: The deflated model instance.
         """
         logger.debug("Deflating model %s to storable dictionary", self)
         deflated: Dict[str, Any] = json.loads(self.json(exclude={"__settings__"}))
@@ -770,13 +792,13 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Inflates a relationship instance into a instance of the current model.
 
         Args:
-            relationship (Relationship): Relationship to inflate
+            relationship (Relationship): Relationship to inflate.
 
         Raises:
-            InflationFailure: Raised if inflating the relationship fails
+            InflationFailure: If inflating the relationship fails.
 
         Returns:
-            T: A new instance of the current model with the properties from the relationship instance
+            T: A new instance of the current model with the properties from the relationship instance.
         """
         inflated: Dict[str, Any] = {}
 

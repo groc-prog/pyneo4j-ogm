@@ -1,5 +1,5 @@
 """
-Relationship property class used to define relationships between the model this class is used on and a target node,
+Relationship property class used to define relationships between the model this class is used on and a target model,
 which defines the other end of the relationship.
 """
 import asyncio
@@ -29,8 +29,8 @@ from pyneo4j_ogm.exceptions import (
     InstanceDestroyed,
     InstanceNotHydrated,
     InvalidTargetNode,
-    NoResultsFound,
     NotConnectedToSourceNode,
+    UnexpectedEmptyResult,
     UnregisteredModel,
 )
 from pyneo4j_ogm.fields.settings import RelationshipModelSettings
@@ -175,10 +175,11 @@ def check_models_registered(func):
 
 class RelationshipProperty(Generic[T, U]):
     """
-    Class used to define relationships between the model this class is used on and a target node, which defines the
+    Class used to define relationships between the model this class is used on and a target model, which defines the
     other end of the relationship.
 
-    Accepts two generic types, the first being the target node and the second being the relationship model.
+    Accepts two generic types, the first being the target node and the second being the relationship model. For type support
+    when using a relationship-property, these generics have to be provided since they can not be inferred automatically.
     """
 
     _client: Pyneo4jClient
@@ -214,7 +215,11 @@ class RelationshipProperty(Generic[T, U]):
         allow_multiple: bool = False,
     ) -> None:
         """
-        Verifies that the defined target model has been registered with the client.
+        Class used to define relationships between the model this class is used on and a target model, which defines the
+        other end of the relationship.
+
+        Accepts two generic types, the first being the target node and the second being the relationship model. For type support
+        when using a relationship-property, these generics have to be provided since they can not be inferred automatically.
 
         Args:
             target_model (Type[T] | str): The model which is the target of the relationship. Can be a
@@ -223,8 +228,8 @@ class RelationshipProperty(Generic[T, U]):
             relationship_model (Type[U] | str): The relationship model or the relationship type as a string.
             direction (RelationshipPropertyDirection): The direction of the relationship.
             cardinality (RelationshipPropertyCardinality, optional): The cardinality of the relationship. Defaults
-                to RelationshipPropertyCardinality.ZERO_OR_MORE.
-            allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to False.
+                to `RelationshipPropertyCardinality.ZERO_OR_MORE`.
+            allow_multiple (bool): Whether to use `MERGE` when creating new relationships. Defaults to `False`.
         """
         self._nodes = []
         self._registered_name = None
@@ -254,11 +259,11 @@ class RelationshipProperty(Generic[T, U]):
         Args:
             node (T): The node to which to get the relationship.
             filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults to
-                None.
+                `None`.
             projections (Dict[str, str], optional): The properties to project from the node. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
-                or empty projection will result in the whole model instance being returned. Defaults to None.
-            options (QueryOptions, optional): The options to apply to the query. Defaults to None.
+                or empty projection will result in the whole model instance being returned. Defaults to `None`.
+            options (QueryOptions, optional): The options to apply to the query. Defaults to `None`.
 
         Returns:
             (List[U]): Returns a list of `relationship model instances` describing relationships between
@@ -331,10 +336,10 @@ class RelationshipProperty(Generic[T, U]):
 
         Args:
             node (T): Node instance to create a relationship to.
-            properties (Dict[str, Any] | None): Properties defined on the relationship model. Defaults to None.
+            properties (Dict[str, Any] | None): Properties defined on the relationship model. Defaults to `None`.
 
         Raises:
-            NoResultsFound: Raised if the query did not return the new relationship.
+            UnexpectedEmptyResult: If the query should return a result but does not.
 
         Returns:
             U: The created relationship.
@@ -390,18 +395,23 @@ class RelationshipProperty(Generic[T, U]):
         )
 
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
         return results[0][0]
 
     @hooks
     @check_models_registered
-    async def disconnect(self, node: T) -> int:
+    async def disconnect(self, node: T, raise_on_empty: bool = False) -> int:
         """
         Disconnects the provided node from the source node. If the nodes are `not connected`, the query will not modify
         any of the nodes and `return 0`. If multiple relationships exists, all will be deleted.
 
         Args:
             node (T): The node to disconnect.
+            raise_on_empty (bool, optional): Whether to raise an exception if no relationships were deleted. Defaults
+                to `False`.
+
+        Raises:
+            NotConnectedToSourceNode: If the node is not connected to the source node.
 
         Returns:
             int: The number of disconnected nodes.
@@ -447,6 +457,8 @@ class RelationshipProperty(Generic[T, U]):
                 getattr(self._source_node, "_element_id", None),
                 getattr(node, "_element_id", None),
             )
+            if raise_on_empty:
+                raise NotConnectedToSourceNode()
             return 0
 
         logger.debug("Found %s, deleting relationships", count_results[0][0])
@@ -530,14 +542,14 @@ class RelationshipProperty(Generic[T, U]):
     async def replace(self, old_node: T, new_node: T) -> List[U]:
         """
         Disconnects a old node and replaces it with a new node. All relationship properties will be carried over to
-        the new relationship.
+        the new relationship. If multiple relationships exists, all will be replaced.
 
         Args:
             old_node (T): The currently connected node.
             new_node (T): The node which replaces the currently connected node.
 
         Raises:
-            NotConnectedToSourceNode: Raised if the old node is not connected to the source node.
+            NotConnectedToSourceNode: If the old node is not connected to the source node.
 
         Returns:
             List[U]: The new relationships between the source node and the newly connected node.
@@ -678,14 +690,14 @@ class RelationshipProperty(Generic[T, U]):
         Finds the all nodes that matches `filters` and are connected to the source node.
 
         Args:
-            filters (RelationshipPropertyFilters | None, optional): Expressions applied to the query. Defaults to None.
+            filters (RelationshipPropertyFilters | None, optional): Expressions applied to the query. Defaults to `None`.
             projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
-                projection will result in the whole model instances being returned. Defaults to None.
-            options (QueryOptions | None, optional): Options for modifying the query result. Defaults to None.
+                projection will result in the whole model instances being returned. Defaults to `None`.
+            options (QueryOptions | None, optional): Options for modifying the query result. Defaults to `None`.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
-                identical option defined in `Settings`. Defaults to False.
+                identical option defined in `Settings`. Defaults to `False`.
             auto_fetch_models (List[Union[str, T]], optional): A list of models to auto-fetch. `auto_fetch_nodes` has
-                to be set to `True` for this to have any effect. Defaults to [].
+                to be set to `True` for this to have any effect. Defaults to `[]`.
 
         Returns:
             List[T | Dict[str, Any]]: A list of model instances or dictionaries of the projected properties.

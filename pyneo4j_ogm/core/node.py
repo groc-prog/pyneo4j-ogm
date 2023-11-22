@@ -30,7 +30,8 @@ from pyneo4j_ogm.exceptions import (
     InstanceDestroyed,
     InstanceNotHydrated,
     InvalidFilters,
-    NoResultsFound,
+    NoResultFound,
+    UnexpectedEmptyResult,
     UnregisteredModel,
 )
 from pyneo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
@@ -130,7 +131,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         instance is seen as `hydrated` and all methods can be called on it.
 
         Raises:
-            NoResultsFound: If the query should return a result but does not.
+            UnexpectedEmptyResult: If the query should return a result but does not.
 
         Returns:
             T: The current model instance.
@@ -155,7 +156,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.debug("Hydrating instance values")
         setattr(self, "_element_id", getattr(cast(T, results[0][0]), "_element_id"))
@@ -174,7 +175,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Updates the corresponding node in the graph with the current instance values.
 
         Raises:
-            NoResultsFound: If the query should return a result but does not.
+            UnexpectedEmptyResult: If the query should return a result but does not.
         """
         deflated = self._deflate()
 
@@ -203,7 +204,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.debug("Resetting modified properties")
         self._db_properties = self.dict(exclude=self._relationships_properties)
@@ -217,7 +218,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         another method is called on this instance, an `InstanceDestroyed` will be raised.
 
         Raises:
-            NoResultsFound: If the query should return a result but does not.
+            UnexpectedEmptyResult: If the query should return a result but does not.
         """
         logger.info("Deleting node %s", self)
         results, _ = await self._client.cypher(
@@ -232,7 +233,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
@@ -245,7 +246,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Refreshes the current instance with the corresponding values from the graph.
 
         Raises:
-            NoResultsFound: If the query should return a result but does not.
+            UnexpectedEmptyResult: If the query should return a result but does not.
         """
         logger.info("Refreshing node %s with values from database", self)
         results, _ = await self._client.cypher(
@@ -259,7 +260,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.debug("Updating current instance")
         self.__dict__.update(results[0][0].__dict__)
@@ -416,6 +417,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         projections: Optional[Dict[str, str]] = None,
         auto_fetch_nodes: bool = False,
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
+        raise_on_empty: bool = False,
     ) -> Optional[Union[T, Dict[str, Any]]]:
         """
         Finds the first node that matches `filters` and returns it. If no matching node is found,
@@ -430,9 +432,12 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 identical option defined in `Settings`. Can not be used with projections. Defaults to `False`.
             auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch.
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
+            raise_on_empty (bool, optional): Whether to raise an `NoResultFound` if no match is found. Defaults to
+                `False`.
 
         Raises:
             InvalidFilters: If no filters or invalid filters are provided.
+            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             T | Dict[str, Any] | None: A instance of the model or None if no match is found or a dictionary of the
@@ -500,6 +505,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             or results[0][0] is None
             or (isinstance(results[0][0], dict) and len(results[0][0]) == 0)
         ):
+            if raise_on_empty:
+                raise NoResultFound(filters)
             return None
 
         if isinstance(results[0][0], Node):
@@ -654,7 +661,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
     @classmethod
     @hooks
-    async def update_one(cls: Type[T], update: Dict[str, Any], filters: NodeFilters, new: bool = False) -> Optional[T]:
+    async def update_one(
+        cls: Type[T], update: Dict[str, Any], filters: NodeFilters, new: bool = False, raise_on_empty: bool = False
+    ) -> Optional[T]:
         """
         Finds the first node that matches `filters` and updates it with the values defined by
         `update`. If no match is found, `None` is returned instead.
@@ -664,9 +673,12 @@ class NodeModel(ModelBase[NodeModelSettings]):
             filters (NodeFilters): The filters to apply to the query.
             new (bool, optional): Whether to return the updated node. By default, the old node is
                 returned. Defaults to `False`.
+            raise_on_empty (bool, optional): Whether to raise an `NoResultFound` if no match is found. Defaults to
+                `False`.
 
         Raises:
             InvalidFilters: If no filters or invalid filters are provided.
+            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             T | None: By default, the old node instance is returned. If `new` is set to `True`, the result
@@ -702,6 +714,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
+            if raise_on_empty:
+                raise NoResultFound(filters)
             return None
 
         old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(node=results[0][0])
@@ -830,17 +844,20 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
     @classmethod
     @hooks
-    async def delete_one(cls: Type[T], filters: NodeFilters) -> int:
+    async def delete_one(cls: Type[T], filters: NodeFilters, raise_on_empty: bool = False) -> int:
         """
         Finds the first node that matches `filters` and deletes it. If no match is found, a
-        `NoResultsFound` is raised.
+        `UnexpectedEmptyResult` is raised.
 
         Args:
             filters (NodeFilters): The filters to apply to the query.
+            raise_on_empty (bool, optional): Whether to raise an `NoResultFound` if no match is found. Defaults to
+                `False`.
 
         Raises:
-            NoResultsFound: If the query should return a result but does not.
+            UnexpectedEmptyResult: If the query should return a result but does not.
             InvalidFilters: If no filters or invalid filters are provided.
+            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             int: The number of deleted nodes.
@@ -869,9 +886,11 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(result) == 0 or len(result[0]) == 0 or result[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.info("Deleted %s nodes", result[0][0])
+        if result[0][0] == 0 and raise_on_empty:
+            raise NoResultFound(filters)
         return result[0][0]
 
     @classmethod
@@ -903,7 +922,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         logger.info("Deleted %s nodes", len(results))
         return results[0][0]
@@ -940,7 +959,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NoResultsFound()
+            raise UnexpectedEmptyResult()
 
         return results[0][0]
 
@@ -970,7 +989,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             node (Node): Node to inflate.
 
         Raises:
-            InflationFailure: Raised if inflating the node fails.
+            InflationFailure: If inflating the node fails.
 
         Returns:
             T: A new instance of the current model with the properties from the node instance.
@@ -1006,7 +1025,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         Args:
             nodes_to_fetch (List[Union[str, Type["NodeModel"]]] | None): The nodes to fetch. Can contain the actual
-                Model of the Node or the model name as a string. If None, all nodes will be fetched. Defaults to None.
+                model of the node or the model name as a string. If `None`, all nodes will be fetched. Defaults to `None`.
             ref (str, optional): The reference to use for the node. Defaults to "n".
 
         Returns:
