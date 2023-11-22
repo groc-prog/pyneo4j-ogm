@@ -2,10 +2,12 @@
 
 from typing import cast
 
+import pytest
 from neo4j import AsyncSession
 from typing_extensions import LiteralString
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
+from pyneo4j_ogm.exceptions import NotConnectedToSourceNode
 from tests.fixtures.db_setup import (
     Coffee,
     Consumed,
@@ -88,3 +90,6 @@ async def test_disconnect_no_connections(
     count = await john_model.coffee.disconnect(mocha_model)
 
     assert count == 0
+
+    with pytest.raises(NotConnectedToSourceNode):
+        await john_model.coffee.disconnect(mocha_model, raise_on_empty=True)

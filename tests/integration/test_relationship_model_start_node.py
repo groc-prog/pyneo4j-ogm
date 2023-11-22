@@ -7,7 +7,7 @@ import pytest
 from neo4j.graph import Node, Relationship
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import NoResultsFound
+from pyneo4j_ogm.exceptions import UnexpectedEmptyResult
 from tests.fixtures.db_setup import (
     Developer,
     WorkedWith,
@@ -64,5 +64,5 @@ async def test_start_node_no_result(client: Pyneo4jClient, setup_test_data):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
-        with pytest.raises(NoResultsFound):
+        with pytest.raises(UnexpectedEmptyResult):
             await relationship_model.start_node()

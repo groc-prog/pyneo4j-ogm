@@ -9,7 +9,7 @@ from neo4j.graph import Node
 from typing_extensions import LiteralString
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import NoResultsFound
+from pyneo4j_ogm.exceptions import UnexpectedEmptyResult
 from tests.fixtures.db_setup import CoffeeShop, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
@@ -61,5 +61,5 @@ async def test_delete_many_no_results(client: Pyneo4jClient, session: AsyncSessi
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
-        with pytest.raises(NoResultsFound):
+        with pytest.raises(UnexpectedEmptyResult):
             await CoffeeShop.delete_many({"tags": {"$in": ["oh-no"]}})

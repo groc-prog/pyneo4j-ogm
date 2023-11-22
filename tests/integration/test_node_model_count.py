@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import NoResultsFound
+from pyneo4j_ogm.exceptions import UnexpectedEmptyResult
 from tests.fixtures.db_setup import Coffee, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
@@ -26,5 +26,5 @@ async def test_count_no_query_result(client: Pyneo4jClient):
 
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
-        with pytest.raises(NoResultsFound):
+        with pytest.raises(UnexpectedEmptyResult):
             await Coffee.count({"milk": True})

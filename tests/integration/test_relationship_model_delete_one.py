@@ -6,7 +6,7 @@ import pytest
 from neo4j import AsyncSession
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import InvalidFilters, NoResultsFound
+from pyneo4j_ogm.exceptions import InvalidFilters, NoResultFound, UnexpectedEmptyResult
 from tests.fixtures.db_setup import WorkedWith, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
@@ -36,10 +36,32 @@ async def test_delete_one(client: Pyneo4jClient, session: AsyncSession, setup_te
 async def test_delete_one_no_match(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
     await client.register_models([WorkedWith])
 
+    result = await WorkedWith.delete_one({"language": "I dont exist"})
+    assert result == 0
+
+    with pytest.raises(NoResultFound):
+        await WorkedWith.delete_one({"language": "I dont exist"}, raise_on_empty=True)
+
+    results = await session.run(
+        """
+        MATCH ()-[r:WAS_WORK_BUDDY_WITH]->()
+        RETURN DISTINCT r
+        """,
+    )
+
+    query_result = await results.values()
+    await results.consume()
+
+    assert len(query_result) == 7
+
+
+async def test_delete_one_no_result(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
+    await client.register_models([WorkedWith])
+
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
-        with pytest.raises(NoResultsFound):
+        with pytest.raises(UnexpectedEmptyResult):
             await WorkedWith.delete_one({"language": "non-existent"})
 
     results = await session.run(

@@ -7,7 +7,7 @@ import pytest
 from neo4j.graph import Graph, Node, Relationship
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import InvalidFilters
+from pyneo4j_ogm.exceptions import InvalidFilters, NoResultFound
 from tests.fixtures.db_setup import WorkedWith, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
@@ -27,6 +27,9 @@ async def test_find_one_no_match(client: Pyneo4jClient, setup_test_data):
 
     result = await WorkedWith.find_one({"language": "non-existent"})
     assert result is None
+
+    with pytest.raises(NoResultFound):
+        await WorkedWith.find_one({"language": "non-existent"}, raise_on_empty=True)
 
 
 async def test_find_one_missing_filter(client: Pyneo4jClient, setup_test_data):

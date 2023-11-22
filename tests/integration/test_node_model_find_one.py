@@ -7,7 +7,7 @@ import pytest
 from neo4j.graph import Graph, Node
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import InvalidFilters, UnregisteredModel
+from pyneo4j_ogm.exceptions import InvalidFilters, NoResultFound, UnregisteredModel
 from tests.fixtures.db_setup import (
     Coffee,
     Consumed,
@@ -37,6 +37,9 @@ async def test_find_one_no_match(setup_test_data):
     found_node = await Developer.find_one({"my_prop": "non-existent"})
 
     assert found_node is None
+
+    with pytest.raises(NoResultFound):
+        await Developer.find_one({"my_prop": "non-existent"}, raise_on_empty=True)
 
 
 async def test_find_one_raw_result(client: Pyneo4jClient):

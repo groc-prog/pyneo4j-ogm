@@ -7,7 +7,7 @@ from neo4j import AsyncSession
 from neo4j.graph import Node
 from typing_extensions import LiteralString
 
-from pyneo4j_ogm.exceptions import InvalidFilters, NoResultsFound
+from pyneo4j_ogm.exceptions import InvalidFilters, NoResultFound, UnexpectedEmptyResult
 from tests.fixtures.db_setup import CoffeeShop, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
@@ -35,6 +35,9 @@ async def test_delete_one(session: AsyncSession, setup_test_data):
 async def test_delete_one_no_match(session: AsyncSession, setup_test_data):
     results = await CoffeeShop.delete_one({"tags": {"$in": ["oh-no"]}})
     assert results == 0
+
+    with pytest.raises(NoResultFound):
+        await CoffeeShop.delete_one({"tags": {"$in": ["oh-no"]}}, raise_on_empty=True)
 
     results = await session.run(
         cast(

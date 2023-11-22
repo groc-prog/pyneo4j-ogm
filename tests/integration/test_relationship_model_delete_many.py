@@ -6,7 +6,7 @@ import pytest
 from neo4j import AsyncSession
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import NoResultsFound
+from pyneo4j_ogm.exceptions import UnexpectedEmptyResult
 from tests.fixtures.db_setup import WorkedWith, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
@@ -60,5 +60,5 @@ async def test_delete_many_no_results(client: Pyneo4jClient, session: AsyncSessi
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
-        with pytest.raises(NoResultsFound):
+        with pytest.raises(UnexpectedEmptyResult):
             await WorkedWith.delete_many({"language": "non-existent"})

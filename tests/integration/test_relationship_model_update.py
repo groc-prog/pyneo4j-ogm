@@ -9,7 +9,7 @@ from neo4j.graph import Node, Relationship
 from typing_extensions import LiteralString
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import NoResultsFound
+from pyneo4j_ogm.exceptions import UnexpectedEmptyResult
 from tests.fixtures.db_setup import WorkedWith, client, session, setup_test_data
 
 pytest_plugins = ("pytest_asyncio",)
@@ -78,6 +78,6 @@ async def test_update_no_result(client: Pyneo4jClient, setup_test_data):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
-        with pytest.raises(NoResultsFound):
+        with pytest.raises(UnexpectedEmptyResult):
             relationship_model.language = "TypeScript"
             await relationship_model.update()

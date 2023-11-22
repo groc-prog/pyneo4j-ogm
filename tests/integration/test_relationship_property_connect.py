@@ -8,7 +8,7 @@ from neo4j import AsyncSession
 from typing_extensions import LiteralString
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.exceptions import NoResultsFound
+from pyneo4j_ogm.exceptions import UnexpectedEmptyResult
 from tests.fixtures.db_setup import (
     Coffee,
     Consumed,
@@ -109,5 +109,5 @@ async def test_connect_no_result(
     with patch.object(john_model.colleagues._client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
-        with pytest.raises(NoResultsFound):
+        with pytest.raises(UnexpectedEmptyResult):
             await john_model.colleagues.connect(sam_model, {"language": "PHP"})
