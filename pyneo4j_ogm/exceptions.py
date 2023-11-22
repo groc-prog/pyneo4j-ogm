@@ -1,7 +1,7 @@
 """
 Pyneo4j exceptions raised by the client or model classes.
 """
-from typing import List
+from typing import Any, List
 
 
 class Pyneo4jException(Exception):
@@ -92,7 +92,7 @@ class InstanceDestroyed(Pyneo4jException):
         super().__init__("Queries can not be run on instances which have been destroyed", *args)
 
 
-class NoResultsFound(Pyneo4jException):
+class UnexpectedEmptyResult(Pyneo4jException):
     """
     A query should have returned results, but did not. This exception does not include a specific
     reason for why it failed, as it is not possible to determine the reason.
@@ -149,7 +149,7 @@ class TransactionInProgress(Pyneo4jException):
 
 class NotConnectedToSourceNode(Pyneo4jException):
     """
-    The `replace()` method was called with a node which is not connected to the source node.
+    A relationship-property method was called with a node which is not connected to the source node.
     """
 
     def __init__(self, *args: object) -> None:
@@ -200,3 +200,12 @@ class CardinalityViolation(Pyneo4jException):
             {end_model} is being violated.""",
             *args,
         )
+
+
+class NoResultFound(Pyneo4jException):
+    """
+    A query with required filters did not match any results.
+    """
+
+    def __init__(self, filters: Any, *args: object) -> None:
+        super().__init__(f"No matching results for filter {filters}", *args)
