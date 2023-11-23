@@ -328,7 +328,7 @@ class RelationshipProperty(Generic[T, U]):
 
     @hooks
     @check_models_registered
-    async def connect(self, node: T, properties: Union[Dict[str, Any], None] = None) -> U:
+    async def connect(self, node: T, properties: Optional[Dict[str, Any]] = None) -> U:
         """
         Connects the given node to the source node. By default only one relationship will be created between nodes.
         If `allow_multiple` has been set to `True` and a relationship already exists between the nodes, a duplicate
@@ -687,7 +687,7 @@ class RelationshipProperty(Generic[T, U]):
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
-        Finds the all nodes that matches `filters` and are connected to the source node.
+        Finds all nodes that matches `filters` and are connected to the source node.
 
         Args:
             filters (RelationshipPropertyFilters | None, optional): Expressions applied to the query. Defaults to `None`.
