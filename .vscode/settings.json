@@ -9,8 +9,9 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "markdownlint.config": {
-    "MD039": false,
-    "MD033": false
+    "MD024": false,
+    "MD033": false,
+    "MD039": false
   },
   "files.exclude": {
     "**/.git": true,
