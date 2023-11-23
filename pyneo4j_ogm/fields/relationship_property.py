@@ -77,9 +77,9 @@ def hooks(func):
             if hook_name in settings.pre_hooks:
                 for hook_function in settings.pre_hooks[hook_name]:
                     if iscoroutinefunction(hook_function):
-                        await hook_function(self, *args, **kwargs)
+                        await hook_function(source_node, *args, **kwargs)
                     else:
-                        hook_function(self, *args, **kwargs)
+                        hook_function(source_node, *args, **kwargs)
 
             result = await func(self, *args, **kwargs)
 
@@ -88,9 +88,9 @@ def hooks(func):
             if hook_name in settings.post_hooks:
                 for hook_function in settings.post_hooks[hook_name]:
                     if iscoroutinefunction(hook_function):
-                        await hook_function(self, result, *args, **kwargs)
+                        await hook_function(source_node, result, *args, **kwargs)
                     else:
-                        hook_function(self, result, *args, **kwargs)
+                        hook_function(source_node, result, *args, **kwargs)
 
             return result
 
@@ -108,9 +108,9 @@ def hooks(func):
             if hook_name in settings.pre_hooks:
                 for hook_function in settings.pre_hooks[hook_name]:
                     if iscoroutinefunction(hook_function):
-                        loop.run_until_complete(hook_function(self, *args, **kwargs))
+                        loop.run_until_complete(hook_function(source_node, *args, **kwargs))
                     else:
-                        hook_function(self, *args, **kwargs)
+                        hook_function(source_node, *args, **kwargs)
 
             result = func(self, *args, **kwargs)
 
@@ -119,9 +119,9 @@ def hooks(func):
             if hook_name in settings.post_hooks:
                 for hook_function in settings.post_hooks[hook_name]:
                     if iscoroutinefunction(hook_function):
-                        loop.run_until_complete(hook_function(self, result, *args, **kwargs))
+                        loop.run_until_complete(hook_function(source_node, result, *args, **kwargs))
                     else:
-                        hook_function(self, result, *args, **kwargs)
+                        hook_function(source_node, result, *args, **kwargs)
 
             return result
 
