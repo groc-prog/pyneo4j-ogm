@@ -8,6 +8,10 @@
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
+  "markdownlint.config": {
+    "MD039": false,
+    "MD033": false
+  },
   "files.exclude": {
     "**/.git": true,
     "**/.svn": true,
