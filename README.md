@@ -15,6 +15,15 @@ What's planned for future releases.
 - [ ] Bookmark support
 - [ ] Migration CLI for migrating your pyneo4j-ogm models
 
+## 🎯 Features <a name="features"></a>
+
+- [x] **Simple and easy to use**: `pyneo4j-ogm` is designed to be simple and easy to use, while also providing a solid foundation for some more advanced use-cases.
+- [x] **Flexible and powerful**: `pyneo4j-ogm` is flexible and powerful. It allows you to do all sorts of things with your data, from simple CRUD operations to complex queries.
+- [x] **Fully asynchronous**: `pyneo4j-ogm` is fully asynchronous and uses the `Neo4j Python Driver` under the hood.
+- [x] **Supports Neo4j 5+**: `pyneo4j-ogm` supports Neo4j 5+ and is tested against the latest version of Neo4j.
+- [x] **Fully typed**: `pyneo4j-ogm` is fully typed out of the box.
+- [x] **Powered by Pydantic**: `pyneo4j-ogm` is powered by `Pydantic` and uses it's powerful validation and serialization features under the hood.
+
 ## 📦 Installation <a name="installation"></a>
 
 Using [`pip`](https://pip.pypa.io/en/stable/):
@@ -28,15 +37,6 @@ or when using [`Poetry`](https://python-poetry.org/):
 ```bash
 poetry add pyneo4j-ogm
 ```
-
-## 🎯 Features <a name="features"></a>
-
-- [x] **Simple and easy to use**: `pyneo4j-ogm` is designed to be simple and easy to use, while also providing a solid foundation for some more advanced use-cases.
-- [x] **Flexible and powerful**: `pyneo4j-ogm` is flexible and powerful. It allows you to do all sorts of things with your data, from simple CRUD operations to complex queries.
-- [x] **Fully asynchronous**: `pyneo4j-ogm` is fully asynchronous and uses the `Neo4j Python Driver` under the hood.
-- [x] **Supports Neo4j 5+**: `pyneo4j-ogm` supports Neo4j 5+ and is tested against the latest version of Neo4j.
-- [x] **Fully typed**: `pyneo4j-ogm` is fully typed out of the box.
-- [x] **Powered by Pydantic**: `pyneo4j-ogm` is powered by `Pydantic` and uses it's powerful validation and serialization features under the hood.
 
 ## 🚀 Quickstart <a name="quickstart"></a>
 
@@ -276,8 +276,8 @@ In the following we are going to take a closer look at the different parts of `p
 
 - [PyNeo4j-OGM](#pyneo4j-ogm)
   - [📣 Upcoming features](#-upcoming-features)
-  - [📦 Installation ](#-installation-)
   - [🎯 Features ](#-features-)
+  - [📦 Installation ](#-installation-)
   - [🚀 Quickstart ](#-quickstart-)
     - [Full quickstart example](#full-quickstart-example)
   - [📚 Documentation ](#-documentation-)
@@ -349,10 +349,10 @@ In the following we are going to take a closer look at the different parts of `p
         - [RelationshipProperty.disconnect\_all() ](#relationshippropertydisconnect_all-)
         - [RelationshipProperty.replace() ](#relationshippropertyreplace-)
         - [RelationshipProperty.find\_connected\_nodes() ](#relationshippropertyfind_connected_nodes-)
-        - [Filters ](#filters--4)
-        - [Projections ](#projections--4)
-        - [Query options ](#query-options--3)
-        - [Auto-fetching nodes ](#auto-fetching-nodes--3)
+          - [Filters ](#filters--4)
+          - [Projections ](#projections--4)
+          - [Query options ](#query-options--3)
+          - [Auto-fetching nodes ](#auto-fetching-nodes--3)
       - [Hooks with relationship properties ](#hooks-with-relationship-properties-)
     - [Queries ](#queries-)
       - [Filtering queries ](#filtering-queries-)
@@ -1466,7 +1466,7 @@ print(coffees) # [<Coffee>, <Coffee>, ...]
 print(coffees) # []
 ```
 
-##### Filters <a name="model-find-many-filters"></a>
+###### Filters <a name="relationship-property-find-connected-nodes-filters"></a>
 
 You can pass filters using the `filters` argument to filter the returned nodes. For more about filters, see the [`Filtering queries`](#query-filters) section.
 
@@ -1477,7 +1477,7 @@ coffees = await developer.coffee.find_connected_nodes({"sugar": True})
 print(coffees) # [<Coffee sugar=True>, <Coffee sugar=True>, ...]
 ```
 
-##### Projections <a name="model-find-many-projections"></a>
+###### Projections <a name="relationship-property-find-connected-nodes-projections"></a>
 
 `Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](#query-projections) section.
 
@@ -1489,7 +1489,7 @@ coffees = await developer.coffee.find_connected_nodes({"sugar": True}, {"contain
 print(coffees) # [{"contains_sugar": True}, {"contains_sugar": False}, ...]
 ```
 
-##### Query options <a name="model-find-many-query-options"></a>
+###### Query options <a name="relationship-property-find-connected-nodes-query-options"></a>
 
 `Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](#query-options) section.
 
@@ -1501,7 +1501,7 @@ coffees = await developer.coffee.find_connected_nodes({"sugar": True}, options={
 print(coffees) # [<Coffee>, <Coffee>, ...]
 ```
 
-##### Auto-fetching nodes <a name="model-find-many-auto-fetching-nodes"></a>
+###### Auto-fetching nodes <a name="relationship-property-find-connected-nodes-auto-fetching-nodes"></a>
 
 The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship-properties when running the `find_many()` query. For more about auto-fetching, see [`Auto-fetching relationship-properties`](#query-auto-fetching).
 
@@ -1776,7 +1776,7 @@ Projections can help you to reduce bandwidth usage and speed up queries, since y
 
 > **Note:** Only top-level mapping is supported. This means that you can not map properties to a nested dictionary key.
 
-In the following example, we will return a dictionary with a `dev_name` key, which get's mapped to the models `name` property and a `dev_age` key, which get's mapped to the models `age` property. Any defined mapping which does not exist on the model will have `None` as it's value
+In the following example, we will return a dictionary with a `dev_name` key, which get's mapped to the models `name` property and a `dev_age` key, which get's mapped to the models `age` property. Any defined mapping which does not exist on the model will have `None` as it's value. You can also map the result's `elementId` and `Id` using either `$elementId` or `$id` as the value for the mapped key.
 
 ```python
 developer = await Developer.find_one({"name": "John"}, {"dev_name": "name", "dev_age": "age", "i_do_not_exist": "some_non_existing_property"})
