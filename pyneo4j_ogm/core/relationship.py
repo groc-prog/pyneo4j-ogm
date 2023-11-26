@@ -23,6 +23,7 @@ from pyneo4j_ogm.exceptions import (
 from pyneo4j_ogm.fields.settings import RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.queries.types import (
+    Projection,
     QueryOptions,
     RelationshipFilters,
     RelationshipMatchDirection,
@@ -267,7 +268,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     async def find_one(
         cls: Type[T],
         filters: RelationshipFilters,
-        projections: Optional[Dict[str, str]] = None,
+        projections: Optional[Projection] = None,
         raise_on_empty: bool = False,
     ) -> Optional[Union[T, Dict[str, Any]]]:
         """
@@ -276,7 +277,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         Args:
             filters (RelationshipFilters): Expressions applied to the query.
-            projections (Dict[str, str], optional): The properties to project from the relationship. The keys define
+            projections (Projection, optional): The properties to project from the relationship. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
             raise_on_empty (bool, optional): Whether to raise a `NoResultFound` if no match is found.
@@ -343,7 +344,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     async def find_many(
         cls: Type[T],
         filters: Optional[RelationshipFilters] = None,
-        projections: Optional[Dict[str, str]] = None,
+        projections: Optional[Projection] = None,
         options: Optional[QueryOptions] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
@@ -353,7 +354,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Args:
             filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults to
                 `None`.
-            projections (Dict[str, str], optional): The properties to project from the relationship. The keys define
+            projections (Projection, optional): The properties to project from the relationship. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
             options (QueryOptions | None, optional): Options for modifying the query result. Defaults to `None`.

@@ -36,7 +36,12 @@ from pyneo4j_ogm.exceptions import (
 )
 from pyneo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.queries.types import MultiHopFilters, NodeFilters, QueryOptions
+from pyneo4j_ogm.queries.types import (
+    MultiHopFilters,
+    NodeFilters,
+    Projection,
+    QueryOptions,
+)
 
 if TYPE_CHECKING:
     from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
@@ -271,7 +276,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
     async def find_connected_nodes(
         self,
         filters: MultiHopFilters,
-        projections: Optional[Dict[str, str]] = None,
+        projections: Optional[Projection] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
@@ -281,7 +286,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         Args:
             filters (MultiHopFilters): The filters to apply to the query.
-            projections (Dict[str, str], optional): The properties to project from the node. The keys define
+            projections (Projection, optional): The properties to project from the node. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
             options (QueryOptions, optional): The options to apply to the query. Defaults to `None`.
@@ -414,7 +419,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
     async def find_one(
         cls: Type[T],
         filters: NodeFilters,
-        projections: Optional[Dict[str, str]] = None,
+        projections: Optional[Projection] = None,
         auto_fetch_nodes: bool = False,
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
         raise_on_empty: bool = False,
@@ -425,7 +430,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         Args:
             filters (NodeFilters): The filters to apply to the query.
-            projections (Dict[str, str], optional): The properties to project from the node. The keys define
+            projections (Projection, optional): The properties to project from the node. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
@@ -542,7 +547,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
     async def find_many(
         cls: Type[T],
         filters: Optional[NodeFilters] = None,
-        projections: Optional[Dict[str, str]] = None,
+        projections: Optional[Projection] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
@@ -553,7 +558,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         Args:
             filters (NodeFilters, optional): The filters to apply to the query. Defaults to `None`.
-            projections (Dict[str, str], optional): The properties to project from the node. The keys define
+            projections (Projection, optional): The properties to project from the node. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
             options (QueryOptions, optional): The options to apply to the query. Defaults to `None`.

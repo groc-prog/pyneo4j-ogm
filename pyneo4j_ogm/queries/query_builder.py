@@ -11,6 +11,7 @@ from pyneo4j_ogm.queries.operators import Operators
 from pyneo4j_ogm.queries.types import (
     MultiHopFilters,
     NodeFilters,
+    Projection,
     QueryOptions,
     RelationshipFilters,
     RelationshipMatchDirection,
@@ -367,15 +368,13 @@ class QueryBuilder:
             case _:
                 raise InvalidRelationshipDirection(direction)
 
-    def build_projections(
-        self, projections: Dict[str, Union[str, Literal["$elementId"], Literal["$id"]]], ref: str = "n"
-    ) -> None:
+    def build_projections(self, projections: Projection, ref: str = "n") -> None:
         """
         Builds a projection which only returns the node properties defined in the projection.
 
         Args:
             ref (str): The reference to the node. Defaults to `'n'`.
-            projections (Dict[str, str]): The projections to build.
+            projections (Projection): The projections to build.
         """
         if not isinstance(projections, dict):
             return

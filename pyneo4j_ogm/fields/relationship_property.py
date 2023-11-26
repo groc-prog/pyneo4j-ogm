@@ -41,6 +41,7 @@ from pyneo4j_ogm.queries.enums import (
 )
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 from pyneo4j_ogm.queries.types import (
+    Projection,
     QueryOptions,
     RelationshipFilters,
     RelationshipPropertyFilters,
@@ -249,7 +250,7 @@ class RelationshipProperty(Generic[T, U]):
         self,
         node: T,
         filters: Optional[RelationshipFilters] = None,
-        projections: Optional[Dict[str, str]] = None,
+        projections: Optional[Projection] = None,
         options: Optional[QueryOptions] = None,
     ) -> List[U]:
         """
@@ -260,7 +261,7 @@ class RelationshipProperty(Generic[T, U]):
             node (T): The node to which to get the relationship.
             filters (RelationshipFilters | None, optional): Expressions applied to the query. Defaults to
                 `None`.
-            projections (Dict[str, str], optional): The properties to project from the node. The keys define
+            projections (Projection, optional): The properties to project from the node. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
             options (QueryOptions, optional): The options to apply to the query. Defaults to `None`.
@@ -681,7 +682,7 @@ class RelationshipProperty(Generic[T, U]):
     async def find_connected_nodes(
         self,
         filters: Optional[RelationshipPropertyFilters] = None,
-        projections: Optional[Dict[str, str]] = None,
+        projections: Optional[Projection] = None,
         options: Optional[QueryOptions] = None,
         auto_fetch_nodes: bool = False,
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
@@ -691,7 +692,7 @@ class RelationshipProperty(Generic[T, U]):
 
         Args:
             filters (RelationshipPropertyFilters | None, optional): Expressions applied to the query. Defaults to `None`.
-            projections (Dict[str, str], optional): The properties to project from the node. A invalid or empty
+            projections (Projection, optional): The properties to project from the node. A invalid or empty
                 projection will result in the whole model instances being returned. Defaults to `None`.
             options (QueryOptions | None, optional): Options for modifying the query result. Defaults to `None`.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the

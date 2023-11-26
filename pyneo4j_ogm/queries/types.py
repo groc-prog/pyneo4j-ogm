@@ -196,3 +196,7 @@ class QueryOptions(TypedDict, total=False):
     skip: Optional[int]
     sort: Optional[Union[List[str], str]]
     order: Optional[QueryOptionsOrder]
+
+
+# Interface for a projection
+Projection = Dict[str, Union[str, Literal["$elementId"], Literal["$id"]]]
