@@ -62,8 +62,8 @@ from uuid import UUID, uuid4
 
 class Developer(NodeModel):
   """
-  This class represents a `Developer` node inside the graph. All interactions with nodes of
-  this type will be handled by this class.
+  This class represents a `Developer` node inside the graph. All interaction
+  with nodes of this type will be handled by this class.
   """
   uid: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
   name: str
@@ -86,8 +86,8 @@ class Developer(NodeModel):
 
 class Coffee(NodeModel):
   """
-  This class represents a node with the labels `Beverage` and `Hot`. Notice that the labels
-  of this model are explicitly defined in the `Settings` class.
+  This class represents a node with the labels `Beverage` and `Hot`. Notice
+  that the labels of this model are explicitly defined in the `Settings` class.
   """
   flavor: str
   sugar: bool
@@ -106,12 +106,13 @@ class Coffee(NodeModel):
 
 class Consumed(RelationshipModel):
   """
-  Unlike the models above, this class represents a relationship between two nodes. In this case,
-  it represents the relationship between the `Developer` and `Coffee` models. Like with node-models,
-  the `Settings` class allows us to define some settings for this relationship.
+  Unlike the models above, this class represents a relationship between two
+  nodes. In this case, it represents the relationship between the `Developer`
+  and `Coffee` models. Like with node-models, the `Settings` class allows us to
+  define some settings for this relationship.
 
-  Note that the relationship itself does not define it's start- and end-nodes, making it reusable
-  for other models as well.
+  Note that the relationship itself does not define it's start- and end-nodes,
+  making it reusable for other models as well.
   """
   liked: bool
 
@@ -122,7 +123,7 @@ class Consumed(RelationshipModel):
 The models above are pretty straight forward. They are basically just `Pydantic` models with some sugar on top, though there are some special things to note:
 
 - We are defining some model-specific settings inside the `Settings` class. These settings are used by `pyneo4j-ogm` to determine how to handle the model. For example, the `labels` setting of the `Coffee` model tells `pyneo4j-ogm` that this model should have the labels `Beverage` and `Hot` inside the graph. The `type` setting of the `Consumed` model tells `pyneo4j-ogm` that this relationship should have the type `CHUGGED` inside the graph.
-- We are defining a `post_hook` for the `coffee` relationship of the `Developer` model. This hook will be called whenever a `Coffee` node is connected to a `Developer` node via the `coffee` relationship.
+- We are defining a `post_hook` for the `coffee` relationship of the `Developer` model. This hook will be called whenever a `Coffee` node is connected to a `Developer` node via the `coffee` relationship-property.
 - We are defining a `uniqueness constraint` for the `uid` field of the `Developer` model. This will create a uniqueness constraint inside the graph for the `uid` field of the `Developer` model. This means that there can only be one `Developer` node with a specific `uid` inside the graph.
 
 Now that we have our models defined, we can initialize a `Pyneo4jClient` instance that will be used to interact with the database. The client will handle most of the heavy lifting for us and our models, so let's initialize a new one and connect to the database:
@@ -133,14 +134,13 @@ from pyneo4j_ogm import Pyneo4jClient
 async def main():
   # We initialize a new `Pyneo4jClient` instance and connect to the database.
   client = Pyneo4jClient()
-  await client.connect(### Logging <a name="logging"></a>
+  await client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
 
-You can control the log level and whether to log to the console or not by setting the `PYNEO4J_OGM_LOG_LEVEL` and `PYNEO4J_OGM_ENABLE_LOGGING` as environment variables. The available levels are the same as provided by the build-in `logging` module. The default log level is `WARNING` and logging to the console is enabled by default.
-uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
-
-  # To use our models for running queries later on, we have to register them with the client.
-  # **Note**: You only have to register the models that you want to use for queries and you can
-  # even skip this step if you want to use the `Pyneo4jClient` instance for running raw queries.
+  # To use our models for running queries later on, we have to register
+  # them with the client.
+  # **Note**: You only have to register the models that you want to use
+  # for queries and you can even skip this step if you want to use the
+  # `Pyneo4jClient` instance for running raw queries.
   await client.register_models([Developer, Coffee, Consumed])
 ```
 
@@ -159,8 +159,8 @@ async def main():
   cappuccino = Coffee(flavor="Cappuccino", milk=True, sugar=False)
   await cappuccino.create()
 
-  # Here we create a new relationship between `john` and his `cappuccino`. Additionally, we
-  # set the `liked` property of the relationship to `True`.
+  # Here we create a new relationship between `john` and his `cappuccino`.
+  # Additionally, we set the `liked` property of the relationship to `True`.
   await john.coffee.connect(cappuccino, {"liked": True}) # Will print `John chugged another one!`
 ```
 
@@ -184,8 +184,8 @@ from uuid import UUID, uuid4
 
 class Developer(NodeModel):
   """
-  This class represents a `Developer` node inside the graph. All interactions with nodes of
-  this type will be handled by this class.
+  This class represents a `Developer` node inside the graph. All interaction
+  with nodes of this type will be handled by this class.
   """
   uid: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
   name: str
@@ -196,10 +196,11 @@ class Developer(NodeModel):
     relationship_model="Consumed",
     direction=RelationshipPropertyDirection.OUTGOING,
     cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
-    allow_multiple=False,
+    allow_multiple=True,
   )
 
   class Settings:
+    # Hooks are available for all methods that interact with the database.
     post_hooks = {
       "coffee.connect": lambda self, *args, **kwargs: print(f"{self.name} chugged another one!")
     }
@@ -207,19 +208,19 @@ class Developer(NodeModel):
 
 class Coffee(NodeModel):
   """
-  This class represents a node with the labels `Beverage` and `Hot`. Notice that the labels
-  of this model are explicitly defined in the `Settings` class.
+  This class represents a node with the labels `Beverage` and `Hot`. Notice
+  that the labels of this model are explicitly defined in the `Settings` class.
   """
   flavor: str
   sugar: bool
   milk: bool
 
   developers: RelationshipProperty["Developer", "Consumed"] = RelationshipProperty(
-    target_model="Developer",
+    target_model=Developer,
     relationship_model="Consumed",
     direction=RelationshipPropertyDirection.INCOMING,
     cardinality=RelationshipPropertyCardinality.ZERO_OR_MORE,
-    allow_multiple=False,
+    allow_multiple=True,
   )
 
   class Settings:
@@ -227,9 +228,13 @@ class Coffee(NodeModel):
 
 class Consumed(RelationshipModel):
   """
-  Unlike the models above, this class represents a relationship between two nodes. In this case,
-  it represents the relationship between the `Developer` and `Coffee` models. Like with node-models,
-  the `Settings` class allows us to define some settings for this relationship.
+  Unlike the models above, this class represents a relationship between two
+  nodes. In this case, it represents the relationship between the `Developer`
+  and `Coffee` models. Like with node-models, the `Settings` class allows us to
+  define some settings for this relationship.
+
+  Note that the relationship itself does not define it's start- and end-nodes,
+  making it reusable for other models as well.
   """
   liked: bool
 
@@ -242,9 +247,11 @@ async def main():
   client = Pyneo4jClient()
   await client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
 
-  # To use our models for running queries later on, we have to register them with the client.
-  # **Note**: You only have to register the models that you want to use for queries and you can
-  # even skip this step if you want to use the `Pyneo4jClient` instance for running raw queries.
+  # To use our models for running queries later on, we have to register
+  # them with the client.
+  # **Note**: You only have to register the models that you want to use
+  # for queries and you can even skip this step if you want to use the
+  # `Pyneo4jClient` instance for running raw queries.
   await client.register_models([Developer, Coffee, Consumed])
 
   # We create a new `Developer` node and the `Coffee` he is going to drink.
@@ -254,8 +261,8 @@ async def main():
   cappuccino = Coffee(flavor="Cappuccino", milk=True, sugar=False)
   await cappuccino.create()
 
-  # Here we create a new relationship between `john` and his `cappuccino`. Additionally, we
-  # set the `liked` property of the relationship to `True`.
+  # Here we create a new relationship between `john` and his `cappuccino`.
+  # Additionally, we set the `liked` property of the relationship to `True`.
   await john.coffee.connect(cappuccino, {"liked": True}) # Will print `John chugged another one!`
 
   # Be a good boy and close your connections after you are done.
