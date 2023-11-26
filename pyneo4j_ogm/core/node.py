@@ -1030,7 +1030,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         Args:
             nodes_to_fetch (List[Union[str, Type["NodeModel"]]] | None): The nodes to fetch. Can contain the actual
-                model of the node or the model name as a string. If `None`, all nodes will be fetched. Defaults to `None`.
+                model of the node or the model name as a string. If `None`, all nodes will be fetched. Defaults to
+                `None`.
             ref (str, optional): The reference to use for the node. Defaults to "n".
 
         Returns:

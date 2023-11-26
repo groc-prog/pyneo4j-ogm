@@ -179,8 +179,9 @@ class RelationshipProperty(Generic[T, U]):
     Class used to define relationships between the model this class is used on and a target model, which defines the
     other end of the relationship.
 
-    Accepts two generic types, the first being the target node and the second being the relationship model. For type support
-    when using a relationship-property, these generics have to be provided since they can not be inferred automatically.
+    Accepts two generic types, the first being the target node and the second being the relationship model. For type
+    support when using a relationship-property, these generics have to be provided since they can not be inferred
+    automatically.
     """
 
     _client: Pyneo4jClient
@@ -219,8 +220,9 @@ class RelationshipProperty(Generic[T, U]):
         Class used to define relationships between the model this class is used on and a target model, which defines the
         other end of the relationship.
 
-        Accepts two generic types, the first being the target node and the second being the relationship model. For type support
-        when using a relationship-property, these generics have to be provided since they can not be inferred automatically.
+        Accepts two generic types, the first being the target node and the second being the relationship model. For type
+        support when using a relationship-property, these generics have to be provided since they can not be inferred
+        automatically.
 
         Args:
             target_model (Type[T] | str): The model which is the target of the relationship. Can be a
@@ -691,7 +693,8 @@ class RelationshipProperty(Generic[T, U]):
         Finds all nodes that matches `filters` and are connected to the source node.
 
         Args:
-            filters (RelationshipPropertyFilters | None, optional): Expressions applied to the query. Defaults to `None`.
+            filters (RelationshipPropertyFilters | None, optional): Expressions applied to the query. Defaults to
+                `None`.
             projections (Projection, optional): The properties to project from the node. A invalid or empty
                 projection will result in the whole model instances being returned. Defaults to `None`.
             options (QueryOptions | None, optional): Options for modifying the query result. Defaults to `None`.
