@@ -17,12 +17,12 @@ What's planned for future releases.
 
 ## 🎯 Features <a name="features"></a>
 
-- [x] **Simple and easy to use**: `pyneo4j-ogm` is designed to be simple and easy to use, while also providing a solid foundation for some more advanced use-cases.
-- [x] **Flexible and powerful**: `pyneo4j-ogm` is flexible and powerful. It allows you to do all sorts of things with your data, from simple CRUD operations to complex queries.
-- [x] **Fully asynchronous**: `pyneo4j-ogm` is fully asynchronous and uses the `Neo4j Python Driver` under the hood.
-- [x] **Supports Neo4j 5+**: `pyneo4j-ogm` supports Neo4j 5+ and is tested against the latest version of Neo4j.
-- [x] **Fully typed**: `pyneo4j-ogm` is fully typed out of the box.
-- [x] **Powered by Pydantic**: `pyneo4j-ogm` is powered by `Pydantic` and uses it's powerful validation and serialization features under the hood.
+- [x] **Simple and easy to use**: pyneo4j-ogm is designed to be `simple and easy to use`, while also providing a solid foundation for some more `advanced use-cases`.
+- [x] **Flexible and powerful**: pyneo4j-ogm is flexible and powerful. It allows you to do all sorts of things with your data, from `simple CRUD` operations to `complex queries`.
+- [x] **Fully asynchronous**: pyneo4j-ogm is `fully asynchronous` and uses the `Neo4j Python Driver` under the hood.
+- [x] **Supports Neo4j 5+**: pyneo4j-ogm supports `Neo4j 5+` and is tested against the latest version of Neo4j.
+- [x] **Fully typed**: pyneo4j-ogm is `fully typed` out of the box.
+- [x] **Powered by Pydantic**: pyneo4j-ogm is powered by `Pydantic` and uses it's powerful validation and serialization features under the hood.
 
 ## 📦 Installation <a name="installation"></a>
 
