@@ -5,34 +5,44 @@ Pydantic validators for query operators and filters.
 
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 
-from pydantic import BaseModel, Extra, Field, ValidationError, root_validator, validator
+from pydantic import BaseModel, Field, ValidationError
+from pydantic.class_validators import root_validator, validator
 
 from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.pydantic_utils import (
+    IS_PYDANTIC_V2,
+    get_model_dump,
+    get_model_fields,
+    parse_model,
+)
 from pyneo4j_ogm.queries.types import (
     NumericQueryDataType,
     QueryOptionsOrder,
     RelationshipMatchDirection,
 )
 
+if IS_PYDANTIC_V2:
+    from pydantic import field_validator, model_validator
 
-def _normalize_fields(cls: Type[BaseModel], values: Dict[str, Any]) -> Dict[str, Any]:
+
+def _normalize_fields(cls: Type[BaseModel], values: Any) -> Any:
     """
     Normalizes and validates model property fields.
 
     Args:
-        values (Dict[str, Any]): The values to normalize and validate.
+        values (Any): The values to normalize and validate.
 
     Returns:
-        Dict[str, Any]: The normalized and validated values.
+        Any: The normalized and validated values.
     """
     validated_values: Dict[str, Any] = {}
 
     for property_name, property_value in values.items():
-        if property_name not in cls.__fields__.keys():
+        if property_name not in get_model_fields(cls).keys():
             try:
-                validated = QueryOperatorModel.parse_obj(property_value)
-                validated_value = validated.dict(
-                    by_alias=True, exclude_none=True, exclude_unset=True, exclude_defaults=True
+                validated = parse_model(QueryOperatorModel, property_value)
+                validated_value = get_model_dump(
+                    model=validated, by_alias=True, exclude_none=True, exclude_unset=True, exclude_defaults=True
                 )
 
                 if len(validated_value.keys()) > 0:
@@ -48,6 +58,21 @@ def _normalize_fields(cls: Type[BaseModel], values: Dict[str, Any]) -> Dict[str,
 def _normalize_labels(cls, value: Optional[Union[str, List[str]]]) -> Optional[List[str]]:
     """
     Validator for `$labels` operator. If a string is passed, it will be converted to a list.
+
+    Args:
+        v (Optional[Union[str, List[str]]]): The value to validate.
+
+    Returns:
+        Optional[List[str]]: Validated value.
+    """
+    if isinstance(value, str):
+        return [value]
+    return value
+
+
+def _normalize_sort(cls, value: Optional[Union[str, List[str]]]) -> Optional[List[str]]:
+    """
+    Validator for `sort` option. If a string is passed, it will be converted to a list.
 
     Args:
         v (Optional[Union[str, List[str]]]): The value to validate.
@@ -156,14 +181,19 @@ class NodeFiltersModel(BaseModel):
     id_: Optional[int] = Field(alias="$id")
     patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns")
 
-    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+    if IS_PYDANTIC_V2:
+        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
+            _normalize_fields
+        )
+    else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
     class Config:
         """
         Pydantic configuration
         """
 
-        extra = Extra.allow
+        extra = "allow"
         use_enum_values = True
 
 
@@ -175,14 +205,19 @@ class RelationshipFiltersModel(BaseModel):
     element_id_: Optional[str] = Field(alias="$elementId")
     id_: Optional[int] = Field(alias="$id")
 
-    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+    if IS_PYDANTIC_V2:
+        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
+            _normalize_fields
+        )
+    else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
     class Config:
         """
         Pydantic configuration
         """
 
-        extra = Extra.allow
+        extra = "allow"
         use_enum_values = True
 
 
@@ -196,14 +231,19 @@ class RelationshipPropertyFiltersModel(BaseModel):
     patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns")
     relationship_: Optional[RelationshipFiltersModel] = Field(alias="$relationship")
 
-    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+    if IS_PYDANTIC_V2:
+        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
+            _normalize_fields
+        )
+    else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
     class Config:
         """
         Pydantic configuration
         """
 
-        extra = Extra.allow
+        extra = "allow"
         use_enum_values = True
 
 
@@ -216,15 +256,23 @@ class PatternNodeOperatorsModel(BaseModel):
     id_: Optional[int] = Field(alias="$id")
     labels_: Optional[Union[List[str], str]] = Field(alias="$labels")
 
-    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
-    normalize_and_validate_labels = validator("labels_", pre=True, allow_reuse=True)(_normalize_labels)
+    if IS_PYDANTIC_V2:
+        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
+            _normalize_fields
+        )
+        normalize_and_validate_labels = field_validator(  # pyright: ignore[reportUnboundVariable]
+            "labels_", mode="before"
+        )(_normalize_labels)
+    else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+        normalize_and_validate_labels = validator("labels_", pre=True)(_normalize_labels)
 
     class Config:
         """
         Pydantic configuration
         """
 
-        extra = Extra.allow
+        extra = "allow"
         use_enum_values = True
 
 
@@ -237,14 +285,19 @@ class PatternRelationshipOperatorsModel(NodeFiltersModel):
     id_: Optional[int] = Field(alias="$id")
     type_: Optional[Union[str, List[str]]] = Field(alias="$type")
 
-    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+    if IS_PYDANTIC_V2:
+        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
+            _normalize_fields
+        )
+    else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
     class Config:
         """
         Pydantic configuration
         """
 
-        extra = Extra.allow
+        extra = "allow"
         use_enum_values = True
 
 
@@ -270,14 +323,19 @@ class MultiHopRelationshipOperatorsModel(NodeFiltersModel):
     id_: Optional[int] = Field(alias="$id")
     type_: str = Field(alias="$type")
 
-    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+    if IS_PYDANTIC_V2:
+        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
+            _normalize_fields
+        )
+    else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
     class Config:
         """
         Pydantic configuration
         """
 
-        extra = Extra.allow
+        extra = "allow"
         use_enum_values = True
 
 
@@ -290,15 +348,23 @@ class MultiHopNodeModel(BaseModel):
     id_: Optional[int] = Field(alias="$id")
     labels_: Union[List[str], str] = Field(alias="$labels")
 
-    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
-    normalize_and_validate_labels = validator("labels_", pre=True, allow_reuse=True)(_normalize_labels)
+    if IS_PYDANTIC_V2:
+        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
+            _normalize_fields
+        )
+        normalize_and_validate_labels = field_validator(  # pyright: ignore[reportUnboundVariable]
+            "labels_", mode="before"
+        )(_normalize_labels)
+    else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+        normalize_and_validate_labels = validator("labels_", pre=True, allow_reuse=True)(_normalize_labels)
 
     class Config:
         """
         Pydantic configuration.
         """
 
-        extra = Extra.allow
+        extra = "allow"
         use_enum_values = True
 
 
@@ -315,14 +381,19 @@ class MultiHopFiltersModel(BaseModel):
         default=RelationshipMatchDirection.OUTGOING, alias="$direction"
     )
 
-    normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+    if IS_PYDANTIC_V2:
+        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
+            _normalize_fields
+        )
+    else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
     class Config:
         """
         Pydantic configuration.
         """
 
-        extra = Extra.allow
+        extra = "allow"
         use_enum_values = True
 
 
@@ -336,20 +407,10 @@ class QueryOptionModel(BaseModel):
     sort: Optional[Union[List[str], str]] = Field(default=None)
     order: Optional[QueryOptionsOrder] = Field(default=None)
 
-    @validator("sort", pre=True)
-    def sort_to_list(cls, value: Optional[Union[str, List[str]]]) -> Optional[List[str]]:
-        """
-        Validator for `sort` option. If a string is passed, it will be converted to a list.
-
-        Args:
-            v (Optional[Union[str, List[str]]]): The value to validate.
-
-        Returns:
-            Optional[List[str]]: Validated value.
-        """
-        if isinstance(value, str):
-            return [value]
-        return value
+    if IS_PYDANTIC_V2:
+        field_validator("sort", mode="before")(_normalize_sort)  # pyright: ignore[reportUnboundVariable]
+    else:
+        validator("sort", pre=True)(_normalize_sort)
 
     class Config:
         """
@@ -359,7 +420,13 @@ class QueryOptionModel(BaseModel):
         use_enum_values = True
 
 
-NodeFiltersModel.update_forward_refs()
-RelationshipFiltersModel.update_forward_refs()
-RelationshipPropertyFiltersModel.update_forward_refs()
-MultiHopFiltersModel.update_forward_refs()
+if IS_PYDANTIC_V2:
+    NodeFiltersModel.model_rebuild()
+    RelationshipFiltersModel.model_rebuild()
+    RelationshipPropertyFiltersModel.model_rebuild()
+    MultiHopFiltersModel.model_rebuild()
+else:
+    NodeFiltersModel.update_forward_refs()
+    RelationshipFiltersModel.update_forward_refs()
+    RelationshipPropertyFiltersModel.update_forward_refs()
+    MultiHopFiltersModel.update_forward_refs()
