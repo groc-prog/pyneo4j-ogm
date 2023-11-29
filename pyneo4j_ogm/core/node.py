@@ -36,6 +36,12 @@ from pyneo4j_ogm.exceptions import (
 )
 from pyneo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.pydantic_utils import (
+    get_field_type,
+    get_model_dump,
+    get_model_dump_json,
+    get_model_fields,
+)
 from pyneo4j_ogm.queries.types import (
     MultiHopFilters,
     NodeFilters,
@@ -90,7 +96,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
     model and are defined in `pyneo4j_ogm.fields.settings.NodeModelSettings`.
     """
 
-    __settings__: NodeModelSettings
+    _settings: NodeModelSettings
     _relationships_properties: Set[str] = PrivateAttr()
     Settings: ClassVar[Type[NodeModelSettings]]
 
@@ -103,16 +109,16 @@ class NodeModel(ModelBase[NodeModelSettings]):
             if hasattr(property_value, "_build_property"):
                 cast(RelationshipProperty, property_value)._build_property(self, property_name)
 
-        self._db_properties = self.dict(exclude=self._relationships_properties)
+        self._db_properties = get_model_dump(self, exclude=self._relationships_properties)
 
     def __init_subclass__(cls) -> None:
         setattr(cls, "_relationships_properties", set())
-        setattr(cls, "__settings__", NodeModelSettings())
+        setattr(cls, "_settings", NodeModelSettings())
 
         super().__init_subclass__()
 
         # Check if node labels is set, if not fall back to model name
-        labels: Union[Set[str], None] = getattr(cls.__settings__, "labels", None)
+        labels: Union[Set[str], None] = getattr(cls._settings, "labels", None)
 
         if labels is None or (labels is not None and len(labels) == 0):
             logger.info(
@@ -120,14 +126,14 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 cls.__name__,
             )
             fallback_labels = re.findall(r"[A-Z][^A-Z]*", cls.__name__)
-            setattr(cls.__settings__, "labels", set(fallback_labels))
+            setattr(cls._settings, "labels", set(fallback_labels))
 
         logger.debug("Collecting relationship properties for model %s", cls.__name__)
-        for property_name, value in cls.__fields__.items():
+        for property_name, value in get_model_fields(cls).items():
             # Check if value is None here to prevent breaking logic if property_name is of type None
-            if value.type_ is not None and hasattr(value.type_, "_build_property"):
+            if get_field_type(value) is not None and hasattr(get_field_type(value), "_build_property"):
                 cls._relationships_properties.add(property_name)
-                cls.__settings__.exclude_from_export.add(property_name)
+                cls._settings.exclude_from_export.add(property_name)
 
     @hooks
     async def create(self: T) -> T:
@@ -152,7 +158,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await self._client.cypher(
             query=f"""
-                CREATE {self._query_builder.node_match(list(self.__settings__.labels))}
+                CREATE {self._query_builder.node_match(list(self._settings.labels))}
                 {set_query}
                 RETURN n
             """,
@@ -168,7 +174,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         setattr(self, "_id", getattr(cast(T, results[0][0]), "_id"))
 
         logger.debug("Resetting modified properties")
-        self._db_properties = self.dict(exclude=self._relationships_properties)
+        self._db_properties = get_model_dump(self, exclude=self._relationships_properties)
         logger.info("Created new node %s", self)
 
         return self
@@ -199,7 +205,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(list(self.__settings__.labels))}
+                MATCH {self._query_builder.node_match(list(self._settings.labels))}
                 WHERE elementId(n) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
                 RETURN n
@@ -212,7 +218,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             raise UnexpectedEmptyResult()
 
         logger.debug("Resetting modified properties")
-        self._db_properties = self.dict(exclude=self._relationships_properties)
+        self._db_properties = get_model_dump(self, exclude=self._relationships_properties)
         logger.info("Updated node %s", self)
 
     @hooks
@@ -228,7 +234,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.info("Deleting node %s", self)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(list(self.__settings__.labels))}
+                MATCH {self._query_builder.node_match(list(self._settings.labels))}
                 WHERE elementId(n) = $element_id
                 DETACH DELETE n
                 RETURN count(n)
@@ -256,7 +262,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.info("Refreshing node %s with values from database", self)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(list(self.__settings__.labels))}
+                MATCH {self._query_builder.node_match(list(self._settings.labels))}
                 WHERE elementId(n) = $element_id
                 RETURN n
             """,
@@ -331,7 +337,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 labels = cast(List[str], filters["$node"]["$labels"])
 
             for model in self._client.models:
-                if hasattr(model.__settings__, "labels") and list(getattr(model.__settings__, "labels", [])) == labels:
+                if hasattr(model._settings, "labels") and list(getattr(model._settings, "labels", [])) == labels:
                     target_node_model = cast("NodeModel", model)
                     break
 
@@ -345,7 +351,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
                 do_auto_fetch = all(
                     [
-                        auto_fetch_nodes or self.__settings__.auto_fetch_nodes,
+                        auto_fetch_nodes or self._settings.auto_fetch_nodes,
                         len(match_queries) != 0,
                         len(return_queries) != 0,
                     ]
@@ -353,7 +359,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, meta = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.node_match(list(self.__settings__.labels))}{self._query_builder.query['match']}
+                MATCH {self._query_builder.node_match(list(self._settings.labels))}{self._query_builder.query['match']}
                 WHERE
                     elementId(n) = $element_id
                     {f"AND {self._query_builder.query['where']}" if self._query_builder.query['where'] != "" else ""}
@@ -471,7 +477,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         do_auto_fetch = all(
             [
                 projections is None,
-                auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
+                auto_fetch_nodes or cls._settings.auto_fetch_nodes,
                 cls._query_builder.query["projections"] == "",
             ]
         )
@@ -482,7 +488,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
             results, meta = await cls._client.cypher(
                 query=f"""
-                    MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                    MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                     WHERE {cls._query_builder.query['where']}
                     WITH DISTINCT n
                     LIMIT 1
@@ -495,7 +501,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             logger.debug("Querying database without auto-fetch")
             results, meta = await cls._client.cypher(
                 query=f"""
-                    MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                    MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                     WHERE {cls._query_builder.query['where']}
                     {projection_query}
                     LIMIT 1
@@ -590,7 +596,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         do_auto_fetch = all(
             [
                 projections is None,
-                auto_fetch_nodes or cls.__settings__.auto_fetch_nodes,
+                auto_fetch_nodes or cls._settings.auto_fetch_nodes,
                 cls._query_builder.query["projections"] == "",
             ]
         )
@@ -601,7 +607,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
             results, meta = await cls._client.cypher(
                 query=f"""
-                    MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                    MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                     {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                     WITH DISTINCT n
                     {cls._query_builder.query['options']}
@@ -644,7 +650,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             logger.debug("Querying database without auto-fetch")
             results, _ = await cls._client.cypher(
                 query=f"""
-                    MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                    MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                     {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                     {"WITH DISTINCT n" if cls._query_builder.query['options'] != "" else ""}
                     {cls._query_builder.query['options']}
@@ -709,7 +715,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                 WHERE {cls._query_builder.query['where']}
                 RETURN DISTINCT n
                 LIMIT 1
@@ -727,10 +733,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         # Update existing instance with values and save
         logger.debug("Creating instance copy with new values %s", update)
-        new_instance = cls(**cast(T, old_instance).dict())
+        new_instance = cls(**get_model_dump(cast(T, old_instance)))
 
         for key, value in update.items():
-            if key in cls.__fields__:
+            if key in get_model_fields(cls):
                 setattr(new_instance, key, value)
         setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
         setattr(new_instance, "_id", getattr(old_instance, "_id", None))
@@ -746,7 +752,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(list(new_instance.__settings__.labels))}
+                MATCH {cls._query_builder.node_match(list(new_instance._settings.labels))}
                 WHERE elementId(n) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
             """,
@@ -790,7 +796,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.debug("Getting all nodes of model %s matching filters %s", cls.__name__, filters)
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN DISTINCT n
             """,
@@ -813,9 +819,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         # Try and parse update values into random instance to check validation
         logger.debug("Creating instance copy with new values %s", update)
-        new_instance = cls(**old_instances[0].dict())
+        new_instance = cls(**get_model_dump(old_instances[0]))
         for key, value in update.items():
-            if key in cls.__fields__:
+            if key in get_model_fields(cls):
                 setattr(new_instance, key, value)
 
         deflated_properties = new_instance._deflate()
@@ -823,7 +829,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         # Update instances
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 SET {", ".join([f"n.{property_name} = ${property_name}" for property_name in deflated_properties if property_name in update])}
                 RETURN DISTINCT n
@@ -880,7 +886,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         result, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                 WHERE {cls._query_builder.query['where']}
                 WITH n LIMIT 1
                 DETACH DELETE n
@@ -917,7 +923,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 DETACH DELETE n
                 RETURN count(n)
@@ -955,7 +961,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         results, _ = await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.node_match(list(cls.__settings__.labels))}
+                MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                 {f"WHERE {cls._query_builder.query['where']}" if cls._query_builder.query['where'] != "" else ""}
                 RETURN count(n)
             """,
@@ -976,7 +982,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
             Dict[str, Any]: The deflated model instance.
         """
         logger.debug("Deflating model %s to storable dictionary", self)
-        deflated: Dict[str, Any] = json.loads(self.json(exclude={*self._relationships_properties, "__settings__"}))
+        deflated: Dict[str, Any] = json.loads(
+            get_model_dump_json(self, exclude={*self._relationships_properties, "_settings"})
+        )
 
         # Serialize nested BaseModel or dict instances to JSON strings
         for key, value in deflated.items():
@@ -1052,7 +1060,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         for defined_relationship in cls._relationships_properties:
             relationship_type: Optional[str] = None
             end_node_labels: Optional[List[str]] = None
-            relationship_property = cast(RelationshipProperty, cls.__fields__[defined_relationship].default)
+            relationship_property = cast(RelationshipProperty, get_model_fields(cls)[defined_relationship].default)
             direction = getattr(relationship_property, "_direction")
 
             if (
@@ -1063,9 +1071,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
             for model in cls._client.models:
                 if model.__name__ == getattr(relationship_property, "_relationship_model_name", None):
-                    relationship_type = cast(RelationshipModelSettings, model.__settings__).type
+                    relationship_type = cast(RelationshipModelSettings, model._settings).type
                 elif model.__name__ == getattr(relationship_property, "_target_model_name", None):
-                    end_node_labels = list(cast(NodeModelSettings, model.__settings__).labels)
+                    end_node_labels = list(cast(NodeModelSettings, model._settings).labels)
 
             if relationship_type is None or end_node_labels is None:
                 raise UnregisteredModel(cls.__name__)

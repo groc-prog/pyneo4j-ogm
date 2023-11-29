@@ -1,29 +1,47 @@
 # pylint: disable=missing-module-docstring
 
-from pydantic import BaseModel, Extra, root_validator
+from pydantic import BaseModel
+from pydantic.class_validators import root_validator
 
+from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, parse_model
 from pyneo4j_ogm.queries.validators import (
     QueryOptionModel,
     _normalize_fields,
     _normalize_labels,
 )
 
+if IS_PYDANTIC_V2:
+    from pydantic import model_validator
+
 
 def test_normalize_fields_validator():
     class TestModel(BaseModel):
         attr: str
-        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
-        class Config:
-            extra = Extra.allow
+        if IS_PYDANTIC_V2:
+            normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
+                _normalize_fields
+            )
+        else:
+            normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
-    test_model = TestModel.parse_obj(
+        if IS_PYDANTIC_V2:
+            model_config = {
+                "extra": "allow",
+            }
+        else:
+
+            class Config:
+                extra = "allow"
+
+    test_model = parse_model(
+        TestModel,
         {
             "attr": "bar",
             "invalid_field": "value",
             "valid_field": {"$eq": "value"},
             "invalid_operator": {"$invalid": "value"},
-        }
+        },
     )
 
     assert hasattr(test_model, "attr")

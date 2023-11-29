@@ -48,8 +48,14 @@ class BaseModelSettings(BaseModel):
         normalize_pre_hooks = validator("pre_hooks", pre=True, allow_reuse=True)(_normalize_hooks)
         normalize_post_hooks = validator("post_hooks", pre=True, allow_reuse=True)(_normalize_hooks)
 
-    class Config:
-        validate_assignment = True
+    if IS_PYDANTIC_V2:
+        model_config = {
+            "validate_assignment": True,
+        }
+    else:
+
+        class Config:
+            validate_assignment = True
 
 
 class NodeModelSettings(BaseModelSettings):

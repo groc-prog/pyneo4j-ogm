@@ -22,6 +22,11 @@ from pyneo4j_ogm.exceptions import (
 )
 from pyneo4j_ogm.fields.settings import RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.pydantic_utils import (
+    get_model_dump,
+    get_model_dump_json,
+    get_model_fields,
+)
 from pyneo4j_ogm.queries.types import (
     Projection,
     QueryOptions,
@@ -78,7 +83,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     `pyneo4j_ogm.fields.settings.RelationshipModelSettings`.
     """
 
-    __settings__: RelationshipModelSettings
+    _settings: RelationshipModelSettings
     _start_node_element_id: Optional[str] = PrivateAttr(default=None)
     _start_node_id: Optional[int] = PrivateAttr(default=None)
     _end_node_element_id: Optional[str] = PrivateAttr(default=None)
@@ -87,22 +92,22 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._db_properties = self.dict()
+        self._db_properties = get_model_dump(self)
 
     def __init_subclass__(cls) -> None:
-        setattr(cls, "__settings__", RelationshipModelSettings())
+        setattr(cls, "_settings", RelationshipModelSettings())
 
         super().__init_subclass__()
 
         # Check if node labels is set, if not fall back to model name
-        type_ = getattr(cls.__settings__, "type", None)
+        type_ = getattr(cls._settings, "type", None)
 
         # Check if relationship type is set, else fall back to class name
         if type_ is None:
             logger.info("No type has been defined for model %s, using model name as type", cls.__name__)
             # Convert class name to upper snake case
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
-            setattr(cls.__settings__, "type", relationship_type.upper())
+            setattr(cls._settings, "type", relationship_type.upper())
 
     @hooks
     @ensure_alive
@@ -131,7 +136,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
+                MATCH {self._query_builder.relationship_match(type_=self._settings.type)}
                 WHERE elementId(r) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
                 RETURN r
@@ -147,7 +152,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             raise UnexpectedEmptyResult()
 
         logger.debug("Resetting modified properties")
-        self._db_properties = self.dict()
+        self._db_properties = get_model_dump(self)
         logger.info("Updated relationship %s", self)
 
     @hooks
@@ -163,7 +168,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         logger.info("Deleting relationship %s", self)
         await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
+                MATCH {self._query_builder.relationship_match(type_=self._settings.type)}
                 WHERE elementId(r) = $element_id
                 DELETE r
             """,
@@ -188,7 +193,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         logger.info("Refreshing relationship %s with values from database", self)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type)}
+                MATCH {self._query_builder.relationship_match(type_=self._settings.type)}
                 WHERE elementId(r) = $element_id
                 RETURN r
             """,
@@ -218,7 +223,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         logger.info("Getting start node %s for relationship %s", self._start_node_element_id, self)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start")}
+                MATCH {self._query_builder.relationship_match(type_=self._settings.type, start_node_ref="start")}
                 WHERE elementId(r) = $element_id
                 RETURN start
             """,
@@ -248,7 +253,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         logger.info("Getting end node %s for relationship %s", self._end_node_element_id, self)
         results, _ = await self._client.cypher(
             query=f"""
-                MATCH {self._query_builder.relationship_match(type_=self.__settings__.type, start_node_ref="start", end_node_ref="end")}
+                MATCH {self._query_builder.relationship_match(type_=self._settings.type, start_node_ref="start", end_node_ref="end")}
                 WHERE elementId(r) = $element_id
                 RETURN end
             """,
@@ -311,7 +316,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             raise InvalidFilters()
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -382,7 +387,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             else cls._query_builder.query["projections"]
         )
         match_query = cls._query_builder.relationship_match(
-            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -459,7 +464,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             raise InvalidFilters()
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -482,10 +487,10 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         # Update existing instance with values and save
         logger.debug("Creating instance copy with new values %s", update)
-        new_instance = cls(**old_instance.dict())
+        new_instance = cls(**get_model_dump(old_instance))
 
         for key, value in update.items():
-            if key in cls.__fields__:
+            if key in get_model_fields(cls):
                 setattr(new_instance, key, value)
 
         setattr(new_instance, "_element_id", getattr(old_instance, "_element_id", None))
@@ -505,7 +510,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         await cls._client.cypher(
             query=f"""
-                MATCH {cls._query_builder.relationship_match(type_=new_instance.__settings__.type)}
+                MATCH {cls._query_builder.relationship_match(type_=new_instance._settings.type)}
                 WHERE elementId(r) = $element_id
                 {f"SET {set_query}" if set_query != "" else ""}
             """,
@@ -551,7 +556,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             cls._query_builder.relationship_filters(filters=filters)
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         logger.debug(
@@ -587,10 +592,10 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         # Try and parse update values into random instance to check validation
         logger.debug("Creating instance copy with new values %s", update)
-        new_instance = cls(**old_instances[0].dict())
+        new_instance = cls(**get_model_dump(old_instances[0]))
 
         for key, value in update.items():
-            if key in cls.__fields__:
+            if key in get_model_fields(cls):
                 setattr(new_instance, key, value)
 
         deflated_properties = new_instance._deflate()
@@ -653,7 +658,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             raise InvalidFilters()
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -697,7 +702,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             cls._query_builder.relationship_filters(filters=filters)
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         logger.debug("Getting relationship count matching filters %s", filters)
@@ -752,7 +757,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             cls._query_builder.relationship_filters(filters=filters)
 
         match_query = cls._query_builder.relationship_match(
-            type_=cls.__settings__.type, direction=RelationshipMatchDirection.OUTGOING
+            type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
         )
 
         results, _ = await cls._client.cypher(
@@ -778,7 +783,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             Dict[str, Any]: The deflated model instance.
         """
         logger.debug("Deflating model %s to storable dictionary", self)
-        deflated: Dict[str, Any] = json.loads(self.json(exclude={"__settings__"}))
+        deflated: Dict[str, Any] = json.loads(get_model_dump_json(self, exclude={"_settings"}))
 
         # Serialize nested BaseModel or dict instances to JSON strings
         for key, value in deflated.items():

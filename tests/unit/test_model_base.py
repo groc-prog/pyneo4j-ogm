@@ -23,60 +23,60 @@ def test_unregistered_model_exc():
 
 def test_pre_hooks():
     Developer.register_pre_hooks("test_hook", lambda: None)
-    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
-    Developer.__settings__.pre_hooks["test_hook"] = []
+    assert len(Developer._settings.pre_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer._settings.pre_hooks["test_hook"])
+    Developer._settings.pre_hooks["test_hook"] = []
 
     Developer.register_pre_hooks("test_hook", [lambda: None, lambda: None])
-    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 2
-    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
-    Developer.__settings__.pre_hooks["test_hook"] = []
+    assert len(Developer._settings.pre_hooks["test_hook"]) == 2
+    assert all(callable(func) for func in Developer._settings.pre_hooks["test_hook"])
+    Developer._settings.pre_hooks["test_hook"] = []
 
     Developer.register_pre_hooks("test_hook", [lambda: None, "invalid"])  # type: ignore
-    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
-    Developer.__settings__.pre_hooks["test_hook"] = []
+    assert len(Developer._settings.pre_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer._settings.pre_hooks["test_hook"])
+    Developer._settings.pre_hooks["test_hook"] = []
 
     Developer.register_pre_hooks("test_hook", lambda: None)
     Developer.register_pre_hooks("test_hook", lambda: None, overwrite=True)
-    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
-    Developer.__settings__.pre_hooks["test_hook"] = []
+    assert len(Developer._settings.pre_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer._settings.pre_hooks["test_hook"])
+    Developer._settings.pre_hooks["test_hook"] = []
 
     Developer.register_pre_hooks("test_hook", lambda: None)
     Developer.register_pre_hooks("test_hook", lambda: None)
-    assert len(Developer.__settings__.pre_hooks["test_hook"]) == 2
-    assert all(callable(func) for func in Developer.__settings__.pre_hooks["test_hook"])
-    Developer.__settings__.pre_hooks["test_hook"] = []
+    assert len(Developer._settings.pre_hooks["test_hook"]) == 2
+    assert all(callable(func) for func in Developer._settings.pre_hooks["test_hook"])
+    Developer._settings.pre_hooks["test_hook"] = []
 
 
 def test_post_hooks():
     Developer.register_post_hooks("test_hook", lambda: None)
-    assert len(Developer.__settings__.post_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
-    Developer.__settings__.post_hooks["test_hook"] = []
+    assert len(Developer._settings.post_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer._settings.post_hooks["test_hook"])
+    Developer._settings.post_hooks["test_hook"] = []
 
     Developer.register_post_hooks("test_hook", [lambda: None, lambda: None])
-    assert len(Developer.__settings__.post_hooks["test_hook"]) == 2
-    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
-    Developer.__settings__.post_hooks["test_hook"] = []
+    assert len(Developer._settings.post_hooks["test_hook"]) == 2
+    assert all(callable(func) for func in Developer._settings.post_hooks["test_hook"])
+    Developer._settings.post_hooks["test_hook"] = []
 
     Developer.register_post_hooks("test_hook", [lambda: None, "invalid"])  # type: ignore
-    assert len(Developer.__settings__.post_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
-    Developer.__settings__.post_hooks["test_hook"] = []
+    assert len(Developer._settings.post_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer._settings.post_hooks["test_hook"])
+    Developer._settings.post_hooks["test_hook"] = []
 
     Developer.register_post_hooks("test_hook", lambda: None)
     Developer.register_post_hooks("test_hook", lambda: None, overwrite=True)
-    assert len(Developer.__settings__.post_hooks["test_hook"]) == 1
-    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
-    Developer.__settings__.post_hooks["test_hook"] = []
+    assert len(Developer._settings.post_hooks["test_hook"]) == 1
+    assert all(callable(func) for func in Developer._settings.post_hooks["test_hook"])
+    Developer._settings.post_hooks["test_hook"] = []
 
     Developer.register_post_hooks("test_hook", lambda: None)
     Developer.register_post_hooks("test_hook", lambda: None)
-    assert len(Developer.__settings__.post_hooks["test_hook"]) == 2
-    assert all(callable(func) for func in Developer.__settings__.post_hooks["test_hook"])
-    Developer.__settings__.post_hooks["test_hook"] = []
+    assert len(Developer._settings.post_hooks["test_hook"]) == 2
+    assert all(callable(func) for func in Developer._settings.post_hooks["test_hook"])
+    Developer._settings.post_hooks["test_hook"] = []
 
 
 def test_import_model():
@@ -156,11 +156,11 @@ async def test_hooks_decorator():
     class TestClass:
         def __init__(self):
             self._client = None  # type: ignore
-            self.__settings__ = BaseModelSettings()
-            self.__settings__.pre_hooks["async_test_func"] = [AsyncMock(), AsyncMock()]
-            self.__settings__.post_hooks["async_test_func"] = [AsyncMock(), AsyncMock()]
-            self.__settings__.pre_hooks["sync_test_func"] = [MagicMock(), MagicMock()]
-            self.__settings__.post_hooks["sync_test_func"] = [MagicMock(), MagicMock()]
+            self._settings = BaseModelSettings()
+            self._settings.pre_hooks["async_test_func"] = [AsyncMock(), AsyncMock()]
+            self._settings.post_hooks["async_test_func"] = [AsyncMock(), AsyncMock()]
+            self._settings.pre_hooks["sync_test_func"] = [MagicMock(), MagicMock()]
+            self._settings.post_hooks["sync_test_func"] = [MagicMock(), MagicMock()]
 
         @hooks
         async def async_test_func(self):
@@ -173,18 +173,18 @@ async def test_hooks_decorator():
     test_instance = TestClass()
     await test_instance.async_test_func()
 
-    for hook_function in test_instance.__settings__.pre_hooks["async_test_func"]:
+    for hook_function in test_instance._settings.pre_hooks["async_test_func"]:
         hook_function.assert_called_once_with(test_instance)
 
-    for hook_function in test_instance.__settings__.post_hooks["async_test_func"]:
+    for hook_function in test_instance._settings.post_hooks["async_test_func"]:
         hook_function.assert_called_once_with(test_instance, None)
 
     test_instance.sync_test_func()
 
-    for hook_function in test_instance.__settings__.pre_hooks["sync_test_func"]:
+    for hook_function in test_instance._settings.pre_hooks["sync_test_func"]:
         hook_function.assert_called_once_with(test_instance)
 
-    for hook_function in test_instance.__settings__.post_hooks["sync_test_func"]:
+    for hook_function in test_instance._settings.post_hooks["sync_test_func"]:
         hook_function.assert_called_once_with(test_instance, None)
 
 

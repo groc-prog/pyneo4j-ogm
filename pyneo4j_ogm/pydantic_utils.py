@@ -63,3 +63,10 @@ def get_model_dump(model: BaseModel, *args, **kwargs):
         return model.model_dump(*args, **kwargs)
     else:
         return model.dict(*args, **kwargs)
+
+
+def get_model_dump_json(model: BaseModel, *args, **kwargs):
+    if IS_PYDANTIC_V2:
+        return model.model_dump_json(*args, **kwargs)
+    else:
+        return model.json(*args, **kwargs)

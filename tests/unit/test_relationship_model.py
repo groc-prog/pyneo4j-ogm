@@ -41,7 +41,7 @@ def use_test_relationship():
 
 
 def test_type_fallback():
-    assert Sells.__settings__.type == "SELLS"
+    assert Sells._settings.type == "SELLS"
 
 
 def test_ensure_alive_decorator():

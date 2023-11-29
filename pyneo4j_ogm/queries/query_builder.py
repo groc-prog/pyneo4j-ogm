@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Literal, Optional, TypedDict, Union, cast
 
 from pyneo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
 from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.pydantic_utils import get_model_dump
 from pyneo4j_ogm.queries.enums import RelationshipPropertyDirection
 from pyneo4j_ogm.queries.operators import Operators
 from pyneo4j_ogm.queries.types import (
@@ -77,7 +78,7 @@ class QueryBuilder:
 
         # Validate filters with pydantic model
         validated_filters = NodeFiltersModel(**cast(Dict[str, Any], normalized_filters))
-        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
+        validated_filters = get_model_dump(validated_filters, by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
         self._operator_builder.remove_invalid_expressions(validated_filters)
@@ -104,7 +105,7 @@ class QueryBuilder:
 
         # Validate filters with pydantic model
         validated_filters = RelationshipFiltersModel(**cast(Dict[str, Any], normalized_filters))
-        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
+        validated_filters = get_model_dump(validated_filters, by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
         self._operator_builder.remove_invalid_expressions(validated_filters)
@@ -133,7 +134,7 @@ class QueryBuilder:
 
         # Validate filters with pydantic model
         validated_filters = RelationshipPropertyFiltersModel(**cast(Dict[str, Any], normalized_filters))
-        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
+        validated_filters = get_model_dump(validated_filters, by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
         self._operator_builder.remove_invalid_expressions(validated_filters)
@@ -172,7 +173,7 @@ class QueryBuilder:
 
         # Validate filters with pydantic model
         validated_filters = MultiHopFiltersModel(**cast(Dict[str, Any], normalized_filters))
-        validated_filters = validated_filters.dict(by_alias=True, exclude_none=True)
+        validated_filters = get_model_dump(validated_filters, by_alias=True, exclude_none=True)
 
         # Remove invalid expressions
         self._operator_builder.remove_invalid_expressions(validated_filters)
@@ -244,7 +245,7 @@ class QueryBuilder:
 
         # Validate options with pydantic model
         validated_options = QueryOptionModel(**cast(Dict[str, Any], options))
-        validated_options = validated_options.dict(exclude_none=True)
+        validated_options = get_model_dump(validated_options, exclude_none=True)
 
         sort_query: str = ""
         limit_query: str = ""

@@ -25,17 +25,26 @@ from typing import (
     cast,
 )
 
-from pydantic import BaseModel, PrivateAttr, root_validator
+from pydantic import BaseModel, PrivateAttr
+from pydantic.class_validators import root_validator
 
 from pyneo4j_ogm.exceptions import ModelImportFailure, UnregisteredModel
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.pydantic_utils import (
+    IS_PYDANTIC_V2,
+    get_model_dump,
+    get_model_dump_json,
+)
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 if TYPE_CHECKING:
     from pyneo4j_ogm.core.client import Pyneo4jClient
 else:
     Pyneo4jClient = object
+
+if IS_PYDANTIC_V2:
+    from pydantic import model_validator
 
 P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
@@ -59,7 +68,7 @@ def hooks(func):
 
         @wraps(func)
         async def wrapper(self, *args, **kwargs):  # type: ignore
-            settings: BaseModelSettings = getattr(self, "__settings__")
+            settings: BaseModelSettings = getattr(self, "_settings")
 
             # Run pre hooks if defined
             logger.debug("Checking pre hooks for %s", func.__name__)
@@ -90,7 +99,7 @@ def hooks(func):
 
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            settings: BaseModelSettings = getattr(self, "__settings__")
+            settings: BaseModelSettings = getattr(self, "_settings")
             loop = asyncio.get_event_loop()
 
             # Run pre hooks if defined
@@ -118,7 +127,7 @@ def hooks(func):
     return wrapper
 
 
-class ModelBase(Generic[V], BaseModel):
+class ModelBase(BaseModel, Generic[V]):
     """
     Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
     model types like registering hooks and exporting/importing models to/from dictionaries.
@@ -126,7 +135,7 @@ class ModelBase(Generic[V], BaseModel):
     Should not be used directly.
     """
 
-    __settings__: BaseModelSettings = PrivateAttr()
+    _settings: BaseModelSettings = PrivateAttr()
     _client: Pyneo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _db_properties: Dict[str, Any] = PrivateAttr(default_factory=dict)
@@ -135,18 +144,35 @@ class ModelBase(Generic[V], BaseModel):
     _id: Optional[int] = PrivateAttr(default=None)
     Settings: ClassVar[Type[BaseModelSettings]]
 
-    @root_validator
-    def _check_list_properties(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Checks if all list properties are made of primitive types.
-        """
-        for key, value in values.items():
-            if isinstance(value, list):
-                for item in value:
-                    if not isinstance(item, (int, float, str, bool)):
-                        raise ValueError(f"List property {key} must be made of primitive types")
+    if IS_PYDANTIC_V2:
 
-        return values
+        @model_validator(mode="after")  # pyright: ignore[reportUnboundVariable]
+        def _model_validator_check_list_properties(cls, values: Any) -> Any:
+            """
+            Checks if all list properties are made of primitive types.
+            """
+            for key, value in values.items():
+                if isinstance(value, list):
+                    for item in value:
+                        if not isinstance(item, (int, float, str, bool)):
+                            raise ValueError(f"List property {key} must be made of primitive types")
+
+            return values
+
+    else:
+
+        @root_validator
+        def _root_validator_check_list_properties(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+            """
+            Checks if all list properties are made of primitive types.
+            """
+            for key, value in values.items():
+                if isinstance(value, list):
+                    for item in value:
+                        if not isinstance(item, (int, float, str, bool)):
+                            raise ValueError(f"List property {key} must be made of primitive types")
+
+            return values
 
     def __init__(self, *args, **kwargs) -> None:
         if not hasattr(self, "_client"):
@@ -161,14 +187,14 @@ class ModelBase(Generic[V], BaseModel):
         if hasattr(cls, "Settings"):
             for setting, value in cls.Settings.__dict__.items():
                 if not setting.startswith("__"):
-                    if isinstance(value, set) and getattr(cls.__settings__, setting, None) is not None:
+                    if isinstance(value, set) and getattr(cls._settings, setting, None) is not None:
                         setattr(
-                            cls.__settings__,
+                            cls._settings,
                             setting,
-                            value.union(getattr(cls.__settings__, setting)),
+                            value.union(getattr(cls._settings, setting)),
                         )
                     else:
-                        setattr(cls.__settings__, setting, value)
+                        setattr(cls._settings, setting, value)
 
         return super().__init_subclass__()
 
@@ -202,12 +228,12 @@ class ModelBase(Generic[V], BaseModel):
         """
         logger.debug("Checking if additional fields should be excluded")
         if "exclude" in kwargs:
-            kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self.__settings__.exclude_from_export)
+            kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self._settings.exclude_from_export)
         else:
-            kwargs["exclude"] = self.__settings__.exclude_from_export
+            kwargs["exclude"] = self._settings.exclude_from_export
 
         logger.info("Exporting model %s", self.__class__.__name__)
-        model_dict = json.loads(self.json(*args, **kwargs))
+        model_dict = json.loads(get_model_dump_json(self, *args, **kwargs))
         model_dict["element_id"] = self._element_id
         model_dict["id"] = self._id
 
@@ -285,16 +311,16 @@ class ModelBase(Generic[V], BaseModel):
         elif callable(hook_functions):
             valid_hook_functions.append(hook_functions)
 
-        if hook_name not in cls.__settings__.pre_hooks:
-            cls.__settings__.pre_hooks[hook_name] = []
+        if hook_name not in cls._settings.pre_hooks:
+            cls._settings.pre_hooks[hook_name] = []
 
         if overwrite:
             logger.debug("Overwriting existing pre-hook functions")
-            cls.__settings__.pre_hooks[hook_name] = valid_hook_functions
+            cls._settings.pre_hooks[hook_name] = valid_hook_functions
         else:
             logger.debug("Adding %s pre-hook functions", len(valid_hook_functions))
             for hook_function in valid_hook_functions:
-                cls.__settings__.pre_hooks[hook_name].append(hook_function)
+                cls._settings.pre_hooks[hook_name].append(hook_function)
 
     @classmethod
     def register_post_hooks(
@@ -324,16 +350,16 @@ class ModelBase(Generic[V], BaseModel):
         elif callable(hook_functions):
             valid_hook_functions.append(hook_functions)
 
-        if hook_name not in cls.__settings__.post_hooks:
-            cls.__settings__.post_hooks[hook_name] = []
+        if hook_name not in cls._settings.post_hooks:
+            cls._settings.post_hooks[hook_name] = []
 
         if overwrite:
             logger.debug("Overwriting existing post-hook functions")
-            cls.__settings__.post_hooks[hook_name] = valid_hook_functions
+            cls._settings.post_hooks[hook_name] = valid_hook_functions
         else:
             logger.debug("Adding %s post-hook functions", len(valid_hook_functions))
             for hook_function in valid_hook_functions:
-                cls.__settings__.post_hooks[hook_name].append(hook_function)
+                cls._settings.post_hooks[hook_name].append(hook_function)
 
     @classmethod
     def model_settings(cls) -> V:
@@ -343,7 +369,7 @@ class ModelBase(Generic[V], BaseModel):
         Returns:
             V: The model settings.
         """
-        return cast(V, cls.__settings__)
+        return cast(V, cls._settings)
 
     @classmethod
     def _convert_to_camel_case(cls, model_dict: Union[Dict[str, Any], List[Any]]) -> Union[Dict[str, Any], List[Any]]:
@@ -400,7 +426,7 @@ class ModelBase(Generic[V], BaseModel):
             Set[str]: A set of properties which have been modified.
         """
         modified_properties = set()
-        current_properties = self.dict()
+        current_properties = get_model_dump(self)
 
         for property_name, property_value in self._db_properties.items():
             if current_properties[property_name] != property_value:
@@ -428,13 +454,22 @@ class ModelBase(Generic[V], BaseModel):
         """
         return self._id
 
-    class Config:
-        """
-        Pydantic configuration options.
-        """
+    if IS_PYDANTIC_V2:
+        model_config = {
+            "validate_default": True,
+            "validate_assignment": True,
+            "revalidate_instances": "always",
+            "arbitrary_types_allowed": True,
+        }
+    else:
 
-        validate_all = True
-        validate_assignment = True
-        revalidate_instances = "always"
-        arbitrary_types_allowed = True
-        underscore_attrs_are_private = True
+        class Config:
+            """
+            Pydantic configuration options.
+            """
+
+            validate_all = True
+            validate_assignment = True
+            revalidate_instances = "always"
+            arbitrary_types_allowed = True
+            underscore_attrs_are_private = True

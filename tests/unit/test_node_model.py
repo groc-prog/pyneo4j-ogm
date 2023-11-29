@@ -27,11 +27,11 @@ def use_deflate_inflate_model():
 
 
 def test_labels_fallback():
-    assert CoffeeShop.__settings__.labels == {"Coffee", "Shop"}
+    assert CoffeeShop._settings.labels == {"Coffee", "Shop"}
 
 
 def test_relationship_property_auto_exclude():
-    assert Developer.__settings__.exclude_from_export == {"colleagues", "coffee"}
+    assert Developer._settings.exclude_from_export == {"colleagues", "coffee"}
 
 
 def test_ensure_alive_decorator():

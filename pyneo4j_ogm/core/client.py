@@ -22,6 +22,7 @@ from pyneo4j_ogm.exceptions import (
     UnsupportedNeo4jVersion,
 )
 from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.pydantic_utils import get_field_type, get_model_fields
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 
@@ -156,16 +157,16 @@ class Pyneo4jClient:
                 self.models.add(model)
                 setattr(model, "_client", self)
 
-                for property_name, property_definition in model.__fields__.items():
+                for property_name, property_definition in get_model_fields(model).items():
                     entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
                     labels_or_type = (
-                        list(getattr(model.__settings__, "labels"))
+                        list(getattr(model._settings, "labels"))
                         if issubclass(model, NodeModel)
-                        else getattr(model.__settings__, "type")
+                        else getattr(model._settings, "type")
                     )
 
                     if not self._skip_constraints:
-                        if getattr(property_definition.type_, "_unique", False):
+                        if getattr(get_field_type(property_definition), "_unique", False):
                             await self.create_constraint(
                                 name=model.__name__,
                                 entity_type=entity_type,
@@ -174,7 +175,7 @@ class Pyneo4jClient:
                             )
 
                     if not self._skip_indexes:
-                        if getattr(property_definition.type_, "_range_index", False):
+                        if getattr(get_field_type(property_definition), "_range_index", False):
                             await self.create_index(
                                 name=model.__name__,
                                 entity_type=entity_type,
@@ -182,7 +183,7 @@ class Pyneo4jClient:
                                 properties=[property_name],
                                 labels_or_type=labels_or_type,
                             )
-                        if getattr(property_definition.type_, "_point_index", False):
+                        if getattr(get_field_type(property_definition), "_point_index", False):
                             await self.create_index(
                                 name=model.__name__,
                                 entity_type=entity_type,
@@ -190,7 +191,7 @@ class Pyneo4jClient:
                                 properties=[property_name],
                                 labels_or_type=labels_or_type,
                             )
-                        if getattr(property_definition.type_, "_text_index", False):
+                        if getattr(get_field_type(property_definition), "_text_index", False):
                             await self.create_index(
                                 name=model.__name__,
                                 entity_type=entity_type,
@@ -670,12 +671,12 @@ class Pyneo4jClient:
                 model_labels: set[str] = set()
 
                 if issubclass(model, NodeModel):
-                    model_labels = set(getattr(model.__settings__, "labels"))
+                    model_labels = set(getattr(model._settings, "labels"))
 
                     if labels == model_labels:
                         return model._inflate(cast(Node, query_result))
                 elif issubclass(model, RelationshipModel):
-                    model_labels = {getattr(model.__settings__, "type")}
+                    model_labels = {getattr(model._settings, "type")}
 
                     if labels == model_labels:
                         return model._inflate(cast(Relationship, query_result))

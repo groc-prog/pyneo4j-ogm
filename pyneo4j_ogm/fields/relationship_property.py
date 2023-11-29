@@ -70,7 +70,7 @@ def hooks(func):
         @wraps(func)
         async def decorator(self: "RelationshipProperty", *args, **kwargs):  # type: ignore
             source_node = getattr(self, "_source_node")
-            settings: RelationshipModelSettings = getattr(source_node, "__settings__")
+            settings: RelationshipModelSettings = getattr(source_node, "_settings")
             hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
 
             # Run pre hooks if defined
@@ -100,7 +100,7 @@ def hooks(func):
         @wraps(func)
         def decorator(self: "RelationshipProperty", *args, **kwargs):
             source_node = getattr(self, "_source_node")
-            settings: RelationshipModelSettings = getattr(source_node, "__settings__")
+            settings: RelationshipModelSettings = getattr(source_node, "_settings")
             hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
             loop = asyncio.get_event_loop()
 
@@ -290,11 +290,11 @@ class RelationshipProperty(Generic[T, U]):
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=cast(U, self._relationship_model).__settings__.type,
+            type_=cast(U, self._relationship_model)._settings.type,
             start_node_ref="start",
-            start_node_labels=list(self._source_node.__settings__.labels),
+            start_node_labels=list(self._source_node._settings.labels),
             end_node_ref="end",
-            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
+            end_node_labels=list(cast(Type[T], self._target_model)._settings.labels),
         )
 
         results, _ = await self._client.cypher(
@@ -362,7 +362,7 @@ class RelationshipProperty(Generic[T, U]):
 
         relationship_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=cast(U, self._relationship_model).__settings__.type,
+            type_=cast(U, self._relationship_model)._settings.type,
             start_node_ref="start",
             end_node_ref="end",
         )
@@ -428,11 +428,11 @@ class RelationshipProperty(Generic[T, U]):
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=cast(U, self._relationship_model).__settings__.type,
+            type_=cast(U, self._relationship_model)._settings.type,
             start_node_ref="start",
-            start_node_labels=list(cast(T, self._source_node).__settings__.labels),
+            start_node_labels=list(cast(T, self._source_node)._settings.labels),
             end_node_ref="end",
-            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
+            end_node_labels=list(cast(Type[T], self._target_model)._settings.labels),
         )
 
         logger.debug("Getting relationship count between source and target node")
@@ -494,11 +494,11 @@ class RelationshipProperty(Generic[T, U]):
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=cast(U, self._relationship_model).__settings__.type,
+            type_=cast(U, self._relationship_model)._settings.type,
             start_node_ref="start",
-            start_node_labels=list(cast(T, self._source_node).__settings__.labels),
+            start_node_labels=list(cast(T, self._source_node)._settings.labels),
             end_node_ref="end",
-            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
+            end_node_labels=list(cast(Type[T], self._target_model)._settings.labels),
         )
 
         logger.debug("Getting relationship count for source node")
@@ -566,11 +566,11 @@ class RelationshipProperty(Generic[T, U]):
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
-            type_=cast(U, self._relationship_model).__settings__.type,
+            type_=cast(U, self._relationship_model)._settings.type,
             start_node_ref="start",
-            start_node_labels=list(cast(T, self._source_node).__settings__.labels),
+            start_node_labels=list(cast(T, self._source_node)._settings.labels),
             end_node_ref="end",
-            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
+            end_node_labels=list(cast(Type[T], self._target_model)._settings.labels),
         )
 
         logger.debug("Checking if new node is already connected and needs to be disconnected")
@@ -646,7 +646,7 @@ class RelationshipProperty(Generic[T, U]):
                 self._query_builder.relationship_match(
                     ref=ref,
                     direction=self._direction,
-                    type_=cast(U, self._relationship_model).__settings__.type,
+                    type_=cast(U, self._relationship_model)._settings.type,
                     start_node_ref="start",
                     end_node_ref="end",
                 )
@@ -663,8 +663,8 @@ class RelationshipProperty(Generic[T, U]):
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH
-                    {self._query_builder.node_match(labels=list(cast(T, self._source_node).__settings__.labels), ref="start")},
-                    {self._query_builder.node_match(labels=list(cast(Type[T], self._target_model).__settings__.labels), ref="end")}
+                    {self._query_builder.node_match(labels=list(cast(T, self._source_node)._settings.labels), ref="start")},
+                    {self._query_builder.node_match(labels=list(cast(Type[T], self._target_model)._settings.labels), ref="end")}
                 WHERE elementId(start) = $start_element_id AND elementId(end) = $end_element_id
                 CREATE {', '.join(create_queries)}
                 {f"SET {', '.join(set_queries)}" if len(set_queries) != 0 else ""}
@@ -746,11 +746,11 @@ class RelationshipProperty(Generic[T, U]):
         match_query = self._query_builder.relationship_match(
             ref="r",
             direction=self._direction,
-            type_=cast(U, self._relationship_model).__settings__.type,
+            type_=cast(U, self._relationship_model)._settings.type,
             start_node_ref="start",
-            start_node_labels=list(cast(T, self._source_node).__settings__.labels),
+            start_node_labels=list(cast(T, self._source_node)._settings.labels),
             end_node_ref="end",
-            end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
+            end_node_labels=list(cast(Type[T], self._target_model)._settings.labels),
         )
 
         results, meta = await self._client.cypher(
@@ -891,11 +891,11 @@ class RelationshipProperty(Generic[T, U]):
             case RelationshipPropertyCardinality.ZERO_OR_ONE:
                 match_query = self._query_builder.relationship_match(
                     direction=self._direction,
-                    type_=cast(Type[U], self._relationship_model).__settings__.type,
+                    type_=cast(Type[U], self._relationship_model)._settings.type,
                     start_node_ref="start",
-                    start_node_labels=list(cast(T, self._source_node).__settings__.labels),
+                    start_node_labels=list(cast(T, self._source_node)._settings.labels),
                     end_node_ref="end",
-                    end_node_labels=list(cast(Type[T], self._target_model).__settings__.labels),
+                    end_node_labels=list(cast(Type[T], self._target_model)._settings.labels),
                 )
 
                 results, _ = await self._client.cypher(
@@ -910,7 +910,7 @@ class RelationshipProperty(Generic[T, U]):
                 if results[0][0] > 0:
                     raise CardinalityViolation(
                         cardinality_type=self._cardinality,
-                        relationship_type=cast(str, cast(Type[U], self._relationship_model).__settings__.type),
+                        relationship_type=cast(str, cast(Type[U], self._relationship_model)._settings.type),
                         start_model=self._source_node.__class__.__name__,
                         end_model=cast(Type[T], self._target_model).__name__,
                     )
