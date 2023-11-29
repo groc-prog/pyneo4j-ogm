@@ -2,6 +2,149 @@
 
 
 
+## v0.2.0 (2023-11-29)
+
+### Chore
+
+* chore: release ([`78c2dd0`](https://github.com/groc-prog/pyneo4j-ogm/commit/78c2dd0cc3edbfcaed058766f1807fac67d27c29))
+
+* chore: pylint ([`cb567dd`](https://github.com/groc-prog/pyneo4j-ogm/commit/cb567dd4e512aa35ca239f16294052d9ac66dbcf))
+
+* chore: update markdownlint settings ([`f2ab6db`](https://github.com/groc-prog/pyneo4j-ogm/commit/f2ab6db17d70becf35f816d63a1632cef01fb36f))
+
+* chore: update markdownlint config ([`d4cdccd`](https://github.com/groc-prog/pyneo4j-ogm/commit/d4cdccdf66eb1258ca2f0d5e0d43f307db874be3))
+
+* chore: update vscode settings, formatting/linting, remove pytest.ini ([`17dae1d`](https://github.com/groc-prog/pyneo4j-ogm/commit/17dae1da0b73ff9e6985297a637b72181ec19e52))
+
+* chore(pyproject.toml): update project metadata ([`599a1fc`](https://github.com/groc-prog/pyneo4j-ogm/commit/599a1fc379942b8b8e53262f55c594a9595c634f))
+
+* chore(tasks): adjust test coverage location ([`a80825f`](https://github.com/groc-prog/pyneo4j-ogm/commit/a80825f064d808938b185e64b50b2d3817e178ba))
+
+* chore(tasks): add pyright and pylint tasks ([`010abbc`](https://github.com/groc-prog/pyneo4j-ogm/commit/010abbcff6338f3412f367a7e914823b0745a6c8))
+
+### Ci
+
+* ci: test workflow trigger ([`fffcba7`](https://github.com/groc-prog/pyneo4j-ogm/commit/fffcba7e8bec36616b39a9359dbd1c87e732c669))
+
+* ci: update ci.yaml workflow ([`f8d00fd`](https://github.com/groc-prog/pyneo4j-ogm/commit/f8d00fdcf90bb2c5dfac8cca8e2a7cda0f2fe8e0))
+
+* ci: enable workflows for develop branch ([`2dc6618`](https://github.com/groc-prog/pyneo4j-ogm/commit/2dc66182dd3bc7122f8de77e3a8bcd653947d263))
+
+### Documentation
+
+* docs: update features ([`e3bc559`](https://github.com/groc-prog/pyneo4j-ogm/commit/e3bc559e17a7f0d172d66559e0fc9d6cc5e36ecb))
+
+* docs: update code comments ([`a94b3fe`](https://github.com/groc-prog/pyneo4j-ogm/commit/a94b3fe2be8166d671f1ebbbdf52855910b16c02))
+
+* docs: add special projection values to docs ([`896f3fa`](https://github.com/groc-prog/pyneo4j-ogm/commit/896f3fab81fc577c8d588cad6781a9dcb341454a))
+
+* docs: update docs to recent changes ([`68d821e`](https://github.com/groc-prog/pyneo4j-ogm/commit/68d821e093ce3e8704710224159d74ac34a2c9ac))
+
+* docs: update docstrings ([`326f4cd`](https://github.com/groc-prog/pyneo4j-ogm/commit/326f4cd08890c95c110d0002f0d10a76f4679db7))
+
+* docs: update docstrings for ModelBase, Pyneo4jClient and NodeModel classes ([`dc3ca1f`](https://github.com/groc-prog/pyneo4j-ogm/commit/dc3ca1f19e8dfa1a1bcb31a534b4bbaefd2ef742))
+
+* docs: adjust docstrings ([`a44f95f`](https://github.com/groc-prog/pyneo4j-ogm/commit/a44f95f1dece837f60a3e1db7baf692e2c68caa9))
+
+* docs: Update todos ([`37be36e`](https://github.com/groc-prog/pyneo4j-ogm/commit/37be36e3cff46ae2a77c826cfdd800e6c2dcfd77))
+
+* docs: add env variable for disabling logger to module docstring ([`a79c7ee`](https://github.com/groc-prog/pyneo4j-ogm/commit/a79c7ee5bbce97789517f24387afaad8db83c7f1))
+
+### Feature
+
+* feat: add type for projections ([`8f8af8a`](https://github.com/groc-prog/pyneo4j-ogm/commit/8f8af8a129b6fe762970ddf865dd42c9cde0e805))
+
+* feat: add option to raise exception if find_one, update_one, delete_one or disconnect methods do not find any matches ([`c6a2901`](https://github.com/groc-prog/pyneo4j-ogm/commit/c6a29016bb4918697e819c841cbf929ef8551442))
+
+* feat(RelationshipProperty): the `replace()` method now moves all relationships between current and old node to new node ([`0e37bf3`](https://github.com/groc-prog/pyneo4j-ogm/commit/0e37bf34e86ba6c004dc77226521d3e687d9cfb5))
+
+* feat: handle sync and async hooks differently, relationships method now supports filters, projections and options ([`27901e4`](https://github.com/groc-prog/pyneo4j-ogm/commit/27901e4ec5a10e1e7933d5ec83a6109a6a4e4ff5))
+
+* feat(NodeModel): exclude relationship properties from modified_properties, auto-fetch now raises an exception if a relationship or node model which is auto fetched is not registered ([`873e7ac`](https://github.com/groc-prog/pyneo4j-ogm/commit/873e7acfc59454a50eb0e5bce30a875c54114d7e))
+
+* feat(RelationshipProperty): relationship() has been renamed to relationships(), now returns a list of relationships instead of a single relationship or None ([`8bf70a7`](https://github.com/groc-prog/pyneo4j-ogm/commit/8bf70a70344a2f53820007a5c1ccd57c7410493b))
+
+* feat(MultiHopFilter): support $direction filter for path ([`d740679`](https://github.com/groc-prog/pyneo4j-ogm/commit/d740679c07a3bb4088f55a94f76e4f5796e34606))
+
+* feat(Pyneo4jClient): Rename Neo4jClient to Pyneo4jClient ([`cf71356`](https://github.com/groc-prog/pyneo4j-ogm/commit/cf71356e62fc7391c770665b10c09651503b9c3e))
+
+### Fix
+
+* fix: find_many queries now return correct results if options and projections are used together ([`63730fb`](https://github.com/groc-prog/pyneo4j-ogm/commit/63730fbf174d8d36bb2ee90a100469911876e051))
+
+* fix: parse query result to model if raw result, prevent usage of lists with non primitive values ([`f600700`](https://github.com/groc-prog/pyneo4j-ogm/commit/f600700218544d871bc820de4d4d3b3ac035376e))
+
+* fix(validators): change QueryDataTypes to Any to prevent pydantic from changing data type when validating filters ([`d195648`](https://github.com/groc-prog/pyneo4j-ogm/commit/d195648cc005bd0c9b676583189fc6080728148f))
+
+* fix: st _id field in relationship when inflating ([`79dc118`](https://github.com/groc-prog/pyneo4j-ogm/commit/79dc118942a00f3822ca6fab57f0fe7264e37748))
+
+* fix(NodeModel): raise UnregisteredModel exception if target model for find_connected_nodes has not been registered ([`ae92801`](https://github.com/groc-prog/pyneo4j-ogm/commit/ae928013a62acbe1c03bb5c7a8fdb61a84ad489f))
+
+* fix(projections, auto-fetch): fix non-distinct values being returned when using projections, fix missing auto-fetched nodes when multiple returned models were connected to the same auto-fetched node ([`7170623`](https://github.com/groc-prog/pyneo4j-ogm/commit/717062376615788c078dbc416db8af8f0e7b4dd4))
+
+* fix(typings): add typing-extensions as dependency, adjust types so required keys are actually required ([`c65f236`](https://github.com/groc-prog/pyneo4j-ogm/commit/c65f236316b8e4b0c2211efabfdddf1fcf9485fd))
+
+* fix(validators): add default values and adjust types for QueryOptionModel validator ([`a83f7e7`](https://github.com/groc-prog/pyneo4j-ogm/commit/a83f7e79c59973373889d5d33f16fb764f9329d5))
+
+* fix: Remove unused if statement in __eq__ method, raise ModelImportFailure exc if id is missing in dict ([`435c971`](https://github.com/groc-prog/pyneo4j-ogm/commit/435c971342fd0c64c0ff4e48ce5443265c480ea6))
+
+* fix: fix typings for RelationshipFilters and RelationshipPropertyFilters ([`24458bd`](https://github.com/groc-prog/pyneo4j-ogm/commit/24458bd62f0d8778ec5fa9c7bdef0c5617eecf9b))
+
+### Refactor
+
+* refactor(RelationshipProperty): use Optional instead of Union with None ([`2d381b9`](https://github.com/groc-prog/pyneo4j-ogm/commit/2d381b9e475bd9fbfa9c5725fd8d2abb0749a73d))
+
+* refactor(RelationshipProperty): pass source node to relationship-property hooks instead of self ([`539f6f9`](https://github.com/groc-prog/pyneo4j-ogm/commit/539f6f99ca9636a6cd5d0a176fddce6dc467c9e0))
+
+* refactor: rename NoResultsFound to UnexpectedEmptyResult ([`593ac58`](https://github.com/groc-prog/pyneo4j-ogm/commit/593ac587106d7a1d250bd4ad6fe624185f896d7b))
+
+* refactor: use LiteralString from typing_extensions package to stay compatible with python &lt; 3.11 ([`05c344d`](https://github.com/groc-prog/pyneo4j-ogm/commit/05c344dd1d9e7afdb12d15dd28d11d3d0bc01494))
+
+* refactor(RelationshipProperty): add some checks for empty queries adn ensure_alive method, refactor find_connected_nodes method ([`2a848fc`](https://github.com/groc-prog/pyneo4j-ogm/commit/2a848fc7fefd926b1600766c7df84209244a6eb9))
+
+* refactor(NodeModel): split class name into substrings when falling back to auto labels ([`3992266`](https://github.com/groc-prog/pyneo4j-ogm/commit/3992266e185ac2be4d9f5b63106bbd10c96323ff))
+
+* refactor(ModelBase): Change modified_properties from list to set ([`597100f`](https://github.com/groc-prog/pyneo4j-ogm/commit/597100ff3d6e367d76c6be287bb261d364172ea2))
+
+* refactor(property_options): remove unused magic method ([`75981f3`](https://github.com/groc-prog/pyneo4j-ogm/commit/75981f33e9949cb7c21f85cdc74cebf84420d496))
+
+* refactor: change relationship variable from build param to function param ([`6d331b7`](https://github.com/groc-prog/pyneo4j-ogm/commit/6d331b7fb8a4f4b8af1feb8a33b88ac20295e42d))
+
+### Test
+
+* test: update tests to new method params and rename exception ([`657dff4`](https://github.com/groc-prog/pyneo4j-ogm/commit/657dff43de3c2d7bb8b55aa875a07541704ecc92))
+
+* test: add remaining tests for RelationshipProperty ([`1f85ea9`](https://github.com/groc-prog/pyneo4j-ogm/commit/1f85ea99e85c8f826cc403acea67355e9c4a0c21))
+
+* test: consume neo4j result after session is done ([`f28ebfe`](https://github.com/groc-prog/pyneo4j-ogm/commit/f28ebfe13832aaf701b71070689b6eda1e717dd7))
+
+* test: unit and integration tests for RelationshipModel class ([`8db2de7`](https://github.com/groc-prog/pyneo4j-ogm/commit/8db2de72ddbdf83f329212a058fdb27293397e01))
+
+* test: remove almost all separate testmodels and add fixture for setting up test db with test data, modify tests to use new fixture ([`c68fcb1`](https://github.com/groc-prog/pyneo4j-ogm/commit/c68fcb19775087bca94f29692d26d3d826a5f8c2))
+
+* test(NodeModel): remaining tests for NodeModel class ([`aa5e0e0`](https://github.com/groc-prog/pyneo4j-ogm/commit/aa5e0e0754539c8f1b2de044b1ca4cce9d0bfcc7))
+
+* test(NodeModel): tests for create, update, delete, refresh, delete_many, delete_one, count, find_many, find_one, update_many and update_one methods ([`bca8a46`](https://github.com/groc-prog/pyneo4j-ogm/commit/bca8a46b6bdd5c93061e85865ca9311390452781))
+
+* test(NodeModel): test cases for find_one method ([`da6c1f0`](https://github.com/groc-prog/pyneo4j-ogm/commit/da6c1f0f2a31d53cf9fa3ea4e41ae7c59d232aa1))
+
+* test(NodeModel): add tests for NodeModel class ([`fdc3785`](https://github.com/groc-prog/pyneo4j-ogm/commit/fdc3785bb99014f96260d39436e43e78c6746e58))
+
+* test: rename test classes, add more tests ([`8b2cefc`](https://github.com/groc-prog/pyneo4j-ogm/commit/8b2cefcbdc1b86df5773e4f2c89b413996a728a6))
+
+* test: add tests to client for batching, TransactionInProgress and drop_indexes failure ([`eea08bc`](https://github.com/groc-prog/pyneo4j-ogm/commit/eea08bc63abc76ba08289fa7c828f1af39224a73))
+
+* test: Tests for ModelBase class ([`5ed0d1b`](https://github.com/groc-prog/pyneo4j-ogm/commit/5ed0d1bfb658f879d20623e4495f75f1ceeaec9e))
+
+* test: Add tests for shared methods ([`8a6f358`](https://github.com/groc-prog/pyneo4j-ogm/commit/8a6f358be99d2e27b1957d17fb292c195fda09a3))
+
+* test: expand test coverage, move fixtures and utils ([`fbaabe9`](https://github.com/groc-prog/pyneo4j-ogm/commit/fbaabe9c9b4f5347c97244c572d8c3fced83de2a))
+
+### Unknown
+
+* Merge branch &#39;develop&#39; ([`d20ea86`](https://github.com/groc-prog/pyneo4j-ogm/commit/d20ea8610c82b7f0bc3a8d0b3c4c6d8786b398c4))
+
+
 ## v0.1.0 (2023-11-06)
 
 ### Chore
