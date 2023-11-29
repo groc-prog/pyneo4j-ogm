@@ -8,6 +8,7 @@ unsafe-load-any-extension=no
 [MESSAGES CONTROL]
 disable=abstract-method,
         protected-access,
+        ungrouped-imports,
         bare-except,
         no-self-argument,
         keyword-arg-before-vararg,
