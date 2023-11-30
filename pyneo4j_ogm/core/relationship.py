@@ -487,7 +487,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         # Update existing instance with values and save
         logger.debug("Creating instance copy with new values %s", update)
-        new_instance = cls(**get_model_dump(old_instance))
+        new_instance = cls(**old_instance._deflate())
 
         for key, value in update.items():
             if key in get_model_fields(cls):
@@ -592,7 +592,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         # Try and parse update values into random instance to check validation
         logger.debug("Creating instance copy with new values %s", update)
-        new_instance = cls(**get_model_dump(old_instances[0]))
+        new_instance = cls(**old_instances[0]._deflate())
 
         for key, value in update.items():
             if key in get_model_fields(cls):

@@ -28,6 +28,7 @@ def test_normalize_fields_validator():
         if IS_PYDANTIC_V2:
             model_config = {
                 "extra": "allow",
+                "populate_by_name": True,
             }
         else:
 

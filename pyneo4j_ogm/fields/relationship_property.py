@@ -246,6 +246,31 @@ class RelationshipProperty(Generic[T, U]):
         )
         self._target_model_name = target_model if isinstance(target_model, str) else target_model.__name__
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, RelationshipProperty):
+            return False
+
+        return (
+            self._target_model_name == other._target_model_name
+            and self._relationship_model_name == other._relationship_model_name
+            and self._direction == other._direction
+            and self._cardinality == other._cardinality
+            and self._allow_multiple == other._allow_multiple
+        )
+
+    def __ne__(self, other: Any) -> bool:
+        return not self.__eq__(other)
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(registered_name={self._registered_name} "
+            f"target_model={self._target_model_name} relationship_model={self._relationship_model_name} "
+            f"direction={self._direction} cardinality={self._cardinality} allow_multiple={self._allow_multiple})"
+        )
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
     @hooks
     @check_models_registered
     async def relationships(
