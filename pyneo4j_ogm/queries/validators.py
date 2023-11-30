@@ -35,9 +35,10 @@ def _normalize_fields(cls: Type[BaseModel], values: Any) -> Any:
     Returns:
         Any: The normalized and validated values.
     """
+    normalized_values: Dict[str, Any] = get_model_dump(values) if isinstance(values, BaseModel) else values
     validated_values: Dict[str, Any] = {}
 
-    for property_name, property_value in values.items():
+    for property_name, property_value in normalized_values.items():
         if property_name not in get_model_fields(cls).keys():
             try:
                 validated = parse_model(QueryOperatorModel, property_value)
@@ -52,6 +53,8 @@ def _normalize_fields(cls: Type[BaseModel], values: Any) -> Any:
         else:
             validated_values[property_name] = property_value
 
+    if IS_PYDANTIC_V2:
+        return cls.model_construct(**validated_values)
     return validated_values
 
 
@@ -138,15 +141,15 @@ class QueryOperatorModel(BaseModel):
     Validator for query operators defined in a property.
     """
 
-    eq_: Optional[Any] = Field(alias="$eq")
-    neq_: Optional[Any] = Field(alias="$neq")
-    gt_: Optional[NumericQueryDataType] = Field(alias="$gt")
-    gte_: Optional[NumericQueryDataType] = Field(alias="$gte")
-    lt_: Optional[NumericQueryDataType] = Field(alias="$lt")
-    lte_: Optional[NumericQueryDataType] = Field(alias="$lte")
-    in__: Optional[List[Any]] = Field(alias="$in")
-    nin_: Optional[List[Any]] = Field(alias="$nin")
-    all_: Optional[List[Any]] = Field(alias="$all")
+    eq_: Optional[Any] = Field(alias="$eq", default=None)
+    neq_: Optional[Any] = Field(alias="$neq", default=None)
+    gt_: Optional[NumericQueryDataType] = Field(alias="$gt", default=None)
+    gte_: Optional[NumericQueryDataType] = Field(alias="$gte", default=None)
+    lt_: Optional[NumericQueryDataType] = Field(alias="$lt", default=None)
+    lte_: Optional[NumericQueryDataType] = Field(alias="$lte", default=None)
+    in__: Optional[List[Any]] = Field(alias="$in", default=None)
+    nin_: Optional[List[Any]] = Field(alias="$nin", default=None)
+    all_: Optional[List[Any]] = Field(alias="$all", default=None)
     size_: Optional[
         Union[
             NumericQueryDataType,
@@ -157,19 +160,19 @@ class QueryOperatorModel(BaseModel):
             NumericLessThanOperatorModel,
             NumericLessThanEqualsOperatorModel,
         ]
-    ] = Field(alias="$size")
-    contains_: Optional[str] = Field(alias="$contains")
-    exists_: Optional[bool] = Field(alias="$exists")
-    i_contains_: Optional[str] = Field(alias="$icontains")
-    starts_with_: Optional[str] = Field(alias="$startsWith")
-    i_starts_with_: Optional[str] = Field(alias="$istartsWith")
-    ends_with_: Optional[str] = Field(alias="$endsWith")
-    i_ends_with_: Optional[str] = Field(alias="$iendsWith")
-    regex_: Optional[str] = Field(alias="$regex")
-    not_: Optional["QueryOperatorModel"] = Field(alias="$not")
-    and_: Optional[List["QueryOperatorModel"]] = Field(alias="$and")
-    or_: Optional[List["QueryOperatorModel"]] = Field(alias="$or")
-    xor_: Optional[List["QueryOperatorModel"]] = Field(alias="$xor")
+    ] = Field(alias="$size", default=None)
+    contains_: Optional[str] = Field(alias="$contains", default=None)
+    exists_: Optional[bool] = Field(alias="$exists", default=None)
+    i_contains_: Optional[str] = Field(alias="$icontains", default=None)
+    starts_with_: Optional[str] = Field(alias="$startsWith", default=None)
+    i_starts_with_: Optional[str] = Field(alias="$istartsWith", default=None)
+    ends_with_: Optional[str] = Field(alias="$endsWith", default=None)
+    i_ends_with_: Optional[str] = Field(alias="$iendsWith", default=None)
+    regex_: Optional[str] = Field(alias="$regex", default=None)
+    not_: Optional["QueryOperatorModel"] = Field(alias="$not", default=None)
+    and_: Optional[List["QueryOperatorModel"]] = Field(alias="$and", default=None)
+    or_: Optional[List["QueryOperatorModel"]] = Field(alias="$or", default=None)
+    xor_: Optional[List["QueryOperatorModel"]] = Field(alias="$xor", default=None)
 
 
 class NodeFiltersModel(BaseModel):
@@ -177,9 +180,9 @@ class NodeFiltersModel(BaseModel):
     Validator model for node filters.
     """
 
-    element_id_: Optional[str] = Field(alias="$elementId")
-    id_: Optional[int] = Field(alias="$id")
-    patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns")
+    element_id_: Optional[str] = Field(alias="$elementId", default=None)
+    id_: Optional[int] = Field(alias="$id", default=None)
+    patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns", default=None)
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
@@ -209,8 +212,8 @@ class RelationshipFiltersModel(BaseModel):
     Validator model for relationship filters.
     """
 
-    element_id_: Optional[str] = Field(alias="$elementId")
-    id_: Optional[int] = Field(alias="$id")
+    element_id_: Optional[str] = Field(alias="$elementId", default=None)
+    id_: Optional[int] = Field(alias="$id", default=None)
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
@@ -240,10 +243,10 @@ class RelationshipPropertyFiltersModel(BaseModel):
     Validator model for relationship filters.
     """
 
-    element_id_: Optional[str] = Field(alias="$elementId")
-    id_: Optional[int] = Field(alias="$id")
-    patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns")
-    relationship_: Optional[RelationshipFiltersModel] = Field(alias="$relationship")
+    element_id_: Optional[str] = Field(alias="$elementId", default=None)
+    id_: Optional[int] = Field(alias="$id", default=None)
+    patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns", default=None)
+    relationship_: Optional[RelationshipFiltersModel] = Field(alias="$relationship", default=None)
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
@@ -273,9 +276,9 @@ class PatternNodeOperatorsModel(BaseModel):
     Validator model for node pattern operators.
     """
 
-    element_id_: Optional[str] = Field(alias="$elementId")
+    element_id_: Optional[str] = Field(alias="$elementId", default=None)
     id_: Optional[int] = Field(alias="$id")
-    labels_: Optional[Union[List[str], str]] = Field(alias="$labels")
+    labels_: Optional[Union[List[str], str]] = Field(alias="$labels", default=None)
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
@@ -309,9 +312,9 @@ class PatternRelationshipOperatorsModel(NodeFiltersModel):
     Validator model for relationship pattern operators.
     """
 
-    element_id_: Optional[str] = Field(alias="$elementId")
-    id_: Optional[int] = Field(alias="$id")
-    type_: Optional[Union[str, List[str]]] = Field(alias="$type")
+    element_id_: Optional[str] = Field(alias="$elementId", default=None)
+    id_: Optional[int] = Field(alias="$id", default=None)
+    type_: Optional[Union[str, List[str]]] = Field(alias="$type", default=None)
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
@@ -341,12 +344,10 @@ class PatternOperatorModel(BaseModel):
     Validator for pattern operators defined in a property.
     """
 
-    exists_: Optional[bool] = Field(default=False, alias="$exists")
-    direction_: Optional[RelationshipMatchDirection] = Field(
-        default=RelationshipMatchDirection.OUTGOING, alias="$direction"
-    )
-    node_: Optional[PatternNodeOperatorsModel] = Field(alias="$node")
-    relationship_: Optional[PatternRelationshipOperatorsModel] = Field(alias="$relationship")
+    exists_: bool = Field(default=False, alias="$exists")
+    direction_: RelationshipMatchDirection = Field(default=RelationshipMatchDirection.OUTGOING, alias="$direction")
+    node_: Optional[PatternNodeOperatorsModel] = Field(alias="$node", default=None)
+    relationship_: Optional[PatternRelationshipOperatorsModel] = Field(alias="$relationship", default=None)
 
 
 class MultiHopRelationshipOperatorsModel(NodeFiltersModel):
@@ -354,8 +355,8 @@ class MultiHopRelationshipOperatorsModel(NodeFiltersModel):
     Validator model for a relationship operator in a multi hop filter.
     """
 
-    element_id_: Optional[str] = Field(alias="$elementId")
-    id_: Optional[int] = Field(alias="$id")
+    element_id_: Optional[str] = Field(alias="$elementId", default=None)
+    id_: Optional[int] = Field(alias="$id", default=None)
     type_: str = Field(alias="$type")
 
     if IS_PYDANTIC_V2:
@@ -386,8 +387,8 @@ class MultiHopNodeModel(BaseModel):
     Validator model for multi hop node operators.
     """
 
-    element_id_: Optional[str] = Field(alias="$elementId")
-    id_: Optional[int] = Field(alias="$id")
+    element_id_: Optional[str] = Field(alias="$elementId", default=None)
+    id_: Optional[int] = Field(alias="$id", default=None)
     labels_: Union[List[str], str] = Field(alias="$labels")
 
     if IS_PYDANTIC_V2:
@@ -425,7 +426,7 @@ class MultiHopFiltersModel(BaseModel):
     min_hops_: Optional[int] = Field(alias="$minHops", ge=0, default=None)
     max_hops_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops", ge=1, default="*")
     node_: MultiHopNodeModel = Field(alias="$node")
-    relationships_: Optional[List[MultiHopRelationshipOperatorsModel]] = Field(alias="$relationships")
+    relationships_: Optional[List[MultiHopRelationshipOperatorsModel]] = Field(alias="$relationships", default=None)
     direction_: Optional[RelationshipMatchDirection] = Field(
         default=RelationshipMatchDirection.OUTGOING, alias="$direction"
     )
@@ -464,9 +465,11 @@ class QueryOptionModel(BaseModel):
     order: Optional[QueryOptionsOrder] = Field(default=None)
 
     if IS_PYDANTIC_V2:
-        field_validator("sort", mode="before")(_normalize_sort)  # pyright: ignore[reportUnboundVariable]
+        normalize_list_validator = field_validator("sort", mode="before")(  # pyright: ignore[reportUnboundVariable]
+            _normalize_sort
+        )
     else:
-        validator("sort", pre=True)(_normalize_sort)
+        normalize_list_validator = validator("sort", pre=True)(_normalize_sort)
 
     if IS_PYDANTIC_V2:
         model_config = {
