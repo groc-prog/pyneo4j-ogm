@@ -5,6 +5,7 @@ the database for CRUD operations on nodes.
 """
 import json
 import re
+from copy import deepcopy
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -98,7 +99,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
     """
 
     _settings: NodeModelSettings
-    _relationships_properties: Set[str] = PrivateAttr()
+    _relationship_properties: Set[str] = PrivateAttr()
     Settings: ClassVar[Type[NodeModelSettings]]
 
     def __init__(self, *args, **kwargs) -> None:
@@ -106,14 +107,22 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         # Build relationship properties
         logger.debug("Building relationship properties for model %s", self.__class__.__name__)
-        for property_name, property_value in self.__dict__.items():
-            if hasattr(property_value, "_build_property"):
-                cast(RelationshipProperty, property_value)._build_property(self, property_name)
+        for relationship_property in self._relationship_properties:
+            if IS_PYDANTIC_V2:
+                # Pydantic V2 does not initialize separate instances for relationship properties
+                # anymore, thus we have to do this manually here
+                # This might be a dirty hack, but it works ¯\_(ツ)_/¯
+                model_relationship_property = deepcopy(getattr(self, relationship_property))
+                setattr(self, relationship_property, model_relationship_property)
+                cast(RelationshipProperty, model_relationship_property)._build_property(self, relationship_property)
+            else:
+                model_relationship_property = getattr(self, relationship_property)
+                cast(RelationshipProperty, model_relationship_property)._build_property(self, relationship_property)
 
-        self._db_properties = get_model_dump(self, exclude=self._relationships_properties)
+        self._db_properties = get_model_dump(self, exclude=self._relationship_properties)
 
     def __init_subclass__(cls) -> None:
-        setattr(cls, "_relationships_properties", set())
+        setattr(cls, "_relationship_properties", set())
         setattr(cls, "_settings", NodeModelSettings())
 
         super().__init_subclass__()
@@ -181,7 +190,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         setattr(self, "_id", getattr(cast(T, results[0][0]), "_id"))
 
         logger.debug("Resetting modified properties")
-        self._db_properties = get_model_dump(self, exclude=self._relationships_properties)
+        self._db_properties = get_model_dump(self, exclude=self._relationship_properties)
         logger.info("Created new node %s", self)
 
         return self
@@ -225,7 +234,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             raise UnexpectedEmptyResult()
 
         logger.debug("Resetting modified properties")
-        self._db_properties = get_model_dump(self, exclude=self._relationships_properties)
+        self._db_properties = get_model_dump(self, exclude=self._relationship_properties)
         logger.info("Updated node %s", self)
 
     @hooks
@@ -740,7 +749,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         # Update existing instance with values and save
         logger.debug("Creating instance copy with new values %s", update)
-        new_instance = cls(**get_model_dump(cast(T, old_instance)))
+        new_instance = cls(**cast(T, old_instance)._deflate())
 
         for key, value in update.items():
             if key in get_model_fields(cls):
@@ -826,7 +835,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         # Try and parse update values into random instance to check validation
         logger.debug("Creating instance copy with new values %s", update)
-        new_instance = cls(**get_model_dump(old_instances[0]))
+        new_instance = cls(**old_instances[0]._deflate())
         for key, value in update.items():
             if key in get_model_fields(cls):
                 setattr(new_instance, key, value)
@@ -990,7 +999,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         for property_name, value in get_model_fields(cls).items():
             # Check if value is None here to prevent breaking logic if property_name is of type None
             if get_field_type(value) is not None and hasattr(get_field_type(value), "_build_property"):
-                cls._relationships_properties.add(property_name)
+                cls._relationship_properties.add(property_name)
                 cls._settings.exclude_from_export.add(property_name)
 
     def _deflate(self) -> Dict[str, Any]:
@@ -1002,7 +1011,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         """
         logger.debug("Deflating model %s to storable dictionary", self)
         deflated: Dict[str, Any] = json.loads(
-            get_model_dump_json(self, exclude={*self._relationships_properties, "_settings"})
+            get_model_dump_json(self, exclude={*self._relationship_properties, "_settings"})
         )
 
         # Serialize nested BaseModel or dict instances to JSON strings
@@ -1076,7 +1085,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     node_model_names.append(node.__name__)
 
         logger.debug("Building node match queries for auto-fetch")
-        for defined_relationship in cls._relationships_properties:
+        for defined_relationship in cls._relationship_properties:
             relationship_type: Optional[str] = None
             end_node_labels: Optional[List[str]] = None
             relationship_property = cast(RelationshipProperty, get_model_fields(cls)[defined_relationship].default)
