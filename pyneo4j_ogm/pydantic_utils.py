@@ -28,14 +28,14 @@ def get_field_type(field):
         return field.outer_type_
 
 
-def get_model_fields(model: Type[BaseModel]):
+def get_model_fields(model):
     if IS_PYDANTIC_V2:
         return model.model_fields
     else:
         return model.__fields__
 
 
-def parse_model(model_type: Type[BaseModel], data: Any):
+def parse_model(model_type, data: Any):
     if IS_PYDANTIC_V2:
         return model_type.model_validate(data)
     else:
