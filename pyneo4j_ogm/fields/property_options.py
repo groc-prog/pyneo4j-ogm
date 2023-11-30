@@ -1,7 +1,13 @@
 """
 Model property wrapper for defining indexes and constraints on properties.
 """
-from typing import Type, TypeVar
+from typing import Any, Type, TypeVar
+
+from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2
+
+if IS_PYDANTIC_V2:
+    from pydantic import GetCoreSchemaHandler
+    from pydantic_core import CoreSchema
 
 T = TypeVar("T")
 
@@ -37,5 +43,14 @@ def WithOptions(
         _text_index: bool = text_index
         _point_index: bool = point_index
         _unique: bool = unique
+
+        def __new__(cls, *args, **kwargs):
+            return property_type.__new__(property_type, *args, **kwargs)
+
+        if IS_PYDANTIC_V2:
+
+            @classmethod
+            def __get_pydantic_core_schema__(cls, _: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
+                return handler(property_type)
 
     return PropertyWithOptions
