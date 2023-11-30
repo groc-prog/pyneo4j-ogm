@@ -35,6 +35,7 @@ from pyneo4j_ogm.exceptions import (
 )
 from pyneo4j_ogm.fields.settings import RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.pydantic_utils import parse_model
 from pyneo4j_ogm.queries.enums import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
@@ -382,7 +383,9 @@ class RelationshipProperty(Generic[T, U]):
         )
 
         # Build properties if relationship is defined as model
-        relationship_instance = cast(U, self._relationship_model).validate(properties if properties is not None else {})
+        relationship_instance = parse_model(
+            cast(U, self._relationship_model), properties if properties is not None else {}
+        )
         deflated_properties: Dict[str, Any] = relationship_instance._deflate()
 
         relationship_query = self._query_builder.relationship_match(
