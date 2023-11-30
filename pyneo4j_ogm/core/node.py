@@ -37,6 +37,7 @@ from pyneo4j_ogm.exceptions import (
 from pyneo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import (
+    IS_PYDANTIC_V2,
     get_field_type,
     get_model_dump,
     get_model_dump_json,
@@ -128,12 +129,18 @@ class NodeModel(ModelBase[NodeModelSettings]):
             fallback_labels = re.findall(r"[A-Z][^A-Z]*", cls.__name__)
             setattr(cls._settings, "labels", set(fallback_labels))
 
-        logger.debug("Collecting relationship properties for model %s", cls.__name__)
-        for property_name, value in get_model_fields(cls).items():
-            # Check if value is None here to prevent breaking logic if property_name is of type None
-            if get_field_type(value) is not None and hasattr(get_field_type(value), "_build_property"):
-                cls._relationships_properties.add(property_name)
-                cls._settings.exclude_from_export.add(property_name)
+        if not IS_PYDANTIC_V2:
+            cls._register_relationship_properties()
+
+    if IS_PYDANTIC_V2:
+        # Pydantic does not initialize either `__fields__` or `model_fields` in the __init_subclass__
+        # method anymore in V2, thus we have to call this logic here as well
+        @classmethod
+        def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+            super().__pydantic_init_subclass__(**kwargs)
+
+            cls._register_relationship_properties()
+            print("DONE")
 
     @hooks
     async def create(self: T) -> T:
@@ -973,6 +980,18 @@ class NodeModel(ModelBase[NodeModelSettings]):
             raise UnexpectedEmptyResult()
 
         return results[0][0]
+
+    @classmethod
+    def _register_relationship_properties(cls) -> None:
+        """
+        Registers the relationship-properties defined on the model for later use.
+        """
+        logger.debug("Collecting relationship properties for model %s", cls.__name__)
+        for property_name, value in get_model_fields(cls).items():
+            # Check if value is None here to prevent breaking logic if property_name is of type None
+            if get_field_type(value) is not None and hasattr(get_field_type(value), "_build_property"):
+                cls._relationships_properties.add(property_name)
+                cls._settings.exclude_from_export.add(property_name)
 
     def _deflate(self) -> Dict[str, Any]:
         """
