@@ -1093,6 +1093,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     relationship_type = cast(RelationshipModelSettings, model._settings).type
                 elif model.__name__ == getattr(relationship_property, "_target_model_name", None):
                     end_node_labels = list(cast(NodeModelSettings, model._settings).labels)
+                elif relationship_type is not None and end_node_labels is not None:
+                    break
 
             if relationship_type is None or end_node_labels is None:
                 raise UnregisteredModel(cls.__name__)
