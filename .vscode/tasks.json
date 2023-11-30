@@ -4,40 +4,12 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Pytest: Unit- and integration-tests",
+      "label": "Pytest",
       "type": "shell",
       "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/coverage tests",
       "group": {
         "kind": "test",
         "isDefault": true
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared",
-        "showReuseMessage": true
-      }
-    },
-    {
-      "label": "Pytest: Unit tests",
-      "type": "shell",
-      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/coverage tests/unit",
-      "group": {
-        "kind": "test",
-        "isDefault": false
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared",
-        "showReuseMessage": true
-      }
-    },
-    {
-      "label": "Pytest: Integration tests",
-      "type": "shell",
-      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/coverage tests/integration",
-      "group": {
-        "kind": "test",
-        "isDefault": false
       },
       "presentation": {
         "reveal": "always",
@@ -61,7 +33,7 @@
     {
       "label": "Pylint",
       "type": "shell",
-      "command": "poetry run pylint pyneo4j_ogm tests",
+      "command": "poetry run pylint --rcfile=.pylintrc pyneo4j_ogm tests",
       "group": {
         "kind": "none"
       },
