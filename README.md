@@ -5,15 +5,14 @@
 [![PyPI - License](https://img.shields.io/pypi/l/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
 
-`pyneo4j-ogm` is a asynchronous `Object-Graph-Mapper` for [`Neo4j 5+`](https://neo4j.com/docs/) and [`Python 3.10+`](https://www.python.org/). It is inspired by [`beanie`](https://github.com/roman-right/beanie) and build on top of proven technologies like [`Pydantic 1.10`](https://docs.pydantic.dev/1.10/) and the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html). It saves you from writing ever-repeating boilerplate queries and allows you to focus on the `stuff that actually matters`. It is designed to be simple and easy to use, but also flexible and powerful.
+`pyneo4j-ogm` is a asynchronous `Object-Graph-Mapper` for [`Neo4j 5+`](https://neo4j.com/docs/) and [`Python 3.10+`](https://www.python.org/). It is inspired by [`beanie`](https://github.com/roman-right/beanie) and build on top of proven technologies like [`Pydantic 1.10+`](https://docs.pydantic.dev/latest/) and the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html). It saves you from writing ever-repeating boilerplate queries and allows you to focus on the `stuff that actually matters`. It is designed to be simple and easy to use, but also flexible and powerful.
 
 ## 📣 Upcoming features
 
 What's planned for future releases.
 
-- [ ] Support for `Pydantic V2`
-- [ ] Bookmark support
 - [ ] Migration CLI for migrating your pyneo4j-ogm models
+- [ ] Bookmark support
 
 ## 🎯 Features <a name="features"></a>
 
@@ -548,7 +547,7 @@ Filters for nested properties are also not supported, since they are stored as s
 
 #### Indexes, constraints and properties <a name="indexes-constraints-and-properties"></a>
 
-Since `pyneo4j-ogm` is built on top of `Pydantic`, all of the features provided by `Pydantic` are available to you. This includes defining `properties` on your models. For more information about these features, please refer to the [`Pydantic documentation`](https://pydantic-docs.helpmanual.io/usage/schema/#schema-customization).
+Since `pyneo4j-ogm` is built on top of `Pydantic`, all of the features provided by `Pydantic` are available to you. This includes defining `properties` on your models. For more information about these features, please refer to the [`Pydantic documentation`](https://docs.pydantic.dev/latest/concepts/json_schema/#schema-customization).
 
 On the other hand, `indexes and constraints` are handled solely by `pyneo4j-ogm`. You can define indexes and constraints on your models by using the `WithOptions` method wrapped around the type of the property. You can pass the following arguments to the `WithOptions` method:
 
@@ -1182,7 +1181,7 @@ Because most frontend applications use `camelCase` for their properties, the `ex
 
 ##### Instance.export_model() <a name="instance-export-model"></a>
 
-Export the model instance to a dictionary containing standard python types. Since this method uses `pydantic.BaseModel.json()` internally, all arguments it accepts are also accepted by this method.
+Export the model instance to a dictionary containing standard python types. Since this method uses `pydantic.BaseModel.model_dump_json()` internally, all arguments it accepts are also accepted by this method.
 
 ```python
 developer = await Developer(
