@@ -2,6 +2,75 @@
 
 
 
+## v0.3.0 (2023-11-30)
+
+### Chore
+
+* chore: update pytest IDE settings ([`63ffa26`](https://github.com/groc-prog/pyneo4j-ogm/commit/63ffa26da9906c0abcf99b651e2b5ed1b2040ae5))
+
+* chore(tasks): update vscode tasks ([`9c2497a`](https://github.com/groc-prog/pyneo4j-ogm/commit/9c2497ad178c1812bb4e6d13b4bc3f1e8ad0b45c))
+
+* chore(pydantic): bump version to &gt;=1.10, &lt;3.0 ([`a46177f`](https://github.com/groc-prog/pyneo4j-ogm/commit/a46177f16448ae9dfaec5378a8bd5a154cab2ef1))
+
+### Ci
+
+* ci: update test workflow to run pydantic v1 and v2 ([`535291a`](https://github.com/groc-prog/pyneo4j-ogm/commit/535291a8f50be67c8ccba2a3293ec19a12e091d8))
+
+* ci: cache poetry lock and venv ([`ec2d51f`](https://github.com/groc-prog/pyneo4j-ogm/commit/ec2d51fe9ca2cbb731b1cc44391979803b7e0ef9))
+
+### Documentation
+
+* docs: update supported pydantic versions in docs ([`5260cc5`](https://github.com/groc-prog/pyneo4j-ogm/commit/5260cc54443352461ddf532653bde5dcbc9edaab))
+
+### Feature
+
+* feat: update remaining codebase to pydantic v2, rename __settings__ to _settings ([`b4236a6`](https://github.com/groc-prog/pyneo4j-ogm/commit/b4236a6c6ab8fb85622261b5cdaf4bd2333dccdb))
+
+* feat: update settings to pydantic v2 ([`a60ca78`](https://github.com/groc-prog/pyneo4j-ogm/commit/a60ca78c6cbcd0298eab13867aa7cebbe218638d))
+
+* feat: update validators to pydantic v2 ([`08a3641`](https://github.com/groc-prog/pyneo4j-ogm/commit/08a36410cf9f577a1368fc6cc97f2737ab664ca5))
+
+* feat: add pydantic utils for backwards compatibility ([`9a85d4a`](https://github.com/groc-prog/pyneo4j-ogm/commit/9a85d4a8ffef74ce7be28606ddc1dd719622186e))
+
+### Fix
+
+* fix(WithOptions): fix typing issue ([`8228964`](https://github.com/groc-prog/pyneo4j-ogm/commit/8228964d82f39733d356b4175b52890d866f45c2))
+
+* fix(RelationshipModel): use _deflate() instead of model_dump ([`1198602`](https://github.com/groc-prog/pyneo4j-ogm/commit/1198602e6119df225607d28a1cdcecdb013e6767))
+
+* fix(NodeModel): implement dirty??? hack for pydantic fields not getting initialized separately anymore, use _deflate instead of model_dump ([`ed106ba`](https://github.com/groc-prog/pyneo4j-ogm/commit/ed106ba020110e4b0f0edeefba40572aae0800ef))
+
+* fix(WithOptions): fix breaking changes in v2 ([`3484ed6`](https://github.com/groc-prog/pyneo4j-ogm/commit/3484ed6af294ebc558e000f909ca21976dffb9dc))
+
+* fix(validators): fix breaking change in validator return value ([`857dd93`](https://github.com/groc-prog/pyneo4j-ogm/commit/857dd937eeab909f7c0305fe9da788c4e34e2433))
+
+* fix(NodeModel): register relationship properties correctly with pydantic v2 ([`68f415f`](https://github.com/groc-prog/pyneo4j-ogm/commit/68f415f9ca21d096f41ba5a35364011c53318e0a))
+
+* fix(ModelBase): fix root validator ([`33f43bd`](https://github.com/groc-prog/pyneo4j-ogm/commit/33f43bd36b83586f9b6c68073f4d13289a67598a))
+
+* fix: fix pydantic utils typings ([`65feb25`](https://github.com/groc-prog/pyneo4j-ogm/commit/65feb2501eab6c79e3b440d397cca66c87e0e66a))
+
+### Performance
+
+* perf(NodeModel): stop looping over model if auto-fetch models have been found ([`efee0fc`](https://github.com/groc-prog/pyneo4j-ogm/commit/efee0fcf837a50afe44f93af48ddb39edfea0434))
+
+### Refactor
+
+* refactor(RelationshipProperty): use parse_model() instead of model.validate() ([`1a27569`](https://github.com/groc-prog/pyneo4j-ogm/commit/1a275696bb413b0c0c911ee62424728342a8642d))
+
+### Test
+
+* test: fix test which closed client prematurely ([`6ffd5f6`](https://github.com/groc-prog/pyneo4j-ogm/commit/6ffd5f67722913973c05bb03afb1c36f0273b2ac))
+
+* test: add pytest.ini file ([`499e7f5`](https://github.com/groc-prog/pyneo4j-ogm/commit/499e7f5176323290fb7355a34626d24c1192317a))
+
+* test: re-add removed tests ([`c27601d`](https://github.com/groc-prog/pyneo4j-ogm/commit/c27601dbee4333e2098fb5e2ac8325a97ba42837))
+
+### Unknown
+
+* Merge remote-tracking branch &#39;origin/main&#39; into develop ([`e5f603b`](https://github.com/groc-prog/pyneo4j-ogm/commit/e5f603b99afd413d457eca4c761a8d771a50c5bd))
+
+
 ## v0.2.0 (2023-11-29)
 
 ### Chore
