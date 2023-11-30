@@ -74,13 +74,13 @@ async def test_ensure_connection(client: Pyneo4jClient):
         client = Pyneo4jClient()
         await client.cypher("MATCH (n) RETURN n")
 
-    with pytest.raises(NotConnectedToDatabase):
-        await client.close()
-        await client.cypher("MATCH (n) RETURN n")
-
     await client.connect("bolt://localhost:7687", auth=("neo4j", "password"))
     results, _ = await client.cypher("MATCH (n) RETURN n")
     assert results == []
+
+    with pytest.raises(NotConnectedToDatabase):
+        await client.close()
+        await client.cypher("MATCH (n) RETURN n")
 
 
 async def test_register_models(client: Pyneo4jClient, session: AsyncSession):
@@ -109,11 +109,13 @@ async def test_register_models(client: Pyneo4jClient, session: AsyncSession):
 
     query_results = await session.run("SHOW CONSTRAINTS")
     constraint_results = [result.values() async for result in query_results]
+    await query_results.consume()
 
     assert len(constraint_results) == 3
 
     query_results = await session.run("SHOW INDEXES")
     index_results = [result.values() async for result in query_results]
+    await query_results.consume()
 
     assert len(index_results) == 12
 
