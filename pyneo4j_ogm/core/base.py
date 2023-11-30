@@ -151,7 +151,9 @@ class ModelBase(BaseModel, Generic[V]):
             """
             Checks if all list properties are made of primitive types.
             """
-            for key, value in values.items():
+            normalized_values: Dict[str, Any] = get_model_dump(values) if isinstance(values, BaseModel) else values
+
+            for key, value in normalized_values.items():
                 if isinstance(value, list):
                     for item in value:
                         if not isinstance(item, (int, float, str, bool)):
@@ -162,11 +164,13 @@ class ModelBase(BaseModel, Generic[V]):
     else:
 
         @root_validator
-        def _root_validator_check_list_properties(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        def _root_validator_check_list_properties(cls, values: Any) -> Any:
             """
             Checks if all list properties are made of primitive types.
             """
-            for key, value in values.items():
+            normalized_values: Dict[str, Any] = get_model_dump(values) if isinstance(values, BaseModel) else values
+
+            for key, value in normalized_values.items():
                 if isinstance(value, list):
                     for item in value:
                         if not isinstance(item, (int, float, str, bool)):
