@@ -10,12 +10,14 @@ from copy import deepcopy
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
+    AbstractSet,
     Any,
     Callable,
     ClassVar,
     Dict,
     Generic,
     List,
+    Mapping,
     Optional,
     ParamSpec,
     Set,
@@ -50,6 +52,11 @@ P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
 U = TypeVar("U")
 V = TypeVar("V")
+
+MappingIntStrAny = Mapping[int | str, Any]
+DictStrAny = Dict[str, Any]
+AbstractSetIntStr = AbstractSet[int | str]
+IncEx = Optional[Union[Set[int], Set[str], Dict[int, Any], Dict[str, Any]]]
 
 
 def hooks(func):
@@ -138,7 +145,7 @@ class ModelBase(BaseModel, Generic[V]):
     _settings: BaseModelSettings = PrivateAttr()
     _client: Pyneo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
-    _db_properties: Dict[str, Any] = PrivateAttr(default_factory=dict)
+    _db_properties: Dict[str, Any] = PrivateAttr(default={})
     _destroyed: bool = PrivateAttr(default=False)
     _element_id: Optional[str] = PrivateAttr(default=None)
     _id: Optional[int] = PrivateAttr(default=None)
@@ -161,6 +168,165 @@ class ModelBase(BaseModel, Generic[V]):
 
             return values
 
+        def dict(  # type: ignore
+            self,
+            *,
+            include: IncEx = None,
+            exclude: IncEx = None,
+            by_alias: bool = False,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+        ) -> Dict[str, Any]:
+            base_dict = super().dict(
+                include=include,
+                exclude=exclude,
+                by_alias=by_alias,
+                exclude_unset=exclude_unset,
+                exclude_defaults=exclude_defaults,
+                exclude_none=exclude_none,
+            )
+
+            # Check if alias has been defined
+            element_id_field_name = self._get_alias("element_id")
+            id_field_name = self._get_alias("id")
+
+            if exclude is not None and element_id_field_name not in exclude:
+                base_dict[element_id_field_name] = self._element_id
+            if exclude is not None and id_field_name not in exclude:
+                base_dict[id_field_name] = self._id
+
+            return base_dict
+
+        def model_dump(
+            self,
+            *,
+            mode: str = "python",
+            include: IncEx = None,
+            exclude: IncEx = None,
+            by_alias: bool = False,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+            round_trip: bool = False,
+            warnings: bool = True,
+        ) -> Dict[str, Any]:
+            base_dict = super().model_dump(
+                mode=mode,
+                include=include,
+                exclude=exclude,
+                by_alias=by_alias,
+                exclude_unset=exclude_unset,
+                exclude_defaults=exclude_defaults,
+                exclude_none=exclude_none,
+                round_trip=round_trip,
+                warnings=warnings,
+            )
+
+            # Check if alias has been defined
+            element_id_field_name = self._get_alias("element_id")
+            id_field_name = self._get_alias("id")
+
+            if exclude is not None and element_id_field_name not in exclude:
+                base_dict[element_id_field_name] = self._element_id
+            if exclude is not None and id_field_name not in exclude:
+                base_dict[id_field_name] = self._id
+
+            return base_dict
+
+        def json(  # type: ignore
+            self,
+            *,
+            include: IncEx = None,
+            exclude: IncEx = None,
+            by_alias: bool = False,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+            encoder: Optional[Callable[[Any], Any]] = None,
+            models_as_dict: bool = True,
+            **dumps_kwargs: Any,
+        ) -> str:
+            base_json = super().json(
+                include=include,
+                exclude=exclude,
+                by_alias=by_alias,
+                exclude_unset=exclude_unset,
+                exclude_defaults=exclude_defaults,
+                exclude_none=exclude_none,
+                encoder=encoder,
+                models_as_dict=models_as_dict,
+                **dumps_kwargs,
+            )
+
+            # Check if alias has been defined
+            element_id_field_name = self._get_alias("element_id")
+            id_field_name = self._get_alias("id")
+
+            modified_json = json.loads(base_json)
+
+            if exclude is not None and element_id_field_name not in exclude:
+                modified_json[element_id_field_name] = self._element_id
+            if exclude is not None and id_field_name not in exclude:
+                modified_json[id_field_name] = self._id
+
+            return json.dumps(modified_json)
+
+        def model_dump_json(
+            self,
+            *,
+            indent: int | None = None,
+            include: IncEx = None,
+            exclude: IncEx = None,
+            by_alias: bool = False,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+            round_trip: bool = False,
+            warnings: bool = True,
+        ) -> str:
+            base_json = super().model_dump_json(
+                indent=indent,
+                include=include,
+                exclude=exclude,
+                by_alias=by_alias,
+                exclude_unset=exclude_unset,
+                exclude_defaults=exclude_defaults,
+                exclude_none=exclude_none,
+                round_trip=round_trip,
+                warnings=warnings,
+            )
+
+            # Check if alias has been defined
+            element_id_field_name = self._get_alias("element_id")
+            id_field_name = self._get_alias("id")
+
+            modified_json = json.loads(base_json)
+
+            if exclude is not None and element_id_field_name not in exclude:
+                modified_json[element_id_field_name] = self._element_id
+            if exclude is not None and id_field_name not in exclude:
+                modified_json[id_field_name] = self._id
+
+            return json.dumps(modified_json)
+
+        def _get_alias(self, field_name: str) -> str:
+            """
+            Returns the field name to use for serialization.
+
+            Args:
+                field_name (str): The field name to search for aliases for.
+
+            Returns:
+                str: The field name to use for serialization.
+            """
+            serialization_name = field_name
+
+            if "alias_generator" in self.model_config and self.model_config["alias_generator"] is not None:
+                serialization_name = self.model_config["alias_generator"](field_name)
+
+            return serialization_name
+
     else:
 
         @root_validator
@@ -177,6 +343,102 @@ class ModelBase(BaseModel, Generic[V]):
                             raise ValueError(f"List property {key} must be made of primitive types")
 
             return values
+
+        def dict(
+            self,
+            *,
+            include: Optional[Union[AbstractSetIntStr, MappingIntStrAny]] = None,
+            exclude: Optional[Union[AbstractSetIntStr, MappingIntStrAny]] = None,
+            by_alias: bool = False,
+            skip_defaults: Optional[bool] = None,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+        ) -> DictStrAny:
+            base_dict = super().dict(
+                include=include,
+                exclude=exclude,
+                by_alias=by_alias,
+                skip_defaults=skip_defaults,  # type: ignore
+                exclude_unset=exclude_unset,
+                exclude_defaults=exclude_defaults,
+                exclude_none=exclude_none,
+            )
+
+            # Check if alias has been defined
+            element_id_field_name = self._get_alias("element_id")
+            id_field_name = self._get_alias("id")
+
+            if exclude is not None and element_id_field_name not in exclude:
+                base_dict[element_id_field_name] = self._element_id
+            if exclude is not None and id_field_name not in exclude:
+                base_dict[id_field_name] = self._id
+
+            return base_dict
+
+        def json(
+            self,
+            *,
+            include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+            exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+            by_alias: bool = False,
+            skip_defaults: Optional[bool] = None,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+            encoder: Optional[Callable[[Any], Any]] = None,
+            models_as_dict: bool = True,
+            **dumps_kwargs: Any,
+        ) -> str:
+            base_json = super().json(
+                include=include,  # type: ignore
+                exclude=exclude,  # type: ignore
+                by_alias=by_alias,
+                skip_defaults=skip_defaults,
+                exclude_unset=exclude_unset,
+                exclude_defaults=exclude_defaults,
+                exclude_none=exclude_none,
+                encoder=encoder,
+                models_as_dict=models_as_dict,
+                **dumps_kwargs,
+            )
+
+            # Check if alias has been defined
+            element_id_field_name = self._get_alias("element_id")
+            id_field_name = self._get_alias("id")
+
+            modified_json = json.loads(base_json)
+
+            if exclude is not None and element_id_field_name not in exclude:
+                modified_json[element_id_field_name] = self._element_id
+            if exclude is not None and id_field_name not in exclude:
+                modified_json[id_field_name] = self._id
+
+            return json.dumps(modified_json)
+
+        def _get_alias(self, field_name: str) -> str:
+            """
+            Returns the field name to use for serialization.
+
+            Args:
+                field_name (str): The field name to search for aliases for.
+
+            Returns:
+                str: The field name to use for serialization.
+            """
+            serialization_name = field_name
+
+            if self.__config__.fields.get(field_name) is not None:  # type: ignore
+                field = self.__config__.fields.get(field_name)  # type: ignore
+
+                if isinstance(field, str):
+                    serialization_name = field
+                elif field is not None and "alias" in field:
+                    serialization_name = field["alias"]
+            elif self.__config__.alias_generator is not None:  # type: ignore
+                serialization_name = self.__config__.alias_generator(field_name)  # type: ignore
+
+            return serialization_name
 
     def __init__(self, *args, **kwargs) -> None:
         if not hasattr(self, "_client"):
@@ -217,6 +479,14 @@ class ModelBase(BaseModel, Generic[V]):
 
     def __str__(self) -> str:
         return self.__repr__()
+
+    def __iter__(self):
+        for name, value in self.__dict__.items():
+            if not name.startswith("_"):
+                yield name, value
+
+        yield "element_id", self._element_id
+        yield "id", self._id
 
     def export_model(self, convert_to_camel_case: bool = False, *args, **kwargs) -> Dict[str, Any]:
         """
