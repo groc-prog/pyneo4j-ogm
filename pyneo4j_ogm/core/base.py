@@ -186,7 +186,11 @@ class ModelBase(BaseModel, Generic[V]):
             element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
             id_field_name = self._get_alias("id") if by_alias else "id"
 
-            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):  # type: ignore
+            if self._check_field_included(
+                exclude=exclude,  # type: ignore
+                include=include,  # type: ignore
+                field_name=element_id_field_name,
+            ):
                 base_dict[element_id_field_name] = self._element_id
             if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
                 base_dict[id_field_name] = self._id
@@ -222,7 +226,11 @@ class ModelBase(BaseModel, Generic[V]):
             element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
             id_field_name = self._get_alias("id") if by_alias else "id"
 
-            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):  # type: ignore
+            if self._check_field_included(
+                exclude=exclude,  # type: ignore
+                include=include,  # type: ignore
+                field_name=element_id_field_name,
+            ):
                 base_dict[element_id_field_name] = self._element_id
             if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
                 base_dict[id_field_name] = self._id
@@ -260,7 +268,11 @@ class ModelBase(BaseModel, Generic[V]):
 
             modified_json = json.loads(base_json)
 
-            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):  # type: ignore
+            if self._check_field_included(
+                exclude=exclude,  # type: ignore
+                include=include,  # type: ignore
+                field_name=element_id_field_name,
+            ):
                 modified_json[element_id_field_name] = self._element_id
             if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
                 modified_json[id_field_name] = self._id
@@ -300,7 +312,11 @@ class ModelBase(BaseModel, Generic[V]):
 
             modified_json = json.loads(base_json)
 
-            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):  # type: ignore
+            if self._check_field_included(
+                exclude=exclude,  # type: ignore
+                include=include,  # type: ignore
+                field_name=element_id_field_name,
+            ):
                 modified_json[element_id_field_name] = self._element_id
             if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
                 modified_json[id_field_name] = self._id
@@ -362,7 +378,7 @@ class ModelBase(BaseModel, Generic[V]):
 
             return values
 
-        def dict(
+        def dict(  # type: ignore
             self,
             *,
             include: Optional[Union[AbstractSetIntStr, MappingIntStrAny]] = None,
@@ -373,6 +389,7 @@ class ModelBase(BaseModel, Generic[V]):
             exclude_defaults: bool = False,
             exclude_none: bool = False,
         ) -> DictStrAny:
+            # pylint: disable=unexpected-keyword-arg
             base_dict = super().dict(
                 include=include,
                 exclude=exclude,
@@ -394,7 +411,7 @@ class ModelBase(BaseModel, Generic[V]):
 
             return base_dict
 
-        def json(
+        def json(  # type: ignore
             self,
             *,
             include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
