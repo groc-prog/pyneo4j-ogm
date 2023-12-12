@@ -1,5 +1,7 @@
 # pylint: disable=invalid-name, redefined-outer-name, unused-import, missing-module-docstring, missing-class-docstring
 
+import json
+from ast import alias
 from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock
 
@@ -7,8 +9,13 @@ import pytest
 
 from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.core.node import NodeModel
-from pyneo4j_ogm.exceptions import ModelImportFailure, UnregisteredModel
+from pyneo4j_ogm.exceptions import UnregisteredModel
 from pyneo4j_ogm.fields.settings import BaseModelSettings
+from pyneo4j_ogm.pydantic_utils import (
+    IS_PYDANTIC_V2,
+    get_model_dump,
+    get_model_dump_json,
+)
 from tests.fixtures.db_setup import Developer
 
 
@@ -79,59 +86,14 @@ def test_post_hooks():
     Developer._settings.post_hooks["test_hook"] = []
 
 
-def test_import_model():
-    class ModelImportTest(NodeModel):
-        my_prop: Optional[int]
-        my_list: Optional[List[int]]
-
-    setattr(ModelImportTest, "_client", None)
-
-    model_dict = {
-        "element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18",
-        "id": 13,
-        "my_prop": 2,
-        "my_list": [1, 2],
-    }
-
-    model = ModelImportTest.import_model(model_dict)
-
-    assert model.element_id == "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18"
-    assert model.id == 13
-    assert model.my_prop == 2
-    assert model.my_list == [1, 2]
-
-    model_dict_converted = {
-        "elementId": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18",
-        "id": 13,
-        "myProp": 2,
-        "myList": [1, 2],
-    }
-
-    model_converted = ModelImportTest.import_model(model_dict_converted, from_camel_case=True)
-
-    assert model_converted.element_id == "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18"
-    assert model_converted.id == 13
-    assert model_converted.my_prop == 2
-    assert model_converted.my_list == [1, 2]
-
-    with pytest.raises(ModelImportFailure):
-        ModelImportTest.import_model({"element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18"})
-        ModelImportTest.import_model({"id": 13})
-        ModelImportTest.import_model(
-            {"element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18", "id": 13}, from_camel_case=True
-        )
-
-
 def test_model_settings():
     class ModelSettingsTest(NodeModel):
         pass
 
         class Settings:
-            exclude_from_export = {"exclude_from_export"}
             pre_hooks = {"test_hook": [hook_func]}
             post_hooks = {"test_hook": [hook_func, hook_func]}
 
-    assert ModelSettingsTest.model_settings().exclude_from_export == {"exclude_from_export"}
     assert ModelSettingsTest.model_settings().pre_hooks == {"test_hook": [hook_func]}
     assert ModelSettingsTest.model_settings().post_hooks == {"test_hook": [hook_func, hook_func]}
 
@@ -202,3 +164,147 @@ async def test_list_primitive_types():
 
     with pytest.raises(ValueError):
         DisallowedListModel()
+
+
+def test_dict_dump():
+    def alias_gen(val: str) -> str:
+        return f"ogm_{val}"
+
+    class TestModel(NodeModel):
+        a: str = "a"
+        b: int = 1
+        c: bool = True
+
+    class TestModelWithAlias(NodeModel):
+        a: str = "a"
+        b: int = 1
+        c: bool = True
+
+        if IS_PYDANTIC_V2:
+            model_config = {"alias_generator": alias_gen}
+        else:
+
+            class Config:
+                alias_generator = alias_gen
+
+    setattr(TestModel, "_client", None)
+    setattr(TestModel, "_element_id", "test-element-id")
+    setattr(TestModel, "_id", "test-id")
+    setattr(TestModelWithAlias, "_client", None)
+    setattr(TestModelWithAlias, "_element_id", "test-element-id")
+    setattr(TestModelWithAlias, "_id", "test-id")
+
+    model = TestModel()
+    model_dict = get_model_dump(model)
+
+    assert "a" in model_dict
+    assert "b" in model_dict
+    assert "c" in model_dict
+    assert "element_id" in model_dict
+    assert "id" in model_dict
+
+    assert model_dict["a"] == "a"
+    assert model_dict["b"] == 1
+    assert model_dict["c"] is True
+    assert model_dict["element_id"] == "test-element-id"
+    assert model_dict["id"] == "test-id"
+
+    model_dict = get_model_dump(model, exclude={"id"}, include={"id", "element_id"})
+
+    assert "id" not in model_dict
+    assert "element_id" in model_dict
+
+    alias_model = TestModelWithAlias()
+    alias_model_dict = get_model_dump(alias_model)
+
+    assert "a" in alias_model_dict
+    assert "b" in alias_model_dict
+    assert "c" in alias_model_dict
+    assert "element_id" in alias_model_dict
+    assert "id" in alias_model_dict
+
+    alias_model_dict = get_model_dump(alias_model, by_alias=True)
+
+    assert "ogm_a" in alias_model_dict
+    assert "ogm_b" in alias_model_dict
+    assert "ogm_c" in alias_model_dict
+    assert "ogm_element_id" in alias_model_dict
+    assert "ogm_id" in alias_model_dict
+
+    assert alias_model_dict["ogm_a"] == "a"
+    assert alias_model_dict["ogm_b"] == 1
+    assert alias_model_dict["ogm_c"] is True
+    assert alias_model_dict["ogm_element_id"] == "test-element-id"
+    assert alias_model_dict["ogm_id"] == "test-id"
+
+
+def test_json_dump():
+    def alias_gen(val: str) -> str:
+        return f"ogm_{val}"
+
+    class TestModel(NodeModel):
+        a: str = "a"
+        b: int = 1
+        c: bool = True
+
+    class TestModelWithAlias(NodeModel):
+        a: str = "a"
+        b: int = 1
+        c: bool = True
+
+        if IS_PYDANTIC_V2:
+            model_config = {"alias_generator": alias_gen}
+        else:
+
+            class Config:
+                alias_generator = alias_gen
+
+    setattr(TestModel, "_client", None)
+    setattr(TestModel, "_element_id", "test-element-id")
+    setattr(TestModel, "_id", "test-id")
+    setattr(TestModelWithAlias, "_client", None)
+    setattr(TestModelWithAlias, "_element_id", "test-element-id")
+    setattr(TestModelWithAlias, "_id", "test-id")
+
+    model = TestModel()
+    model_dict = json.loads(get_model_dump_json(model))
+
+    assert "a" in model_dict
+    assert "b" in model_dict
+    assert "c" in model_dict
+    assert "element_id" in model_dict
+    assert "id" in model_dict
+
+    assert model_dict["a"] == "a"
+    assert model_dict["b"] == 1
+    assert model_dict["c"] is True
+    assert model_dict["element_id"] == "test-element-id"
+    assert model_dict["id"] == "test-id"
+
+    model_dict = json.loads(get_model_dump_json(model, exclude={"id"}, include={"id", "element_id"}))
+
+    assert "id" not in model_dict
+    assert "element_id" in model_dict
+
+    alias_model = TestModelWithAlias()
+    alias_model_dict = json.loads(get_model_dump_json(alias_model))
+
+    assert "a" in alias_model_dict
+    assert "b" in alias_model_dict
+    assert "c" in alias_model_dict
+    assert "element_id" in alias_model_dict
+    assert "id" in alias_model_dict
+
+    alias_model_dict = json.loads(get_model_dump_json(alias_model, by_alias=True))
+
+    assert "ogm_a" in alias_model_dict
+    assert "ogm_b" in alias_model_dict
+    assert "ogm_c" in alias_model_dict
+    assert "ogm_element_id" in alias_model_dict
+    assert "ogm_id" in alias_model_dict
+
+    assert alias_model_dict["ogm_a"] == "a"
+    assert alias_model_dict["ogm_b"] == 1
+    assert alias_model_dict["ogm_c"] is True
+    assert alias_model_dict["ogm_element_id"] == "test-element-id"
+    assert alias_model_dict["ogm_id"] == "test-id"

@@ -30,10 +30,6 @@ def test_labels_fallback():
     assert CoffeeShop._settings.labels == {"Coffee", "Shop"}
 
 
-def test_relationship_property_auto_exclude():
-    assert Developer._settings.exclude_from_export == {"colleagues", "coffee"}
-
-
 def test_ensure_alive_decorator():
     class EnsureAliveTest:
         _destroyed = False

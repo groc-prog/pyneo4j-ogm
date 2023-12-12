@@ -66,30 +66,6 @@ async def test_eq_method(client: Pyneo4jClient):
     assert not node1 == relationship
 
 
-async def test_export_model(client: Pyneo4jClient):
-    await client.register_models([ModelExportTest, ModelExportTest2, RelationshipExportTest])
-
-    node = await ModelExportTest().create()
-
-    assert node.export_model() == {
-        "element_id": node.element_id,
-        "id": node.id,
-        "my_prop": 2,
-        "my_list": [1, 2],
-    }
-    assert node.export_model(exclude={"my_prop"}) == {
-        "element_id": node.element_id,
-        "id": node.id,
-        "my_list": [1, 2],
-    }
-    assert node.export_model(convert_to_camel_case=True) == {
-        "elementId": node.element_id,
-        "id": node.id,
-        "myProp": 2,
-        "myList": [1, 2],
-    }
-
-
 async def test_element_id(client: Pyneo4jClient):
     await client.register_models([NodeTestModel])
 
