@@ -310,9 +310,7 @@ class RelationshipProperty(Generic[T, U]):
             self._query_builder.build_projections(projections=projections, ref="r")
 
         projection_query = (
-            "RETURN DISTINCT r"
-            if self._query_builder.query["projections"] == ""
-            else self._query_builder.query["projections"]
+            "RETURN r" if self._query_builder.query["projections"] == "" else self._query_builder.query["projections"]
         )
         match_query = self._query_builder.relationship_match(
             direction=self._direction,
@@ -748,9 +746,7 @@ class RelationshipProperty(Generic[T, U]):
             self._query_builder.build_projections(projections=projections, ref="end")
 
         projection_query = (
-            "RETURN DISTINCT end"
-            if self._query_builder.query["projections"] == ""
-            else self._query_builder.query["projections"]
+            "RETURN end" if self._query_builder.query["projections"] == "" else self._query_builder.query["projections"]
         )
 
         if auto_fetch_nodes:
