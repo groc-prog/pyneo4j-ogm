@@ -334,11 +334,7 @@ In the following we are going to take a closer look at the different parts of `p
           - [Auto-fetching nodes ](#auto-fetching-nodes--2)
         - [RelationshipModelInstance.start\_node() ](#relationshipmodelinstancestart_node-)
         - [RelationshipModelInstance.end\_node() ](#relationshipmodelinstanceend_node-)
-      - [Importing/exporting models ](#importingexporting-models-)
-        - [Instance.export\_model() ](#instanceexport_model-)
-          - [Case conversion ](#case-conversion-)
-        - [Model.import\_model() ](#modelimport_model-)
-          - [Case conversion ](#case-conversion--1)
+      - [Serializing models ](#serializing-models-)
       - [Hooks ](#hooks-)
         - [Pre-hooks ](#pre-hooks-)
         - [Post-hooks ](#post-hooks-)
@@ -614,8 +610,7 @@ There also is a special type of property called `RelationshipProperty`. This pro
 The `Settings` class of a `NodeModel` provides the following properties:
 
 | Setting name          | Type                          | Description                                                                                                                                                                                                                                                                                                                              |
-| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `exclude_from_export` | **Set[str]**                  | Can be used to always exclude a property from being exported when using the `export_model()` method on a model. Any `RelationshipProperty properties` on a model are `automatically added`. Defaults to `set()`.                                                                                                  |
+| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |                                                                                                |
 | `pre_hooks`           | **Dict[str, List[Callable]]** | A dictionary where the key is the name of the method for which to register the hook and the value is a list of hook functions. The hook function can be synchronous or asynchronous. All hook functions receive the exact same arguments as the method they are registered for and the current model instance as the first argument. Defaults to `{}`. |
 | `post_hooks`          | **Dict[str, List[Callable]]** | Same as **pre_hooks**, but the hook functions are executed after the method they are registered for. Additionally, the result of the method is passed to the hook as the second argument. Defaults to `{}`.                                                                                                                              |
 | `labels`           | **Set[str]** | A set of labels to use for the node. If no labels are defined, the name of the model will be used as the label. Defaults to the `model name split by it's words`.                                                                                                                                                                                                                            |
@@ -628,8 +623,7 @@ The `Settings` class of a `NodeModel` provides the following properties:
 For RelationshipModels, the `labels` setting is not available, since relationships don't have labels in Neo4j. Instead, the `type` setting can be used to define the type of the relationship. If no type is defined, the name of the model name will be used as the type.
 
 | Setting name          | Type                          | Description                                                                                                                                                                                                                                                                                                                              |
-| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `exclude_from_export` | **Set[str]**                  | Can be used to always exclude a property from being exported when using the `export_model()` method on a model. Any `RelationshipProperty properties` on a model are `automatically added`. Defaults to `set()`.                                                                                                  |
+| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |                                                                                                |
 | `pre_hooks`           | **Dict[str, List[Callable]]** | A dictionary where the key is the name of the method for which to register the hook and the value is a list of hook functions. The hook function can be synchronous or asynchronous. All hook functions receive the exact same arguments as the method they are registered for and the current model instance as the first argument. Defaults to `{}`. |
 | `post_hooks`          | **Dict[str, List[Callable]]** | Same as **pre_hooks**, but the hook functions are executed after the method they are registered for. Additionally, the result of the method is passed to the hook as the second argument. Defaults to `{}`.                                                                                                                              |
 | `type`       | **str** | The type of the relationship to use. If no type is defined, the model name will be used as the type. Defaults to the `model name in all uppercase`. |
@@ -1171,87 +1165,9 @@ end_node = await coffee_relationship.end_node()
 print(end_node) # <Developer>
 ```
 
-#### Importing/exporting models <a name="importing-exporting-models"></a>
+#### Serializing models <a name="serializing-models"></a>
 
-When this library was created, one of the reasons for this implementation was easy usage with gRPC services and frontend applications. To make this as easy as possible, `pyneo4j-ogm` provides a few methods to export and import models to and from dictionaries.
-
-Since gRPC can only handle Python's standard types, the `export_model()` method can be used to convert a model instance to a dictionary containing only standard types.
-
-Because most frontend applications use `camelCase` for their properties, the `export_model()` method also provides an option to convert the keys of the dictionary to `camelCase` when exporting it.
-
-##### Instance.export_model() <a name="instance-export-model"></a>
-
-Export the model instance to a dictionary containing standard python types. Since this method uses `pydantic.BaseModel.model_dump_json()` internally, all arguments it accepts are also accepted by this method.
-
-```python
-developer = await Developer(
-  name="John",
-  age=24
-).create()
-
-# Export the model instance to a dictionary
-developer_dict = developer.export_model()
-
-print(developer_dict) # {"element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:6", "name": "John", "age": 24}
-```
-
-###### Case conversion <a name="instance-export-model-case-conversion"></a>
-
-By default, the `export_model()` will just convert the model instance to a dictionary. If you want to convert the keys of the dictionary to `camelCase` when exporting it, you can do so by passing the `convert_to_camel_case` argument to the method and setting it to `True`.
-
-> **Note**: This argument is very opinionated and you will probably not need it in most cases.
-
-```python
-developer = await Developer(
-  name="John",
-  age=24,
-  some_multi_level_property=True
-).create()
-
-# Export the model instance to a dictionary with camelCase keys
-developer_dict = developer.export_model(convert_to_camel_case=True)
-
-print(developer_dict) # {"elementId": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:6", "name": "John", "age": 24, "someMultiLevelProperty": True}
-```
-
-##### Model.import_model() <a name="model-import-model"></a>
-
-Since you can export a model instance to a dictionary, it is also possible to import a model instance from a dictionary. This can be useful if you want to import a model instance from JSON and use a method on it straight away.
-
-> **Note**: Since this method converts the provided dictionary directly to a database model, the `element_id` key must be provided in the dictionary. This is because the library needs to know which entity the model belongs to when importing it. If you don't want to provide the `element_id` key, you can use pydantic's native methods for importing/exporting models and then call the `Model.find_one()` method.
-
-```python
-developer_dict = {
-  "element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:6",
-  "name": "John",
-  "age": 24
-}
-
-# Import the model instance from the dictionary
-# After this import, any method can be called on the instance
-developer = await Developer.import_model(developer_dict)
-
-print(developer) # <Developer element_id="4:08f8a347-1856-487c-8705-26d2b4a69bb7:6" name="John", age=24>
-```
-
-###### Case conversion <a name="instance-import-model-case-conversion"></a>
-
-By default, the `import_model()` will just try to import the model. If you converted the keys of the dictionary to `camelCase` when exporting it or get them from a JSON response, you need to pass the `convert_to_snake_case` argument as `True` to let the library know about it.
-
-```python
-developer_dict = {
-  "element_id": "4:08f8a347-1856-487c-8705-26d2b4a69bb7:6",
-  "name": "John",
-  "age": 24,
-  "someMultiLevelProperty": True
-}
-
-# Import the model instance from the dictionary
-# After this import, any method can be called on the instance
-developer = await Developer.import_model(developer_dict, convert_to_snake_case=True)
-
-print(developer) # <Developer element_id="4:08f8a347-1856-487c-8705-26d2b4a69bb7:6" name="John", age=24, some_multi_level_property=True>
-```
+When serializing models to a dictionary or JSON string, the models `element_id and id` fields are `automatically added` to the corresponding dictionary/JSON string when calling Pydantic's `dict()` or `json()` methods. Furthermore, functionality like `aliases` and `exclusion of fields` are available for both the element_id and id field out of the box.
 
 #### Hooks <a name="hooks"></a>
 
