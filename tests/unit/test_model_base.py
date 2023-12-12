@@ -2,7 +2,7 @@
 
 import json
 from ast import alias
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -136,18 +136,18 @@ async def test_hooks_decorator():
     await test_instance.async_test_func()
 
     for hook_function in test_instance._settings.pre_hooks["async_test_func"]:
-        hook_function.assert_called_once_with(test_instance)
+        cast(AsyncMock, hook_function).assert_called_once_with(test_instance)
 
     for hook_function in test_instance._settings.post_hooks["async_test_func"]:
-        hook_function.assert_called_once_with(test_instance, None)
+        cast(AsyncMock, hook_function).assert_called_once_with(test_instance, None)
 
     test_instance.sync_test_func()
 
     for hook_function in test_instance._settings.pre_hooks["sync_test_func"]:
-        hook_function.assert_called_once_with(test_instance)
+        cast(AsyncMock, hook_function).assert_called_once_with(test_instance)
 
     for hook_function in test_instance._settings.post_hooks["sync_test_func"]:
-        hook_function.assert_called_once_with(test_instance, None)
+        cast(AsyncMock, hook_function).assert_called_once_with(test_instance, None)
 
 
 async def test_list_primitive_types():
@@ -188,13 +188,11 @@ def test_dict_dump():
                 alias_generator = alias_gen
 
     setattr(TestModel, "_client", None)
-    setattr(TestModel, "_element_id", "test-element-id")
-    setattr(TestModel, "_id", "test-id")
     setattr(TestModelWithAlias, "_client", None)
-    setattr(TestModelWithAlias, "_element_id", "test-element-id")
-    setattr(TestModelWithAlias, "_id", "test-id")
 
     model = TestModel()
+    setattr(model, "_element_id", "test-element-id")
+    setattr(model, "_id", "test-id")
     model_dict = get_model_dump(model)
 
     assert "a" in model_dict
@@ -215,6 +213,8 @@ def test_dict_dump():
     assert "element_id" in model_dict
 
     alias_model = TestModelWithAlias()
+    setattr(alias_model, "_element_id", "test-element-id")
+    setattr(alias_model, "_id", "test-id")
     alias_model_dict = get_model_dump(alias_model)
 
     assert "a" in alias_model_dict
@@ -260,13 +260,11 @@ def test_json_dump():
                 alias_generator = alias_gen
 
     setattr(TestModel, "_client", None)
-    setattr(TestModel, "_element_id", "test-element-id")
-    setattr(TestModel, "_id", "test-id")
     setattr(TestModelWithAlias, "_client", None)
-    setattr(TestModelWithAlias, "_element_id", "test-element-id")
-    setattr(TestModelWithAlias, "_id", "test-id")
 
     model = TestModel()
+    setattr(model, "_element_id", "test-element-id")
+    setattr(model, "_id", "test-id")
     model_dict = json.loads(get_model_dump_json(model))
 
     assert "a" in model_dict
@@ -287,6 +285,8 @@ def test_json_dump():
     assert "element_id" in model_dict
 
     alias_model = TestModelWithAlias()
+    setattr(alias_model, "_element_id", "test-element-id")
+    setattr(alias_model, "_id", "test-id")
     alias_model_dict = json.loads(get_model_dump_json(alias_model))
 
     assert "a" in alias_model_dict
