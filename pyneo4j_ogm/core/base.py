@@ -6,7 +6,6 @@ import asyncio
 import json
 import re
 from asyncio import iscoroutinefunction
-from copy import deepcopy
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -30,14 +29,10 @@ from typing import (
 from pydantic import BaseModel, PrivateAttr
 from pydantic.class_validators import root_validator
 
-from pyneo4j_ogm.exceptions import ModelImportFailure, UnregisteredModel
+from pyneo4j_ogm.exceptions import UnregisteredModel
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.pydantic_utils import (
-    IS_PYDANTIC_V2,
-    get_model_dump,
-    get_model_dump_json,
-)
+from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, get_model_dump
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 if TYPE_CHECKING:
@@ -188,12 +183,12 @@ class ModelBase(BaseModel, Generic[V]):
             )
 
             # Check if alias has been defined
-            element_id_field_name = self._get_alias("element_id")
-            id_field_name = self._get_alias("id")
+            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
+            id_field_name = self._get_alias("id") if by_alias else "id"
 
-            if exclude is not None and element_id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):  # type: ignore
                 base_dict[element_id_field_name] = self._element_id
-            if exclude is not None and id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
                 base_dict[id_field_name] = self._id
 
             return base_dict
@@ -224,12 +219,12 @@ class ModelBase(BaseModel, Generic[V]):
             )
 
             # Check if alias has been defined
-            element_id_field_name = self._get_alias("element_id")
-            id_field_name = self._get_alias("id")
+            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
+            id_field_name = self._get_alias("id") if by_alias else "id"
 
-            if exclude is not None and element_id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):  # type: ignore
                 base_dict[element_id_field_name] = self._element_id
-            if exclude is not None and id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
                 base_dict[id_field_name] = self._id
 
             return base_dict
@@ -260,14 +255,14 @@ class ModelBase(BaseModel, Generic[V]):
             )
 
             # Check if alias has been defined
-            element_id_field_name = self._get_alias("element_id")
-            id_field_name = self._get_alias("id")
+            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
+            id_field_name = self._get_alias("id") if by_alias else "id"
 
             modified_json = json.loads(base_json)
 
-            if exclude is not None and element_id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):  # type: ignore
                 modified_json[element_id_field_name] = self._element_id
-            if exclude is not None and id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
                 modified_json[id_field_name] = self._id
 
             return json.dumps(modified_json)
@@ -298,14 +293,16 @@ class ModelBase(BaseModel, Generic[V]):
             )
 
             # Check if alias has been defined
-            element_id_field_name = self._get_alias("element_id")
-            id_field_name = self._get_alias("id")
+            element_id_field_name = (
+                self._get_alias("element_id") if by_alias else "element_id" if by_alias else "element_id"
+            )
+            id_field_name = self._get_alias("id") if by_alias else "id" if by_alias else "id"
 
             modified_json = json.loads(base_json)
 
-            if exclude is not None and element_id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):  # type: ignore
                 modified_json[element_id_field_name] = self._element_id
-            if exclude is not None and id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
                 modified_json[id_field_name] = self._id
 
             return json.dumps(modified_json)
@@ -326,6 +323,27 @@ class ModelBase(BaseModel, Generic[V]):
                 serialization_name = self.model_config["alias_generator"](field_name)
 
             return serialization_name
+
+        def _check_field_included(self, exclude: IncEx, include: IncEx, field_name: str) -> bool:  # type: ignore
+            """
+            Checks if a field should be included in the serialization.
+
+            Args:
+                exclude (IncEx): The fields to exclude.
+                include (IncEx): The fields to include.
+                field_name (str): The field name to check.
+
+            Returns:
+                bool: Whether the field should be included in the serialization.
+            """
+            if exclude is not None and field_name in exclude:
+                return False
+            if include is not None and field_name not in include:
+                return False
+            if include is not None and field_name in include and exclude is not None and field_name in exclude:
+                return True
+
+            return True
 
     else:
 
@@ -366,12 +384,12 @@ class ModelBase(BaseModel, Generic[V]):
             )
 
             # Check if alias has been defined
-            element_id_field_name = self._get_alias("element_id")
-            id_field_name = self._get_alias("id")
+            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
+            id_field_name = self._get_alias("id") if by_alias else "id"
 
-            if exclude is not None and element_id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):
                 base_dict[element_id_field_name] = self._element_id
-            if exclude is not None and id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):
                 base_dict[id_field_name] = self._id
 
             return base_dict
@@ -404,14 +422,14 @@ class ModelBase(BaseModel, Generic[V]):
             )
 
             # Check if alias has been defined
-            element_id_field_name = self._get_alias("element_id")
-            id_field_name = self._get_alias("id")
+            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
+            id_field_name = self._get_alias("id") if by_alias else "id"
 
             modified_json = json.loads(base_json)
 
-            if exclude is not None and element_id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):
                 modified_json[element_id_field_name] = self._element_id
-            if exclude is not None and id_field_name not in exclude:
+            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):
                 modified_json[id_field_name] = self._id
 
             return json.dumps(modified_json)
@@ -439,6 +457,32 @@ class ModelBase(BaseModel, Generic[V]):
                 serialization_name = self.__config__.alias_generator(field_name)  # type: ignore
 
             return serialization_name
+
+        def _check_field_included(
+            self,
+            exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]],
+            include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]],
+            field_name: str,
+        ) -> bool:
+            """
+            Checks if a field should be included in the serialization.
+
+            Args:
+                exclude (Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]]): The fields to exclude.
+                include (Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]]): The fields to include.
+                field_name (str): The field name to check.
+
+            Returns:
+                bool: Whether the field should be included in the serialization.
+            """
+            if exclude is not None and field_name in exclude:
+                return False
+            if include is not None and field_name not in include:
+                return False
+            if include is not None and field_name in include and exclude is not None and field_name in exclude:
+                return True
+
+            return True
 
     def __init__(self, *args, **kwargs) -> None:
         if not hasattr(self, "_client"):
@@ -487,75 +531,6 @@ class ModelBase(BaseModel, Generic[V]):
 
         yield "element_id", self._element_id
         yield "id", self._id
-
-    def export_model(self, convert_to_camel_case: bool = False, *args, **kwargs) -> Dict[str, Any]:
-        """
-        Export the model to a dictionary containing standard python types. This method accepts all
-        arguments of `pydantic.BaseModel.json()`.
-
-        Args:
-            convert_to_camel_case (bool, optional): If set to `True`, the keys of the dictionary will be converted to
-                camel-case. Defaults to `False`.
-
-        Returns:
-            Dict[str, Any]: The exported model as a dictionary.
-        """
-        logger.debug("Checking if additional fields should be excluded")
-        if "exclude" in kwargs:
-            kwargs["exclude"] = cast(Set, kwargs["exclude"]).union(self._settings.exclude_from_export)
-        else:
-            kwargs["exclude"] = self._settings.exclude_from_export
-
-        logger.info("Exporting model %s", self.__class__.__name__)
-        model_dict = json.loads(get_model_dump_json(self, *args, **kwargs))
-        model_dict["element_id"] = self._element_id
-        model_dict["id"] = self._id
-
-        if convert_to_camel_case:
-            logger.debug("Converting keys to camel-case")
-            model_dict = cast(Dict[str, Any], self._convert_to_camel_case(model_dict))
-
-        return model_dict
-
-    @classmethod
-    def import_model(cls: Type[T], model: Dict[str, Any], from_camel_case: bool = False) -> T:
-        """
-        Import a model from a dictionary. The imported model will be seen as hydrated.
-
-        Args:
-            model (Dict[str, Any]): The model to import.
-            from_camel_case (bool, optional): If set to `True`, the keys of the dictionary will be converted from
-                camel-case to snake-case. Defaults to `False`.
-
-        Raises:
-            ModelImportFailure: The model is missing the `element_id` or `id` key or their respective camel-case
-                variants.
-
-        Returns:
-            T: An instance of the model.
-        """
-        import_model = deepcopy(model)
-
-        logger.info("Importing model %s", cls.__name__)
-        if any(
-            [
-                "elementId" not in model and from_camel_case,
-                "element_id" not in model and not from_camel_case,
-                "id" not in model,
-            ]
-        ):
-            raise ModelImportFailure()
-
-        if from_camel_case:
-            logger.debug("Converting keys from camel case")
-            import_model = cast(Dict[str, Any], cls._convert_keys_to_snake_case(model))
-
-        logger.debug("Hydrating model %s", import_model["element_id"])
-        instance = cls(**import_model)
-        instance._element_id = import_model["element_id"]
-        instance._id = import_model["id"]
-
-        return instance
 
     @classmethod
     def register_pre_hooks(
