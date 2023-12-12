@@ -15,7 +15,6 @@ from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
     InvalidEntityType,
-    InvalidIndexType,
     InvalidLabelOrType,
     MissingDatabaseURI,
     NotConnectedToDatabase,
@@ -248,21 +247,67 @@ async def test_cypher_query_exception(client: Pyneo4jClient):
 
 async def test_invalid_constraints(client: Pyneo4jClient):
     with pytest.raises(InvalidLabelOrType):
-        await client.create_constraint("invalid_node_constraint", EntityType.NODE, ["prop_a", "prop_b"], "Test")
+        await client.create_uniqueness_constraint(
+            "invalid_node_constraint", EntityType.NODE, ["prop_a", "prop_b"], "Test"
+        )
 
     with pytest.raises(InvalidLabelOrType):
-        await client.create_constraint(
+        await client.create_uniqueness_constraint(
             "invalid_relationship_constraint", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], ["Test", "Relationship"]
         )
 
     with pytest.raises(InvalidEntityType):
-        await client.create_constraint(
+        await client.create_uniqueness_constraint(
             "invalid_constraint", "invalid entity", ["prop_a", "prop_b"], ["Test", "Relationship"]  # type: ignore
         )
 
 
+async def test_invalid_indexes(client: Pyneo4jClient):
+    with pytest.raises(InvalidEntityType):
+        await client.create_range_index(
+            "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]
+        )
+
+    with pytest.raises(InvalidEntityType):
+        await client.create_text_index("invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"])
+
+    with pytest.raises(InvalidEntityType):
+        await client.create_point_index(
+            "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]
+        )
+
+    with pytest.raises(InvalidEntityType):
+        await client.create_lookup_index("invalid_entity_index", "invalid entity")
+
+    with pytest.raises(InvalidLabelOrType):
+        await client.create_range_index("invalid_node_index", EntityType.NODE, [], "Test")
+
+    with pytest.raises(InvalidLabelOrType):
+        await client.create_range_index(
+            "invalid_relationship_index", EntityType.RELATIONSHIP, [], ["Test", "Relationship"]
+        )
+
+    with pytest.raises(InvalidLabelOrType):
+        await client.create_text_index("invalid_node_index", EntityType.NODE, [], "Test")
+
+    with pytest.raises(InvalidLabelOrType):
+        await client.create_text_index(
+            "invalid_relationship_index", EntityType.RELATIONSHIP, [], ["Test", "Relationship"]
+        )
+
+    with pytest.raises(InvalidLabelOrType):
+        await client.create_point_index("invalid_node_index", EntityType.NODE, [], "Test")
+
+    with pytest.raises(InvalidLabelOrType):
+        await client.create_point_index(
+            "invalid_relationship_index", EntityType.RELATIONSHIP, [], ["Test", "Relationship"]
+        )
+
+
 async def test_create_node_constraints(client: Pyneo4jClient, session: AsyncSession):
-    await client.create_constraint("node_constraint", EntityType.NODE, ["prop_a", "prop_b"], ["Test", "Node"])
+    await client.create_uniqueness_constraint(
+        "node_constraint", EntityType.NODE, ["prop_a", "prop_b"], ["Test", "Node"]
+    )
 
     node_constraint_results = await session.run("SHOW CONSTRAINTS")
     node_constraints = await node_constraint_results.values()
@@ -282,7 +327,7 @@ async def test_create_node_constraints(client: Pyneo4jClient, session: AsyncSess
 
 
 async def test_create_relationship_constraints(client: Pyneo4jClient, session: AsyncSession):
-    await client.create_constraint(
+    await client.create_uniqueness_constraint(
         "relationship_constraint", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], "TEST_RELATIONSHIP"
     )
 
@@ -297,36 +342,8 @@ async def test_create_relationship_constraints(client: Pyneo4jClient, session: A
     assert node_constraints[0][5] == ["prop_a", "prop_b"]
 
 
-async def test_invalid_indexes(client: Pyneo4jClient):
-    with pytest.raises(InvalidIndexType):
-        await client.create_index(
-            "invalid_node_index", EntityType.NODE, "Not valid", ["prop_a", "prop_b"], ["Test", "Node"]  # type: ignore
-        )
-
-    with pytest.raises(InvalidLabelOrType):
-        await client.create_index(
-            "invalid_node_index", EntityType.NODE, IndexType.RANGE, "prop_a", "NotAList"  # type: ignore
-        )
-
-    with pytest.raises(InvalidIndexType):
-        await client.create_index(
-            "invalid_relationship_index",
-            EntityType.RELATIONSHIP,
-            "Not valid",  # type: ignore
-            ["prop_a", "prop_b"],
-            "REL",
-        )
-
-    with pytest.raises(InvalidEntityType):
-        await client.create_index(
-            "invalid_index", "invalid entity", IndexType.RANGE, ["prop_a", "prop_b"], "REL"  # type: ignore
-        )
-
-
 async def test_create_node_range_indexes(client: Pyneo4jClient, session: AsyncSession):
-    await client.create_index(
-        "node_range_index", EntityType.NODE, IndexType.RANGE, ["prop_a", "prop_b"], ["Test", "Node"]
-    )
+    await client.create_range_index("node_range_index", EntityType.NODE, ["prop_a", "prop_b"], ["Test", "Node"])
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
@@ -347,17 +364,14 @@ async def test_create_node_range_indexes(client: Pyneo4jClient, session: AsyncSe
 
 async def test_create_relationship_range_indexes(client: Pyneo4jClient, session: AsyncSession):
     with pytest.raises(InvalidLabelOrType):
-        await client.create_index(
+        await client.create_range_index(
             "invalid_relationship_index",
             EntityType.RELATIONSHIP,
-            IndexType.RANGE,
             ["prop_a", "prop_b"],
             ["NotA", "String"],
         )
 
-    await client.create_index(
-        "relationship_range_index", EntityType.RELATIONSHIP, IndexType.RANGE, ["prop_a", "prop_b"], "REL"
-    )
+    await client.create_range_index("relationship_range_index", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], "REL")
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
@@ -371,9 +385,7 @@ async def test_create_relationship_range_indexes(client: Pyneo4jClient, session:
 
 
 async def test_create_node_text_indexes(client: Pyneo4jClient, session: AsyncSession):
-    await client.create_index(
-        "node_text_index", EntityType.NODE, IndexType.TEXT, ["prop_a", "prop_b"], ["Test", "Node"]
-    )
+    await client.create_text_index("node_text_index", EntityType.NODE, ["prop_a", "prop_b"], ["Test", "Node"])
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
@@ -405,9 +417,7 @@ async def test_create_node_text_indexes(client: Pyneo4jClient, session: AsyncSes
 
 
 async def test_create_relationship_text_indexes(client: Pyneo4jClient, session: AsyncSession):
-    await client.create_index(
-        "relationship_text_index", EntityType.RELATIONSHIP, IndexType.TEXT, ["prop_a", "prop_b"], "REL"
-    )
+    await client.create_text_index("relationship_text_index", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], "REL")
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
@@ -427,37 +437,31 @@ async def test_create_relationship_text_indexes(client: Pyneo4jClient, session: 
 
 
 async def test_create_node_lookup_indexes(client: Pyneo4jClient, session: AsyncSession):
-    await client.create_index(
-        "node_lookup_index", EntityType.NODE, IndexType.LOOKUP, ["prop_a", "prop_b"], ["Test", "Node"]
-    )
+    await client.create_lookup_index("node_lookup_index", EntityType.NODE)
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
     await query_results.consume()
 
-    assert index_results[0][1] == "node_lookup_index_Test_Node_prop_a_prop_b_lookup_index"
+    assert index_results[0][1] == "node_lookup_index_lookup_index"
     assert index_results[0][4] == IndexType.LOOKUP
     assert index_results[0][5] == EntityType.NODE
 
 
 async def test_create_relationship_lookup_indexes(client: Pyneo4jClient, session: AsyncSession):
-    await client.create_index(
-        "relationship_lookup_index", EntityType.RELATIONSHIP, IndexType.LOOKUP, ["prop_a", "prop_b"], "REL"
-    )
+    await client.create_lookup_index("relationship_lookup_index", EntityType.RELATIONSHIP)
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
     await query_results.consume()
 
-    assert index_results[0][1] == "relationship_lookup_index_REL_prop_a_prop_b_lookup_index"
+    assert index_results[0][1] == "relationship_lookup_index_lookup_index"
     assert index_results[0][4] == IndexType.LOOKUP
     assert index_results[0][5] == EntityType.RELATIONSHIP
 
 
 async def test_create_node_point_indexes(client: Pyneo4jClient, session: AsyncSession):
-    await client.create_index(
-        "node_point_index", EntityType.NODE, IndexType.POINT, ["prop_a", "prop_b"], ["Test", "Node"]
-    )
+    await client.create_point_index("node_point_index", EntityType.NODE, ["prop_a", "prop_b"], ["Test", "Node"])
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
@@ -489,9 +493,7 @@ async def test_create_node_point_indexes(client: Pyneo4jClient, session: AsyncSe
 
 
 async def test_create_relationship_point_indexes(client: Pyneo4jClient, session: AsyncSession):
-    await client.create_index(
-        "relationship_point_index", EntityType.RELATIONSHIP, IndexType.POINT, ["prop_a", "prop_b"], "REL"
-    )
+    await client.create_point_index("relationship_point_index", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], "REL")
 
     query_results = await session.run("SHOW INDEXES")
     index_results = await query_results.values()
@@ -586,7 +588,7 @@ async def test_transaction_in_progress_exception(client: Pyneo4jClient):
 
 
 async def test_logger_warning(client: Pyneo4jClient):
-    await client.create_constraint("test", EntityType.NODE, ["test"], ["Test"])
+    await client.create_uniqueness_constraint("test", EntityType.NODE, ["test"], ["Test"])
 
     with patch.object(logger, "warning") as mock_warning:
         await client.drop_indexes()

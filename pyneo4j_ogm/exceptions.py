@@ -49,18 +49,6 @@ class InvalidEntityType(Pyneo4jException):
         )
 
 
-class InvalidIndexType(Pyneo4jException):
-    """
-    A invalid index type was provided.
-    """
-
-    def __init__(self, available_types: List[str], index_type: str, *args: object) -> None:
-        super().__init__(
-            f"Invalid index type. Expected index to be one of {available_types}, got {index_type}",
-            *args,
-        )
-
-
 class InvalidRelationshipDirection(Pyneo4jException):
     """
     A invalid relationship direction was provided.
