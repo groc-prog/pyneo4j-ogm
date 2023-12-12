@@ -1,5 +1,11 @@
 {
-  "python.testing.pytestArgs": [],
+  "python.testing.pytestArgs": [
+    "tests",
+    "--asyncio-mode=auto",
+    "--cov",
+    "--cov-report=html:tests/coverage",
+    "-W ignore::DeprecationWarning",
+  ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "markdownlint.config": {
