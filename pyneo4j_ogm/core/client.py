@@ -14,7 +14,6 @@ from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
     InvalidEntityType,
-    InvalidIndexType,
     InvalidLabelOrType,
     MissingDatabaseURI,
     NotConnectedToDatabase,
@@ -167,7 +166,7 @@ class Pyneo4jClient:
 
                     if not self._skip_constraints:
                         if getattr(get_field_type(property_definition), "_unique", False):
-                            await self.create_constraint(
+                            await self.create_uniqueness_constraint(
                                 name=model.__name__,
                                 entity_type=entity_type,
                                 properties=[property_name],
@@ -176,26 +175,23 @@ class Pyneo4jClient:
 
                     if not self._skip_indexes:
                         if getattr(get_field_type(property_definition), "_range_index", False):
-                            await self.create_index(
+                            await self.create_range_index(
                                 name=model.__name__,
                                 entity_type=entity_type,
-                                index_type=IndexType.RANGE,
                                 properties=[property_name],
                                 labels_or_type=labels_or_type,
                             )
                         if getattr(get_field_type(property_definition), "_point_index", False):
-                            await self.create_index(
+                            await self.create_point_index(
                                 name=model.__name__,
                                 entity_type=entity_type,
-                                index_type=IndexType.POINT,
                                 properties=[property_name],
                                 labels_or_type=labels_or_type,
                             )
                         if getattr(get_field_type(property_definition), "_text_index", False):
-                            await self.create_index(
+                            await self.create_text_index(
                                 name=model.__name__,
                                 entity_type=entity_type,
-                                index_type=IndexType.TEXT,
                                 properties=[property_name],
                                 labels_or_type=labels_or_type,
                             )
@@ -270,7 +266,7 @@ class Pyneo4jClient:
             raise exc
 
     @ensure_connection
-    async def create_constraint(
+    async def create_uniqueness_constraint(
         self,
         name: str,
         entity_type: EntityType,
@@ -278,8 +274,7 @@ class Pyneo4jClient:
         labels_or_type: Union[List[str], str],
     ) -> None:
         """
-        Creates a constraint on nodes or relationships in the Neo4j database. Currently only
-        `UNIQUENESS` constraints are supported.
+        Creates a `UNIQUENESS` constraint on nodes or relationships in the Neo4j database.
 
         Args:
             name (str): The name of the constraint.
@@ -332,197 +327,230 @@ class Pyneo4jClient:
                 )
 
     @ensure_connection
-    async def create_index(
-        self,
-        name: str,
-        entity_type: EntityType,
-        index_type: IndexType,
-        properties: Union[List[str], str],
-        labels_or_type: Union[List[str], str],
-    ) -> None:
+    async def create_lookup_index(self, name: str, entity_type: EntityType) -> None:
         """
-        Creates a index on nodes or relationships in the Neo4j database.
+        Creates a `LOOKUP` index on nodes or relationships in the Neo4j database.
 
         Args:
             name (str): The name of the constraint.
             entity_type (EntityType): The type of entity the constraint is applied to. Must be either
                 `NODE` or `RELATIONSHIP`.
-            index_type (IndexType): The type of index to apply.
-            properties (Union[List[str], str]): A list of properties or a single property that should be
-                indexed for nodes/relationships.
+
+        Raises:
+            InvalidEntityType: If an invalid entity_type is provided.
+        """
+        match entity_type:
+            case EntityType.NODE:
+                index_name = f"{name}_lookup_index"
+
+                logger.info("Creating lookup index %s for node", index_name)
+                await self.cypher(
+                    query=f"""
+                        CREATE LOOKUP INDEX {index_name} IF NOT EXISTS
+                        FOR {self._builder.node_match()}
+                        ON EACH labels(n)
+                    """,
+                    resolve_models=False,
+                )
+            case EntityType.RELATIONSHIP:
+                index_name = f"{name}_lookup_index"
+
+                logger.info("Creating lookup index %s for relationship", index_name)
+                await self.cypher(
+                    query=f"""
+                        CREATE LOOKUP INDEX {index_name} IF NOT EXISTS
+                        FOR {self._builder.relationship_match()}
+                        ON EACH type(r)
+                    """,
+                    resolve_models=False,
+                )
+            case _:
+                raise InvalidEntityType(
+                    available_types=[option.value for option in EntityType],
+                    entity_type=entity_type,
+                )
+
+    @ensure_connection
+    async def create_range_index(
+        self,
+        name: str,
+        entity_type: EntityType,
+        properties: List[str],
+        labels_or_type: Union[List[str], str],
+    ) -> None:
+        """
+        Creates a `RANGE` index on nodes or relationships in the Neo4j database.
+
+        Args:
+            name (str): The name of the constraint.
+            entity_type (EntityType): The type of entity the constraint is applied to. Must be either
+                `NODE` or `RELATIONSHIP`.
+            properties (List[str],): A list of properties that should be indexed for nodes/relationships.
             labels_or_type (Union[List[str], str]): For nodes, a list of labels to which the constraint should
                 be applied. For relationships, a string representing the relationship type.
 
         Raises:
             InvalidEntityType: If an invalid entity_type is provided.
-            InvalidIndexType: If an invalid index_type is provided.
+            InvalidLabelOrType: If an invalid label or type is provided.
         """
-        formatted_properties = properties if isinstance(properties, list) else [properties]
-
-        if index_type not in [index.value for index in IndexType]:
-            raise InvalidIndexType(
-                available_types=[option.value for option in IndexType],
-                index_type=index_type,
-            )
-
-        normalized_index_type = index_type.value if isinstance(index_type, IndexType) else str(index_type).upper()
-
         match entity_type:
             case EntityType.NODE:
                 if not isinstance(labels_or_type, list):
                     raise InvalidLabelOrType()
 
-                match normalized_index_type:
-                    case IndexType.LOOKUP:
-                        index_name = f"{name}_{'_'.join(labels_or_type)}_{'_'.join(formatted_properties)}_lookup_index"
+                for label in labels_or_type:
+                    index_name = f"{name}_{label}_{'_'.join(properties)}_range_index"
 
-                        logger.info(
-                            "Creating %s index %s for node with labels %s",
-                            normalized_index_type,
-                            index_name,
-                            labels_or_type,
-                        )
-                        await self.cypher(
-                            query=f"""
-                                CREATE LOOKUP INDEX {index_name} IF NOT EXISTS
-                                FOR {self._builder.node_match()}
-                                ON EACH labels(n)
-                            """,
-                            resolve_models=False,
-                        )
-                    case IndexType.RANGE:
-                        for label in labels_or_type:
-                            index_name = f"{name}_{label}_{'_'.join(formatted_properties)}_range_index"
-
-                            logger.info(
-                                "Creating %s index %s for node with labels %s",
-                                normalized_index_type,
-                                index_name,
-                                labels_or_type,
-                            )
-                            await self.cypher(
-                                query=f"""
-                                    CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                    FOR {self._builder.node_match(labels=[label])}
-                                    ON ({", ".join([f"n.{property_name}" for property_name in formatted_properties])})
-                                """,
-                                resolve_models=False,
-                            )
-                    case IndexType.TEXT:
-                        for label in labels_or_type:
-                            for property_name in formatted_properties:
-                                index_name = f"{name}_{label}_{property_name}_text_index"
-
-                                logger.info(
-                                    "Creating %s index %s for node with labels %s",
-                                    normalized_index_type,
-                                    index_name,
-                                    labels_or_type,
-                                )
-                                await self.cypher(
-                                    query=f"""
-                                        CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                        FOR {self._builder.node_match(labels=[label])}
-                                        ON (n.{property_name})
-                                    """,
-                                    resolve_models=False,
-                                )
-                    case IndexType.POINT:
-                        for label in labels_or_type:
-                            for property_name in formatted_properties:
-                                index_type_name = f"{IndexType(normalized_index_type).value}".lower()
-                                index_name = f"{name}_{label}_{property_name}_{index_type_name}_index"
-
-                                logger.info(
-                                    "Creating %s index %s for node with labels %s",
-                                    normalized_index_type,
-                                    index_name,
-                                    labels_or_type,
-                                )
-                                await self.cypher(
-                                    query=f"""
-                                        CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                        FOR (n:{label})
-                                        ON (n.{property_name})
-                                    """,
-                                    resolve_models=False,
-                                )
+                    logger.info("Creating range index %s for node with label %s", index_name, label)
+                    await self.cypher(
+                        query=f"""
+                            CREATE RANGE INDEX {index_name} IF NOT EXISTS
+                            FOR {self._builder.node_match(labels=[label])}
+                            ON ({", ".join([f"n.{property}" for property in properties])})
+                        """,
+                        resolve_models=False,
+                    )
             case EntityType.RELATIONSHIP:
                 if not isinstance(labels_or_type, str):
                     raise InvalidLabelOrType()
 
-                match normalized_index_type:
-                    case IndexType.LOOKUP:
-                        index_name = f"{name}_{labels_or_type}_{'_'.join(formatted_properties)}_lookup_index"
+                index_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_range_index"
 
-                        logger.info(
-                            "Creating %s index %s for relationship with labels %s",
-                            normalized_index_type,
-                            index_name,
-                            labels_or_type,
-                        )
+                logger.info("Creating range index %s for relationship with type %s", index_name, labels_or_type)
+                await self.cypher(
+                    query=f"""
+                        CREATE RANGE INDEX {index_name} IF NOT EXISTS
+                        FOR {self._builder.relationship_match(type_=labels_or_type)}
+                        ON ({", ".join([f"r.{property}" for property in properties])})
+                    """,
+                    resolve_models=False,
+                )
+            case _:
+                raise InvalidEntityType(
+                    available_types=[option.value for option in EntityType],
+                    entity_type=entity_type,
+                )
+
+    @ensure_connection
+    async def create_text_index(
+        self,
+        name: str,
+        entity_type: EntityType,
+        properties: List[str],
+        labels_or_type: Union[List[str], str],
+    ) -> None:
+        """
+        Creates a `TEXT` index on nodes or relationships in the Neo4j database.
+
+        Args:
+            name (str): The name of the constraint.
+            entity_type (EntityType): The type of entity the constraint is applied to. Must be either
+                `NODE` or `RELATIONSHIP`.
+            properties (List[str],): A list of properties that should be indexed for nodes/relationships.
+            labels_or_type (Union[List[str], str]): For nodes, a list of labels to which the constraint should
+                be applied. For relationships, a string representing the relationship type.
+
+        Raises:
+            InvalidEntityType: If an invalid entity_type is provided.
+            InvalidLabelOrType: If an invalid label or type is provided.
+        """
+        match entity_type:
+            case EntityType.NODE:
+                if not isinstance(labels_or_type, list):
+                    raise InvalidLabelOrType()
+
+                for label in labels_or_type:
+                    for property_name in properties:
+                        index_name = f"{name}_{label}_{property_name}_text_index"
+
+                        logger.info("Creating text index %s for node with label %s", index_name, label)
                         await self.cypher(
                             query=f"""
-                                CREATE LOOKUP INDEX {index_name} IF NOT EXISTS
-                                FOR {self._builder.relationship_match()}
-                                ON EACH type(r)
+                                CREATE TEXT INDEX {index_name} IF NOT EXISTS
+                                FOR {self._builder.node_match(labels=[label])}
+                                ON (n.{property_name})
                             """,
                             resolve_models=False,
                         )
-                    case IndexType.RANGE:
-                        index_name = f"{name}_{labels_or_type}_{'_'.join(formatted_properties)}_range_index"
+            case EntityType.RELATIONSHIP:
+                if not isinstance(labels_or_type, str):
+                    raise InvalidLabelOrType()
 
-                        logger.info(
-                            "Creating %s index %s for relationship with labels %s",
-                            normalized_index_type,
-                            index_name,
-                            labels_or_type,
-                        )
+                for property_name in properties:
+                    index_name = f"{name}_{labels_or_type}_{property_name}_text_index"
+
+                    logger.info("Creating text index %s for relationship with type %s", index_name, labels_or_type)
+                    await self.cypher(
+                        query=f"""
+                            CREATE TEXT INDEX {index_name} IF NOT EXISTS
+                            FOR {self._builder.relationship_match(type_=labels_or_type)}
+                            ON (r.{property_name})
+                        """,
+                        resolve_models=False,
+                    )
+            case _:
+                raise InvalidEntityType(
+                    available_types=[option.value for option in EntityType],
+                    entity_type=entity_type,
+                )
+
+    @ensure_connection
+    async def create_point_index(
+        self,
+        name: str,
+        entity_type: EntityType,
+        properties: List[str],
+        labels_or_type: Union[List[str], str],
+    ) -> None:
+        """
+        Creates a `POINT` index on nodes or relationships in the Neo4j database.
+
+        Args:
+            name (str): The name of the constraint.
+            entity_type (EntityType): The type of entity the constraint is applied to. Must be either
+                `NODE` or `RELATIONSHIP`.
+            properties (List[str],): A list of properties that should be indexed for nodes/relationships.
+            labels_or_type (Union[List[str], str]): For nodes, a list of labels to which the constraint should
+                be applied. For relationships, a string representing the relationship type.
+
+        Raises:
+            InvalidEntityType: If an invalid entity_type is provided.
+            InvalidLabelOrType: If an invalid label or type is provided.
+        """
+        match entity_type:
+            case EntityType.NODE:
+                if not isinstance(labels_or_type, list):
+                    raise InvalidLabelOrType()
+
+                for label in labels_or_type:
+                    for property_name in properties:
+                        index_name = f"{name}_{label}_{property_name}_point_index"
+
+                        logger.info("Creating point index %s for node with label %s", index_name, label)
                         await self.cypher(
                             query=f"""
-                                CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                FOR {self._builder.relationship_match(type_=labels_or_type)}
-                                ON ({", ".join([f"r.{property}" for property in formatted_properties])})
+                                CREATE POINT INDEX {index_name} IF NOT EXISTS
+                                FOR (n:{label})
+                                ON (n.{property_name})
                             """,
                             resolve_models=False,
                         )
-                    case IndexType.TEXT:
-                        for property_name in formatted_properties:
-                            index_name = f"{name}_{labels_or_type}_{property_name}_text_index"
+            case EntityType.RELATIONSHIP:
+                if not isinstance(labels_or_type, str):
+                    raise InvalidLabelOrType()
 
-                            logger.info(
-                                "Creating %s index %s for relationship with labels %s",
-                                normalized_index_type,
-                                index_name,
-                                labels_or_type,
-                            )
-                            await self.cypher(
-                                query=f"""
-                                    CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                    FOR {self._builder.relationship_match(type_=labels_or_type)}
-                                    ON (r.{property_name})
-                                """,
-                                resolve_models=False,
-                            )
-                    case IndexType.POINT:
-                        for property_name in formatted_properties:
-                            index_type_name = f"{IndexType(normalized_index_type).value}".lower()
-                            index_name = f"{name}_{labels_or_type}_{property_name}_{index_type_name}_index"
+                for property_name in properties:
+                    index_name = f"{name}_{labels_or_type}_{property_name}_point_index"
 
-                            logger.info(
-                                "Creating %s index %s for relationship with labels %s",
-                                normalized_index_type,
-                                index_name,
-                                labels_or_type,
-                            )
-                            await self.cypher(
-                                query=f"""
-                                    CREATE {normalized_index_type} INDEX {index_name} IF NOT EXISTS
-                                    FOR {self._builder.relationship_match(type_=labels_or_type)}
-                                    ON (r.{property_name})
-                                """,
-                                resolve_models=False,
-                            )
+                    logger.info("Creating point index %s for relationship with type %s", index_name, labels_or_type)
+                    await self.cypher(
+                        query=f"""
+                            CREATE POINT INDEX {index_name} IF NOT EXISTS
+                            FOR {self._builder.relationship_match(type_=labels_or_type)}
+                            ON (r.{property_name})
+                        """,
+                        resolve_models=False,
+                    )
             case _:
                 raise InvalidEntityType(
                     available_types=[option.value for option in EntityType],
