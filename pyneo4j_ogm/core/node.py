@@ -190,7 +190,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         setattr(self, "_id", getattr(cast(T, results[0][0]), "_id"))
 
         logger.debug("Resetting modified properties")
-        self._db_properties = get_model_dump(self, exclude=self._relationship_properties)
+        self._db_properties = get_model_dump(self, exclude={*self._relationship_properties, "element_id", "id"})
         logger.info("Created new node %s", self)
 
         return self
@@ -234,7 +234,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             raise UnexpectedEmptyResult()
 
         logger.debug("Resetting modified properties")
-        self._db_properties = get_model_dump(self, exclude=self._relationship_properties)
+        self._db_properties = get_model_dump(self, exclude={*self._relationship_properties, "element_id", "id"})
         logger.info("Updated node %s", self)
 
     @hooks
@@ -1000,7 +1000,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
             # Check if value is None here to prevent breaking logic if property_name is of type None
             if get_field_type(value) is not None and hasattr(get_field_type(value), "_build_property"):
                 cls._relationship_properties.add(property_name)
-                cls._settings.exclude_from_export.add(property_name)
 
     def _deflate(self) -> Dict[str, Any]:
         """

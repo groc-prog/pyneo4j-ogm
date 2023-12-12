@@ -152,7 +152,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             raise UnexpectedEmptyResult()
 
         logger.debug("Resetting modified properties")
-        self._db_properties = get_model_dump(self)
+        self._db_properties = get_model_dump(self, exclude={"element_id", "id"})
         logger.info("Updated relationship %s", self)
 
     @hooks
