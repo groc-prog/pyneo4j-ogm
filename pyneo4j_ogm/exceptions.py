@@ -168,16 +168,6 @@ class InvalidFilters(Pyneo4jException):
         )
 
 
-class ModelImportFailure(Pyneo4jException):
-    """
-    The model import failed because required keys were missing. These keys are 'element_id' or 'id'
-    or their respective camel-case variants.
-    """
-
-    def __init__(self, *args: object) -> None:
-        super().__init__("Missing 'element_id' or 'id' key in model dict.", *args)
-
-
 class InvalidRelationshipHops(Pyneo4jException):
     """
     A multi-hop relationship query was attempted, but the hops were invalid.
