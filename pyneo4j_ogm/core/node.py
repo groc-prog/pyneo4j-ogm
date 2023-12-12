@@ -339,9 +339,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             self._query_builder.build_projections(projections=projections, ref="m")
 
         projection_query = (
-            "RETURN DISTINCT m"
-            if self._query_builder.query["projections"] == ""
-            else self._query_builder.query["projections"]
+            "RETURN m" if self._query_builder.query["projections"] == "" else self._query_builder.query["projections"]
         )
 
         if auto_fetch_nodes:
@@ -481,12 +479,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if projections is not None:
             cls._query_builder.build_projections(projections=projections)
 
-        projection_query = (
-            "RETURN DISTINCT n"
-            if cls._query_builder.query["projections"] == ""
-            else cls._query_builder.query["projections"]
-        )
-
         if cls._query_builder.query["where"] == "":
             raise InvalidFilters()
 
@@ -501,6 +493,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if do_auto_fetch:
             logger.debug("Querying database with auto-fetch enabled")
             match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
+            projection_query = (
+                "RETURN n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
+            )
 
             results, meta = await cls._client.cypher(
                 query=f"""
@@ -515,6 +510,12 @@ class NodeModel(ModelBase[NodeModelSettings]):
             )
         else:
             logger.debug("Querying database without auto-fetch")
+            projection_query = (
+                "RETURN DISTINCT n"
+                if cls._query_builder.query["projections"] == ""
+                else cls._query_builder.query["projections"]
+            )
+
             results, meta = await cls._client.cypher(
                 query=f"""
                     MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
@@ -604,9 +605,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         instances: List[Union[T, Dict[str, Any]]] = []
         projection_query = (
-            "RETURN DISTINCT n"
-            if cls._query_builder.query["projections"] == ""
-            else cls._query_builder.query["projections"]
+            "RETURN n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
         )
 
         do_auto_fetch = all(
@@ -904,7 +903,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             query=f"""
                 MATCH {cls._query_builder.node_match(list(cls._settings.labels))}
                 WHERE {cls._query_builder.query['where']}
-                WITH n LIMIT 1
+                WITH DISTINCT n
+                LIMIT 1
                 DETACH DELETE n
                 RETURN count(n)
             """,

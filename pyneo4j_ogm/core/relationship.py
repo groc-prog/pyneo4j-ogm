@@ -307,9 +307,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             cls._query_builder.build_projections(projections=projections, ref="r")
 
         projection_query = (
-            "RETURN DISTINCT r"
-            if cls._query_builder.query["projections"] == ""
-            else cls._query_builder.query["projections"]
+            "RETURN r" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
         )
 
         if cls._query_builder.query["where"] == "":
@@ -382,9 +380,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         instances: List[Union[T, Dict[str, Any]]] = []
         projection_query = (
-            "RETURN DISTINCT r"
-            if cls._query_builder.query["projections"] == ""
-            else cls._query_builder.query["projections"]
+            "RETURN r" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
         )
         match_query = cls._query_builder.relationship_match(
             type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
@@ -665,7 +661,8 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             query=f"""
                 MATCH {match_query}
                 WHERE {cls._query_builder.query['where']}
-                WITH r LIMIT 1
+                WITH r
+                LIMIT 1
                 DELETE r
                 RETURN count(r)
             """,
