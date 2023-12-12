@@ -1,4 +1,4 @@
-# PyNeo4j-OGM
+# Pyneo4j-OGM
 
 [![PyPI](https://img.shields.io/pypi/v/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
@@ -280,7 +280,7 @@ In the following we are going to take a closer look at the different parts of `p
 
 ### Table of contents
 
-- [PyNeo4j-OGM](#pyneo4j-ogm)
+- [Pyneo4j-OGM](#pyneo4j-ogm)
   - [📣 Upcoming features](#-upcoming-features)
   - [🎯 Features ](#-features-)
   - [📦 Installation ](#-installation-)
