@@ -493,17 +493,18 @@ You can batch anything that runs a query, regardless of whether it is a raw cyph
 
 By default, the client will automatically create any indexes and constraints defined on models when registering them. If you want to disable this behavior, you can do so by passing the `skip_indexes` and `skip_constraints` arguments to the `connect()` method when connecting your client to a database.
 
-If you want to create custom indexes and constraints, or want to add additional indexes/constraints later on (which should probably be done on the models themselves), you can do so by calling the `create_index()` and `create_constraint()` methods on the client.
+If you want to create custom indexes and constraints, or want to add additional indexes/constraints later on (which should probably be done on the models themselves), you can do so by calling the `create_lookup_index()`, `create_range_index`, `create_text_index`, `create_point_index` and `create_uniqueness_constraint()` methods on the client.
 
-First, let's take a look at how to create a custom index in the database. The `create_index()` method takes a few arguments:
+First, let's take a look at how to create a custom index in the database. The `create_range_index`, `create_text_index` and `create_point_index` methods take a few arguments:
 
 - `name`: The name of the index to create (Make sure this is unique!).
 - `entity_type`: The entity type the index is created for. Can be either **EntityType.NODE** or **EntityType.RELATIONSHIP**.
-- `index_type`: The type of index to create. Can be `IndexType.RANGE`, `IndexType.TEXT`, `IndexType.POINT` or `IndexType.LOOKUP`.
 - `properties`: A list of properties to create the index for.
 - `labels_or_type`: The node labels or relationship type the index is created for.
 
-The `create_constraint()` method also takes similar arguments as the `create_index()` method. The only difference is that it does not take a `constraint_type` argument since only `UNIQUENESS` constraints are currently supported.
+The `create_lookup_index()` takes the same arguments, except for the `labels_or_type` and `properties` arguments.
+
+The `create_uniqueness_constraint()` method also takes similar arguments.
 
 - `name`: The name of the constraint to create.
 - `entity_type`: The entity type the constraint is created for. Can be either **EntityType.NODE** or **EntityType.RELATIONSHIP**.
@@ -514,10 +515,10 @@ Here is an example of how to use the methods:
 
 ```python
 # Creates a `RANGE` index for a `Coffee's` `sugar` and `flavour` properties
-await client.create_index("hot_beverage_index", EntityType.NODE, IndexType.RANGE, ["sugar", "flavour"], ["Beverage", "Hot"])
+await client.create_range_index("hot_beverage_index", EntityType.NODE, ["sugar", "flavour"], ["Beverage", "Hot"])
 
 # Creates a UNIQUENESS constraint for a `Developer's` `uid` property
-await client.create_constraint("developer_constraint", EntityType.NODE, ["uid"], ["Developer"])
+await client.create_uniqueness_constraint("developer_constraint", EntityType.NODE, ["uid"], ["Developer"])
 ```
 
 #### Client utilities <a name="client-utilities"></a>
