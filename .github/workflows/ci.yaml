@@ -150,7 +150,7 @@ jobs:
         run: poetry show pydantic
 
       - name: Run tests
-        run: poetry run pytest
+        run: poetry run pytest tests --asyncio-mode=auto --cov -W ignore::DeprecationWarning
 
   release:
     runs-on: ubuntu-latest
