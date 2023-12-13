@@ -12,7 +12,6 @@
 What's planned for future releases.
 
 - [ ] Migration CLI for migrating your pyneo4j-ogm models
-- [ ] Bookmark support
 
 ## 🎯 Features <a name="features"></a>
 
@@ -295,6 +294,7 @@ In the following we are going to take a closer look at the different parts of `p
       - [Registering models ](#registering-models-)
       - [Executing Cypher queries ](#executing-cypher-queries-)
       - [Batching cypher queries ](#batching-cypher-queries-)
+      - [Using bookmarks (Enterprise Edition only) ](#using-bookmarks-enterprise-edition-only-)
       - [Manual indexing and constraints ](#manual-indexing-and-constraints-)
       - [Client utilities ](#client-utilities-)
     - [Models ](#models-)
@@ -488,6 +488,33 @@ async with client.batch():
 ```
 
 You can batch anything that runs a query, regardless of whether it is a raw cypher query, a model query or a relationship-property query. If any of the queries fail, the whole transaction will be rolled back and an exception will be raised.
+
+#### Using bookmarks (Enterprise Edition only) <a name="using-bookmarks"></a>
+
+If you are using the Enterprise Edition of Neo4j, you can use bookmarks to keep track of the last transaction that has been committed. This allows you to resume a transaction after a failure or a restart of the database. The client provides a `last_bookmarks` property that allows you to get the bookmarks from the last session. These bookmarks can be used in combination with the `use_bookmarks()` method. Like the `batch()` method, the `use_bookmarks()` method has to be called with a context manager. All queries run inside the context manager will use the bookmarks passed to the `use_bookmarks()` method. Here is an example of how to use bookmarks:
+
+```python
+# Create a new node and get the bookmarks from the last session
+await client.cypher("CREATE (d:Developer {name: 'John Doe', age: 25})")
+bookmarks = client.last_bookmarks
+
+# Create another node, but this time don't get the bookmark
+# When we use the bookmarks from the last session, this node will not be visible
+await client.cypher("CREATE (c:Coffee {flavour: 'Espresso', milk: False, sugar: False})")
+
+with client.use_bookmarks(bookmarks=bookmarks):
+  # All queries executed inside the context manager will use the bookmarks
+  # passed to the `use_bookmarks()` method.
+
+  # Here we will only see the node created in the first query
+  results, meta = await client.cypher("MATCH (n) RETURN n")
+
+  # Model queries also can be batched together without any extra work!
+  # This will return no results, since the coffee node was created after
+  # the bookmarks were taken.
+  coffee = await Coffee.find_many()
+  print(coffee)  # []
+```
 
 #### Manual indexing and constraints <a name="manual-indexing-and-constraints"></a>
 
