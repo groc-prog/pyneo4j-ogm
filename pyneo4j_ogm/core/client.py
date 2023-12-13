@@ -13,6 +13,7 @@ from typing_extensions import LiteralString
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
+    InvalidBookmark,
     InvalidEntityType,
     InvalidLabelOrType,
     MissingDatabaseURI,
@@ -70,12 +71,19 @@ class Pyneo4jClient:
     _transaction: Optional[AsyncTransaction]
     _skip_constraints: bool
     _skip_indexes: bool
-    _batch_enabled: bool = False
+    _batch_enabled: bool
+    _used_bookmarks: Optional[Set[str]]
+    last_bookmarks: Optional[Set[str]]
     models: Set[Type[NodeModel | RelationshipModel]]
     uri: str
 
     def __init__(self) -> None:
         self._builder = QueryBuilder()
+        self._batch_enabled = False
+        self._used_bookmarks = None
+        self._skip_constraints = False
+        self._skip_indexes = False
+        self.last_bookmarks = None
         self.models = set()
 
     async def connect(
@@ -612,6 +620,19 @@ class Pyneo4jClient:
         """
         return BatchManager(self)
 
+    def use_bookmarks(self, bookmarks: Set[str]) -> "BookmarkManager":
+        """
+        Use bookmarks for the next transaction.
+
+        Args:
+            bookmarks (Set[str]): The bookmarks to use.
+
+        Returns:
+            BookmarkManager: A class for managing bookmarks which must be used with a `with`
+                statement.
+        """
+        return BookmarkManager(self, bookmarks)
+
     @ensure_connection
     async def _begin_transaction(self) -> None:
         """
@@ -621,7 +642,7 @@ class Pyneo4jClient:
             raise TransactionInProgress()
 
         logger.debug("Beginning new session")
-        self._session = cast(AsyncDriver, self._driver).session()
+        self._session = cast(AsyncDriver, self._driver).session(bookmarks=self._used_bookmarks)
         logger.debug("Session %s created", self._session)
 
         logger.debug("Beginning new transaction for session %s", self._session)
@@ -636,6 +657,8 @@ class Pyneo4jClient:
         logger.debug("Committing transaction %s", self._transaction)
         try:
             await cast(AsyncTransaction, self._transaction).commit()  # type: ignore
+            bookmarks = await cast(AsyncSession, self._session).last_bookmarks()
+            self.last_bookmarks = set(bookmarks.raw_values)
         finally:
             self._session = None
             self._transaction = None
@@ -722,6 +745,8 @@ class BatchManager:
     Class for handling batch transactions.
     """
 
+    _client: "Pyneo4jClient"
+
     def __init__(self, client: "Pyneo4jClient") -> None:
         self._client = client
 
@@ -738,3 +763,27 @@ class BatchManager:
 
         logger.info("Batch transaction complete")
         self._client._batch_enabled = False
+
+
+class BookmarkManager:
+    """
+    Class for handling bookmarks.
+    """
+
+    _client: "Pyneo4jClient"
+    _bookmarks: Set[str]
+
+    def __init__(self, client: "Pyneo4jClient", bookmarks: Set[str]) -> None:
+        self._client = client
+        self._bookmarks = bookmarks
+
+    def __enter__(self) -> None:
+        if self._bookmarks is None or not all(isinstance(bookmark, str) for bookmark in self._bookmarks):
+            raise InvalidBookmark(bookmarks=self._bookmarks)
+
+        logger.info("Using bookmarks %s", self._bookmarks)
+        self._client._used_bookmarks = self._bookmarks
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        logger.info("Bookmarks %s used", self._bookmarks)
+        self._client._used_bookmarks = None

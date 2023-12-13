@@ -187,3 +187,12 @@ class NoResultFound(Pyneo4jException):
 
     def __init__(self, filters: Any, *args: object) -> None:
         super().__init__(f"No matching results for filter {filters}", *args)
+
+
+class InvalidBookmark(Pyneo4jException):
+    """
+    A bookmark was used to start a transaction, but the bookmark was invalid.
+    """
+
+    def __init__(self, bookmarks: Any, *args: object) -> None:
+        super().__init__(f"Expected valid bookmarks, but received {bookmarks}", *args)
