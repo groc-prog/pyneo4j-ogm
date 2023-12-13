@@ -77,6 +77,7 @@ def ensure_alive(func):
 
     @wraps(func)
     def wrapper(self, *args: Any, **kwargs: Any):
+        logger.debug("Checking if instance is alive and hydrated")
         if getattr(self, "_destroyed", False):
             raise InstanceDestroyed()
 
@@ -149,7 +150,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
             super().__pydantic_init_subclass__(**kwargs)
 
             cls._register_relationship_properties()
-            print("DONE")
 
     @hooks
     async def create(self: T) -> T:
@@ -317,22 +317,28 @@ class NodeModel(ModelBase[NodeModelSettings]):
             auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch.
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
 
+        Raises:
+            InvalidFilters: If auto-fetch is enabled and no node labels are provided.
+            UnregisteredModel: If auto-fetch is enabled and a model with the provided labels is not registered.
+
         Returns:
             List["NodeModel" | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected
                 properties.
         """
-        do_auto_fetch: bool = False
-        match_queries, return_queries = [], []
         target_node_model: Optional["NodeModel"] = None
+        match_queries, return_queries = [], []
+        do_auto_fetch: bool = False
 
         logger.info(
             "Getting connected nodes for node %s matching filters %s over multiple hops",
             self,
             filters,
         )
+
+        # Build all queries and parameters needed for query
         self._query_builder.reset_query()
-        if filters is not None:
-            self._query_builder.multi_hop_filters(filters=filters)
+        self._query_builder.multi_hop_filters(filters=filters)
+
         if options is not None:
             self._query_builder.query_options(options=options)
         if projections is not None:
@@ -342,14 +348,15 @@ class NodeModel(ModelBase[NodeModelSettings]):
             "RETURN m" if self._query_builder.query["projections"] == "" else self._query_builder.query["projections"]
         )
 
-        if auto_fetch_nodes:
+        if auto_fetch_nodes or self._settings.auto_fetch_nodes:
             logger.debug("Auto-fetching nodes is enabled, checking if model with target labels is registered")
+            if "$node" not in filters or "$labels" not in filters["$node"]:
+                raise InvalidFilters()
 
-            labels: Optional[List[str]] = None
+            labels = cast(List[str], filters["$node"]["$labels"])
 
-            if "$node" in filters and "$labels" in filters["$node"]:
-                labels = cast(List[str], filters["$node"]["$labels"])
-
+            # Get target node model from the models registered with the client
+            # If no model is found, someone forgot to register it
             for model in self._client.models:
                 if hasattr(model._settings, "labels") and list(getattr(model._settings, "labels", [])) == labels:
                     target_node_model = cast("NodeModel", model)
@@ -357,20 +364,20 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
             if target_node_model is None:
                 raise UnregisteredModel(f"with labels {labels}")
-            else:
-                logger.debug("Model with labels %s is registered, building auto-fetch query", labels)
-                match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
-                    ref="m", nodes_to_fetch=auto_fetch_models
-                )
 
-                do_auto_fetch = all(
-                    [
-                        auto_fetch_nodes or self._settings.auto_fetch_nodes,
-                        len(match_queries) != 0,
-                        len(return_queries) != 0,
-                    ]
-                )
+            logger.debug("Model with labels %s is registered, building auto-fetch query", labels)
+            match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
+                ref="m", nodes_to_fetch=auto_fetch_models
+            )
 
+            do_auto_fetch = all(
+                [
+                    len(match_queries) != 0,
+                    len(return_queries) != 0,
+                ]
+            )
+
+        logger.debug("Querying database with auto-fetch %s", "enabled" if do_auto_fetch else "disabled")
         results, meta = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.node_match(list(self._settings.labels))}{self._query_builder.query['match']}
@@ -393,6 +400,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.debug("Building instances from results")
         if do_auto_fetch:
             # Add auto-fetched nodes to relationship properties
+            # We need to keep track of which nodes have been added to which relationship property
             instance_map: Dict[str, Set[str]] = {}
 
             logger.debug("Adding auto-fetched nodes to relationship properties")
@@ -404,18 +412,24 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     if instance_element_id is None or target_instance_element_id is None:
                         continue
 
+                    # If we are at the first result, we are dealing with a instance of the target node model
+                    # and need to add it to the instances list
                     if index == 0 and target_node_model is not None and instance_element_id not in instance_map:
                         instances.append(
                             target_node_model._inflate(node=result) if isinstance(result, Node) else result
                         )
-
                         instance_map[instance_element_id] = set()
+
+                    # If we are not at the first result, we are dealing with a instance of a auto-fetched
+                    # node and need to add it to the relationship property of the target node model
                     elif index != 0 and instance_element_id not in instance_map[target_instance_element_id]:
                         target_instance = [
                             instance
                             for instance in instances
                             if getattr(result_list[0], "_element_id") == getattr(instance, "_element_id")
                         ][0]
+
+                        # The meta list contains the names of the relationship properties
                         relationship_property = getattr(target_instance, meta[index])
                         nodes = cast(List[str], getattr(relationship_property, "_nodes"))
                         nodes.append(result)
@@ -492,10 +506,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         if do_auto_fetch:
             logger.debug("Querying database with auto-fetch enabled")
-            match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
             projection_query = (
                 "RETURN n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
             )
+            match_queries, return_queries = cls._build_auto_fetch(nodes_to_fetch=auto_fetch_models)
 
             results, meta = await cls._client.cypher(
                 query=f"""
@@ -559,7 +573,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     element_id = getattr(result, "_element_id")
 
                     if element_id not in added_nodes:
-                        # Add model instance to nodes list and mark it as added
                         nodes.append(result)
                         added_nodes.add(element_id)
 
@@ -632,7 +645,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 parameters=cls._query_builder.parameters,
             )
 
-            # Add auto-fetched nodes to relationship properties
+            # Add auto-fetched nodes to relationship properties and keep track of which nodes
+            # have been added already
             instance_map: Dict[str, Set[str]] = {}
 
             logger.debug("Adding auto-fetched nodes to relationship properties")
@@ -644,10 +658,15 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     if instance_element_id is None or target_instance_element_id is None:
                         continue
 
+                    # If we are at the first result, we are dealing with a instance of the target node model
+                    # and need to add it to the instances list
                     if index == 0 and instance_element_id not in instance_map:
                         instances.append(cls._inflate(node=result) if isinstance(result, Node) else result)
 
                         instance_map[instance_element_id] = set()
+
+                    # If we are not at the first result, we are dealing with a instance of a auto-fetched
+                    # node and need to add it to the relationship property of the target node model
                     elif index != 0 and instance_element_id not in instance_map[target_instance_element_id]:
                         target_instance = [
                             instance

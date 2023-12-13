@@ -1,9 +1,8 @@
 # pylint: disable=invalid-name, redefined-outer-name, unused-import, missing-module-docstring, missing-class-docstring
 
 import json
-from ast import alias
-from typing import Any, Dict, List, Optional, cast
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any, List, cast
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
@@ -121,8 +120,14 @@ async def test_hooks_decorator():
             self._settings = BaseModelSettings()
             self._settings.pre_hooks["async_test_func"] = [AsyncMock(), AsyncMock()]
             self._settings.post_hooks["async_test_func"] = [AsyncMock(), AsyncMock()]
-            self._settings.pre_hooks["sync_test_func"] = [MagicMock(), MagicMock()]
-            self._settings.post_hooks["sync_test_func"] = [MagicMock(), MagicMock()]
+            self._settings.pre_hooks["sync_test_func"] = [
+                MagicMock(__name__="MagicMock"),
+                MagicMock(__name__="MagicMock"),
+            ]
+            self._settings.post_hooks["sync_test_func"] = [
+                MagicMock(__name__="MagicMock"),
+                MagicMock(__name__="MagicMock"),
+            ]
 
         @hooks
         async def async_test_func(self):

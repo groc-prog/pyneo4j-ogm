@@ -44,7 +44,7 @@ def ensure_connection(func: Callable):
     """
 
     async def decorator(self, *args, **kwargs):
-        logger.debug("Ensuring connection to database for %s", func.__name__)
+        logger.debug("Ensuring connection to database before running method %s", func.__name__)
         if getattr(self, "_driver", None) is None:
             raise NotConnectedToDatabase()
 
@@ -115,7 +115,7 @@ class Pyneo4jClient:
         logger.info("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, *args, **kwargs)
 
-        logger.debug("Checking Neo4j version")
+        logger.debug("Checking if neo4j version is supported")
         server_info = await self._driver.get_server_info()
 
         version = server_info.agent.split("/")[1]
@@ -138,7 +138,7 @@ class Pyneo4jClient:
         Args:
             models (List[Type[NodeModel | RelationshipModel]]): A list of models to register.
         """
-        logger.info("Registering models %s", models)
+        logger.info("Registering models %s with client %s", models, self)
 
         for model in models:
             if issubclass(model, (NodeModel, RelationshipModel)):
@@ -234,7 +234,7 @@ class Pyneo4jClient:
             meta = list(result_data.keys())
 
             if resolve_models:
-                logger.debug("Resolving results to models")
+                logger.debug("`resolve_models` is set to True, trying to resolve query results")
                 for list_index, result_list in enumerate(results):
                     for result_index, result in enumerate(result_list):
                         resolved = self._resolve_database_model(result)
@@ -243,9 +243,9 @@ class Pyneo4jClient:
                             results[list_index][result_index] = resolved
 
             if self._batch_enabled is False:
+                logger.debug("No batching enabled, committing transaction")
                 await self._commit_transaction()
 
-            logger.debug("Query finished with results %s", results)
             return results, meta
         except Exception as exc:
             logger.error("Error running query %s", exc)
@@ -285,7 +285,7 @@ class Pyneo4jClient:
                 for label in labels_or_type:
                     constraint_name = f"{name}_{label}_{'_'.join(properties)}_unique_constraint"
 
-                    logger.info("Creating constraint %s for node with label %s", constraint_name, label)
+                    logger.info("Creating uniqueness constraint %s for node with label %s", constraint_name, label)
                     await self.cypher(
                         query=f"""
                             CREATE CONSTRAINT {constraint_name} IF NOT EXISTS
@@ -300,7 +300,9 @@ class Pyneo4jClient:
 
                 constraint_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_unique_constraint"
 
-                logger.info("Creating constraint %s for relationship with type %s", constraint_name, labels_or_type)
+                logger.info(
+                    "Creating uniqueness constraint %s for relationship with type %s", constraint_name, labels_or_type
+                )
                 await self.cypher(
                     query=f"""
                         CREATE CONSTRAINT {constraint_name} IF NOT EXISTS
@@ -721,11 +723,10 @@ class BatchManager:
     """
 
     def __init__(self, client: "Pyneo4jClient") -> None:
-        logger.info("Starting batch transaction")
         self._client = client
 
     async def __aenter__(self) -> None:
-        logger.debug("Beginning batch transaction")
+        logger.info("Starting batch transaction")
         self._client._batch_enabled = True
         await self._client._begin_transaction()
 
