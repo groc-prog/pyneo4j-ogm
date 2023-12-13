@@ -4,7 +4,6 @@ model types like registering hooks and exporting/importing models to/from dictio
 """
 import asyncio
 import json
-import re
 from asyncio import iscoroutinefunction
 from functools import wraps
 from typing import (
@@ -72,10 +71,12 @@ def hooks(func):
         async def wrapper(self, *args, **kwargs):  # type: ignore
             settings: BaseModelSettings = getattr(self, "_settings")
 
-            # Run pre hooks if defined
-            logger.debug("Checking pre hooks for %s", func.__name__)
             if func.__name__ in settings.pre_hooks:
+                logger.debug(
+                    "Found %s pre-hook functions for method %s", len(settings.pre_hooks[func.__name__]), func.__name__
+                )
                 for hook_function in settings.pre_hooks[func.__name__]:
+                    logger.debug("Running pre-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
                         await hook_function(self, *args, **kwargs)
                     else:
@@ -86,10 +87,12 @@ def hooks(func):
             else:
                 result = func(self, *args, **kwargs)
 
-            # Run post hooks if defined
-            logger.debug("Checking post hooks for %s", func.__name__)
             if func.__name__ in settings.post_hooks:
+                logger.debug(
+                    "Found %s post-hook functions for method %s", len(settings.post_hooks[func.__name__]), func.__name__
+                )
                 for hook_function in settings.post_hooks[func.__name__]:
+                    logger.debug("Running post-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
                         await hook_function(self, result, *args, **kwargs)
                     else:
@@ -104,10 +107,12 @@ def hooks(func):
             settings: BaseModelSettings = getattr(self, "_settings")
             loop = asyncio.get_event_loop()
 
-            # Run pre hooks if defined
-            logger.debug("Checking pre hooks for %s", func.__name__)
             if func.__name__ in settings.pre_hooks:
+                logger.debug(
+                    "Found %s pre-hook functions for method %s", len(settings.pre_hooks[func.__name__]), func.__name__
+                )
                 for hook_function in settings.pre_hooks[func.__name__]:
+                    logger.debug("Running pre-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
                         loop.run_until_complete(hook_function(self, *args, **kwargs))
                     else:
@@ -115,10 +120,12 @@ def hooks(func):
 
             result = func(self, *args, **kwargs)
 
-            # Run post hooks if defined
-            logger.debug("Checking post hooks for %s", func.__name__)
             if func.__name__ in settings.post_hooks:
+                logger.debug(
+                    "Found %s post-hook functions for method %s", len(settings.post_hooks[func.__name__]), func.__name__
+                )
                 for hook_function in settings.post_hooks[func.__name__]:
+                    logger.debug("Running post-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
                         loop.run_until_complete(hook_function(self, result, *args, **kwargs))
                     else:
@@ -182,7 +189,6 @@ class ModelBase(BaseModel, Generic[V]):
                 exclude_none=exclude_none,
             )
 
-            # Check if alias has been defined
             element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
             id_field_name = self._get_alias("id") if by_alias else "id"
 
@@ -222,7 +228,6 @@ class ModelBase(BaseModel, Generic[V]):
                 warnings=warnings,
             )
 
-            # Check if alias has been defined
             element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
             id_field_name = self._get_alias("id") if by_alias else "id"
 
@@ -262,7 +267,6 @@ class ModelBase(BaseModel, Generic[V]):
                 **dumps_kwargs,
             )
 
-            # Check if alias has been defined
             element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
             id_field_name = self._get_alias("id") if by_alias else "id"
 
@@ -304,7 +308,6 @@ class ModelBase(BaseModel, Generic[V]):
                 warnings=warnings,
             )
 
-            # Check if alias has been defined
             element_id_field_name = (
                 self._get_alias("element_id") if by_alias else "element_id" if by_alias else "element_id"
             )
@@ -400,7 +403,6 @@ class ModelBase(BaseModel, Generic[V]):
                 exclude_none=exclude_none,
             )
 
-            # Check if alias has been defined
             element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
             id_field_name = self._get_alias("id") if by_alias else "id"
 
@@ -438,7 +440,6 @@ class ModelBase(BaseModel, Generic[V]):
                 **dumps_kwargs,
             )
 
-            # Check if alias has been defined
             element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
             id_field_name = self._get_alias("id") if by_alias else "id"
 
@@ -510,7 +511,7 @@ class ModelBase(BaseModel, Generic[V]):
     def __init_subclass__(cls) -> None:
         setattr(cls, "_query_builder", QueryBuilder())
 
-        logger.debug("Setting up defined settings for model %s", cls.__name__)
+        logger.debug("Registering settings for model %s", cls.__name__)
         if hasattr(cls, "Settings"):
             for setting, value in cls.Settings.__dict__.items():
                 if not setting.startswith("__"):
@@ -581,7 +582,7 @@ class ModelBase(BaseModel, Generic[V]):
             cls._settings.pre_hooks[hook_name] = []
 
         if overwrite:
-            logger.debug("Overwriting existing pre-hook functions")
+            logger.debug("Overwriting %s existing pre-hook functions", len(cls._settings.pre_hooks[hook_name]))
             cls._settings.pre_hooks[hook_name] = valid_hook_functions
         else:
             logger.debug("Adding %s pre-hook functions", len(valid_hook_functions))
@@ -620,7 +621,7 @@ class ModelBase(BaseModel, Generic[V]):
             cls._settings.post_hooks[hook_name] = []
 
         if overwrite:
-            logger.debug("Overwriting existing post-hook functions")
+            logger.debug("Overwriting %s existing post-hook functions", len(cls._settings.post_hooks[hook_name]))
             cls._settings.post_hooks[hook_name] = valid_hook_functions
         else:
             logger.debug("Adding %s post-hook functions", len(valid_hook_functions))
@@ -637,52 +638,6 @@ class ModelBase(BaseModel, Generic[V]):
         """
         return cast(V, cls._settings)
 
-    @classmethod
-    def _convert_to_camel_case(cls, model_dict: Union[Dict[str, Any], List[Any]]) -> Union[Dict[str, Any], List[Any]]:
-        """
-        Recursively convert all keys in a dictionary to camel-case.
-
-        Args:
-            model_dict (Union[Dict[str, Any], List[Any]]): The dictionary to convert.
-
-        Returns:
-            Union[Dict[str, Any], List[Any]]: The dictionary with all keys converted to camelCase.
-        """
-
-        def to_camel_case(key: str) -> str:
-            return key[0].lower() + re.sub(r"(?:_+)(\w)", lambda x: x.group(1).upper(), key[1:])
-
-        if isinstance(model_dict, dict):
-            return {to_camel_case(key): cls._convert_to_camel_case(value) for key, value in model_dict.items()}
-        if isinstance(model_dict, list):
-            return [cls._convert_to_camel_case(item) for item in model_dict]
-
-        return model_dict
-
-    @classmethod
-    def _convert_keys_to_snake_case(
-        cls, model_dict: Union[Dict[str, Any], List[Any]]
-    ) -> Union[Dict[str, Any], List[Any]]:
-        """
-        Recursively convert all keys in a dictionary from camel-case to snake-case.
-
-        Args:
-            model_dict (Union[Dict[str, Any], List[Any]]): The dictionary to convert.
-
-        Returns:
-            Union[Dict[str, Any], List[Any]]: The dictionary with all keys converted to snake-case.
-        """
-
-        def to_snake_case(key: str) -> str:
-            return re.sub(r"(?<!^)(?=[A-Z])|(?<=\w)(?=[A-Z][a-z])", "_", key).lower()
-
-        if isinstance(model_dict, dict):
-            return {to_snake_case(key): cls._convert_keys_to_snake_case(value) for key, value in model_dict.items()}
-        if isinstance(model_dict, list):
-            return [cls._convert_keys_to_snake_case(item) for item in model_dict]
-
-        return model_dict
-
     @property
     def modified_properties(self) -> Set[str]:
         """
@@ -694,6 +649,7 @@ class ModelBase(BaseModel, Generic[V]):
         modified_properties = set()
         current_properties = get_model_dump(self)
 
+        logger.debug("Collecting modified properties for model %s", self.__class__.__name__)
         for property_name, property_value in self._db_properties.items():
             if current_properties[property_name] != property_value:
                 modified_properties.add(property_name)
