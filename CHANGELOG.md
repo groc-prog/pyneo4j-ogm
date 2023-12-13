@@ -2,6 +2,71 @@
 
 
 
+## v0.4.0 (2023-12-13)
+
+### Chore
+
+* chore: fix linting and type checking errors ([`27a4dd2`](https://github.com/groc-prog/pyneo4j-ogm/commit/27a4dd2f3c137ec36db9a826a6ae0aa091051d06))
+
+### Ci
+
+* ci: add cli args to test action ([`6e77db5`](https://github.com/groc-prog/pyneo4j-ogm/commit/6e77db5f3fa19b8c2709167d9003908ae3eb49ec))
+
+### Documentation
+
+* docs: update bookmark docs ([`38f1b13`](https://github.com/groc-prog/pyneo4j-ogm/commit/38f1b13052c0eea2a98cb0f18cde9203ece600db))
+
+* docs: adjust index/constraint docs ([`5ebc419`](https://github.com/groc-prog/pyneo4j-ogm/commit/5ebc419fe54cdfff999880443e97fcd3a7f3c7c0))
+
+* docs: update title ([`3054f2f`](https://github.com/groc-prog/pyneo4j-ogm/commit/3054f2f1a14551076e79cdf00db543c440fbbc35))
+
+* docs: update docs for now serialization ([`7102cb8`](https://github.com/groc-prog/pyneo4j-ogm/commit/7102cb8ebb224897e298056fbd9e09921d24caab))
+
+### Feature
+
+* feat: add bookmark support for client and model methods ([`305bceb`](https://github.com/groc-prog/pyneo4j-ogm/commit/305bcebadf8c8aa77fb320d9059def3d785ae51e))
+
+* feat(exceptions): remove ModelImportFailure exception ([`eec9eb4`](https://github.com/groc-prog/pyneo4j-ogm/commit/eec9eb4e6719369987235fb8b2330c7709e59247))
+
+* feat(settings): remove exclude_from_export setting ([`5ef3cca`](https://github.com/groc-prog/pyneo4j-ogm/commit/5ef3ccaec1b1167765ae91bf33689bab01888c07))
+
+* feat: exclude element_id and id before writing _db_properties ([`caf9763`](https://github.com/groc-prog/pyneo4j-ogm/commit/caf9763dd36a0293f4240189692202fb3b055e5e))
+
+* feat(ModelBase): take exclude, include and by_alias arguments into account before adding element_id or id ([`b3fd01d`](https://github.com/groc-prog/pyneo4j-ogm/commit/b3fd01dbedb27e58150da32f3591f170697fd5ba))
+
+* feat(ModelBase): include element_id and id fields in pydantics serialization methods ([`ea01cf5`](https://github.com/groc-prog/pyneo4j-ogm/commit/ea01cf560397160ab85490de635014eb8b90179f))
+
+### Performance
+
+* perf: optimize RelationshipProperty queries ([`f614ee4`](https://github.com/groc-prog/pyneo4j-ogm/commit/f614ee4d1bca33ad04f6c7c0673f0cc2affb8f0b))
+
+* perf: optimize node and relationship queries ([`ecbb6e6`](https://github.com/groc-prog/pyneo4j-ogm/commit/ecbb6e60d5f4c200de18fe18dbb5f5c565e0c370))
+
+### Refactor
+
+* refactor: update logging ([`a8ef299`](https://github.com/groc-prog/pyneo4j-ogm/commit/a8ef299d82b1d35bc93f6dec86ccc8ae055c5b55))
+
+* refactor(ModelBase): improve logging ([`e5711ee`](https://github.com/groc-prog/pyneo4j-ogm/commit/e5711ee369511f6865694a442d97372f80185593))
+
+* refactor: remove unused IndexType enum ([`57afc4a`](https://github.com/groc-prog/pyneo4j-ogm/commit/57afc4adbcaf582324e8c043696eef870c4ae8af))
+
+* refactor(Pyneo4jClient): split up index types into separate methods ([`1ec4d81`](https://github.com/groc-prog/pyneo4j-ogm/commit/1ec4d811731fa8f7d98d6aec748b292d69ac26d1))
+
+### Test
+
+* test: fix dict_dump and json_dump test cases ([`0287280`](https://github.com/groc-prog/pyneo4j-ogm/commit/0287280c6a84430c34e99c4c865d5d38557a6836))
+
+* test: adjust Pyneo4jClient test suits ([`31c4acb`](https://github.com/groc-prog/pyneo4j-ogm/commit/31c4acb152a9687ebb192a94234eae64fd1c12b5))
+
+* test: update test suits ([`d1c4001`](https://github.com/groc-prog/pyneo4j-ogm/commit/d1c4001e9ebfbd28b1f4798b3f7776d5ce5ee0be))
+
+* test: remove pytest.ini and add cli args to vscode pytest args ([`e889e01`](https://github.com/groc-prog/pyneo4j-ogm/commit/e889e01d8160cbb4906f0aae0847c8481b631158))
+
+### Unknown
+
+* Merge remote-tracking branch &#39;origin/main&#39; into develop ([`3fbeade`](https://github.com/groc-prog/pyneo4j-ogm/commit/3fbeade91b943c4503c3695c41bc8c8a5fa68752))
+
+
 ## v0.3.0 (2023-11-30)
 
 ### Chore
@@ -13,6 +78,8 @@
 * chore(pydantic): bump version to &gt;=1.10, &lt;3.0 ([`a46177f`](https://github.com/groc-prog/pyneo4j-ogm/commit/a46177f16448ae9dfaec5378a8bd5a154cab2ef1))
 
 ### Ci
+
+* ci: remove test branch ([`5a99471`](https://github.com/groc-prog/pyneo4j-ogm/commit/5a99471e92c8eaf19aac22bdef0713aebb98947d))
 
 * ci: update test workflow to run pydantic v1 and v2 ([`535291a`](https://github.com/groc-prog/pyneo4j-ogm/commit/535291a8f50be67c8ccba2a3293ec19a12e091d8))
 
