@@ -25,17 +25,6 @@ from pyneo4j_ogm.pydantic_utils import get_field_type, get_model_fields
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 
-class IndexType(str, Enum):
-    """
-    Available indexing types.
-    """
-
-    RANGE = "RANGE"
-    TEXT = "TEXT"
-    POINT = "POINT"
-    LOOKUP = "LOOKUP"
-
-
 class EntityType(str, Enum):
     """
     Available graph entity types.

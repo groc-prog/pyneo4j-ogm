@@ -10,7 +10,7 @@ from neo4j import AsyncSession
 from neo4j.exceptions import CypherSyntaxError
 from neo4j.graph import Node, Path, Relationship
 
-from pyneo4j_ogm.core.client import EntityType, IndexType, Pyneo4jClient
+from pyneo4j_ogm.core.client import EntityType, Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
@@ -120,25 +120,25 @@ async def test_register_models(client: Pyneo4jClient, session: AsyncSession):
 
     # Indexes for 'TEST_RELATIONSHIP' type
     assert index_results[8][1] == "ClientRelationshipModel_TEST_RELATIONSHIP_a_unique_constraint"
-    assert index_results[8][4] == IndexType.RANGE
+    assert index_results[8][4] == "RANGE"
     assert index_results[8][5] == EntityType.RELATIONSHIP
     assert index_results[8][6] == ["TEST_RELATIONSHIP"]
     assert index_results[8][7] == ["a"]
 
     assert index_results[9][1] == "ClientRelationshipModel_TEST_RELATIONSHIP_b_range_index"
-    assert index_results[9][4] == IndexType.RANGE
+    assert index_results[9][4] == "RANGE"
     assert index_results[9][5] == EntityType.RELATIONSHIP
     assert index_results[9][6] == ["TEST_RELATIONSHIP"]
     assert index_results[9][7] == ["b"]
 
     assert index_results[10][1] == "ClientRelationshipModel_TEST_RELATIONSHIP_c_text_index"
-    assert index_results[10][4] == IndexType.TEXT
+    assert index_results[10][4] == "TEXT"
     assert index_results[10][5] == EntityType.RELATIONSHIP
     assert index_results[10][6] == ["TEST_RELATIONSHIP"]
     assert index_results[10][7] == ["c"]
 
     assert index_results[11][1] == "ClientRelationshipModel_TEST_RELATIONSHIP_d_point_index"
-    assert index_results[11][4] == IndexType.POINT
+    assert index_results[11][4] == "POINT"
     assert index_results[11][5] == EntityType.RELATIONSHIP
     assert index_results[11][6] == ["TEST_RELATIONSHIP"]
     assert index_results[11][7] == ["d"]
@@ -350,13 +350,13 @@ async def test_create_node_range_indexes(client: Pyneo4jClient, session: AsyncSe
     await query_results.consume()
 
     assert index_results[0][1] == "node_range_index_Node_prop_a_prop_b_range_index"
-    assert index_results[0][4] == IndexType.RANGE
+    assert index_results[0][4] == "RANGE"
     assert index_results[0][5] == EntityType.NODE
     assert index_results[0][6] == ["Node"]
     assert index_results[0][7] == ["prop_a", "prop_b"]
 
     assert index_results[1][1] == "node_range_index_Test_prop_a_prop_b_range_index"
-    assert index_results[1][4] == IndexType.RANGE
+    assert index_results[1][4] == "RANGE"
     assert index_results[1][5] == EntityType.NODE
     assert index_results[1][6] == ["Test"]
     assert index_results[1][7] == ["prop_a", "prop_b"]
@@ -378,7 +378,7 @@ async def test_create_relationship_range_indexes(client: Pyneo4jClient, session:
     await query_results.consume()
 
     assert index_results[0][1] == "relationship_range_index_REL_prop_a_prop_b_range_index"
-    assert index_results[0][4] == IndexType.RANGE
+    assert index_results[0][4] == "RANGE"
     assert index_results[0][5] == EntityType.RELATIONSHIP
     assert index_results[0][6] == ["REL"]
     assert index_results[0][7] == ["prop_a", "prop_b"]
@@ -392,25 +392,25 @@ async def test_create_node_text_indexes(client: Pyneo4jClient, session: AsyncSes
     await query_results.consume()
 
     assert index_results[0][1] == "node_text_index_Node_prop_a_text_index"
-    assert index_results[0][4] == IndexType.TEXT
+    assert index_results[0][4] == "TEXT"
     assert index_results[0][5] == EntityType.NODE
     assert index_results[0][6] == ["Node"]
     assert index_results[0][7] == ["prop_a"]
 
     assert index_results[1][1] == "node_text_index_Node_prop_b_text_index"
-    assert index_results[1][4] == IndexType.TEXT
+    assert index_results[1][4] == "TEXT"
     assert index_results[1][5] == EntityType.NODE
     assert index_results[1][6] == ["Node"]
     assert index_results[1][7] == ["prop_b"]
 
     assert index_results[2][1] == "node_text_index_Test_prop_a_text_index"
-    assert index_results[2][4] == IndexType.TEXT
+    assert index_results[2][4] == "TEXT"
     assert index_results[2][5] == EntityType.NODE
     assert index_results[2][6] == ["Test"]
     assert index_results[2][7] == ["prop_a"]
 
     assert index_results[3][1] == "node_text_index_Test_prop_b_text_index"
-    assert index_results[3][4] == IndexType.TEXT
+    assert index_results[3][4] == "TEXT"
     assert index_results[3][5] == EntityType.NODE
     assert index_results[3][6] == ["Test"]
     assert index_results[3][7] == ["prop_b"]
@@ -424,13 +424,13 @@ async def test_create_relationship_text_indexes(client: Pyneo4jClient, session: 
     await query_results.consume()
 
     assert index_results[0][1] == "relationship_text_index_REL_prop_a_text_index"
-    assert index_results[0][4] == IndexType.TEXT
+    assert index_results[0][4] == "TEXT"
     assert index_results[0][5] == EntityType.RELATIONSHIP
     assert index_results[0][6] == ["REL"]
     assert index_results[0][7] == ["prop_a"]
 
     assert index_results[1][1] == "relationship_text_index_REL_prop_b_text_index"
-    assert index_results[1][4] == IndexType.TEXT
+    assert index_results[1][4] == "TEXT"
     assert index_results[1][5] == EntityType.RELATIONSHIP
     assert index_results[1][6] == ["REL"]
     assert index_results[1][7] == ["prop_b"]
@@ -444,7 +444,7 @@ async def test_create_node_lookup_indexes(client: Pyneo4jClient, session: AsyncS
     await query_results.consume()
 
     assert index_results[0][1] == "node_lookup_index_lookup_index"
-    assert index_results[0][4] == IndexType.LOOKUP
+    assert index_results[0][4] == "LOOKUP"
     assert index_results[0][5] == EntityType.NODE
 
 
@@ -456,7 +456,7 @@ async def test_create_relationship_lookup_indexes(client: Pyneo4jClient, session
     await query_results.consume()
 
     assert index_results[0][1] == "relationship_lookup_index_lookup_index"
-    assert index_results[0][4] == IndexType.LOOKUP
+    assert index_results[0][4] == "LOOKUP"
     assert index_results[0][5] == EntityType.RELATIONSHIP
 
 
@@ -468,25 +468,25 @@ async def test_create_node_point_indexes(client: Pyneo4jClient, session: AsyncSe
     await query_results.consume()
 
     assert index_results[0][1] == "node_point_index_Node_prop_a_point_index"
-    assert index_results[0][4] == IndexType.POINT
+    assert index_results[0][4] == "POINT"
     assert index_results[0][5] == EntityType.NODE
     assert index_results[0][6] == ["Node"]
     assert index_results[0][7] == ["prop_a"]
 
     assert index_results[1][1] == "node_point_index_Node_prop_b_point_index"
-    assert index_results[1][4] == IndexType.POINT
+    assert index_results[1][4] == "POINT"
     assert index_results[1][5] == EntityType.NODE
     assert index_results[1][6] == ["Node"]
     assert index_results[1][7] == ["prop_b"]
 
     assert index_results[2][1] == "node_point_index_Test_prop_a_point_index"
-    assert index_results[2][4] == IndexType.POINT
+    assert index_results[2][4] == "POINT"
     assert index_results[2][5] == EntityType.NODE
     assert index_results[2][6] == ["Test"]
     assert index_results[2][7] == ["prop_a"]
 
     assert index_results[3][1] == "node_point_index_Test_prop_b_point_index"
-    assert index_results[3][4] == IndexType.POINT
+    assert index_results[3][4] == "POINT"
     assert index_results[3][5] == EntityType.NODE
     assert index_results[3][6] == ["Test"]
     assert index_results[3][7] == ["prop_b"]
@@ -500,13 +500,13 @@ async def test_create_relationship_point_indexes(client: Pyneo4jClient, session:
     await query_results.consume()
 
     assert index_results[0][1] == "relationship_point_index_REL_prop_a_point_index"
-    assert index_results[0][4] == IndexType.POINT
+    assert index_results[0][4] == "POINT"
     assert index_results[0][5] == EntityType.RELATIONSHIP
     assert index_results[0][6] == ["REL"]
     assert index_results[0][7] == ["prop_a"]
 
     assert index_results[1][1] == "relationship_point_index_REL_prop_b_point_index"
-    assert index_results[1][4] == IndexType.POINT
+    assert index_results[1][4] == "POINT"
     assert index_results[1][5] == EntityType.RELATIONSHIP
     assert index_results[1][6] == ["REL"]
     assert index_results[1][7] == ["prop_b"]
