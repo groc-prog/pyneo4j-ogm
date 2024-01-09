@@ -370,6 +370,7 @@ In the following we are going to take a closer look at the different parts of `p
       - [Query options ](#query-options--4)
       - [Auto-fetching relationship-properties ](#auto-fetching-relationship-properties-)
     - [Logging ](#logging-)
+    - [Running the test suite ](#running-the-test-suite-)
 
 ### Basic concepts <a name="basic-concepts"></a>
 
@@ -1790,3 +1791,15 @@ print(developer.other_property.nodes) # []
 ### Logging <a name="logging"></a>
 
 You can control the log level and whether to log to the console or not by setting the `PYNEO4J_OGM_LOG_LEVEL` and `PYNEO4J_OGM_ENABLE_LOGGING` as environment variables. The available levels are the same as provided by the build-in `logging` module. The default log level is `WARNING` and logging to the console is enabled by default.
+
+### Running the test suite <a name="running-the-test-suite"></a>
+
+To run the test suite, you have to install the development dependencies and run the tests using `pytest`. The tests are located in the `tests` directory. Any tests located in the `tests/integration` directory will require you to have a Neo4j instance running on `localhost:7687` with the credentials (`neo4j:password`). This can easily be done using the provided `docker-compose.yml` file.
+
+```bash
+# Install the dependencies
+poetry install
+
+# Run the tests using pytest
+poetry run pytest tests --asyncio-mode=auto --cov -W ignore::DeprecationWarning
+```
