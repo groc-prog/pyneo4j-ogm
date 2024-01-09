@@ -146,9 +146,6 @@ jobs:
           poetry install
           poetry add pydantic@${{ matrix.pydantic-version }}
 
-      - name: View pydantic version
-        run: poetry show pydantic
-
       - name: Run tests
         run: poetry run pytest tests --asyncio-mode=auto --cov -W ignore::DeprecationWarning
 
