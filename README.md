@@ -325,8 +325,9 @@ In the following we are going to take a closer look at the different parts of `p
         - [Model.delete\_one() ](#modeldelete_one-)
           - [Raise on empty result ](#raise-on-empty-result--2)
         - [Model.delete\_many() ](#modeldelete_many-)
-        - [Model.count() ](#modelcount-)
           - [Filters ](#filters--2)
+        - [Model.count() ](#modelcount-)
+          - [Filters ](#filters--3)
         - [NodeModelInstance.create() ](#nodemodelinstancecreate-)
         - [NodeModelInstance.find\_connected\_nodes() ](#nodemodelinstancefind_connected_nodes-)
           - [Projections ](#projections--2)
@@ -342,7 +343,7 @@ In the following we are going to take a closer look at the different parts of `p
     - [Relationship-properties ](#relationship-properties-)
       - [Available methods ](#available-methods--1)
         - [RelationshipProperty.relationships() ](#relationshippropertyrelationships-)
-          - [Filters ](#filters--3)
+          - [Filters ](#filters--4)
           - [Projections ](#projections--3)
           - [Query options ](#query-options--2)
         - [RelationshipProperty.connect() ](#relationshippropertyconnect-)
@@ -351,7 +352,7 @@ In the following we are going to take a closer look at the different parts of `p
         - [RelationshipProperty.disconnect\_all() ](#relationshippropertydisconnect_all-)
         - [RelationshipProperty.replace() ](#relationshippropertyreplace-)
         - [RelationshipProperty.find\_connected\_nodes() ](#relationshippropertyfind_connected_nodes-)
-          - [Filters ](#filters--4)
+          - [Filters ](#filters--5)
           - [Projections ](#projections--4)
           - [Query options ](#query-options--3)
           - [Auto-fetching nodes ](#auto-fetching-nodes--3)
@@ -638,7 +639,7 @@ There also is a special type of property called `RelationshipProperty`. This pro
 The `Settings` class of a `NodeModel` provides the following properties:
 
 | Setting name          | Type                          | Description                                                                                                                                                                                                                                                                                                                              |
-| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |                                                                                                |
+| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pre_hooks`           | **Dict[str, List[Callable]]** | A dictionary where the key is the name of the method for which to register the hook and the value is a list of hook functions. The hook function can be synchronous or asynchronous. All hook functions receive the exact same arguments as the method they are registered for and the current model instance as the first argument. Defaults to `{}`. |
 | `post_hooks`          | **Dict[str, List[Callable]]** | Same as **pre_hooks**, but the hook functions are executed after the method they are registered for. Additionally, the result of the method is passed to the hook as the second argument. Defaults to `{}`.                                                                                                                              |
 | `labels`           | **Set[str]** | A set of labels to use for the node. If no labels are defined, the name of the model will be used as the label. Defaults to the `model name split by it's words`.                                                                                                                                                                                                                            |
@@ -651,7 +652,7 @@ The `Settings` class of a `NodeModel` provides the following properties:
 For RelationshipModels, the `labels` setting is not available, since relationships don't have labels in Neo4j. Instead, the `type` setting can be used to define the type of the relationship. If no type is defined, the name of the model name will be used as the type.
 
 | Setting name          | Type                          | Description                                                                                                                                                                                                                                                                                                                              |
-| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |                                                                                                |
+| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pre_hooks`           | **Dict[str, List[Callable]]** | A dictionary where the key is the name of the method for which to register the hook and the value is a list of hook functions. The hook function can be synchronous or asynchronous. All hook functions receive the exact same arguments as the method they are registered for and the current model instance as the first argument. Defaults to `{}`. |
 | `post_hooks`          | **Dict[str, List[Callable]]** | Same as **pre_hooks**, but the hook functions are executed after the method they are registered for. Additionally, the result of the method is passed to the hook as the second argument. Defaults to `{}`.                                                                                                                              |
 | `type`       | **str** | The type of the relationship to use. If no type is defined, the model name will be used as the type. Defaults to the `model name in all uppercase`. |
@@ -964,7 +965,7 @@ print(count) # However many nodes matched the filter
 print(count) # 0
 ```
 
-####### Filters <a name="model-delete-many-filters"></a>
+###### Filters <a name="model-delete-many-filters"></a>
 
 Optionally, a `filters` argument can be provided, which defines which entities to delete. For more about filters, see the [`Filtering queries`](#query-filters) section.
 
