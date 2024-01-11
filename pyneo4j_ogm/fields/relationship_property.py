@@ -26,7 +26,6 @@ from typing import (
 )
 
 from neo4j.graph import Node, Relationship
-from pydantic import ValidationError
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
@@ -59,7 +58,7 @@ if IS_PYDANTIC_V2:
     from pydantic import GetCoreSchemaHandler, ValidatorFunctionWrapHandler
     from pydantic_core import CoreSchema, core_schema
 else:
-    from pydantic.fields import ModelField
+    from pydantic.fields import ModelField  # type: ignore
 
 P = ParamSpec("P")
 T = TypeVar("T", bound=NodeModel)
