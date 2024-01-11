@@ -1804,9 +1804,13 @@ You can control the log level and whether to log to the console or not by settin
 To run the test suite, you have to install the development dependencies and run the tests using `pytest`. The tests are located in the `tests` directory. Any tests located in the `tests/integration` directory will require you to have a Neo4j instance running on `localhost:7687` with the credentials (`neo4j:password`). This can easily be done using the provided `docker-compose.yml` file.
 
 ```bash
-# Install the dependencies
-poetry install
+poetry run pytest tests --asyncio-mode=auto -W ignore::DeprecationWarning
+```
 
-# Run the tests using pytest
-poetry run pytest tests --asyncio-mode=auto --cov -W ignore::DeprecationWarning
+> **Note:** The `-W ignore::DeprecationWarning` can be omitted but will result in a lot of deprication warnings by Neo4j itself about the usage of the now deprecated `ID`.
+
+As for running the tests with a different pydantic version, you can just run the following command locally:
+
+```bash
+poetry add pydantic@1.10
 ```
