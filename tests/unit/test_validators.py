@@ -1,4 +1,5 @@
 # pylint: disable=missing-module-docstring, missing-class-docstring
+# pyright: reportUnboundVariable=false
 
 from pydantic import BaseModel
 from pydantic.class_validators import root_validator
@@ -19,9 +20,7 @@ def test_normalize_fields_validator():
         attr: str
 
         if IS_PYDANTIC_V2:
-            normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
-                _normalize_fields
-            )
+            normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
         else:
             normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 

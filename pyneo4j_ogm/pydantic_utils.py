@@ -1,6 +1,9 @@
 """
 Utility functions for staying compatible with Pydantic V1 and V2
 """
+
+# pyright: reportUnboundVariable=false
+
 from typing import Any, Type
 
 import pydantic
@@ -16,9 +19,9 @@ else:
 
 def parse_object_as(object_type: Type, data: Any):
     if IS_PYDANTIC_V2:
-        return TypeAdapter(object_type).validate_python(data)  # pyright: ignore[reportUnboundVariable]
+        return TypeAdapter(object_type).validate_python(data)
     else:
-        return parse_obj_as(object_type, data)  # pyright: ignore[reportUnboundVariable]
+        return parse_obj_as(object_type, data)
 
 
 def get_field_type(field):

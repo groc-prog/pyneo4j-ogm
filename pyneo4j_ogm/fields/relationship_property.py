@@ -2,12 +2,16 @@
 Relationship property class used to define relationships between the model this class is used on and a target model,
 which defines the other end of the relationship.
 """
+
+# pyright: reportUnboundVariable=false
+
 import asyncio
 from asyncio import iscoroutinefunction
 from functools import wraps
 from typing import (
     Any,
     Dict,
+    ForwardRef,
     Generic,
     List,
     Optional,
@@ -17,9 +21,12 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    get_args,
+    get_origin,
 )
 
 from neo4j.graph import Node, Relationship
+from pydantic import ValidationError
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
@@ -35,7 +42,7 @@ from pyneo4j_ogm.exceptions import (
 )
 from pyneo4j_ogm.fields.settings import RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.pydantic_utils import parse_model
+from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, parse_model
 from pyneo4j_ogm.queries.enums import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
@@ -47,6 +54,12 @@ from pyneo4j_ogm.queries.types import (
     RelationshipFilters,
     RelationshipPropertyFilters,
 )
+
+if IS_PYDANTIC_V2:
+    from pydantic import GetCoreSchemaHandler, ValidatorFunctionWrapHandler
+    from pydantic_core import CoreSchema, core_schema
+else:
+    from pydantic.fields import ModelField
 
 P = ParamSpec("P")
 T = TypeVar("T", bound=NodeModel)
@@ -940,3 +953,101 @@ class RelationshipProperty(Generic[T, U]):
                     )
             case _:
                 logger.debug("RelationshipPropertyCardinality is %s, no checks required", self._cardinality)
+
+    if IS_PYDANTIC_V2:
+        pass
+        # @classmethod
+        # def __get_pydantic_core_schema__(cls, source_type: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
+        #     origin = get_origin(source_type)
+
+        #     if origin is None:
+        #         origin = source_type
+        #         target_model_tp = Any
+        #         relationship_model_tp = Any
+        #     else:
+        #         target_model_tp, relationship_model_tp = get_args(source_type)
+
+        #     target_model_schema = handler.generate_schema(target_model_tp)
+        #     relationship_model_schema = handler.generate_schema(relationship_model_tp)
+
+        #     def validate_target_model(
+        #         v: RelationshipProperty[T, U], handler: ValidatorFunctionWrapHandler
+        #     ) -> RelationshipProperty[T, U]:
+        #         v._target_model = handler(v._target_model)
+        #         return v
+
+        #     def validate_relationship_model(
+        #         v: RelationshipProperty[T, U], handler: ValidatorFunctionWrapHandler
+        #     ) -> RelationshipProperty[T, U]:
+        #         v._relationship_model = handler(v._relationship_model)
+        #         return v
+
+        #     python_schema = core_schema.chain_schema(
+        #         [
+        #             core_schema.is_instance_schema(cls),
+        #             core_schema.no_info_wrap_validator_function(validate_target_model, target_model_schema),
+        #             core_schema.no_info_wrap_validator_function(validate_relationship_model, relationship_model_schema),
+        #         ]
+        #     )
+
+        #     return core_schema.json_or_python_schema(
+        #         json_schema=core_schema.chain_schema(
+        #             [
+        #                 core_schema.typed_dict_schema(
+        #                     {
+        #                         "target_model": core_schema.typed_dict_field(target_model_schema, required=False),
+        #                         "target_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
+        #                         "relationship_model": core_schema.typed_dict_field(
+        #                             relationship_model_schema, required=False
+        #                         ),
+        #                         "relationship_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
+        #                         "direction": core_schema.typed_dict_field(core_schema.str_schema()),
+        #                         "cardinality": core_schema.typed_dict_field(core_schema.str_schema()),
+        #                         "allow_multiple": core_schema.typed_dict_field(core_schema.bool_schema()),
+        #                         "registered_name": core_schema.typed_dict_field(core_schema.str_schema()),
+        #                     }
+        #                 )
+        #             ]
+        #         ),
+        #         python_schema=python_schema,
+        #     )
+    else:
+
+        @classmethod
+        def __get_validators__(cls):
+            yield cls.validate
+
+        @classmethod
+        def validate(cls, v: Any, field: ModelField) -> Any:
+            if not isinstance(v, cls):
+                raise TypeError("Must be instance of RelationshipProperty")
+
+            # If generics are omitted, return the instance as-is since it
+            # can not be validated
+            if not field.sub_fields:
+                return v
+
+            target_model_name = field.sub_fields[0].type_
+            relationship_model_name = field.sub_fields[1].type_
+
+            # If the types are forward refs, get the actual class name
+            if isinstance(target_model_name, ForwardRef):
+                target_model_name = target_model_name.__forward_arg__
+            else:
+                target_model_name = target_model_name.__name__
+
+            if isinstance(relationship_model_name, ForwardRef):
+                relationship_model_name = relationship_model_name.__forward_arg__
+            else:
+                relationship_model_name = relationship_model_name.__name__
+
+            # Check whether the class names match the ones defined on the instance
+            if any(
+                [
+                    target_model_name != v._target_model_name,
+                    relationship_model_name != v._relationship_model_name,
+                ]
+            ):
+                raise TypeError("Mismatch between generic types and target/relationship models")
+
+            return v

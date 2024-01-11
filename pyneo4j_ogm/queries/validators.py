@@ -1,6 +1,8 @@
 """
 Pydantic validators for query operators and filters.
 """
+
+# pyright: reportUnboundVariable=false
 # pylint: disable=unused-argument
 
 from typing import Any, Dict, List, Literal, Optional, Type, Union
@@ -185,9 +187,7 @@ class NodeFiltersModel(BaseModel):
     patterns_: Optional[List["PatternOperatorModel"]] = Field(alias="$patterns", default=None)
 
     if IS_PYDANTIC_V2:
-        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_fields
-        )
+        normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
     else:
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -216,9 +216,7 @@ class RelationshipFiltersModel(BaseModel):
     id_: Optional[int] = Field(alias="$id", default=None)
 
     if IS_PYDANTIC_V2:
-        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_fields
-        )
+        normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
     else:
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -249,9 +247,7 @@ class RelationshipPropertyFiltersModel(BaseModel):
     relationship_: Optional[RelationshipFiltersModel] = Field(alias="$relationship", default=None)
 
     if IS_PYDANTIC_V2:
-        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_fields
-        )
+        normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
     else:
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -281,12 +277,8 @@ class PatternNodeOperatorsModel(BaseModel):
     labels_: Optional[Union[List[str], str]] = Field(alias="$labels", default=None)
 
     if IS_PYDANTIC_V2:
-        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_fields
-        )
-        normalize_and_validate_labels = field_validator(  # pyright: ignore[reportUnboundVariable]
-            "labels_", mode="before"
-        )(_normalize_labels)
+        normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
+        normalize_and_validate_labels = field_validator("labels_", mode="before")(_normalize_labels)
     else:
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
         normalize_and_validate_labels = validator("labels_", pre=True)(_normalize_labels)
@@ -317,9 +309,7 @@ class PatternRelationshipOperatorsModel(NodeFiltersModel):
     type_: Optional[Union[str, List[str]]] = Field(alias="$type", default=None)
 
     if IS_PYDANTIC_V2:
-        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_fields
-        )
+        normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
     else:
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -360,9 +350,7 @@ class MultiHopRelationshipOperatorsModel(NodeFiltersModel):
     type_: str = Field(alias="$type")
 
     if IS_PYDANTIC_V2:
-        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_fields
-        )
+        normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
     else:
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -392,12 +380,8 @@ class MultiHopNodeModel(BaseModel):
     labels_: Union[List[str], str] = Field(alias="$labels")
 
     if IS_PYDANTIC_V2:
-        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_fields
-        )
-        normalize_and_validate_labels = field_validator(  # pyright: ignore[reportUnboundVariable]
-            "labels_", mode="before"
-        )(_normalize_labels)
+        normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
+        normalize_and_validate_labels = field_validator("labels_", mode="before")(_normalize_labels)
     else:
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
         normalize_and_validate_labels = validator("labels_", pre=True, allow_reuse=True)(_normalize_labels)
@@ -432,9 +416,7 @@ class MultiHopFiltersModel(BaseModel):
     )
 
     if IS_PYDANTIC_V2:
-        normalize_and_validate_fields = model_validator(mode="after")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_fields
-        )
+        normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
     else:
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
@@ -465,9 +447,7 @@ class QueryOptionModel(BaseModel):
     order: Optional[QueryOptionsOrder] = Field(default=None)
 
     if IS_PYDANTIC_V2:
-        normalize_list_validator = field_validator("sort", mode="before")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_sort
-        )
+        normalize_list_validator = field_validator("sort", mode="before")(_normalize_sort)
     else:
         normalize_list_validator = validator("sort", pre=True)(_normalize_sort)
 

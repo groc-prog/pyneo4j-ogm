@@ -2,6 +2,9 @@
 Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
 model types like registering hooks and exporting/importing models to/from dictionaries.
 """
+
+# pyright: reportUnboundVariable=false
+
 import asyncio
 import json
 from asyncio import iscoroutinefunction
@@ -155,7 +158,7 @@ class ModelBase(BaseModel, Generic[V]):
 
     if IS_PYDANTIC_V2:
 
-        @model_validator(mode="after")  # pyright: ignore[reportUnboundVariable]
+        @model_validator(mode="after")
         def _model_validator_check_list_properties(cls, values: Any) -> Any:
             """
             Checks if all list properties are made of primitive types.
@@ -681,7 +684,6 @@ class ModelBase(BaseModel, Generic[V]):
             "validate_default": True,
             "validate_assignment": True,
             "revalidate_instances": "always",
-            "arbitrary_types_allowed": True,
         }
     else:
 
@@ -693,5 +695,4 @@ class ModelBase(BaseModel, Generic[V]):
             validate_all = True
             validate_assignment = True
             revalidate_instances = "always"
-            arbitrary_types_allowed = True
             underscore_attrs_are_private = True

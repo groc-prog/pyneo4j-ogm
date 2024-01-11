@@ -1,6 +1,9 @@
 """
 Settings for model classes.
 """
+
+# pyright: reportUnboundVariable=false
+
 from typing import Callable, Dict, List, Optional, Set, Union
 
 from pydantic import BaseModel
@@ -37,12 +40,8 @@ class BaseModelSettings(BaseModel):
     post_hooks: Dict[str, List[Callable]] = {}
 
     if IS_PYDANTIC_V2:
-        normalize_pre_hooks = field_validator("pre_hooks", mode="before")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_hooks
-        )
-        normalize_post_hooks = field_validator("post_hooks", mode="before")(  # pyright: ignore[reportUnboundVariable]
-            _normalize_hooks
-        )
+        normalize_pre_hooks = field_validator("pre_hooks", mode="before")(_normalize_hooks)
+        normalize_post_hooks = field_validator("post_hooks", mode="before")(_normalize_hooks)
     else:
         normalize_pre_hooks = validator("pre_hooks", pre=True, allow_reuse=True)(_normalize_hooks)
         normalize_post_hooks = validator("post_hooks", pre=True, allow_reuse=True)(_normalize_hooks)
