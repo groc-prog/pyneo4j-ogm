@@ -288,6 +288,7 @@ In the following we are going to take a closer look at the different parts of `p
   - [📚 Documentation ](#-documentation-)
     - [Table of contents](#table-of-contents)
     - [Basic concepts ](#basic-concepts-)
+      - [Pydantic and supported versions/features ](#pydantic-and-supported-versionsfeatures-)
     - [Pyneo4jClient ](#pyneo4jclient-)
       - [Connecting to the database ](#connecting-to-the-database-)
       - [Closing an existing connection ](#closing-an-existing-connection-)
@@ -384,6 +385,12 @@ The basic concept boils down to the following:
 Of course, there is a lot more to it than that, but this is the basic idea. So let's take a closer look at the different parts of `pyneo4j-ogm` and how to use them.
 
 > **Note:** All of the examples in this documentation assume that you have already connected to a database and registered your models with the client like shown in the [`quickstart guide`](#quickstart). The models used in the following examples will build upon the ones defined there. If you are new to [`Neo4j`](https://neo4j.com/docs/) or [`Cypher`](https://neo4j.com/docs/cypher-manual/current/) in general, you should get a basic understanding of how to use them before continuing.
+
+#### Pydantic and supported versions/features <a name="pydantic-supported-version-features"></a>
+
+`pyneo4j-ogm` currently supports both [`Pydantic V1`](https://docs.pydantic.dev/1.10/) and the latest version of [`Pydantic V2`](https://docs.pydantic.dev/2.5/). While core features are pretty well supported (meaning most model methods and schema generation) for V2, V1 still `lacks schema generation` support for models which define `RelationshipProperty fields`. This is, mostly, due to the lack of motivation on my side to read through a documentation which only provides basic examples. (Should you be, by any chance, the one who wrote the custom serialization for Pydantic V1: You my friend are certainly no gentlemen when it comes to documenting WTF is going on with your code.)
+
+But if you find yourself in a situation where you need to generate schemas, the best course of action would probably be to upgrade to V2 as soon as possible.
 
 ### Pyneo4jClient <a name="pyneo4jclient"></a>
 
