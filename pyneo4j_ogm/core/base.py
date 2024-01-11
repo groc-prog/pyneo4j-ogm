@@ -9,6 +9,7 @@ import asyncio
 import json
 from asyncio import iscoroutinefunction
 from functools import wraps
+from inspect import isclass
 from typing import (
     TYPE_CHECKING,
     AbstractSet,
@@ -16,6 +17,7 @@ from typing import (
     Callable,
     ClassVar,
     Dict,
+    ForwardRef,
     Generic,
     List,
     Mapping,
@@ -34,13 +36,20 @@ from pydantic.class_validators import root_validator
 from pyneo4j_ogm.exceptions import UnregisteredModel
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, get_model_dump
+from pyneo4j_ogm.pydantic_utils import (
+    IS_PYDANTIC_V2,
+    get_field_type,
+    get_model_dump,
+    get_model_fields,
+)
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 if TYPE_CHECKING:
     from pyneo4j_ogm.core.client import Pyneo4jClient
+    from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 else:
     Pyneo4jClient = object
+    RelationshipProperty = object
 
 if IS_PYDANTIC_V2:
     from pydantic import model_validator
@@ -183,9 +192,15 @@ class ModelBase(BaseModel, Generic[V]):
             exclude_defaults: bool = False,
             exclude_none: bool = False,
         ) -> Dict[str, Any]:
+            excluded_fields = set()
+            excluded_fields.update(exclude or set())
+
+            if hasattr(self, "_relationship_properties"):
+                excluded_fields.update(cast(Set[str], getattr(self, "_relationship_properties")))
+
             base_dict = super().dict(
                 include=include,
-                exclude=exclude,
+                exclude=excluded_fields,
                 by_alias=by_alias,
                 exclude_unset=exclude_unset,
                 exclude_defaults=exclude_defaults,
@@ -196,13 +211,22 @@ class ModelBase(BaseModel, Generic[V]):
             id_field_name = self._get_alias("id") if by_alias else "id"
 
             if self._check_field_included(
-                exclude=exclude,  # type: ignore
+                exclude=excluded_fields,  # type: ignore
                 include=include,  # type: ignore
                 field_name=element_id_field_name,
             ):
                 base_dict[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
+            if self._check_field_included(exclude=excluded_fields, include=include, field_name=id_field_name):  # type: ignore
                 base_dict[id_field_name] = self._id
+
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
+
+                    if not isinstance(field, list) and self._check_field_included(
+                        exclude=excluded_fields, include=include, field_name=field_name
+                    ):
+                        base_dict[field_name] = field.nodes
 
             return base_dict
 
@@ -219,10 +243,16 @@ class ModelBase(BaseModel, Generic[V]):
             round_trip: bool = False,
             warnings: bool = True,
         ) -> Dict[str, Any]:
+            excluded_fields = set()
+            excluded_fields.update(exclude or set())
+
+            if hasattr(self, "_relationship_properties"):
+                excluded_fields.update(cast(Set[str], getattr(self, "_relationship_properties")))
+
             base_dict = super().model_dump(
                 mode=mode,
                 include=include,
-                exclude=exclude,
+                exclude=excluded_fields,
                 by_alias=by_alias,
                 exclude_unset=exclude_unset,
                 exclude_defaults=exclude_defaults,
@@ -235,13 +265,22 @@ class ModelBase(BaseModel, Generic[V]):
             id_field_name = self._get_alias("id") if by_alias else "id"
 
             if self._check_field_included(
-                exclude=exclude,  # type: ignore
+                exclude=excluded_fields,  # type: ignore
                 include=include,  # type: ignore
                 field_name=element_id_field_name,
             ):
                 base_dict[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
+            if self._check_field_included(exclude=excluded_fields, include=include, field_name=id_field_name):  # type: ignore
                 base_dict[id_field_name] = self._id
+
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
+
+                    if not isinstance(field, list) and self._check_field_included(
+                        exclude=excluded_fields, include=include, field_name=field_name
+                    ):
+                        base_dict[field_name] = field.nodes
 
             return base_dict
 
@@ -258,9 +297,15 @@ class ModelBase(BaseModel, Generic[V]):
             models_as_dict: bool = True,
             **dumps_kwargs: Any,
         ) -> str:
+            excluded_fields = set()
+            excluded_fields.update(exclude or set())
+
+            if hasattr(self, "_relationship_properties"):
+                excluded_fields.update(cast(Set[str], getattr(self, "_relationship_properties")))
+
             base_json = super().json(
                 include=include,
-                exclude=exclude,
+                exclude=excluded_fields,
                 by_alias=by_alias,
                 exclude_unset=exclude_unset,
                 exclude_defaults=exclude_defaults,
@@ -276,13 +321,22 @@ class ModelBase(BaseModel, Generic[V]):
             modified_json = json.loads(base_json)
 
             if self._check_field_included(
-                exclude=exclude,  # type: ignore
+                exclude=excluded_fields,  # type: ignore
                 include=include,  # type: ignore
                 field_name=element_id_field_name,
             ):
                 modified_json[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
+            if self._check_field_included(exclude=excluded_fields, include=include, field_name=id_field_name):  # type: ignore
                 modified_json[id_field_name] = self._id
+
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
+
+                    if not isinstance(field, list) and self._check_field_included(
+                        exclude=excluded_fields, include=include, field_name=field_name
+                    ):
+                        modified_json[field_name] = field.nodes
 
             return json.dumps(modified_json)
 
@@ -299,10 +353,16 @@ class ModelBase(BaseModel, Generic[V]):
             round_trip: bool = False,
             warnings: bool = True,
         ) -> str:
+            excluded_fields = set()
+            excluded_fields.update(exclude or set())
+
+            if hasattr(self, "_relationship_properties"):
+                excluded_fields.update(cast(Set[str], getattr(self, "_relationship_properties")))
+
             base_json = super().model_dump_json(
                 indent=indent,
                 include=include,
-                exclude=exclude,
+                exclude=excluded_fields,
                 by_alias=by_alias,
                 exclude_unset=exclude_unset,
                 exclude_defaults=exclude_defaults,
@@ -319,13 +379,22 @@ class ModelBase(BaseModel, Generic[V]):
             modified_json = json.loads(base_json)
 
             if self._check_field_included(
-                exclude=exclude,  # type: ignore
+                exclude=excluded_fields,  # type: ignore
                 include=include,  # type: ignore
                 field_name=element_id_field_name,
             ):
                 modified_json[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
+            if self._check_field_included(exclude=excluded_fields, include=include, field_name=id_field_name):  # type: ignore
                 modified_json[id_field_name] = self._id
+
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
+
+                    if not isinstance(field, list) and self._check_field_included(
+                        exclude=excluded_fields, include=include, field_name=field_name
+                    ):
+                        modified_json[field_name] = field.nodes
 
             return json.dumps(modified_json)
 
@@ -395,10 +464,16 @@ class ModelBase(BaseModel, Generic[V]):
             exclude_defaults: bool = False,
             exclude_none: bool = False,
         ) -> DictStrAny:
+            excluded_fields = set()
+            excluded_fields.update(exclude or set())
+
+            if hasattr(self, "_relationship_properties"):
+                excluded_fields.update(cast(Set[str], getattr(self, "_relationship_properties")))
+
             # pylint: disable=unexpected-keyword-arg
             base_dict = super().dict(
                 include=include,
-                exclude=exclude,
+                exclude=excluded_fields,
                 by_alias=by_alias,
                 skip_defaults=skip_defaults,  # type: ignore
                 exclude_unset=exclude_unset,
@@ -409,18 +484,27 @@ class ModelBase(BaseModel, Generic[V]):
             element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
             id_field_name = self._get_alias("id") if by_alias else "id"
 
-            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):
+            if self._check_field_included(exclude=excluded_fields, include=include, field_name=element_id_field_name):
                 base_dict[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):
+            if self._check_field_included(exclude=excluded_fields, include=include, field_name=id_field_name):
                 base_dict[id_field_name] = self._id
+
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
+
+                    if not isinstance(field, list) and self._check_field_included(
+                        exclude=excluded_fields, include=include, field_name=field_name
+                    ):
+                        base_dict[field_name] = field.nodes
 
             return base_dict
 
         def json(  # type: ignore
             self,
             *,
-            include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
-            exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+            include: Optional[Union[AbstractSetIntStr, MappingIntStrAny]] = None,
+            exclude: Optional[Union[AbstractSetIntStr, MappingIntStrAny]] = None,
             by_alias: bool = False,
             skip_defaults: Optional[bool] = None,
             exclude_unset: bool = False,
@@ -430,9 +514,15 @@ class ModelBase(BaseModel, Generic[V]):
             models_as_dict: bool = True,
             **dumps_kwargs: Any,
         ) -> str:
+            excluded_fields = set()
+            excluded_fields.update(exclude or set())
+
+            if hasattr(self, "_relationship_properties"):
+                excluded_fields.update(cast(Set[str], getattr(self, "_relationship_properties")))
+
             base_json = super().json(
                 include=include,  # type: ignore
-                exclude=exclude,  # type: ignore
+                exclude=excluded_fields,  # type: ignore
                 by_alias=by_alias,
                 skip_defaults=skip_defaults,
                 exclude_unset=exclude_unset,
@@ -448,10 +538,19 @@ class ModelBase(BaseModel, Generic[V]):
 
             modified_json = json.loads(base_json)
 
-            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):
+            if self._check_field_included(exclude=excluded_fields, include=include, field_name=element_id_field_name):
                 modified_json[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):
+            if self._check_field_included(exclude=excluded_fields, include=include, field_name=id_field_name):
                 modified_json[id_field_name] = self._id
+
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
+
+                    if not isinstance(field, list) and self._check_field_included(
+                        exclude=excluded_fields, include=include, field_name=field_name
+                    ):
+                        modified_json[field_name] = field.nodes
 
             return json.dumps(modified_json)
 

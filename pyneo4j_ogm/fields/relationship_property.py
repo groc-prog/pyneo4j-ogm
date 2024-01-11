@@ -1020,34 +1020,36 @@ class RelationshipProperty(Generic[T, U]):
         @classmethod
         def validate(cls, v: Any, field: ModelField) -> Any:
             if not isinstance(v, cls):
-                raise TypeError("Must be instance of RelationshipProperty")
+                raise TypeError("Must be instance of RelationshipProperty or list")
 
             # If generics are omitted, return the instance as-is since it
             # can not be validated
             if not field.sub_fields:
                 return v
 
-            target_model_name = field.sub_fields[0].type_
-            relationship_model_name = field.sub_fields[1].type_
+            target_model_type = field.sub_fields[0].type_
+            relationship_model_type = field.sub_fields[1].type_
 
-            # If the types are forward refs, get the actual class name
-            if isinstance(target_model_name, ForwardRef):
-                target_model_name = target_model_name.__forward_arg__
-            else:
-                target_model_name = target_model_name.__name__
+            if isinstance(v, cls):
+                # If the types are forward refs, get the actual class name
+                target_model_name = (
+                    target_model_type.__forward_arg__
+                    if isinstance(target_model_type, ForwardRef)
+                    else target_model_type.__name__
+                )
+                relationship_model_name = (
+                    relationship_model_type.__forward_arg__
+                    if isinstance(relationship_model_type, ForwardRef)
+                    else relationship_model_type.__name__
+                )
 
-            if isinstance(relationship_model_name, ForwardRef):
-                relationship_model_name = relationship_model_name.__forward_arg__
-            else:
-                relationship_model_name = relationship_model_name.__name__
-
-            # Check whether the class names match the ones defined on the instance
-            if any(
-                [
-                    target_model_name != v._target_model_name,
-                    relationship_model_name != v._relationship_model_name,
-                ]
-            ):
-                raise TypeError("Mismatch between generic types and target/relationship models")
+                # Check whether the class names match the ones defined on the instance
+                if any(
+                    [
+                        target_model_name != v._target_model_name,
+                        relationship_model_name != v._relationship_model_name,
+                    ]
+                ):
+                    raise TypeError("Mismatch between generic types and target/relationship models")
 
             return v
