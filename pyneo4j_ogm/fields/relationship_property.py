@@ -955,62 +955,76 @@ class RelationshipProperty(Generic[T, U]):
                 logger.debug("RelationshipPropertyCardinality is %s, no checks required", self._cardinality)
 
     if IS_PYDANTIC_V2:
-        pass
-        # @classmethod
-        # def __get_pydantic_core_schema__(cls, source_type: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
-        #     origin = get_origin(source_type)
 
-        #     if origin is None:
-        #         origin = source_type
-        #         target_model_tp = Any
-        #         relationship_model_tp = Any
-        #     else:
-        #         target_model_tp, relationship_model_tp = get_args(source_type)
+        @classmethod
+        def __get_pydantic_core_schema__(cls, source_type: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
+            origin = get_origin(source_type)
 
-        #     target_model_schema = handler.generate_schema(target_model_tp)
-        #     relationship_model_schema = handler.generate_schema(relationship_model_tp)
+            if origin is None:
+                origin = source_type
+                target_model_type = Any
+                relationship_model_type = Any
+            else:
+                target_model_type, relationship_model_type = get_args(source_type)
 
-        #     def validate_target_model(
-        #         v: RelationshipProperty[T, U], handler: ValidatorFunctionWrapHandler
-        #     ) -> RelationshipProperty[T, U]:
-        #         v._target_model = handler(v._target_model)
-        #         return v
+            target_model_schema = handler.generate_schema(target_model_type)
+            relationship_model_schema = handler.generate_schema(relationship_model_type)
 
-        #     def validate_relationship_model(
-        #         v: RelationshipProperty[T, U], handler: ValidatorFunctionWrapHandler
-        #     ) -> RelationshipProperty[T, U]:
-        #         v._relationship_model = handler(v._relationship_model)
-        #         return v
+            target_model_name = (
+                target_model_type.__forward_arg__
+                if isinstance(target_model_type, ForwardRef)
+                else target_model_type.__name__
+            )
+            relationship_model_name = (
+                relationship_model_type.__forward_arg__
+                if isinstance(relationship_model_type, ForwardRef)
+                else relationship_model_type.__name__
+            )
 
-        #     python_schema = core_schema.chain_schema(
-        #         [
-        #             core_schema.is_instance_schema(cls),
-        #             core_schema.no_info_wrap_validator_function(validate_target_model, target_model_schema),
-        #             core_schema.no_info_wrap_validator_function(validate_relationship_model, relationship_model_schema),
-        #         ]
-        #     )
+            def validate_target_model(
+                v: RelationshipProperty[T, U], _: ValidatorFunctionWrapHandler
+            ) -> RelationshipProperty[T, U]:
+                if isinstance(v, cls) and target_model_name != v._target_model_name:
+                    raise TypeError("Mismatch between generic types and target/relationship models")
+                return v
 
-        #     return core_schema.json_or_python_schema(
-        #         json_schema=core_schema.chain_schema(
-        #             [
-        #                 core_schema.typed_dict_schema(
-        #                     {
-        #                         "target_model": core_schema.typed_dict_field(target_model_schema, required=False),
-        #                         "target_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
-        #                         "relationship_model": core_schema.typed_dict_field(
-        #                             relationship_model_schema, required=False
-        #                         ),
-        #                         "relationship_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
-        #                         "direction": core_schema.typed_dict_field(core_schema.str_schema()),
-        #                         "cardinality": core_schema.typed_dict_field(core_schema.str_schema()),
-        #                         "allow_multiple": core_schema.typed_dict_field(core_schema.bool_schema()),
-        #                         "registered_name": core_schema.typed_dict_field(core_schema.str_schema()),
-        #                     }
-        #                 )
-        #             ]
-        #         ),
-        #         python_schema=python_schema,
-        #     )
+            def validate_relationship_model(
+                v: RelationshipProperty[T, U], _: ValidatorFunctionWrapHandler
+            ) -> RelationshipProperty[T, U]:
+                if isinstance(v, cls) and relationship_model_name != v._relationship_model_name:
+                    raise TypeError("Mismatch between generic types and target/relationship models")
+                return v
+
+            python_schema = core_schema.chain_schema(
+                [
+                    core_schema.is_instance_schema(cls),
+                    core_schema.no_info_wrap_validator_function(validate_target_model, target_model_schema),
+                    core_schema.no_info_wrap_validator_function(validate_relationship_model, relationship_model_schema),
+                ]
+            )
+
+            return core_schema.json_or_python_schema(
+                json_schema=core_schema.chain_schema(
+                    [
+                        core_schema.typed_dict_schema(
+                            {
+                                "target_model": core_schema.typed_dict_field(target_model_schema, required=False),
+                                "target_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
+                                "relationship_model": core_schema.typed_dict_field(
+                                    relationship_model_schema, required=False
+                                ),
+                                "relationship_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
+                                "direction": core_schema.typed_dict_field(core_schema.str_schema()),
+                                "cardinality": core_schema.typed_dict_field(core_schema.str_schema()),
+                                "allow_multiple": core_schema.typed_dict_field(core_schema.bool_schema()),
+                                "registered_name": core_schema.typed_dict_field(core_schema.str_schema()),
+                            }
+                        )
+                    ]
+                ),
+                python_schema=python_schema,
+            )
+
     else:
 
         @classmethod

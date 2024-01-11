@@ -1030,7 +1030,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
             Dict[str, Any]: The deflated model instance.
         """
         logger.debug("Deflating model %s to storable dictionary", self)
-        deflated: Dict[str, Any] = json.loads(get_model_dump_json(self, exclude={"_settings"}))
+        deflated: Dict[str, Any] = json.loads(
+            get_model_dump_json(self, exclude={*self._relationship_properties, "_settings"})
+        )
 
         # Serialize nested BaseModel or dict instances to JSON strings
         for key, value in deflated.items():

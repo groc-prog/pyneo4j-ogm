@@ -224,7 +224,7 @@ class ModelBase(BaseModel, Generic[V]):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
                     if not isinstance(field, list) and self._check_field_included(
-                        exclude=excluded_fields, include=include, field_name=field_name
+                        exclude=exclude, include=include, field_name=field_name
                     ):
                         base_dict[field_name] = field.nodes
 
@@ -278,7 +278,7 @@ class ModelBase(BaseModel, Generic[V]):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
                     if not isinstance(field, list) and self._check_field_included(
-                        exclude=excluded_fields, include=include, field_name=field_name
+                        exclude=exclude, include=include, field_name=field_name
                     ):
                         base_dict[field_name] = field.nodes
 
@@ -334,7 +334,7 @@ class ModelBase(BaseModel, Generic[V]):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
                     if not isinstance(field, list) and self._check_field_included(
-                        exclude=excluded_fields, include=include, field_name=field_name
+                        exclude=exclude, include=include, field_name=field_name
                     ):
                         modified_json[field_name] = field.nodes
 
@@ -392,7 +392,7 @@ class ModelBase(BaseModel, Generic[V]):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
                     if not isinstance(field, list) and self._check_field_included(
-                        exclude=excluded_fields, include=include, field_name=field_name
+                        exclude=exclude, include=include, field_name=field_name  # type: ignore
                     ):
                         modified_json[field_name] = field.nodes
 
@@ -494,7 +494,7 @@ class ModelBase(BaseModel, Generic[V]):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
                     if not isinstance(field, list) and self._check_field_included(
-                        exclude=excluded_fields, include=include, field_name=field_name
+                        exclude=exclude, include=include, field_name=field_name
                     ):
                         base_dict[field_name] = field.nodes
 
@@ -548,7 +548,7 @@ class ModelBase(BaseModel, Generic[V]):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
                     if not isinstance(field, list) and self._check_field_included(
-                        exclude=excluded_fields, include=include, field_name=field_name
+                        exclude=exclude, include=include, field_name=field_name
                     ):
                         modified_json[field_name] = field.nodes
 
