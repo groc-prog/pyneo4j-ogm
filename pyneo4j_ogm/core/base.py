@@ -39,10 +39,14 @@ from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 if TYPE_CHECKING:
     from pyneo4j_ogm.core.client import Pyneo4jClient
+    from pyneo4j_ogm.core.node import NodeModel
+    from pyneo4j_ogm.core.relationship import RelationshipModel
     from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 else:
     Pyneo4jClient = object
     RelationshipProperty = object
+    NodeModel = object
+    RelationshipModel = object
 
 if IS_PYDANTIC_V2:
     from pydantic import model_validator
@@ -221,7 +225,9 @@ class ModelBase(BaseModel, Generic[V]):
                     if not isinstance(field, list) and self._check_field_included(
                         exclude=exclude, include=include, field_name=field_name  # type: ignore
                     ):
-                        base_dict[field_name] = field.nodes
+                        base_dict[field_name] = [
+                            cast(Union[RelationshipModel, NodeModel], node).dict() for node in field.nodes
+                        ]
 
             return base_dict
 
@@ -277,7 +283,9 @@ class ModelBase(BaseModel, Generic[V]):
                     if not isinstance(field, list) and self._check_field_included(
                         exclude=exclude, include=include, field_name=field_name  # type: ignore
                     ):
-                        base_dict[field_name] = field.nodes
+                        base_dict[field_name] = [
+                            cast(Union[RelationshipModel, NodeModel], node).model_dump() for node in field.nodes
+                        ]
 
             return base_dict
 
@@ -335,7 +343,9 @@ class ModelBase(BaseModel, Generic[V]):
                     if not isinstance(field, list) and self._check_field_included(
                         exclude=exclude, include=include, field_name=field_name  # type: ignore
                     ):
-                        modified_json[field_name] = field.nodes
+                        modified_json[field_name] = [
+                            cast(Union[RelationshipModel, NodeModel], node).json() for node in field.nodes
+                        ]
 
             return json.dumps(modified_json)
 
@@ -395,7 +405,9 @@ class ModelBase(BaseModel, Generic[V]):
                     if not isinstance(field, list) and self._check_field_included(
                         exclude=exclude, include=include, field_name=field_name  # type: ignore
                     ):
-                        modified_json[field_name] = field.nodes
+                        modified_json[field_name] = [
+                            cast(Union[RelationshipModel, NodeModel], node).model_dump_json() for node in field.nodes
+                        ]
 
             return json.dumps(modified_json)
 
@@ -497,7 +509,9 @@ class ModelBase(BaseModel, Generic[V]):
                     if not isinstance(field, list) and self._check_field_included(
                         exclude=exclude, include=include, field_name=field_name
                     ):
-                        base_dict[field_name] = field.nodes
+                        base_dict[field_name] = [
+                            cast(Union[RelationshipModel, NodeModel], node).dict() for node in field.nodes
+                        ]
 
             return base_dict
 
@@ -551,7 +565,9 @@ class ModelBase(BaseModel, Generic[V]):
                     if not isinstance(field, list) and self._check_field_included(
                         exclude=exclude, include=include, field_name=field_name
                     ):
-                        modified_json[field_name] = field.nodes
+                        modified_json[field_name] = [
+                            cast(Union[RelationshipModel, NodeModel], node).json() for node in field.nodes
+                        ]
 
             return json.dumps(modified_json)
 
