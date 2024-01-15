@@ -1,4 +1,7 @@
-import argparse
+"""
+Entry point for the CLI. It parses the arguments and calls the corresponding function.
+"""
+from argparse import ArgumentParser
 from typing import Any, Optional
 
 from pyneo4j_ogm.migrations.actions import create, down, init, status, up
@@ -11,8 +14,11 @@ def parse_int_arg(arg: Any) -> Optional[int]:
         return None
 
 
-def cli():
-    parser = argparse.ArgumentParser(prog="pyneo4j_ogm", description="Migration CLI pyneo4j-ogm models")
+def cli() -> None:
+    """
+    Function that parses the CLI arguments and calls the corresponding function.
+    """
+    parser = ArgumentParser(prog="pyneo4j_ogm", description="Migration CLI pyneo4j-ogm models")
     subparsers = parser.add_subparsers(dest="command", title="Commands", metavar="")
 
     init_parser = subparsers.add_parser("init", help="Initialize migrations for this project")
@@ -23,6 +29,7 @@ def cli():
         default="migrations",
         required=False,
     )
+    init_parser.add_argument("-o", "--overwrite", help="Overwrite existing directory", type=bool, default=False)
     init_parser.set_defaults(func=init)
 
     create_parser = subparsers.add_parser("create", help="Creates a new migration file")
@@ -63,6 +70,6 @@ def cli():
     args = parser.parse_args()
 
     if args.command:
-        args.func()
+        args.func(args)
     else:
         parser.print_help()
