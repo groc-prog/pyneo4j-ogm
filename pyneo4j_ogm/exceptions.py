@@ -205,3 +205,12 @@ class MigrationDirectoryExists(Pyneo4jException):
 
     def __init__(self, path: str, *args: object) -> None:
         super().__init__(f"Migration directory at {path} already exists", *args)
+
+
+class MigrationNotInitialized(Pyneo4jException):
+    """
+    Migrations have not been initialized before usage.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Migrations have not been initialized. Run `pyneo4j_ogm init` to initialize them", *args)

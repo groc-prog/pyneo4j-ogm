@@ -29,11 +29,13 @@ def cli() -> None:
         default="migrations",
         required=False,
     )
-    init_parser.add_argument("-o", "--overwrite", help="Overwrite existing directory", type=bool, default=False)
+    init_parser.add_argument(
+        "-o", "--overwrite", help="Overwrite existing directory", default=False, action="store_true"
+    )
     init_parser.set_defaults(func=init)
 
     create_parser = subparsers.add_parser("create", help="Creates a new migration file")
-    create_parser.add_argument("-n", "--name", help="Name of the migration")
+    create_parser.add_argument("name", help="Name of the migration")
     create_parser.set_defaults(func=create)
 
     up_parser = subparsers.add_parser("up", help="Applies the defined number of migrations")
