@@ -388,9 +388,9 @@ Of course, there is a lot more to it than that, but this is the basic idea. So l
 
 #### Pydantic and supported versions/features <a name="pydantic-supported-version-features"></a>
 
-`pyneo4j-ogm` currently supports both [`Pydantic V1`](https://docs.pydantic.dev/1.10/) and the latest version of [`Pydantic V2`](https://docs.pydantic.dev/2.5/). While core features are pretty well supported (meaning most model methods and schema generation) for V2, V1 still `lacks schema generation` support for models which define `RelationshipProperty fields`. This is, mostly, due to the lack of motivation on my side to read through a documentation which only provides basic examples. (Should you be, by any chance, the one who wrote the custom serialization for Pydantic V1: You my friend are certainly no gentlemen when it comes to documenting WTF is going on with your code.)
+`pyneo4j-ogm` currently supports both [`Pydantic V1`](https://docs.pydantic.dev/1.10/) and the latest version of [`Pydantic V2`](https://docs.pydantic.dev/2.5/). Most of the core features are pretty well supported (meaning most model methods and schema generation) for V2 and V1.
 
-But if you find yourself in a situation where you need to generate schemas, the best course of action would probably be to upgrade to V2 as soon as possible.
+> **Note:** For schema generation to work with Pydantic V1, `Model.update_forward_refs() has to be called` in order for Pydantic to be able to generate the schemas for `RelationshipProperty` fields.
 
 ### Pyneo4jClient <a name="pyneo4jclient"></a>
 

@@ -248,21 +248,14 @@ class ModelBase(BaseModel, Generic[V]):
                 exclude_none=exclude_none,
             )
 
-            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
-            id_field_name = self._get_alias("id") if by_alias else "id"
-
-            if self._check_field_included(exclude=excluded_fields, include=include, field_name=element_id_field_name):
-                base_dict[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=excluded_fields, include=include, field_name=id_field_name):
-                base_dict[id_field_name] = self._id
+            base_dict["element_id"] = self._element_id
+            base_dict["id"] = self._id
 
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
-                    if not isinstance(field, list) and self._check_field_included(
-                        exclude=exclude, include=include, field_name=field_name
-                    ):
+                    if not isinstance(field, list):
                         base_dict[field_name] = [
                             cast(Union[RelationshipModel, NodeModel], node).dict() for node in field.nodes
                         ]
@@ -302,78 +295,21 @@ class ModelBase(BaseModel, Generic[V]):
                 **dumps_kwargs,
             )
 
-            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
-            id_field_name = self._get_alias("id") if by_alias else "id"
-
             modified_json = json.loads(base_json)
 
-            if self._check_field_included(exclude=excluded_fields, include=include, field_name=element_id_field_name):
-                modified_json[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=excluded_fields, include=include, field_name=id_field_name):
-                modified_json[id_field_name] = self._id
+            modified_json["element_id"] = self._element_id
+            modified_json["id"] = self._id
 
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
-                    if not isinstance(field, list) and self._check_field_included(
-                        exclude=exclude, include=include, field_name=field_name
-                    ):
+                    if not isinstance(field, list):
                         modified_json[field_name] = [
                             cast(Union[RelationshipModel, NodeModel], node).json() for node in field.nodes
                         ]
 
             return json.dumps(modified_json)
-
-        def _get_alias(self, field_name: str) -> str:
-            """
-            Returns the field name to use for serialization.
-
-            Args:
-                field_name (str): The field name to search for aliases for.
-
-            Returns:
-                str: The field name to use for serialization.
-            """
-            serialization_name = field_name
-
-            if self.__config__.fields.get(field_name) is not None:  # type: ignore
-                field = self.__config__.fields.get(field_name)  # type: ignore
-
-                if isinstance(field, str):
-                    serialization_name = field
-                elif field is not None and "alias" in field:
-                    serialization_name = field["alias"]
-            elif self.__config__.alias_generator is not None:  # type: ignore
-                serialization_name = self.__config__.alias_generator(field_name)  # type: ignore
-
-            return serialization_name
-
-        def _check_field_included(
-            self,
-            exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]],
-            include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]],
-            field_name: str,
-        ) -> bool:
-            """
-            Checks if a field should be included in the serialization.
-
-            Args:
-                exclude (Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]]): The fields to exclude.
-                include (Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]]): The fields to include.
-                field_name (str): The field name to check.
-
-            Returns:
-                bool: Whether the field should be included in the serialization.
-            """
-            if exclude is not None and field_name in exclude:
-                return False
-            if include is not None and field_name not in include:
-                return False
-            if include is not None and field_name in include and exclude is not None and field_name in exclude:
-                return True
-
-            return True
 
     def __init__(self, *args, **kwargs) -> None:
         if not hasattr(self, "_client"):

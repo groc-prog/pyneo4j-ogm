@@ -279,8 +279,8 @@ class RelationshipProperty(Generic[T, U]):
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(target_model_name={self._target_model_name}"
-            f"relationship_model={self._relationship_model_name} direction={self._direction}"
+            f"{self.__class__.__name__}(target_model_name={self._target_model_name} "
+            f"relationship_model={self._relationship_model_name} direction={self._direction} "
             f"cardinality={self._cardinality} allow_multiple={self._allow_multiple})"
         )
 
@@ -1045,7 +1045,7 @@ class RelationshipProperty(Generic[T, U]):
         @classmethod
         def validate(cls, v: Any, field: ModelField) -> Any:
             if not isinstance(v, cls):
-                raise TypeError("Must be instance of RelationshipProperty or list")
+                raise TypeError("Must be instance of RelationshipProperty")
 
             # If generics are omitted, return the instance as-is since it
             # can not be validated
@@ -1081,4 +1081,4 @@ class RelationshipProperty(Generic[T, U]):
 
 
 if not IS_PYDANTIC_V2:
-    ENCODERS_BY_TYPE[RelationshipProperty] = lambda x: x.__class__.__name__
+    ENCODERS_BY_TYPE[RelationshipProperty] = lambda x: str(x)
