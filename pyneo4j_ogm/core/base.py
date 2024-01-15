@@ -273,7 +273,7 @@ class ModelBase(BaseModel, Generic[V]):
                 for field_name in getattr(self, "_relationship_properties"):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
-                    if not isinstance(field, list):
+                    if not isinstance(field, list) and not (exclude is not None and field_name in exclude):
                         base_dict[field_name] = [
                             cast(Union[RelationshipModel, NodeModel], node).dict() for node in field.nodes
                         ]
@@ -327,7 +327,7 @@ class ModelBase(BaseModel, Generic[V]):
                 for field_name in getattr(self, "_relationship_properties"):
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
-                    if not isinstance(field, list):
+                    if not isinstance(field, list) and not (exclude is not None and field_name in exclude):
                         modified_json[field_name] = [
                             cast(Union[RelationshipModel, NodeModel], node).json() for node in field.nodes
                         ]
