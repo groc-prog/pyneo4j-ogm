@@ -47,7 +47,7 @@ else:
     RelationshipModel = object
 
 if IS_PYDANTIC_V2:
-    from pydantic import model_serializer, model_validator
+    from pydantic import SerializationInfo, model_serializer, model_validator
     from pydantic.json_schema import GenerateJsonSchema
 else:
     from pydantic.class_validators import root_validator
@@ -146,11 +146,13 @@ def hooks(func):
     return wrapper
 
 
-class CustomGenerateJsonSchema(GenerateJsonSchema):
-    def encode_default(self, dft: Any) -> Any:
-        if isinstance(dft, RelationshipProperty):
-            dft = str(dft)
-        return super().encode_default(dft)
+if IS_PYDANTIC_V2:
+
+    class CustomGenerateJsonSchema(GenerateJsonSchema):
+        def encode_default(self, dft: Any) -> Any:
+            if isinstance(dft, RelationshipProperty):
+                dft = str(dft)
+            return super().encode_default(dft)
 
 
 class ModelBase(BaseModel, Generic[V]):
@@ -187,25 +189,25 @@ class ModelBase(BaseModel, Generic[V]):
 
             return values
 
-        @model_serializer
-        def _model_serializer(self) -> Dict[str, Any]:
-            serialized: Dict[str, Any] = {}
+        @model_serializer(mode="wrap")
+        def _model_serializer(self, serializer: Any, info: SerializationInfo) -> Any:
+            if isinstance(self, RelationshipProperty):
+                return self.nodes
 
-            for field_name, field in self.model_fields.items():
-                used_field_name = field_name
+            serialized = serializer(self)
 
-                if field.serialization_alias is not None:
-                    used_field_name = field.serialization_alias
-                elif field.alias is not None:
-                    used_field_name = field.alias
+            if not (self.id is None and info.exclude_none) and not (info.exclude is not None and "id" in info.exclude):
+                serialized["id"] = self.id
 
-                if isinstance(getattr(self, field_name), RelationshipProperty):
-                    serialized[used_field_name] = cast(RelationshipProperty, getattr(self, field_name)).nodes
-                else:
-                    serialized[used_field_name] = getattr(self, field_name)
+            if not (self.element_id is None and info.exclude_none) and not (
+                info.exclude is not None and "element_id" in info.exclude
+            ):
+                serialized["element_id"] = self.element_id
 
-            serialized["element_id"] = self.element_id
-            serialized["id"] = self.id
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    if field_name in serialized:
+                        serialized[field_name] = cast(RelationshipProperty, getattr(self, field_name)).nodes
 
             return serialized
 
@@ -259,8 +261,13 @@ class ModelBase(BaseModel, Generic[V]):
                 exclude_none=exclude_none,
             )
 
-            base_dict["element_id"] = self._element_id
-            base_dict["id"] = self._id
+            if not (self._id is None and exclude_none) and not (exclude is not None and "id" in exclude):
+                base_dict["id"] = self._id
+
+            if not (self._element_id is None and exclude_none) and not (
+                exclude is not None and "element_id" in exclude
+            ):
+                base_dict["element_id"] = self._element_id
 
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
@@ -308,8 +315,13 @@ class ModelBase(BaseModel, Generic[V]):
 
             modified_json = json.loads(base_json)
 
-            modified_json["element_id"] = self._element_id
-            modified_json["id"] = self._id
+            if not (self._id is None and exclude_none) and not (exclude is not None and "id" in exclude):
+                modified_json["id"] = self._id
+
+            if not (self._element_id is None and exclude_none) and not (
+                exclude is not None and "element_id" in exclude
+            ):
+                modified_json["element_id"] = self._element_id
 
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
