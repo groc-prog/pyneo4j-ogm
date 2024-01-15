@@ -2,6 +2,9 @@
 Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
 model types like registering hooks and exporting/importing models to/from dictionaries.
 """
+
+# pyright: reportUnboundVariable=false
+
 import asyncio
 import json
 from asyncio import iscoroutinefunction
@@ -26,9 +29,9 @@ from typing import (
 )
 
 from pydantic import BaseModel, PrivateAttr
-from pydantic.class_validators import root_validator
 
 from pyneo4j_ogm.exceptions import UnregisteredModel
+from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, get_model_dump
@@ -36,11 +39,18 @@ from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 if TYPE_CHECKING:
     from pyneo4j_ogm.core.client import Pyneo4jClient
+    from pyneo4j_ogm.core.node import NodeModel
+    from pyneo4j_ogm.core.relationship import RelationshipModel
 else:
     Pyneo4jClient = object
+    NodeModel = object
+    RelationshipModel = object
 
 if IS_PYDANTIC_V2:
-    from pydantic import model_validator
+    from pydantic import SerializationInfo, model_serializer, model_validator
+    from pydantic.json_schema import GenerateJsonSchema
+else:
+    from pydantic.class_validators import root_validator
 
 P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
@@ -136,6 +146,15 @@ def hooks(func):
     return wrapper
 
 
+if IS_PYDANTIC_V2:
+
+    class CustomGenerateJsonSchema(GenerateJsonSchema):
+        def encode_default(self, dft: Any) -> Any:
+            if isinstance(dft, RelationshipProperty):
+                dft = str(dft)
+            return super().encode_default(dft)
+
+
 class ModelBase(BaseModel, Generic[V]):
     """
     Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
@@ -155,7 +174,7 @@ class ModelBase(BaseModel, Generic[V]):
 
     if IS_PYDANTIC_V2:
 
-        @model_validator(mode="after")  # pyright: ignore[reportUnboundVariable]
+        @model_validator(mode="after")
         def _model_validator_check_list_properties(cls, values: Any) -> Any:
             """
             Checks if all list properties are made of primitive types.
@@ -170,199 +189,32 @@ class ModelBase(BaseModel, Generic[V]):
 
             return values
 
-        def dict(  # type: ignore
-            self,
-            *,
-            include: IncEx = None,
-            exclude: IncEx = None,
-            by_alias: bool = False,
-            exclude_unset: bool = False,
-            exclude_defaults: bool = False,
-            exclude_none: bool = False,
-        ) -> Dict[str, Any]:
-            base_dict = super().dict(
-                include=include,
-                exclude=exclude,
-                by_alias=by_alias,
-                exclude_unset=exclude_unset,
-                exclude_defaults=exclude_defaults,
-                exclude_none=exclude_none,
-            )
+        @model_serializer(mode="wrap")
+        def _model_serializer(self, serializer: Any, info: SerializationInfo) -> Any:
+            if isinstance(self, RelationshipProperty):
+                return self.nodes
 
-            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
-            id_field_name = self._get_alias("id") if by_alias else "id"
+            serialized = serializer(self)
 
-            if self._check_field_included(
-                exclude=exclude,  # type: ignore
-                include=include,  # type: ignore
-                field_name=element_id_field_name,
+            if not (self.id is None and info.exclude_none) and not (info.exclude is not None and "id" in info.exclude):
+                serialized["id"] = self.id
+
+            if not (self.element_id is None and info.exclude_none) and not (
+                info.exclude is not None and "element_id" in info.exclude
             ):
-                base_dict[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
-                base_dict[id_field_name] = self._id
+                serialized["element_id"] = self.element_id
 
-            return base_dict
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    if field_name in serialized:
+                        serialized[field_name] = cast(RelationshipProperty, getattr(self, field_name)).nodes
 
-        def model_dump(
-            self,
-            *,
-            mode: str = "python",
-            include: IncEx = None,
-            exclude: IncEx = None,
-            by_alias: bool = False,
-            exclude_unset: bool = False,
-            exclude_defaults: bool = False,
-            exclude_none: bool = False,
-            round_trip: bool = False,
-            warnings: bool = True,
-        ) -> Dict[str, Any]:
-            base_dict = super().model_dump(
-                mode=mode,
-                include=include,
-                exclude=exclude,
-                by_alias=by_alias,
-                exclude_unset=exclude_unset,
-                exclude_defaults=exclude_defaults,
-                exclude_none=exclude_none,
-                round_trip=round_trip,
-                warnings=warnings,
-            )
+            return serialized
 
-            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
-            id_field_name = self._get_alias("id") if by_alias else "id"
-
-            if self._check_field_included(
-                exclude=exclude,  # type: ignore
-                include=include,  # type: ignore
-                field_name=element_id_field_name,
-            ):
-                base_dict[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
-                base_dict[id_field_name] = self._id
-
-            return base_dict
-
-        def json(  # type: ignore
-            self,
-            *,
-            include: IncEx = None,
-            exclude: IncEx = None,
-            by_alias: bool = False,
-            exclude_unset: bool = False,
-            exclude_defaults: bool = False,
-            exclude_none: bool = False,
-            encoder: Optional[Callable[[Any], Any]] = None,
-            models_as_dict: bool = True,
-            **dumps_kwargs: Any,
-        ) -> str:
-            base_json = super().json(
-                include=include,
-                exclude=exclude,
-                by_alias=by_alias,
-                exclude_unset=exclude_unset,
-                exclude_defaults=exclude_defaults,
-                exclude_none=exclude_none,
-                encoder=encoder,
-                models_as_dict=models_as_dict,
-                **dumps_kwargs,
-            )
-
-            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
-            id_field_name = self._get_alias("id") if by_alias else "id"
-
-            modified_json = json.loads(base_json)
-
-            if self._check_field_included(
-                exclude=exclude,  # type: ignore
-                include=include,  # type: ignore
-                field_name=element_id_field_name,
-            ):
-                modified_json[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
-                modified_json[id_field_name] = self._id
-
-            return json.dumps(modified_json)
-
-        def model_dump_json(
-            self,
-            *,
-            indent: int | None = None,
-            include: IncEx = None,
-            exclude: IncEx = None,
-            by_alias: bool = False,
-            exclude_unset: bool = False,
-            exclude_defaults: bool = False,
-            exclude_none: bool = False,
-            round_trip: bool = False,
-            warnings: bool = True,
-        ) -> str:
-            base_json = super().model_dump_json(
-                indent=indent,
-                include=include,
-                exclude=exclude,
-                by_alias=by_alias,
-                exclude_unset=exclude_unset,
-                exclude_defaults=exclude_defaults,
-                exclude_none=exclude_none,
-                round_trip=round_trip,
-                warnings=warnings,
-            )
-
-            element_id_field_name = (
-                self._get_alias("element_id") if by_alias else "element_id" if by_alias else "element_id"
-            )
-            id_field_name = self._get_alias("id") if by_alias else "id" if by_alias else "id"
-
-            modified_json = json.loads(base_json)
-
-            if self._check_field_included(
-                exclude=exclude,  # type: ignore
-                include=include,  # type: ignore
-                field_name=element_id_field_name,
-            ):
-                modified_json[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):  # type: ignore
-                modified_json[id_field_name] = self._id
-
-            return json.dumps(modified_json)
-
-        def _get_alias(self, field_name: str) -> str:
-            """
-            Returns the field name to use for serialization.
-
-            Args:
-                field_name (str): The field name to search for aliases for.
-
-            Returns:
-                str: The field name to use for serialization.
-            """
-            serialization_name = field_name
-
-            if "alias_generator" in self.model_config and self.model_config["alias_generator"] is not None:
-                serialization_name = self.model_config["alias_generator"](field_name)
-
-            return serialization_name
-
-        def _check_field_included(self, exclude: IncEx, include: IncEx, field_name: str) -> bool:  # type: ignore
-            """
-            Checks if a field should be included in the serialization.
-
-            Args:
-                exclude (IncEx): The fields to exclude.
-                include (IncEx): The fields to include.
-                field_name (str): The field name to check.
-
-            Returns:
-                bool: Whether the field should be included in the serialization.
-            """
-            if exclude is not None and field_name in exclude:
-                return False
-            if include is not None and field_name not in include:
-                return False
-            if include is not None and field_name in include and exclude is not None and field_name in exclude:
-                return True
-
-            return True
+        @classmethod
+        def model_json_schema(cls, *args, **kwargs) -> Dict[str, Any]:
+            kwargs.setdefault("schema_generator", CustomGenerateJsonSchema)
+            return super().model_json_schema(*args, **kwargs)
 
     else:
 
@@ -392,10 +244,16 @@ class ModelBase(BaseModel, Generic[V]):
             exclude_defaults: bool = False,
             exclude_none: bool = False,
         ) -> DictStrAny:
+            excluded_fields = set()
+            excluded_fields.update(exclude or set())
+
+            if hasattr(self, "_relationship_properties"):
+                excluded_fields.update(cast(Set[str], getattr(self, "_relationship_properties")))
+
             # pylint: disable=unexpected-keyword-arg
             base_dict = super().dict(
                 include=include,
-                exclude=exclude,
+                exclude=excluded_fields,
                 by_alias=by_alias,
                 skip_defaults=skip_defaults,  # type: ignore
                 exclude_unset=exclude_unset,
@@ -403,21 +261,30 @@ class ModelBase(BaseModel, Generic[V]):
                 exclude_none=exclude_none,
             )
 
-            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
-            id_field_name = self._get_alias("id") if by_alias else "id"
+            if not (self._id is None and exclude_none) and not (exclude is not None and "id" in exclude):
+                base_dict["id"] = self._id
 
-            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):
-                base_dict[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):
-                base_dict[id_field_name] = self._id
+            if not (self._element_id is None and exclude_none) and not (
+                exclude is not None and "element_id" in exclude
+            ):
+                base_dict["element_id"] = self._element_id
+
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
+
+                    if not isinstance(field, list) and not (exclude is not None and field_name in exclude):
+                        base_dict[field_name] = [
+                            cast(Union[RelationshipModel, NodeModel], node).dict() for node in field.nodes
+                        ]
 
             return base_dict
 
         def json(  # type: ignore
             self,
             *,
-            include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
-            exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+            include: Optional[Union[AbstractSetIntStr, MappingIntStrAny]] = None,
+            exclude: Optional[Union[AbstractSetIntStr, MappingIntStrAny]] = None,
             by_alias: bool = False,
             skip_defaults: Optional[bool] = None,
             exclude_unset: bool = False,
@@ -427,9 +294,15 @@ class ModelBase(BaseModel, Generic[V]):
             models_as_dict: bool = True,
             **dumps_kwargs: Any,
         ) -> str:
+            excluded_fields = set()
+            excluded_fields.update(exclude or set())
+
+            if hasattr(self, "_relationship_properties"):
+                excluded_fields.update(cast(Set[str], getattr(self, "_relationship_properties")))
+
             base_json = super().json(
                 include=include,  # type: ignore
-                exclude=exclude,  # type: ignore
+                exclude=excluded_fields,  # type: ignore
                 by_alias=by_alias,
                 skip_defaults=skip_defaults,
                 exclude_unset=exclude_unset,
@@ -440,67 +313,26 @@ class ModelBase(BaseModel, Generic[V]):
                 **dumps_kwargs,
             )
 
-            element_id_field_name = self._get_alias("element_id") if by_alias else "element_id"
-            id_field_name = self._get_alias("id") if by_alias else "id"
-
             modified_json = json.loads(base_json)
 
-            if self._check_field_included(exclude=exclude, include=include, field_name=element_id_field_name):
-                modified_json[element_id_field_name] = self._element_id
-            if self._check_field_included(exclude=exclude, include=include, field_name=id_field_name):
-                modified_json[id_field_name] = self._id
+            if not (self._id is None and exclude_none) and not (exclude is not None and "id" in exclude):
+                modified_json["id"] = self._id
+
+            if not (self._element_id is None and exclude_none) and not (
+                exclude is not None and "element_id" in exclude
+            ):
+                modified_json["element_id"] = self._element_id
+
+            if hasattr(self, "_relationship_properties"):
+                for field_name in getattr(self, "_relationship_properties"):
+                    field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
+
+                    if not isinstance(field, list) and not (exclude is not None and field_name in exclude):
+                        modified_json[field_name] = [
+                            cast(Union[RelationshipModel, NodeModel], node).json() for node in field.nodes
+                        ]
 
             return json.dumps(modified_json)
-
-        def _get_alias(self, field_name: str) -> str:
-            """
-            Returns the field name to use for serialization.
-
-            Args:
-                field_name (str): The field name to search for aliases for.
-
-            Returns:
-                str: The field name to use for serialization.
-            """
-            serialization_name = field_name
-
-            if self.__config__.fields.get(field_name) is not None:  # type: ignore
-                field = self.__config__.fields.get(field_name)  # type: ignore
-
-                if isinstance(field, str):
-                    serialization_name = field
-                elif field is not None and "alias" in field:
-                    serialization_name = field["alias"]
-            elif self.__config__.alias_generator is not None:  # type: ignore
-                serialization_name = self.__config__.alias_generator(field_name)  # type: ignore
-
-            return serialization_name
-
-        def _check_field_included(
-            self,
-            exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]],
-            include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]],
-            field_name: str,
-        ) -> bool:
-            """
-            Checks if a field should be included in the serialization.
-
-            Args:
-                exclude (Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]]): The fields to exclude.
-                include (Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]]): The fields to include.
-                field_name (str): The field name to check.
-
-            Returns:
-                bool: Whether the field should be included in the serialization.
-            """
-            if exclude is not None and field_name in exclude:
-                return False
-            if include is not None and field_name not in include:
-                return False
-            if include is not None and field_name in include and exclude is not None and field_name in exclude:
-                return True
-
-            return True
 
     def __init__(self, *args, **kwargs) -> None:
         if not hasattr(self, "_client"):
@@ -508,7 +340,7 @@ class ModelBase(BaseModel, Generic[V]):
 
         super().__init__(*args, **kwargs)
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, *args, **kwargs) -> None:
         setattr(cls, "_query_builder", QueryBuilder())
 
         logger.debug("Registering settings for model %s", cls.__name__)
@@ -524,7 +356,7 @@ class ModelBase(BaseModel, Generic[V]):
                     else:
                         setattr(cls._settings, setting, value)
 
-        return super().__init_subclass__()
+        super().__init_subclass__(*args, **kwargs)
 
     def __eq__(self, other: Any) -> bool:
         instance_type = type(self)
@@ -681,7 +513,6 @@ class ModelBase(BaseModel, Generic[V]):
             "validate_default": True,
             "validate_assignment": True,
             "revalidate_instances": "always",
-            "arbitrary_types_allowed": True,
         }
     else:
 
@@ -693,5 +524,4 @@ class ModelBase(BaseModel, Generic[V]):
             validate_all = True
             validate_assignment = True
             revalidate_instances = "always"
-            arbitrary_types_allowed = True
             underscore_attrs_are_private = True

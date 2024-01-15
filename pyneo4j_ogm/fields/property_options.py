@@ -48,7 +48,7 @@ def WithOptions(
         if IS_PYDANTIC_V2:
 
             @classmethod
-            def __get_pydantic_core_schema__(cls, _: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
-                return handler(property_type)
+            def __get_pydantic_core_schema__(cls, _: Any, handler: GetCoreSchemaHandler) -> CoreSchema:  # type: ignore
+                return handler(property_type)  # type: ignore
 
     return PropertyWithOptions

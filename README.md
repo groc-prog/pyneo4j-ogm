@@ -288,6 +288,7 @@ In the following we are going to take a closer look at the different parts of `p
   - [📚 Documentation ](#-documentation-)
     - [Table of contents](#table-of-contents)
     - [Basic concepts ](#basic-concepts-)
+      - [Pydantic and supported versions/features ](#pydantic-and-supported-versionsfeatures-)
     - [Pyneo4jClient ](#pyneo4jclient-)
       - [Connecting to the database ](#connecting-to-the-database-)
       - [Closing an existing connection ](#closing-an-existing-connection-)
@@ -325,8 +326,9 @@ In the following we are going to take a closer look at the different parts of `p
         - [Model.delete\_one() ](#modeldelete_one-)
           - [Raise on empty result ](#raise-on-empty-result--2)
         - [Model.delete\_many() ](#modeldelete_many-)
-        - [Model.count() ](#modelcount-)
           - [Filters ](#filters--2)
+        - [Model.count() ](#modelcount-)
+          - [Filters ](#filters--3)
         - [NodeModelInstance.create() ](#nodemodelinstancecreate-)
         - [NodeModelInstance.find\_connected\_nodes() ](#nodemodelinstancefind_connected_nodes-)
           - [Projections ](#projections--2)
@@ -342,7 +344,7 @@ In the following we are going to take a closer look at the different parts of `p
     - [Relationship-properties ](#relationship-properties-)
       - [Available methods ](#available-methods--1)
         - [RelationshipProperty.relationships() ](#relationshippropertyrelationships-)
-          - [Filters ](#filters--3)
+          - [Filters ](#filters--4)
           - [Projections ](#projections--3)
           - [Query options ](#query-options--2)
         - [RelationshipProperty.connect() ](#relationshippropertyconnect-)
@@ -351,7 +353,7 @@ In the following we are going to take a closer look at the different parts of `p
         - [RelationshipProperty.disconnect\_all() ](#relationshippropertydisconnect_all-)
         - [RelationshipProperty.replace() ](#relationshippropertyreplace-)
         - [RelationshipProperty.find\_connected\_nodes() ](#relationshippropertyfind_connected_nodes-)
-          - [Filters ](#filters--4)
+          - [Filters ](#filters--5)
           - [Projections ](#projections--4)
           - [Query options ](#query-options--3)
           - [Auto-fetching nodes ](#auto-fetching-nodes--3)
@@ -369,6 +371,7 @@ In the following we are going to take a closer look at the different parts of `p
       - [Query options ](#query-options--4)
       - [Auto-fetching relationship-properties ](#auto-fetching-relationship-properties-)
     - [Logging ](#logging-)
+    - [Running the test suite ](#running-the-test-suite-)
 
 ### Basic concepts <a name="basic-concepts"></a>
 
@@ -382,6 +385,12 @@ The basic concept boils down to the following:
 Of course, there is a lot more to it than that, but this is the basic idea. So let's take a closer look at the different parts of `pyneo4j-ogm` and how to use them.
 
 > **Note:** All of the examples in this documentation assume that you have already connected to a database and registered your models with the client like shown in the [`quickstart guide`](#quickstart). The models used in the following examples will build upon the ones defined there. If you are new to [`Neo4j`](https://neo4j.com/docs/) or [`Cypher`](https://neo4j.com/docs/cypher-manual/current/) in general, you should get a basic understanding of how to use them before continuing.
+
+#### Pydantic and supported versions/features <a name="pydantic-supported-version-features"></a>
+
+`pyneo4j-ogm` currently supports both [`Pydantic V1`](https://docs.pydantic.dev/1.10/) and the latest version of [`Pydantic V2`](https://docs.pydantic.dev/2.5/). Most of the core features are pretty well supported (meaning most model methods and schema generation) for V2 and V1.
+
+> **Note:** For schema generation to work with Pydantic V1, `Model.update_forward_refs() has to be called` in order for Pydantic to be able to generate the schemas for `RelationshipProperty` fields.
 
 ### Pyneo4jClient <a name="pyneo4jclient"></a>
 
@@ -638,7 +647,7 @@ There also is a special type of property called `RelationshipProperty`. This pro
 The `Settings` class of a `NodeModel` provides the following properties:
 
 | Setting name          | Type                          | Description                                                                                                                                                                                                                                                                                                                              |
-| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |                                                                                                |
+| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pre_hooks`           | **Dict[str, List[Callable]]** | A dictionary where the key is the name of the method for which to register the hook and the value is a list of hook functions. The hook function can be synchronous or asynchronous. All hook functions receive the exact same arguments as the method they are registered for and the current model instance as the first argument. Defaults to `{}`. |
 | `post_hooks`          | **Dict[str, List[Callable]]** | Same as **pre_hooks**, but the hook functions are executed after the method they are registered for. Additionally, the result of the method is passed to the hook as the second argument. Defaults to `{}`.                                                                                                                              |
 | `labels`           | **Set[str]** | A set of labels to use for the node. If no labels are defined, the name of the model will be used as the label. Defaults to the `model name split by it's words`.                                                                                                                                                                                                                            |
@@ -651,7 +660,7 @@ The `Settings` class of a `NodeModel` provides the following properties:
 For RelationshipModels, the `labels` setting is not available, since relationships don't have labels in Neo4j. Instead, the `type` setting can be used to define the type of the relationship. If no type is defined, the name of the model name will be used as the type.
 
 | Setting name          | Type                          | Description                                                                                                                                                                                                                                                                                                                              |
-| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |                                                                                                |
+| --------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pre_hooks`           | **Dict[str, List[Callable]]** | A dictionary where the key is the name of the method for which to register the hook and the value is a list of hook functions. The hook function can be synchronous or asynchronous. All hook functions receive the exact same arguments as the method they are registered for and the current model instance as the first argument. Defaults to `{}`. |
 | `post_hooks`          | **Dict[str, List[Callable]]** | Same as **pre_hooks**, but the hook functions are executed after the method they are registered for. Additionally, the result of the method is passed to the hook as the second argument. Defaults to `{}`.                                                                                                                              |
 | `type`       | **str** | The type of the relationship to use. If no type is defined, the model name will be used as the type. Defaults to the `model name in all uppercase`. |
@@ -964,7 +973,7 @@ print(count) # However many nodes matched the filter
 print(count) # 0
 ```
 
-####### Filters <a name="model-delete-many-filters"></a>
+###### Filters <a name="model-delete-many-filters"></a>
 
 Optionally, a `filters` argument can be provided, which defines which entities to delete. For more about filters, see the [`Filtering queries`](#query-filters) section.
 
@@ -1195,7 +1204,7 @@ print(end_node) # <Developer>
 
 #### Serializing models <a name="serializing-models"></a>
 
-When serializing models to a dictionary or JSON string, the models `element_id and id` fields are `automatically added` to the corresponding dictionary/JSON string when calling Pydantic's `dict()` or `json()` methods. Furthermore, functionality like `aliases` and `exclusion of fields` are available for both the element_id and id field out of the box.
+When serializing models to a dictionary or JSON string, the models `element_id and id` fields are `automatically added` to the corresponding dictionary/JSON string when calling Pydantic's `dict()` or `json()` methods.
 
 #### Hooks <a name="hooks"></a>
 
@@ -1789,3 +1798,19 @@ print(developer.other_property.nodes) # []
 ### Logging <a name="logging"></a>
 
 You can control the log level and whether to log to the console or not by setting the `PYNEO4J_OGM_LOG_LEVEL` and `PYNEO4J_OGM_ENABLE_LOGGING` as environment variables. The available levels are the same as provided by the build-in `logging` module. The default log level is `WARNING` and logging to the console is enabled by default.
+
+### Running the test suite <a name="running-the-test-suite"></a>
+
+To run the test suite, you have to install the development dependencies and run the tests using `pytest`. The tests are located in the `tests` directory. Any tests located in the `tests/integration` directory will require you to have a Neo4j instance running on `localhost:7687` with the credentials (`neo4j:password`). This can easily be done using the provided `docker-compose.yml` file.
+
+```bash
+poetry run pytest tests --asyncio-mode=auto -W ignore::DeprecationWarning
+```
+
+> **Note:** The `-W ignore::DeprecationWarning` can be omitted but will result in a lot of deprication warnings by Neo4j itself about the usage of the now deprecated `ID`.
+
+As for running the tests with a different pydantic version, you can just run the following command locally:
+
+```bash
+poetry add pydantic@1.10
+```

@@ -1,7 +1,10 @@
 """
 Utility functions for staying compatible with Pydantic V1 and V2
 """
-from typing import Any, Type
+
+# pyright: reportUnboundVariable=false
+
+from typing import Any, Type, Union
 
 import pydantic
 from pydantic import BaseModel
@@ -16,9 +19,9 @@ else:
 
 def parse_object_as(object_type: Type, data: Any):
     if IS_PYDANTIC_V2:
-        return TypeAdapter(object_type).validate_python(data)  # pyright: ignore[reportUnboundVariable]
+        return TypeAdapter(object_type).validate_python(data)
     else:
-        return parse_obj_as(object_type, data)  # pyright: ignore[reportUnboundVariable]
+        return parse_obj_as(object_type, data)
 
 
 def get_field_type(field):
@@ -70,3 +73,10 @@ def get_model_dump_json(model: BaseModel, *args, **kwargs):
         return model.model_dump_json(*args, **kwargs)
     else:
         return model.json(*args, **kwargs)
+
+
+def get_schema(model: Union[BaseModel, Type[BaseModel]], *args, **kwargs):
+    if IS_PYDANTIC_V2:
+        return model.model_json_schema(*args, **kwargs)
+    else:
+        return model.schema(*args, **kwargs)

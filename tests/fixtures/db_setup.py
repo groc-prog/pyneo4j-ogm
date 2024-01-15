@@ -17,6 +17,7 @@ from pyneo4j_ogm import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
 )
+from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2
 
 
 class Developer(NodeModel):
@@ -271,3 +272,13 @@ def coffee_shop_model_instances(setup_test_data):
     rating_five_model = CoffeeShop._inflate(rating_five)
 
     return (rating_five_model,)
+
+
+if not IS_PYDANTIC_V2:
+    Developer.update_forward_refs()
+    Coffee.update_forward_refs()
+    Consumed.update_forward_refs()
+    WorkedWith.update_forward_refs()
+    CoffeeShop.update_forward_refs()
+    Sells.update_forward_refs()
+    Bestseller.update_forward_refs()

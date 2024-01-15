@@ -118,9 +118,11 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 cast(RelationshipProperty, model_relationship_property)._build_property(self, relationship_property)
             else:
                 model_relationship_property = getattr(self, relationship_property)
-                cast(RelationshipProperty, model_relationship_property)._build_property(self, relationship_property)
 
-        self._db_properties = get_model_dump(self, exclude=self._relationship_properties)
+                if hasattr(model_relationship_property, "_build_property"):
+                    cast(RelationshipProperty, model_relationship_property)._build_property(self, relationship_property)
+
+        self._db_properties = get_model_dump(self, exclude={*self._relationship_properties, "element_id", "id"})
 
     def __init_subclass__(cls) -> None:
         setattr(cls, "_relationship_properties", set())
@@ -1069,6 +1071,9 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 inflated[property_name] = try_property_parsing(property_value)
             else:
                 inflated[property_name] = property_value
+
+        for relationship_property in cls._relationship_properties:
+            inflated.pop(relationship_property, None)
 
         instance = cls(**inflated)
         setattr(instance, "_element_id", node._element_id)

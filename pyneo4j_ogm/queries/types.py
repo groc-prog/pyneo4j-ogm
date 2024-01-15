@@ -39,7 +39,7 @@ NumericEqualsOperator = TypedDict(
 )
 
 NumericNotEqualsOperator = TypedDict(
-    "NumericEqualsOperator",
+    "NumericNotEqualsOperator",
     {
         "$neq": NumericQueryDataType,
     },
