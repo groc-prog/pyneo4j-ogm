@@ -1204,7 +1204,7 @@ print(end_node) # <Developer>
 
 #### Serializing models <a name="serializing-models"></a>
 
-When serializing models to a dictionary or JSON string, the models `element_id and id` fields are `automatically added` to the corresponding dictionary/JSON string when calling Pydantic's `dict()` or `json()` methods. Furthermore, functionality like `aliases` and `exclusion of fields` are available for both the element_id and id field out of the box.
+When serializing models to a dictionary or JSON string, the models `element_id and id` fields are `automatically added` to the corresponding dictionary/JSON string when calling Pydantic's `dict()` or `json()` methods.
 
 #### Hooks <a name="hooks"></a>
 
