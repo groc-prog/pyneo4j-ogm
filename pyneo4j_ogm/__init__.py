@@ -1,6 +1,6 @@
 # pylint: disable=missing-module-docstring
 
-from .core.client import Pyneo4jClient
+from .core.client import EntityType, Pyneo4jClient
 from .core.node import NodeModel
 from .core.relationship import RelationshipModel
 from .fields.property_options import WithOptions
@@ -9,3 +9,4 @@ from .queries.enums import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
 )
+from .queries.types import QueryOptionsOrder
