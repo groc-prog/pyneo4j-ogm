@@ -9,6 +9,7 @@ import asyncio
 from asyncio import iscoroutinefunction
 from functools import wraps
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -29,9 +30,6 @@ from typing import (
 
 from neo4j.graph import Node, Relationship
 
-from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.core.node import NodeModel
-from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
     CardinalityViolation,
     InstanceDestroyed,
@@ -55,6 +53,15 @@ from pyneo4j_ogm.queries.types import (
     RelationshipFilters,
     RelationshipPropertyFilters,
 )
+
+if TYPE_CHECKING:
+    from pyneo4j_ogm.core.client import Pyneo4jClient
+    from pyneo4j_ogm.core.node import NodeModel
+    from pyneo4j_ogm.core.relationship import RelationshipModel
+else:
+    Pyneo4jClient = object
+    NodeModel = object
+    RelationshipModel = object
 
 if IS_PYDANTIC_V2:
     from pydantic import GetCoreSchemaHandler, ValidatorFunctionWrapHandler
@@ -1081,4 +1088,4 @@ class RelationshipProperty(Generic[T, U]):
 
 
 if not IS_PYDANTIC_V2:
-    ENCODERS_BY_TYPE[RelationshipProperty] = lambda x: str(x)
+    ENCODERS_BY_TYPE[RelationshipProperty] = str

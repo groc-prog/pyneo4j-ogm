@@ -29,9 +29,9 @@ from typing import (
 )
 
 from pydantic import BaseModel, PrivateAttr
-from pydantic.class_validators import root_validator
 
 from pyneo4j_ogm.exceptions import UnregisteredModel
+from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, get_model_dump
@@ -41,15 +41,16 @@ if TYPE_CHECKING:
     from pyneo4j_ogm.core.client import Pyneo4jClient
     from pyneo4j_ogm.core.node import NodeModel
     from pyneo4j_ogm.core.relationship import RelationshipModel
-    from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 else:
     Pyneo4jClient = object
-    RelationshipProperty = object
     NodeModel = object
     RelationshipModel = object
 
 if IS_PYDANTIC_V2:
     from pydantic import model_serializer, model_validator
+    from pydantic.json_schema import GenerateJsonSchema
+else:
+    from pydantic.class_validators import root_validator
 
 P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
@@ -145,6 +146,13 @@ def hooks(func):
     return wrapper
 
 
+class CustomGenerateJsonSchema(GenerateJsonSchema):
+    def encode_default(self, dft: Any) -> Any:
+        if isinstance(dft, RelationshipProperty):
+            dft = str(dft)
+        return super().encode_default(dft)
+
+
 class ModelBase(BaseModel, Generic[V]):
     """
     Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
@@ -181,8 +189,6 @@ class ModelBase(BaseModel, Generic[V]):
 
         @model_serializer
         def _model_serializer(self) -> Dict[str, Any]:
-            from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
-
             serialized: Dict[str, Any] = {}
 
             for field_name, field in self.model_fields.items():
@@ -202,6 +208,11 @@ class ModelBase(BaseModel, Generic[V]):
             serialized["id"] = self.id
 
             return serialized
+
+        @classmethod
+        def model_json_schema(cls, *args, **kwargs) -> Dict[str, Any]:
+            kwargs.setdefault("schema_generator", CustomGenerateJsonSchema)
+            return super().model_json_schema(*args, **kwargs)
 
     else:
 
