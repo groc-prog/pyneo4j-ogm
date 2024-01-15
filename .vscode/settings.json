@@ -22,6 +22,7 @@
     "**/Thumbs.db": true,
     ".pytest_cache": true,
     ".neo4j_data": true,
-    ".coverage": true
+    ".coverage": true,
+    ".venv": true
   }
 }
