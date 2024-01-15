@@ -2,7 +2,7 @@
 
 import json
 from typing import Any, List, cast
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -15,7 +15,7 @@ from pyneo4j_ogm.pydantic_utils import (
     get_model_dump,
     get_model_dump_json,
 )
-from tests.fixtures.db_setup import Developer
+from tests.fixtures.db_setup import Coffee, Consumed, Developer
 
 
 def hook_func():
@@ -233,14 +233,14 @@ def test_dict_dump():
     assert "ogm_a" in alias_model_dict
     assert "ogm_b" in alias_model_dict
     assert "ogm_c" in alias_model_dict
-    assert "ogm_element_id" in alias_model_dict
-    assert "ogm_id" in alias_model_dict
+    assert "element_id" in alias_model_dict
+    assert "id" in alias_model_dict
 
     assert alias_model_dict["ogm_a"] == "a"
     assert alias_model_dict["ogm_b"] == 1
     assert alias_model_dict["ogm_c"] is True
-    assert alias_model_dict["ogm_element_id"] == "test-element-id"
-    assert alias_model_dict["ogm_id"] == "test-id"
+    assert alias_model_dict["element_id"] == "test-element-id"
+    assert alias_model_dict["id"] == "test-id"
 
 
 def test_json_dump():
@@ -305,11 +305,17 @@ def test_json_dump():
     assert "ogm_a" in alias_model_dict
     assert "ogm_b" in alias_model_dict
     assert "ogm_c" in alias_model_dict
-    assert "ogm_element_id" in alias_model_dict
-    assert "ogm_id" in alias_model_dict
+    assert "element_id" in alias_model_dict
+    assert "id" in alias_model_dict
 
     assert alias_model_dict["ogm_a"] == "a"
     assert alias_model_dict["ogm_b"] == 1
     assert alias_model_dict["ogm_c"] is True
-    assert alias_model_dict["ogm_element_id"] == "test-element-id"
-    assert alias_model_dict["ogm_id"] == "test-id"
+    assert alias_model_dict["element_id"] == "test-element-id"
+    assert alias_model_dict["id"] == "test-id"
+
+
+def test_schema():
+    setattr(Developer, "_client", None)
+    setattr(Coffee, "_client", None)
+    setattr(Consumed, "_client", None)
