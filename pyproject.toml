@@ -26,6 +26,7 @@ python = "^3.10"
 pydantic = ">=1.10,<3.0"
 neo4j = "^5.9.0"
 typing-extensions = "^4.8.0"
+argparse = "^1.4.0"
 
 [tool.poetry.group.dev.dependencies]
 pylint = "^2.17.5"
@@ -36,6 +37,9 @@ pytest-asyncio = "^0.21.1"
 pyright = "^1.1.325"
 isort = "^5.12.0"
 pytest-cov = "^4.1.0"
+
+[tool.poetry.scripts]
+"pyneo4j_ogm" = "pyneo4j_ogm.migrations.main:init"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
