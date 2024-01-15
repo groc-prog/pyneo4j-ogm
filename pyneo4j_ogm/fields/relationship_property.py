@@ -286,9 +286,9 @@ class RelationshipProperty(Generic[T, U]):
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(target_model_name={self._target_model_name} "
-            f"relationship_model={self._relationship_model_name} direction={self._direction} "
-            f"cardinality={self._cardinality} allow_multiple={self._allow_multiple})"
+            f"{self.__class__.__name__}(target_model_name={self._target_model_name}, "
+            f"relationship_model={self._relationship_model_name}, direction={self._direction}, "
+            f"cardinality={self._cardinality}, allow_multiple={self._allow_multiple})"
         )
 
     def __str__(self) -> str:
