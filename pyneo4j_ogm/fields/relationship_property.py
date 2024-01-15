@@ -10,8 +10,10 @@ from asyncio import iscoroutinefunction
 from functools import wraps
 from typing import (
     Any,
+    Callable,
     Dict,
     ForwardRef,
+    Generator,
     Generic,
     List,
     Optional,
@@ -59,6 +61,7 @@ if IS_PYDANTIC_V2:
     from pydantic_core import CoreSchema, core_schema
 else:
     from pydantic.fields import ModelField  # type: ignore
+    from pydantic.json import ENCODERS_BY_TYPE
 
 P = ParamSpec("P")
 T = TypeVar("T", bound=NodeModel)
@@ -276,9 +279,9 @@ class RelationshipProperty(Generic[T, U]):
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(registered_name={self._registered_name} "
-            f"target_model={self._target_model_name} relationship_model={self._relationship_model_name} "
-            f"direction={self._direction} cardinality={self._cardinality} allow_multiple={self._allow_multiple})"
+            f"{self.__class__.__name__}(target_model_name={self._target_model_name}"
+            f"relationship_model={self._relationship_model_name} direction={self._direction}"
+            f"cardinality={self._cardinality} allow_multiple={self._allow_multiple})"
         )
 
     def __str__(self) -> str:
@@ -999,27 +1002,18 @@ class RelationshipProperty(Generic[T, U]):
                     core_schema.is_instance_schema(cls),
                     core_schema.no_info_wrap_validator_function(validate_target_model, target_model_schema),
                     core_schema.no_info_wrap_validator_function(validate_relationship_model, relationship_model_schema),
-                ]
+                ],
             )
 
             return core_schema.json_or_python_schema(
-                json_schema=core_schema.chain_schema(
-                    [
-                        core_schema.typed_dict_schema(
-                            {
-                                "target_model": core_schema.typed_dict_field(target_model_schema, required=False),
-                                "target_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
-                                "relationship_model": core_schema.typed_dict_field(
-                                    relationship_model_schema, required=False
-                                ),
-                                "relationship_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
-                                "direction": core_schema.typed_dict_field(core_schema.str_schema()),
-                                "cardinality": core_schema.typed_dict_field(core_schema.str_schema()),
-                                "allow_multiple": core_schema.typed_dict_field(core_schema.bool_schema()),
-                                "registered_name": core_schema.typed_dict_field(core_schema.str_schema()),
-                            }
-                        )
-                    ]
+                json_schema=core_schema.typed_dict_schema(
+                    {
+                        "target_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
+                        "relationship_model_name": core_schema.typed_dict_field(core_schema.str_schema()),
+                        "direction": core_schema.typed_dict_field(core_schema.str_schema()),
+                        "cardinality": core_schema.typed_dict_field(core_schema.str_schema(), required=False),
+                        "allow_multiple": core_schema.typed_dict_field(core_schema.bool_schema(), required=False),
+                    },
                 ),
                 python_schema=python_schema,
             )
@@ -1027,7 +1021,25 @@ class RelationshipProperty(Generic[T, U]):
     else:
 
         @classmethod
-        def __get_validators__(cls):
+        def __modify_schema__(cls, field_schema: Dict[str, Any]) -> None:
+            field_schema.update(
+                type="object",
+                properties={
+                    "target_model_name": {"type": "string", "title": "Target Model Name"},
+                    "relationship_model_name": {"type": "string", "title": "Relationship Model Name"},
+                    "direction": {"type": "string", "title": "Direction"},
+                    "cardinality": {
+                        "type": "string",
+                        "default": "ZERO_OR_MORE",
+                        "title": "Cardinality",
+                    },
+                    "allow_multiple": {"type": "boolean", "default": False, "title": "Allow Multiple"},
+                },
+                required=["target_model_name", "relationship_model_name", "direction"],
+            )
+
+        @classmethod
+        def __get_validators__(cls) -> Generator[Callable[..., Any], None, None]:
             yield cls.validate
 
         @classmethod
@@ -1066,3 +1078,7 @@ class RelationshipProperty(Generic[T, U]):
                     raise TypeError("Mismatch between generic types and target/relationship models")
 
             return v
+
+
+if not IS_PYDANTIC_V2:
+    ENCODERS_BY_TYPE[RelationshipProperty] = lambda x: x.__class__.__name__
