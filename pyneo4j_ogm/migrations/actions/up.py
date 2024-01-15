@@ -1,0 +1,2 @@
+def up():
+    print("UP")
