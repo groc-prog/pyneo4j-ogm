@@ -8,12 +8,8 @@ from datetime import datetime
 from typing import cast
 
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.migrations.utils.config import MigrationConfig
-from pyneo4j_ogm.migrations.utils.migration import (
-    MIGRATION_TEMPLATE,
-    check_initialized,
-    provide_config,
-)
+from pyneo4j_ogm.migrations.utils.config import get_migration_config
+from pyneo4j_ogm.migrations.utils.migration import MIGRATION_TEMPLATE, check_initialized
 
 
 def normalize_filename(name: str) -> str:
@@ -32,17 +28,20 @@ def normalize_filename(name: str) -> str:
 
 
 @check_initialized
-@provide_config
-def create(namespace: Namespace, config: MigrationConfig) -> None:
+def create(namespace: Namespace) -> None:
     """
     Creates a new, empty migration file.
+
+    Args:
+        namespace(Namespace): Namespace object from argparse
     """
     logger.info("Creating new migration file")
     description = cast(str, namespace.name)
     migration_timestamp = str(datetime.now().strftime("%Y%m%d%H%M%S"))
+    config = get_migration_config(namespace)
 
     logger.debug("Generating migration file name")
-    filename = f"{migration_timestamp}_{normalize_filename(description)}.py"
+    filename = f"{migration_timestamp}-{normalize_filename(description)}.py"
     filepath = os.path.join(config.migration_dir, filename)
 
     logger.debug("Writing migration file")

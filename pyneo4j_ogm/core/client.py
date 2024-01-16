@@ -198,6 +198,9 @@ class Pyneo4jClient:
         """
         Closes the current connection to the database.
         """
+        if not self.is_connected:
+            return
+
         logger.info("Closing connection to database")
         await cast(AsyncDriver, self._driver).close()
         self._driver = None
