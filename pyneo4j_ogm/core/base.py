@@ -34,7 +34,12 @@ from pyneo4j_ogm.exceptions import UnregisteredModel
 from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, get_model_dump
+from pyneo4j_ogm.pydantic_utils import (
+    IS_PYDANTIC_V2,
+    get_field_type,
+    get_model_dump,
+    get_model_fields,
+)
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 if TYPE_CHECKING:
@@ -48,6 +53,7 @@ else:
 
 if IS_PYDANTIC_V2:
     from pydantic import SerializationInfo, model_serializer, model_validator
+    from pydantic.config import JsonDict
     from pydantic.json_schema import GenerateJsonSchema
 else:
     from pydantic.class_validators import root_validator
@@ -216,6 +222,30 @@ class ModelBase(BaseModel, Generic[V]):
             kwargs.setdefault("schema_generator", CustomGenerateJsonSchema)
             return super().model_json_schema(*args, **kwargs)
 
+        # Pydantic does not initialize either `__fields__` or `model_fields` in the __init_subclass__
+        # method anymore in V2, thus we have to call this logic here as well
+        @classmethod
+        def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+            super().__pydantic_init_subclass__(**kwargs)
+
+            for _, field in get_model_fields(cls).items():
+                point_index = getattr(get_field_type(field), "_point_index", False)
+                range_index = getattr(get_field_type(field), "_range_index", False)
+                text_index = getattr(get_field_type(field), "_text_index", False)
+                unique = getattr(get_field_type(field), "_unique", False)
+
+                if field.json_schema_extra is None:
+                    field.json_schema_extra = {}
+
+                if point_index:
+                    cast(JsonDict, field.json_schema_extra)["point_index"] = True
+                if range_index:
+                    cast(JsonDict, field.json_schema_extra)["range_index"] = True
+                if text_index:
+                    cast(JsonDict, field.json_schema_extra)["text_index"] = True
+                if unique:
+                    cast(JsonDict, field.json_schema_extra)["uniqueness_constraint"] = True
+
     else:
 
         @root_validator
@@ -355,6 +385,22 @@ class ModelBase(BaseModel, Generic[V]):
                         )
                     else:
                         setattr(cls._settings, setting, value)
+
+        if not IS_PYDANTIC_V2:
+            for _, field in get_model_fields(cls).items():
+                point_index = getattr(get_field_type(field), "_point_index", False)
+                range_index = getattr(get_field_type(field), "_range_index", False)
+                text_index = getattr(get_field_type(field), "_text_index", False)
+                unique = getattr(get_field_type(field), "_unique", False)
+
+                if point_index:
+                    field.field_info.extra["point_index"] = True
+                if range_index:
+                    field.field_info.extra["range_index"] = True
+                if text_index:
+                    field.field_info.extra["text_index"] = True
+                if unique:
+                    field.field_info.extra["uniqueness_constraint"] = True
 
         super().__init_subclass__(*args, **kwargs)
 
