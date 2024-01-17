@@ -53,7 +53,6 @@ else:
 
 if IS_PYDANTIC_V2:
     from pydantic import SerializationInfo, model_serializer, model_validator
-    from pydantic.config import JsonDict
     from pydantic.json_schema import GenerateJsonSchema
 else:
     from pydantic.class_validators import root_validator
@@ -155,6 +154,35 @@ def hooks(func):
 if IS_PYDANTIC_V2:
 
     class CustomGenerateJsonSchema(GenerateJsonSchema):
+        """
+        Custom JSON schema generator which adds support for generating JSON schemas for `RelationshipProperty` fields
+        and adds index and uniqueness constraint information to the generated schema.
+        """
+
+        def generate(self, *args, **kwargs):
+            model_cls = cast(Type[BaseModel], args[0]["schema"]["cls"])
+            generated_schema = super().generate(*args, **kwargs)
+
+            for field_name, field in get_model_fields(model_cls).items():
+                point_index = getattr(get_field_type(field), "_point_index", False)
+                range_index = getattr(get_field_type(field), "_range_index", False)
+                text_index = getattr(get_field_type(field), "_text_index", False)
+                unique = getattr(get_field_type(field), "_unique", False)
+
+                if field_name not in generated_schema["properties"]:
+                    continue
+
+                if point_index:
+                    generated_schema["properties"][field_name]["point_index"] = True
+                if range_index:
+                    generated_schema["properties"][field_name]["range_index"] = True
+                if text_index:
+                    generated_schema["properties"][field_name]["text_index"] = True
+                if unique:
+                    generated_schema["properties"][field_name]["uniqueness_constraint"] = True
+
+            return generated_schema
+
         def encode_default(self, dft: Any) -> Any:
             if isinstance(dft, RelationshipProperty):
                 dft = str(dft)
@@ -221,30 +249,6 @@ class ModelBase(BaseModel, Generic[V]):
         def model_json_schema(cls, *args, **kwargs) -> Dict[str, Any]:
             kwargs.setdefault("schema_generator", CustomGenerateJsonSchema)
             return super().model_json_schema(*args, **kwargs)
-
-        # Pydantic does not initialize either `__fields__` or `model_fields` in the __init_subclass__
-        # method anymore in V2, thus we have to call this logic here as well
-        @classmethod
-        def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
-            super().__pydantic_init_subclass__(**kwargs)
-
-            for _, field in get_model_fields(cls).items():
-                point_index = getattr(get_field_type(field), "_point_index", False)
-                range_index = getattr(get_field_type(field), "_range_index", False)
-                text_index = getattr(get_field_type(field), "_text_index", False)
-                unique = getattr(get_field_type(field), "_unique", False)
-
-                if field.json_schema_extra is None:
-                    field.json_schema_extra = {}
-
-                if point_index:
-                    cast(JsonDict, field.json_schema_extra)["point_index"] = True
-                if range_index:
-                    cast(JsonDict, field.json_schema_extra)["range_index"] = True
-                if text_index:
-                    cast(JsonDict, field.json_schema_extra)["text_index"] = True
-                if unique:
-                    cast(JsonDict, field.json_schema_extra)["uniqueness_constraint"] = True
 
     else:
 
@@ -394,13 +398,13 @@ class ModelBase(BaseModel, Generic[V]):
                 unique = getattr(get_field_type(field), "_unique", False)
 
                 if point_index:
-                    field.field_info.extra["point_index"] = True
+                    field.field_info.extra["point_index"] = True  # type: ignore
                 if range_index:
-                    field.field_info.extra["range_index"] = True
+                    field.field_info.extra["range_index"] = True  # type: ignore
                 if text_index:
-                    field.field_info.extra["text_index"] = True
+                    field.field_info.extra["text_index"] = True  # type: ignore
                 if unique:
-                    field.field_info.extra["uniqueness_constraint"] = True
+                    field.field_info.extra["uniqueness_constraint"] = True  # type: ignore
 
         super().__init_subclass__(*args, **kwargs)
 
