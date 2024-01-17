@@ -1,5 +1,9 @@
 # pylint: disable=invalid-name, redefined-outer-name, unused-import, missing-module-docstring, missing-class-docstring
 
+from pydantic import Field
+
+from pyneo4j_ogm.core.node import NodeModel
+from pyneo4j_ogm.fields.property_options import WithOptions
 from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, get_schema
 from tests.fixtures.db_setup import Coffee, Consumed, Developer
 from tests.utils.string_utils import assert_string_equality
@@ -124,3 +128,25 @@ def test_schema():
             schema["definitions"]["Developer"]["properties"]["colleagues"]["properties"]["allow_multiple"]["type"]
             == "boolean"
         )
+
+
+def test_schema_with_index_and_constraint():
+    class TestModel(NodeModel):
+        uid: WithOptions(str, text_index=True, unique=True) = Field("test-uid")  # type: ignore
+
+    setattr(TestModel, "_client", None)
+
+    schema = get_schema(TestModel)
+
+    if IS_PYDANTIC_V2:
+        assert "text_index" in schema["properties"]["uid"]
+        assert schema["properties"]["uid"]["text_index"]
+
+        assert "uniqueness_constraint" in schema["properties"]["uid"]
+        assert schema["properties"]["uid"]["uniqueness_constraint"]
+    else:
+        assert "text_index" in schema["properties"]["uid"]
+        assert schema["properties"]["uid"]["text_index"]
+
+        assert "uniqueness_constraint" in schema["properties"]["uid"]
+        assert schema["properties"]["uid"]["uniqueness_constraint"]
