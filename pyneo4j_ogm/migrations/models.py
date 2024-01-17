@@ -1,7 +1,6 @@
 """
 Pydantic validation models for configuration file and migration node.
 """
-import enum
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -37,15 +36,6 @@ async def down(client: Pyneo4jClient) -> None:
     """
     pass
 '''
-
-
-class StatusActionFormat(enum.Enum):
-    """
-    Status action format.
-    """
-
-    RAW = "RAW"
-    PRETTIFY = "PRETTIFY"
 
 
 class Neo4jDatabaseConfig(BaseModel):
@@ -88,14 +78,6 @@ class Neo4jDatabaseConfig(BaseModel):
             return options
 
 
-class StatusActionConfig(BaseModel):
-    """
-    Status action configuration.
-    """
-
-    default_format: Optional[StatusActionFormat] = None
-
-
 class MigrationConfig(BaseModel):
     """
     Migration configuration. Used to validate the migration config file.
@@ -104,7 +86,6 @@ class MigrationConfig(BaseModel):
     neo4j: Neo4jDatabaseConfig = Neo4jDatabaseConfig()
     migration_dir: str
     models_dir: Optional[str] = None
-    status_action: StatusActionConfig = StatusActionConfig()
 
 
 class AppliedMigration(BaseModel):
