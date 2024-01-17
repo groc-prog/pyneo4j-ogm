@@ -2,6 +2,79 @@
 
 
 
+## v0.4.1 (2024-01-17)
+
+### Chore
+
+* chore: add .venv to ignore files ([`c7aa6b8`](https://github.com/groc-prog/pyneo4j-ogm/commit/c7aa6b8e5480555a6f41617836c1c0dd7e2cbc27))
+
+* chore: fixed linting/type checking ([`7021e47`](https://github.com/groc-prog/pyneo4j-ogm/commit/7021e477f1cd8b5fc30d746db65a45f4cada627b))
+
+* chore: lint/type check ([`0539a1c`](https://github.com/groc-prog/pyneo4j-ogm/commit/0539a1c2281d21d860fadf9d4c184a0d17db463a))
+
+### Ci
+
+* ci: adjust job steps ([`d168194`](https://github.com/groc-prog/pyneo4j-ogm/commit/d1681949ca0cd24b3e38c67094a813c26e1dfc9d))
+
+### Documentation
+
+* docs: update docs on serialization ([`03d740f`](https://github.com/groc-prog/pyneo4j-ogm/commit/03d740f71a7a4cb48c61e3fc57933b2867a367d4))
+
+* docs: update docs on running test suite ([`0a9c914`](https://github.com/groc-prog/pyneo4j-ogm/commit/0a9c914e04e4b5b1fc58d23d0042702f67b2d538))
+
+* docs: add docs for pydantic version and supported features ([`99546ca`](https://github.com/groc-prog/pyneo4j-ogm/commit/99546cace3d0a184c52b8b7620f96ca719dae22f))
+
+* docs: add docs for running test suits ([`f24f62c`](https://github.com/groc-prog/pyneo4j-ogm/commit/f24f62cec2f8f4862b9c0beab6b57d09f4b4f9e4))
+
+* docs: fix format issues for tables ([`1f0fa1e`](https://github.com/groc-prog/pyneo4j-ogm/commit/1f0fa1e6aac0601c5a742a65c27696248c49c151))
+
+### Fix
+
+* fix: fix schema missing indexes/constraints if schemas reference each other ([`eb4d666`](https://github.com/groc-prog/pyneo4j-ogm/commit/eb4d666c94b326d81c9aa2d6c61fa6ee0bee5e08))
+
+* fix: update CustomGenerateJsonSchema class to add index/constraint info ([`2a64464`](https://github.com/groc-prog/pyneo4j-ogm/commit/2a644646d765b3c0e1facb9798cba97c098fb371))
+
+* fix: add missing index/constraint to model schema ([`01e2a9d`](https://github.com/groc-prog/pyneo4j-ogm/commit/01e2a9d8e0639f3e20cd3228685cd2b55684f1f2))
+
+* fix: use enum values for string representation of RelationshipProperty ([`8889c62`](https://github.com/groc-prog/pyneo4j-ogm/commit/8889c62bd12df45bd306055b8c02d6c70554d03f))
+
+* fix: fix relationship properties always being included in serialization in V1 ([`2ba47b9`](https://github.com/groc-prog/pyneo4j-ogm/commit/2ba47b9def3ecb10b3c4826c20783387f5e9800e))
+
+* fix: only use CustomGenerateJsonSchema when IS_PYDANTIC_V2 is true, check exclude before adding id and element_id ([`3f621f6`](https://github.com/groc-prog/pyneo4j-ogm/commit/3f621f6e454bf044663c580a4d4544973e1c6b40))
+
+* fix: implement custom GenerateJsonSchema class for v2 schema generation ([`fff7fea`](https://github.com/groc-prog/pyneo4j-ogm/commit/fff7fea558126f3722b66b5d510e4ea18f2ab940))
+
+* fix: fix schema generation for pydantic v1 ([`13cbde8`](https://github.com/groc-prog/pyneo4j-ogm/commit/13cbde84b8b80c0803eecdd8aa7a9ecc4f2bdc25))
+
+* fix: update schema generation ([`abe2035`](https://github.com/groc-prog/pyneo4j-ogm/commit/abe2035f7906cae3f4dda536bb3d3c5271a25f74))
+
+* fix: fix issue where serialization would not work if nodes for relationship properties where fetched ([`4d0aa1e`](https://github.com/groc-prog/pyneo4j-ogm/commit/4d0aa1e27b0819cb194649dacb5ecdd8f23768c5))
+
+### Refactor
+
+* refactor: implement model_serializer instead of overwriting methods ([`cfd8e0e`](https://github.com/groc-prog/pyneo4j-ogm/commit/cfd8e0e61b2c220e4adb20ae6616310555ccc440))
+
+* refactor: adjust validation for custom pydantic types and dict/json conversion for pydantic v2 ([`5c4b61c`](https://github.com/groc-prog/pyneo4j-ogm/commit/5c4b61c6c9d8ead5b5fc58121b27e932c328d401))
+
+* refactor: adjust validation for custom pydantic types and dict/json conversion ([`cfe9f03`](https://github.com/groc-prog/pyneo4j-ogm/commit/cfe9f03e714bd56c42bd65e2ebb6e814e926c7d3))
+
+* refactor: remove arbitrary_types_allowed and add custom type for RelationshipProperty ([`0c59e73`](https://github.com/groc-prog/pyneo4j-ogm/commit/0c59e73c1103f9ead86dac42b3451c057c247bbb))
+
+### Test
+
+* test: update schema test case ([`6c7553d`](https://github.com/groc-prog/pyneo4j-ogm/commit/6c7553de0d72e261dfb3567eea5b26b7a5bb9a0a))
+
+* test: update schema test cases ([`e5054e8`](https://github.com/groc-prog/pyneo4j-ogm/commit/e5054e8fa656d9ffbe3e0ae85b0b97ba31581281))
+
+* test: fix test case since pydantic generates different schemas depending on python version ([`021b5d9`](https://github.com/groc-prog/pyneo4j-ogm/commit/021b5d9a63cf351e0454a6e5c4a529ee2146c080))
+
+* test: add update_forward_refs when tests run on V1 of pydantic ([`6f4a9d9`](https://github.com/groc-prog/pyneo4j-ogm/commit/6f4a9d983c20211425848aec69e44d181f01a0b1))
+
+* test: add test case for schema generation ([`26a9d74`](https://github.com/groc-prog/pyneo4j-ogm/commit/26a9d74498212e96d585d0fdc4e3f4d08392c09a))
+
+* test: update test case for model serialization ([`e51be3c`](https://github.com/groc-prog/pyneo4j-ogm/commit/e51be3c49143cb8c913a01d27361d498c04b2fad))
+
+
 ## v0.4.0 (2023-12-13)
 
 ### Chore
