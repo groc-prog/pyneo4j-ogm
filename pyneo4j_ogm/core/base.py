@@ -167,11 +167,11 @@ if IS_PYDANTIC_V2:
                 schema_ref = args[0]["schema"]["schema_ref"]
 
                 for definition in args[0]["definitions"]:
-                    if definition["ref"] == schema_ref:
-                        model_cls = cast(Type[BaseModel], definition["schema"]["cls"])
+                    if definition["ref"] == schema_ref and "cls" in definition:
+                        model_cls = cast(Type[BaseModel], definition["cls"])
                         break
-            else:
-                model_cls = cast(Type[BaseModel], args[0]["schema"]["cls"]) if "cls" in args[0]["schema"] else None
+            elif "cls" in args[0]:
+                model_cls = cast(Type[BaseModel], args[0]["cls"])
 
             if model_cls is None:
                 raise PydanticSchemaGenerationError("Could not find model class in definitions")
