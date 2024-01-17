@@ -214,3 +214,12 @@ class MigrationNotInitialized(Pyneo4jException):
 
     def __init__(self, *args: object) -> None:
         super().__init__("Migrations have not been initialized. Run `pyneo4j_ogm init` to initialize them", *args)
+
+
+class ListItemNotEncodable(Pyneo4jException):
+    """
+    A list item is not JSON encodable and can thus not be stored.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("List item is not JSON encodable and can not be stored inside the database", *args)

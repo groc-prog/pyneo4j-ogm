@@ -24,7 +24,7 @@ from typing import (
 )
 
 from neo4j.graph import Node
-from pydantic import BaseModel, PrivateAttr
+from pydantic import PrivateAttr
 
 from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.exceptions import (
@@ -1034,12 +1034,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             get_model_dump_json(self, exclude={*self._relationship_properties, "_settings"})
         )
 
-        # Serialize nested BaseModel or dict instances to JSON strings
-        for key, value in deflated.items():
-            if isinstance(value, (dict, BaseModel)):
-                deflated[key] = json.dumps(value)
-
-        return deflated
+        return super()._deflate(deflated=deflated)
 
     @classmethod
     def _inflate(cls: Type[T], node: Node) -> T:
@@ -1055,22 +1050,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Returns:
             T: A new instance of the current model with the properties from the node instance.
         """
-        inflated: Dict[str, Any] = {}
-
-        def try_property_parsing(property_value: str) -> Union[str, Dict[str, Any], BaseModel]:
-            try:
-                return json.loads(property_value)
-            except:
-                return property_value
-
-        logger.debug("Inflating node %s to model instance", node)
-        for node_property in node.items():
-            property_name, property_value = node_property
-
-            if isinstance(property_value, str):
-                inflated[property_name] = try_property_parsing(property_value)
-            else:
-                inflated[property_name] = property_value
+        inflated = super()._inflate(graph_entity=node)
 
         for relationship_property in cls._relationship_properties:
             inflated.pop(relationship_property, None)

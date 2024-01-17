@@ -8,6 +8,7 @@ model types like registering hooks and exporting/importing models to/from dictio
 import asyncio
 import json
 from asyncio import iscoroutinefunction
+from copy import deepcopy
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -28,9 +29,10 @@ from typing import (
     cast,
 )
 
+from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from pyneo4j_ogm.exceptions import UnregisteredModel
+from pyneo4j_ogm.exceptions import ListItemNotEncodable, UnregisteredModel
 from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
@@ -52,11 +54,9 @@ else:
     RelationshipModel = object
 
 if IS_PYDANTIC_V2:
-    from pydantic import SerializationInfo, model_serializer, model_validator
+    from pydantic import SerializationInfo, model_serializer
     from pydantic.errors import PydanticSchemaGenerationError
     from pydantic.json_schema import GenerateJsonSchema
-else:
-    from pydantic.class_validators import root_validator
 
 P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
@@ -223,21 +223,6 @@ class ModelBase(BaseModel, Generic[V]):
 
     if IS_PYDANTIC_V2:
 
-        @model_validator(mode="after")
-        def _model_validator_check_list_properties(cls, values: Any) -> Any:
-            """
-            Checks if all list properties are made of primitive types.
-            """
-            normalized_values: Dict[str, Any] = get_model_dump(values) if isinstance(values, BaseModel) else values
-
-            for key, value in normalized_values.items():
-                if isinstance(value, list):
-                    for item in value:
-                        if not isinstance(item, (int, float, str, bool)):
-                            raise ValueError(f"List property {key} must be made of primitive types")
-
-            return values
-
         @model_serializer(mode="wrap")
         def _model_serializer(self, serializer: Any, info: SerializationInfo) -> Any:
             if isinstance(self, RelationshipProperty):
@@ -266,21 +251,6 @@ class ModelBase(BaseModel, Generic[V]):
             return super().model_json_schema(*args, **kwargs)
 
     else:
-
-        @root_validator
-        def _root_validator_check_list_properties(cls, values: Any) -> Any:
-            """
-            Checks if all list properties are made of primitive types.
-            """
-            normalized_values: Dict[str, Any] = get_model_dump(values) if isinstance(values, BaseModel) else values
-
-            for key, value in normalized_values.items():
-                if isinstance(value, list):
-                    for item in value:
-                        if not isinstance(item, (int, float, str, bool)):
-                            raise ValueError(f"List property {key} must be made of primitive types")
-
-            return values
 
         def dict(  # type: ignore
             self,
@@ -534,6 +504,69 @@ class ModelBase(BaseModel, Generic[V]):
             V: The model settings.
         """
         return cast(V, cls._settings)
+
+    def _deflate(self, deflated: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Deflates the current model instance into a python dictionary which can be stored in Neo4j.
+
+        Args:
+            deflated (Dict[str, Any]): The model to deflate.
+
+        Returns:
+            Dict[str, Any]: The model model.
+        """
+        logger.debug("Deflating model %s to storable dictionary", self)
+
+        # Serialize nested BaseModel or dict instances to JSON strings
+        for field_name, field in deepcopy(deflated).items():
+            if isinstance(field, (dict, BaseModel)):
+                deflated[field_name] = json.dumps(field)
+            elif isinstance(field, list):
+                for index, item in enumerate(field):
+                    if not isinstance(item, (int, float, str, bool)):
+                        try:
+                            deflated[field_name][index] = json.dumps(item)
+                        except TypeError as exc:
+                            raise ListItemNotEncodable from exc
+
+        return deflated
+
+    @classmethod
+    def _inflate(cls: Type[T], graph_entity: Union[Node, Relationship]) -> Dict[str, Any]:
+        """
+        Inflates a graph entity into a instance of the current model.
+
+        Args:
+            graph_entity (Union[Node, Relationship]): Graph entity to inflate.
+
+        Raises:
+            InflationFailure: If inflating the node fails.
+
+        Returns:
+            Dict[str, Any]: The inflated model.
+        """
+        inflated: Dict[str, Any] = {}
+
+        def try_property_parsing(property_value: str) -> Union[str, Dict[str, Any], BaseModel]:
+            try:
+                return json.loads(property_value)
+            except:
+                return property_value
+
+        logger.debug("Inflating node %s to model instance", graph_entity)
+        for node_property in graph_entity.items():
+            property_name, property_value = node_property
+
+            if isinstance(property_value, str):
+                inflated[property_name] = try_property_parsing(property_value)
+            elif isinstance(property_value, list):
+                inflated[property_name] = [
+                    try_property_parsing(item) if isinstance(item, str) else item for item in property_value
+                ]
+            else:
+                inflated[property_name] = property_value
+
+        return inflated
 
     @property
     def modified_properties(self) -> Set[str]:

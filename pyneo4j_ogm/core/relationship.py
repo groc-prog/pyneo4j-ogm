@@ -9,7 +9,7 @@ from functools import wraps
 from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node, Relationship
-from pydantic import BaseModel, PrivateAttr
+from pydantic import PrivateAttr
 
 from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.core.node import NodeModel
@@ -779,15 +779,9 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns:
             Dict[str, Any]: The deflated model instance.
         """
-        logger.debug("Deflating model %s to storable dictionary", self)
         deflated: Dict[str, Any] = json.loads(get_model_dump_json(self, exclude={"_settings"}))
 
-        # Serialize nested BaseModel or dict instances to JSON strings
-        for key, value in deflated.items():
-            if isinstance(value, (dict, BaseModel)):
-                deflated[key] = json.dumps(value)
-
-        return deflated
+        return super()._deflate(deflated=deflated)
 
     @classmethod
     def _inflate(cls: Type[T], relationship: Relationship) -> T:
@@ -803,23 +797,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns:
             T: A new instance of the current model with the properties from the relationship instance.
         """
-        inflated: Dict[str, Any] = {}
-
-        def try_property_parsing(property_value: str) -> Union[str, Dict[str, Any], BaseModel]:
-            try:
-                return json.loads(property_value)
-            except:
-                return property_value
-
-        logger.debug("Inflating relationship %s to model instance", relationship)
-        for node_property in relationship.items():
-            property_name, property_value = node_property
-
-            if isinstance(property_value, str):
-                inflated[property_name] = try_property_parsing(property_value)
-            else:
-                inflated[property_name] = property_value
-
+        inflated = super()._inflate(graph_entity=relationship)
         instance = cls(**inflated)
 
         setattr(instance, "_element_id", relationship.element_id)
