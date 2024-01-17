@@ -34,7 +34,12 @@ from pyneo4j_ogm.exceptions import UnregisteredModel
 from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, get_model_dump
+from pyneo4j_ogm.pydantic_utils import (
+    IS_PYDANTIC_V2,
+    get_field_type,
+    get_model_dump,
+    get_model_fields,
+)
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
 if TYPE_CHECKING:
@@ -48,6 +53,7 @@ else:
 
 if IS_PYDANTIC_V2:
     from pydantic import SerializationInfo, model_serializer, model_validator
+    from pydantic.errors import PydanticSchemaGenerationError
     from pydantic.json_schema import GenerateJsonSchema
 else:
     from pydantic.class_validators import root_validator
@@ -149,6 +155,49 @@ def hooks(func):
 if IS_PYDANTIC_V2:
 
     class CustomGenerateJsonSchema(GenerateJsonSchema):
+        """
+        Custom JSON schema generator which adds support for generating JSON schemas for `RelationshipProperty` fields
+        and adds index and uniqueness constraint information to the generated schema.
+        """
+
+        def generate(self, *args, **kwargs):
+            model_cls: Optional[Type[BaseModel]] = None
+
+            if "definitions" in args[0]:
+                schema_ref = args[0]["schema"]["schema_ref"]
+
+                for definition in args[0]["definitions"]:
+                    if definition["ref"] == schema_ref:
+                        model_cls = cast(Type[BaseModel], definition["schema"]["cls"])
+                        break
+            else:
+                model_cls = cast(Type[BaseModel], args[0]["schema"]["cls"]) if "cls" in args[0]["schema"] else None
+
+            if model_cls is None:
+                raise PydanticSchemaGenerationError("Could not find model class in definitions")
+
+            generated_schema = super().generate(*args, **kwargs)
+
+            for field_name, field in get_model_fields(model_cls).items():
+                point_index = getattr(get_field_type(field), "_point_index", False)
+                range_index = getattr(get_field_type(field), "_range_index", False)
+                text_index = getattr(get_field_type(field), "_text_index", False)
+                unique = getattr(get_field_type(field), "_unique", False)
+
+                if field_name not in generated_schema["properties"]:
+                    continue
+
+                if point_index:
+                    generated_schema["properties"][field_name]["point_index"] = True
+                if range_index:
+                    generated_schema["properties"][field_name]["range_index"] = True
+                if text_index:
+                    generated_schema["properties"][field_name]["text_index"] = True
+                if unique:
+                    generated_schema["properties"][field_name]["uniqueness_constraint"] = True
+
+            return generated_schema
+
         def encode_default(self, dft: Any) -> Any:
             if isinstance(dft, RelationshipProperty):
                 dft = str(dft)
@@ -355,6 +404,22 @@ class ModelBase(BaseModel, Generic[V]):
                         )
                     else:
                         setattr(cls._settings, setting, value)
+
+        if not IS_PYDANTIC_V2:
+            for _, field in get_model_fields(cls).items():
+                point_index = getattr(get_field_type(field), "_point_index", False)
+                range_index = getattr(get_field_type(field), "_range_index", False)
+                text_index = getattr(get_field_type(field), "_text_index", False)
+                unique = getattr(get_field_type(field), "_unique", False)
+
+                if point_index:
+                    field.field_info.extra["point_index"] = True  # type: ignore
+                if range_index:
+                    field.field_info.extra["range_index"] = True  # type: ignore
+                if text_index:
+                    field.field_info.extra["text_index"] = True  # type: ignore
+                if unique:
+                    field.field_info.extra["uniqueness_constraint"] = True  # type: ignore
 
         super().__init_subclass__(*args, **kwargs)
 
