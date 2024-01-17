@@ -8,8 +8,9 @@ from datetime import datetime
 from typing import cast
 
 from pyneo4j_ogm.logger import logger
+from pyneo4j_ogm.migrations.models import MIGRATION_TEMPLATE
 from pyneo4j_ogm.migrations.utils.config import get_migration_config
-from pyneo4j_ogm.migrations.utils.migration import MIGRATION_TEMPLATE, check_initialized
+from pyneo4j_ogm.migrations.utils.migration import check_initialized
 
 
 def normalize_filename(name: str) -> str:

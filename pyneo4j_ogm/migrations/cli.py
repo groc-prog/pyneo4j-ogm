@@ -7,7 +7,7 @@ from asyncio import iscoroutinefunction
 from typing import Any
 
 from pyneo4j_ogm.migrations.actions import create, down, init, status, up
-from pyneo4j_ogm.migrations.utils.config import StatusFormat
+from pyneo4j_ogm.migrations.models import StatusActionFormat
 from pyneo4j_ogm.migrations.utils.migration import RunMigrationCount
 
 
@@ -93,8 +93,7 @@ def cli() -> None:
         "-f",
         "--format",
         help="Output format",
-        choices=[format.value for format in StatusFormat],
-        default=StatusFormat.PRETTIFY,
+        choices=[format.value for format in StatusActionFormat],
         required=False,
     )
     status_parser.set_defaults(func=status)

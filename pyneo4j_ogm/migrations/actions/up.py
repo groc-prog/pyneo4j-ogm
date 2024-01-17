@@ -8,7 +8,7 @@ from argparse import Namespace
 from typing import Callable, Dict, Generator, cast
 
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.migrations.utils.client import MigrationClient
+from pyneo4j_ogm.migrations.client import MigrationClient
 from pyneo4j_ogm.migrations.utils.config import get_migration_config
 from pyneo4j_ogm.migrations.utils.migration import RunMigrationCount, check_initialized
 

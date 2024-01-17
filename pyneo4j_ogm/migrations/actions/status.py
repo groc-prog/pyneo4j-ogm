@@ -1,39 +1,54 @@
 """
 Shows which migrations have been run or are pending.
 """
-
 from argparse import Namespace
-from typing import Dict
+from typing import List, Optional, TypedDict, cast
+
+from tabulate import tabulate
 
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.migrations.utils.client import MigrationClient
-from pyneo4j_ogm.migrations.utils.config import StatusFormat, get_migration_config
-from pyneo4j_ogm.migrations.utils.migration import MigrationStatus, get_migration_files
+from pyneo4j_ogm.migrations.client import MigrationClient
+from pyneo4j_ogm.migrations.models import StatusActionFormat
+from pyneo4j_ogm.migrations.utils.config import get_migration_config
+from pyneo4j_ogm.migrations.utils.migration import get_migration_files
+
+MAX_FILENAME_LENGTH = 80
+MAX_APPLIED_AT_LENGTH = 27
 
 
-def prettify_status(status_map: Dict[str, MigrationStatus]) -> None:
+class MigrationState(TypedDict):
+    name: str
+    applied_at: Optional[str]
+
+
+def prettify_status(migrations: List[MigrationState]) -> None:
     """
     Visualize the status of all migrations in a pretty format.
 
     Args:
-        status(Dict[str, MigrationStatus]): Migration status
+        migrations(List[MigrationState]): List of migrations and their state
     """
-    formatted_string = ""
+    table: List[List[str]] = []
 
-    print(formatted_string)
+    for migration in migrations:
+        applied_at: str = migration["applied_at"] if migration["applied_at"] is not None else "PENDING"
+        table.append([migration["name"], applied_at])
+
+    print(tabulate(table, headers=["Migration", "Applied at"], tablefmt="fancy_grid"))
 
 
-def raw_status(status_map: Dict[str, MigrationStatus]) -> None:
+def raw_status(migrations: List[MigrationState]) -> None:
     """
     Visualize the status of all migrations in raw format.
 
     Args:
-        status(Dict[str, MigrationStatus]): Migration status
+        migrations(List[MigrationState]): List of migrations and their state
     """
     formatted_string = ""
 
-    for migration_name, migration_status in status_map.items():
-        formatted_string += f"{migration_name} - {migration_status}\n"
+    for migration in migrations:
+        applied_at: str = migration["applied_at"] if migration["applied_at"] is not None else "PENDING"
+        formatted_string += f"{migration['name']} - {applied_at}\n"
 
     print(formatted_string)
 
@@ -46,24 +61,42 @@ async def status(namespace: Namespace):
         namespace(Namespace): Namespace object from argparse
     """
     logger.info("Checking status for migrations")
-    migration_status: Dict[str, MigrationStatus] = {}
+    migrations: List[MigrationState] = []
+    output_format = cast(StatusActionFormat, namespace.format)
     config = get_migration_config(namespace)
 
+    used_format: StatusActionFormat
+
+    logger.debug("Getting format to use")
+    if output_format is not None:
+        used_format = output_format
+    elif config.status_action is not None and config.status_action.default_format is not None:
+        used_format = config.status_action.default_format
+    else:
+        used_format = StatusActionFormat.RAW
+
     async with MigrationClient(config) as client:
-        migration_node = await client.get_migration_node()
         migration_files = get_migration_files(config.migration_dir)
+        migration_node = await client.get_migration_node()
 
+        logger.debug("Checking migration state")
         for migration_name in migration_files:
-            migration_identifier = migration_name.split("_")[0]
-
             if migration_node is None:
-                migration_status[migration_name] = MigrationStatus.PENDING
-            elif migration_node.identifier >= int(migration_identifier):
-                migration_status[migration_name] = MigrationStatus.APPLIED
+                migrations.append({"name": migration_name, "applied_at": None})
             else:
-                migration_status[migration_name] = MigrationStatus.PENDING
+                migration = next(
+                    (migration for migration in migration_node.applied_migrations if migration.name == migration_name),
+                    None,
+                )
 
-        if config.status.format == StatusFormat.PRETTIFY:
-            prettify_status(migration_status)
+                if migration is None:
+                    migrations.append({"name": migration_name, "applied_at": None})
+                else:
+                    migrations.append(
+                        {"name": migration_name, "applied_at": migration.applied_at.strftime("%Y-%m-%d %H:%M:%S")}
+                    )
+
+        if used_format == StatusActionFormat.PRETTIFY:
+            prettify_status(migrations)
         else:
-            raw_status(migration_status)
+            raw_status(migrations)
