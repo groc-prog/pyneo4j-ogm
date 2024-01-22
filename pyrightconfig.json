@@ -1,3 +1,4 @@
 {
-  "reportIncompatibleVariableOverride": false
+  "reportIncompatibleVariableOverride": false,
+  "reportInvalidTypeForm": false
 }

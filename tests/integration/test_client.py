@@ -265,19 +265,19 @@ async def test_invalid_constraints(client: Pyneo4jClient):
 async def test_invalid_indexes(client: Pyneo4jClient):
     with pytest.raises(InvalidEntityType):
         await client.create_range_index(
-            "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]
+            "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]  # type: ignore
         )
 
     with pytest.raises(InvalidEntityType):
-        await client.create_text_index("invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"])
+        await client.create_text_index("invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"])  # type: ignore
 
     with pytest.raises(InvalidEntityType):
         await client.create_point_index(
-            "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]
+            "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]  # type: ignore
         )
 
     with pytest.raises(InvalidEntityType):
-        await client.create_lookup_index("invalid_entity_index", "invalid entity")
+        await client.create_lookup_index("invalid_entity_index", "invalid entity")  # type: ignore
 
     with pytest.raises(InvalidLabelOrType):
         await client.create_range_index("invalid_node_index", EntityType.NODE, [], "Test")

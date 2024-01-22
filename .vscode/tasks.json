@@ -6,7 +6,7 @@
     {
       "label": "Pytest",
       "type": "shell",
-      "command": "poetry run pytest --cov=pyneo4j_ogm --cov-report=html:tests/coverage tests",
+      "command": "poetry run pytest tests --asyncio-mode=auto --cov -W ignore::DeprecationWarning",
       "group": {
         "kind": "test",
         "isDefault": true
