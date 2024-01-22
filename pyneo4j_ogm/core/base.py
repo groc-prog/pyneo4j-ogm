@@ -247,8 +247,7 @@ class ModelBase(BaseModel, Generic[V]):
 
             return serialized
 
-        @model_validator(mode="before")
-        @classmethod
+        @model_validator(mode="before")  # type: ignore
         def _model_validator(cls, values: Any) -> Any:
             relationship_properties = getattr(cls, "_relationship_properties", set())
 

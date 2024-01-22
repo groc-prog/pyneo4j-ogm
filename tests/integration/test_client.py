@@ -269,7 +269,9 @@ async def test_invalid_indexes(client: Pyneo4jClient):
         )
 
     with pytest.raises(InvalidEntityType):
-        await client.create_text_index("invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"])  # type: ignore
+        await client.create_text_index(
+            "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]  # type: ignore
+        )
 
     with pytest.raises(InvalidEntityType):
         await client.create_point_index(
