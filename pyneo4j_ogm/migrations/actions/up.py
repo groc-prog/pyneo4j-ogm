@@ -33,7 +33,7 @@ async def up(namespace: Namespace):
         migration_files = get_migration_files(config.migration_dir)
         migration_node = await migration_client.get_migration_node()
 
-        logger.debug("Removing applied migrations from migration files")
+        logger.debug("Removing already applied migrations from migration files")
         for applied_migration in migration_node.get_applied_migration_identifiers:
             migration_files.pop(applied_migration, None)
 
