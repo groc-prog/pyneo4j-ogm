@@ -198,15 +198,6 @@ class InvalidBookmark(Pyneo4jException):
         super().__init__(f"Expected valid bookmarks, but received {bookmarks}", *args)
 
 
-class MigrationDirectoryExists(Pyneo4jException):
-    """
-    A migration directory exists and no `overwrite` argument was passed.
-    """
-
-    def __init__(self, path: str, *args: object) -> None:
-        super().__init__(f"Migration directory already exists at {path}", *args)
-
-
 class MigrationNotInitialized(Pyneo4jException):
     """
     Migrations have not been initialized before usage.

@@ -2,15 +2,19 @@
 Applies the defined number of migrations in correct order.
 """
 
-import importlib.util
-import os
 from argparse import Namespace
-from typing import Callable, Dict, Generator, cast
+from copy import deepcopy
+from typing import cast
 
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.migrations.client import MigrationClient
+from pyneo4j_ogm.migrations.models import AppliedMigration
 from pyneo4j_ogm.migrations.utils.config import get_migration_config
-from pyneo4j_ogm.migrations.utils.migration import RunMigrationCount, check_initialized
+from pyneo4j_ogm.migrations.utils.migration import (
+    RunMigrationCount,
+    check_initialized,
+    get_migration_files,
+)
 
 
 @check_initialized
@@ -22,28 +26,28 @@ async def up(namespace: Namespace):
         namespace(Namespace): Namespace object from argparse
     """
     logger.info("Running UP migrations")
-    migrations: Dict[str, Callable] = {}
     up_count = cast(RunMigrationCount, namespace.up_count)
     config = get_migration_config(namespace)
-    client = MigrationClient(config)
 
-    logger.debug("Searching for migration node")
-    migration_node = await client.get_migration_node()
+    async with MigrationClient(config) as migration_client:
+        migration_files = get_migration_files(config.migration_dir)
+        migration_node = await migration_client.get_migration_node()
 
-    # for file in get_migration_files(config.migration_dir):
-    #     logger.debug("Found migration file %s", file)
-    #     module_name = os.path.splitext(os.path.basename(file))[0]
-    #     module_name_timestamp = module_name.split("_")[0]
-    #     spec = importlib.util.spec_from_file_location(module_name, file)
+        logger.debug("Removing applied migrations from migration files")
+        for applied_migration in migration_node.get_applied_migration_identifiers:
+            migration_files.pop(applied_migration, None)
 
-    #     if spec is None or spec.loader is None:
-    #         raise ImportError(f"Could not import migration file {file}")
+        logger.debug("Applying next %s migrations", up_count)
+        for count, _ in enumerate(deepcopy(migration_files).values()):
+            if up_count != "all" and count >= up_count:
+                break
 
-    #     module = importlib.util.module_from_spec(spec)
-    #     spec.loader.exec_module(module)
+            current_migration_identifier = min(migration_files.keys())
+            current_migration = migration_files[current_migration_identifier]
 
-    #     logger.debug("Adding migration %s to list", module_name_timestamp)
-    #     migrations[module_name_timestamp] = module.up
+            await current_migration["up"](migration_client.client)
+            migration_files.pop(current_migration_identifier)
+            migration_node.applied_migrations.append(AppliedMigration(name=current_migration["name"]))
 
-    # logger.debug("Sorting migrations")
-    # sorted_migrations = sorted(migrations.keys())
+        migration_node.last_applied = migration_node.applied_migrations[-1].applied_at
+        await migration_node.update()

@@ -43,7 +43,7 @@ class Neo4jDatabaseConfig(BaseModel):
     Neo4j database configuration.
     """
 
-    uri: str = "bolt://localhost:7687"
+    uri: str
     options: Optional[Dict[str, Any]] = None
     node_labels: List[str] = ["migration"]
 
@@ -83,9 +83,8 @@ class MigrationConfig(BaseModel):
     Migration configuration. Used to validate the migration config file.
     """
 
-    neo4j: Neo4jDatabaseConfig = Neo4jDatabaseConfig()
+    neo4j: Neo4jDatabaseConfig
     migration_dir: str
-    models_dir: Optional[str] = None
 
 
 class AppliedMigration(BaseModel):
@@ -94,7 +93,7 @@ class AppliedMigration(BaseModel):
     """
 
     name: str
-    applied_at: datetime
+    applied_at: float = Field(default_factory=lambda: datetime.timestamp(datetime.now()))
 
 
 class Migration(NodeModel):
@@ -102,5 +101,19 @@ class Migration(NodeModel):
     Migration node model.
     """
 
-    applied_migrations: List[AppliedMigration] = Field(default_factory=list)
-    last_applied: datetime
+    applied_migrations: List[AppliedMigration] = []
+    last_applied: Optional[float] = Field(default=None)
+
+    @property
+    def get_applied_migration_identifiers(self) -> List[str]:
+        """
+        Returns:
+            List[str]: Names of applied migrations
+        """
+        applied_migrations: List[str] = []
+
+        for applied_migration in self.applied_migrations:
+            identifier = applied_migration.name.split("-")[0]
+            applied_migrations.append(identifier)
+
+        return applied_migrations

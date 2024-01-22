@@ -40,6 +40,12 @@ def cli() -> None:
         dest="migration_dir",
         required=False,
     )
+    init_parser.add_argument(
+        "--uri",
+        help="URI used to connect to the database",
+        default="bolt://localhost:7687",
+        required=False,
+    )
     init_parser.set_defaults(func=init)
 
     # Parser for `create` command
