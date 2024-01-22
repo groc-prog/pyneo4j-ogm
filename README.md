@@ -7,11 +7,14 @@
 
 `pyneo4j-ogm` is a asynchronous `Object-Graph-Mapper` for [`Neo4j 5+`](https://neo4j.com/docs/) and [`Python 3.10+`](https://www.python.org/). It is inspired by [`beanie`](https://github.com/roman-right/beanie) and build on top of proven technologies like [`Pydantic 1.10+ and 2+`](https://docs.pydantic.dev/latest/) and the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html). It saves you from writing ever-repeating boilerplate queries and allows you to focus on the `stuff that actually matters`. It is designed to be simple and easy to use, but also flexible and powerful.
 
-## 📣 Upcoming features
+## 🔥 Hot topics for the future
 
-What's planned for future releases.
+You never know what the future might hold. But these things are for sure happening (not necessarily in this order):
 
-- [ ] Migration CLI for migrating your pyneo4j-ogm models
+- [ ] Add documentation and test coverage for migrations
+- [ ] Improving the overall test coverage
+- [ ] More/Better examples for simple and advanced use-cases
+- [ ] Complete documentation overhaul
 
 ## 🎯 Features <a name="features"></a>
 
@@ -280,7 +283,7 @@ In the following we are going to take a closer look at the different parts of `p
 ### Table of contents
 
 - [Pyneo4j-OGM](#pyneo4j-ogm)
-  - [📣 Upcoming features](#-upcoming-features)
+  - [🔥 Hot topics for the future](#-hot-topics-for-the-future)
   - [🎯 Features ](#-features-)
   - [📦 Installation ](#-installation-)
   - [🚀 Quickstart ](#-quickstart-)
