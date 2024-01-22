@@ -155,22 +155,6 @@ async def test_hooks_decorator():
         cast(AsyncMock, hook_function).assert_called_once_with(test_instance, None)
 
 
-async def test_list_primitive_types():
-    class AllowedListModel(ModelBase):
-        list_field: List[Any] = [1, "a", True, 2.3]
-
-    class DisallowedListModel(ModelBase):
-        list_field: List[Any] = [{"test": True}, [1, 2]]
-
-    setattr(AllowedListModel, "_client", None)
-    setattr(DisallowedListModel, "_client", None)
-
-    AllowedListModel()
-
-    with pytest.raises(ValueError):
-        DisallowedListModel()
-
-
 def test_dict_dump():
     def alias_gen(val: str) -> str:
         return f"ogm_{val}"

@@ -54,9 +54,11 @@ else:
     RelationshipModel = object
 
 if IS_PYDANTIC_V2:
-    from pydantic import SerializationInfo, model_serializer
+    from pydantic import SerializationInfo, model_serializer, model_validator
     from pydantic.errors import PydanticSchemaGenerationError
     from pydantic.json_schema import GenerateJsonSchema
+else:
+    from pydantic import root_validator
 
 P = ParamSpec("P")
 T = TypeVar("T", bound="ModelBase")
@@ -245,12 +247,47 @@ class ModelBase(BaseModel, Generic[V]):
 
             return serialized
 
+        @model_validator(mode="before")
+        @classmethod
+        def _model_validator(cls, values: Any) -> Any:
+            relationship_properties = getattr(cls, "_relationship_properties", set())
+
+            for field_name, field in get_model_fields(cls).items():
+                if (
+                    field_name in relationship_properties
+                    and field_name in values
+                    and isinstance(values[field_name], list)
+                ):
+                    parsed = cast(RelationshipProperty, field.default)
+                    setattr(parsed, "_nodes", values[field_name])
+
+                    values[field_name] = parsed
+
+            return values
+
         @classmethod
         def model_json_schema(cls, *args, **kwargs) -> Dict[str, Any]:
             kwargs.setdefault("schema_generator", CustomGenerateJsonSchema)
             return super().model_json_schema(*args, **kwargs)
 
     else:
+
+        @root_validator(pre=True)
+        def _parse_dict_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+            relationship_properties = getattr(cls, "_relationship_properties", set())
+
+            for field_name, field in get_model_fields(cls).items():
+                if (
+                    field_name in relationship_properties
+                    and field_name in values
+                    and isinstance(values[field_name], list)
+                ):
+                    parsed = cast(RelationshipProperty, field.default)
+                    setattr(parsed, "_nodes", values[field_name])
+
+                    values[field_name] = parsed
+
+            return values
 
         def dict(  # type: ignore
             self,
@@ -348,7 +385,7 @@ class ModelBase(BaseModel, Generic[V]):
 
                     if not isinstance(field, list) and not (exclude is not None and field_name in exclude):
                         modified_json[field_name] = [
-                            cast(Union[RelationshipModel, NodeModel], node).json() for node in field.nodes
+                            json.loads(cast(Union[RelationshipModel, NodeModel], node).json()) for node in field.nodes
                         ]
 
             return json.dumps(modified_json)
