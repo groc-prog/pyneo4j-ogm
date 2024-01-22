@@ -3,6 +3,9 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    paths:
+      - "pyneo4j_ogm/**"
+      - "tests/**"
   pull_request:
     branches: [main, develop]
 
