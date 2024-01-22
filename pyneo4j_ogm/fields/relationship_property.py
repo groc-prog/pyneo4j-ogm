@@ -39,7 +39,7 @@ from pyneo4j_ogm.exceptions import (
     UnexpectedEmptyResult,
     UnregisteredModel,
 )
-from pyneo4j_ogm.fields.settings import RelationshipModelSettings
+from pyneo4j_ogm.fields.settings import NodeModelSettings
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, parse_model
 from pyneo4j_ogm.queries.enums import (
@@ -93,7 +93,7 @@ def hooks(func):
         @wraps(func)
         async def decorator(self: "RelationshipProperty", *args, **kwargs):  # type: ignore
             source_node = getattr(self, "_source_node")
-            settings: RelationshipModelSettings = getattr(source_node, "_settings")
+            settings: NodeModelSettings = getattr(source_node, "_settings")
             hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
 
             # Run pre hooks if defined
@@ -123,7 +123,7 @@ def hooks(func):
         @wraps(func)
         def decorator(self: "RelationshipProperty", *args, **kwargs):
             source_node = getattr(self, "_source_node")
-            settings: RelationshipModelSettings = getattr(source_node, "_settings")
+            settings: NodeModelSettings = getattr(source_node, "_settings")
             hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
             loop = asyncio.get_event_loop()
 

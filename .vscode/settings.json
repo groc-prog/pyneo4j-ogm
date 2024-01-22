@@ -2,7 +2,7 @@
   "python.testing.pytestArgs": [
     "tests",
     "--asyncio-mode=auto",
-    "--cov",
+    "--cov=pyneo4j_ogm",
     "--cov-report=html:tests/coverage",
     "-W ignore::DeprecationWarning",
   ],

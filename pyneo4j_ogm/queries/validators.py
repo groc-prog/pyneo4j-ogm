@@ -188,15 +188,13 @@ class NodeFiltersModel(BaseModel):
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
-    else:
-        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
-    if IS_PYDANTIC_V2:
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
         class Config:
             """
@@ -217,15 +215,13 @@ class RelationshipFiltersModel(BaseModel):
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
-    else:
-        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
-    if IS_PYDANTIC_V2:
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
         class Config:
             """
@@ -248,15 +244,13 @@ class RelationshipPropertyFiltersModel(BaseModel):
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
-    else:
-        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
-    if IS_PYDANTIC_V2:
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
         class Config:
             """
@@ -279,16 +273,14 @@ class PatternNodeOperatorsModel(BaseModel):
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
         normalize_and_validate_labels = field_validator("labels_", mode="before")(_normalize_labels)
-    else:
-        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
-        normalize_and_validate_labels = validator("labels_", pre=True)(_normalize_labels)
 
-    if IS_PYDANTIC_V2:
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+        normalize_and_validate_labels = validator("labels_", pre=True)(_normalize_labels)
 
         class Config:
             """
@@ -310,15 +302,13 @@ class PatternRelationshipOperatorsModel(NodeFiltersModel):
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
-    else:
-        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
-    if IS_PYDANTIC_V2:
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
         class Config:
             """
@@ -351,15 +341,13 @@ class MultiHopRelationshipOperatorsModel(NodeFiltersModel):
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
-    else:
-        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
-    if IS_PYDANTIC_V2:
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
         class Config:
             """
@@ -382,16 +370,14 @@ class MultiHopNodeModel(BaseModel):
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
         normalize_and_validate_labels = field_validator("labels_", mode="before")(_normalize_labels)
-    else:
-        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
-        normalize_and_validate_labels = validator("labels_", pre=True, allow_reuse=True)(_normalize_labels)
 
-    if IS_PYDANTIC_V2:
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+        normalize_and_validate_labels = validator("labels_", pre=True, allow_reuse=True)(_normalize_labels)
 
         class Config:
             """
@@ -417,15 +403,13 @@ class MultiHopFiltersModel(BaseModel):
 
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
-    else:
-        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
-    if IS_PYDANTIC_V2:
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
+        normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
 
         class Config:
             """
@@ -448,15 +432,13 @@ class QueryOptionModel(BaseModel):
 
     if IS_PYDANTIC_V2:
         normalize_list_validator = field_validator("sort", mode="before")(_normalize_sort)
-    else:
-        normalize_list_validator = validator("sort", pre=True)(_normalize_sort)
 
-    if IS_PYDANTIC_V2:
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
+        normalize_list_validator = validator("sort", pre=True)(_normalize_sort)
 
         class Config:
             """
