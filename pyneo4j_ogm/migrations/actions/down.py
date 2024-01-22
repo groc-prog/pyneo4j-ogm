@@ -25,21 +25,20 @@ async def down(namespace: Namespace):
     Args:
         namespace(Namespace): Namespace object from argparse
     """
-    logger.info("Running DOWN migrations")
     down_count = cast(RunMigrationCount, namespace.down_count)
     config = get_migration_config(namespace)
 
+    logger.info("Rolling back %s migrations", down_count)
     async with MigrationClient(config) as migration_client:
         migration_files = get_migration_files(config.migration_dir)
         migration_node = await migration_client.get_migration_node()
 
-        logger.debug("Removing unapplied migrations from migration files")
+        logger.debug("Filtering migration files for applied migrations")
         applied_migration_identifiers = migration_node.get_applied_migration_identifiers
         for identifier in deepcopy(migration_files).keys():
             if identifier not in applied_migration_identifiers:
                 migration_files.pop(identifier, None)
 
-        logger.debug("Reverting last %s migrations", down_count)
         for count, _ in enumerate(deepcopy(migration_files).values()):
             if down_count != "all" and count >= down_count:
                 break
@@ -47,6 +46,7 @@ async def down(namespace: Namespace):
             current_migration_identifier = max(migration_files.keys())
             current_migration = migration_files[current_migration_identifier]
 
+            logger.debug("Rolling back migration %s", current_migration["name"])
             await current_migration["down"](migration_client.client)
             migration_files.pop(current_migration_identifier)
             migration_node.applied_migrations = [

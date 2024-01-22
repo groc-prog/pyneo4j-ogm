@@ -25,19 +25,18 @@ async def up(namespace: Namespace):
     Args:
         namespace(Namespace): Namespace object from argparse
     """
-    logger.info("Running UP migrations")
     up_count = cast(RunMigrationCount, namespace.up_count)
     config = get_migration_config(namespace)
 
+    logger.info("Applying next %s migrations", up_count)
     async with MigrationClient(config) as migration_client:
         migration_files = get_migration_files(config.migration_dir)
         migration_node = await migration_client.get_migration_node()
 
-        logger.debug("Removing already applied migrations from migration files")
+        logger.debug("Filtering migration files for unapplied migrations")
         for applied_migration in migration_node.get_applied_migration_identifiers:
             migration_files.pop(applied_migration, None)
 
-        logger.debug("Applying next %s migrations", up_count)
         for count, _ in enumerate(deepcopy(migration_files).values()):
             if up_count != "all" and count >= up_count:
                 break
@@ -45,6 +44,7 @@ async def up(namespace: Namespace):
             current_migration_identifier = min(migration_files.keys())
             current_migration = migration_files[current_migration_identifier]
 
+            logger.debug("Applying migration %s", current_migration["name"])
             await current_migration["up"](migration_client.client)
             migration_files.pop(current_migration_identifier)
             migration_node.applied_migrations.append(AppliedMigration(name=current_migration["name"]))

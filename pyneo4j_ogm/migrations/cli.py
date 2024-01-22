@@ -2,10 +2,12 @@
 Entry point for the CLI. It parses the arguments and calls the corresponding function.
 """
 import asyncio
+import sys
 from argparse import ArgumentParser, ArgumentTypeError
 from asyncio import iscoroutinefunction
 from typing import Any
 
+from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.migrations.actions import create, down, init, status, up
 from pyneo4j_ogm.migrations.utils.migration import RunMigrationCount
 
@@ -99,9 +101,13 @@ def cli() -> None:
     args = parser.parse_args()
 
     if args.command:
-        if iscoroutinefunction(args.func):
-            asyncio.run(args.func(args))
-        else:
-            args.func(args)
+        try:
+            if iscoroutinefunction(args.func):
+                asyncio.run(args.func(args))
+            else:
+                args.func(args)
+        except Exception as exc:
+            logger.error("Critical error while running %s command: %s", args.func.__name__, exc)
+            sys.exit()
     else:
         parser.print_help()

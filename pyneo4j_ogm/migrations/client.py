@@ -5,7 +5,6 @@ Utility for Pyneo4jClient used in migrations.
 from typing import Any
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.migrations.models import Migration
 from pyneo4j_ogm.migrations.utils.config import MigrationConfig
 from pyneo4j_ogm.queries.types import QueryOptionsOrder
@@ -26,7 +25,6 @@ class MigrationClient:
     async def __aenter__(self):
         Migration._settings.labels = set(self.config.neo4j.node_labels)
 
-        logger.debug("Initializing Pyneo4jClient")
         await self.client.connect(uri=self.config.neo4j.uri, **self.config.neo4j.options or {})
         await self.client.register_models([Migration])
 
@@ -43,7 +41,6 @@ class MigrationClient:
             Migration: If a migration node exists, it will be returned. Otherwise, a
                 new migration node will be created and returned.
         """
-        logger.debug("Checking for existing migration node")
         migration = await Migration.find_many(
             options={"limit": 1, "sort": "last_applied", "order": QueryOptionsOrder.DESCENDING}
         )

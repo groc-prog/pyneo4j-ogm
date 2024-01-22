@@ -29,6 +29,7 @@ def check_initialized(func: Callable) -> Callable:
         Callable: Wrapped function
     """
 
+    logger.debug("Checking if migrations directory and config have been initialized")
     if iscoroutinefunction(func):
 
         @wraps(func)

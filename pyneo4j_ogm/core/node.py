@@ -134,7 +134,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         labels: Union[Set[str], None] = getattr(cls._settings, "labels", None)
 
         if labels is None or (labels is not None and len(labels) == 0):
-            logger.info(
+            logger.debug(
                 "No labels have been defined for model %s, using model name as label",
                 cls.__name__,
             )
@@ -193,7 +193,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Resetting modified properties")
         self._db_properties = get_model_dump(self, exclude={*self._relationship_properties, "element_id", "id"})
-        logger.info("Created new node %s", self)
+        logger.debug("Created new node %s", self)
 
         return self
 
@@ -237,7 +237,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Resetting modified properties")
         self._db_properties = get_model_dump(self, exclude={*self._relationship_properties, "element_id", "id"})
-        logger.info("Updated node %s", self)
+        logger.debug("Updated node %s", self)
 
     @hooks
     @ensure_alive
@@ -266,7 +266,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
-        logger.info("Deleted node %s", self)
+        logger.debug("Deleted node %s", self)
 
     @hooks
     @ensure_alive
@@ -293,7 +293,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Updating current instance")
         self.__dict__.update(results[0][0].__dict__)
-        logger.info("Refreshed node %s", self)
+        logger.debug("Refreshed node %s", self)
 
     @hooks
     @ensure_alive
@@ -794,7 +794,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             """,
             parameters={"element_id": new_instance._element_id, **deflated},
         )
-        logger.info("Successfully updated node %s", getattr(new_instance, "_element_id"))
+        logger.debug("Successfully updated node %s", getattr(new_instance, "_element_id"))
 
         if new:
             return new_instance
@@ -873,7 +873,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             parameters={**deflated_properties, **cls._query_builder.parameters},
         )
 
-        logger.info(
+        logger.debug(
             "Successfully updated %s nodes %s",
             len(old_instances),
             [getattr(instance, "_element_id") for instance in old_instances],
@@ -936,7 +936,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if len(result) == 0 or len(result[0]) == 0 or result[0][0] is None:
             raise UnexpectedEmptyResult()
 
-        logger.info("Deleted %s nodes", result[0][0])
+        logger.debug("Deleted %s nodes", result[0][0])
         if result[0][0] == 0 and raise_on_empty:
             raise NoResultFound(filters)
         return result[0][0]
@@ -972,7 +972,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise UnexpectedEmptyResult()
 
-        logger.info("Deleted %s nodes", len(results))
+        logger.debug("Deleted %s nodes", len(results))
         return results[0][0]
 
     @classmethod

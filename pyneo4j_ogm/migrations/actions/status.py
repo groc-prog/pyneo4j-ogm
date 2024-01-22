@@ -33,7 +33,7 @@ async def status(namespace: Namespace):
         migration_files = get_migration_files(config.migration_dir)
         migration_node = await client.get_migration_node()
 
-    logger.debug("Checking migration state")
+    logger.debug("Building migration state")
     for _, migration_file in migration_files.items():
         if migration_node is None:
             migrations.append([migration_file["name"], "PENDING"])
@@ -57,5 +57,6 @@ async def status(namespace: Namespace):
                     ]
                 )
 
+    logger.debug("Sorting %s migrations by applied_at timestamp and name", len(migrations))
     migrations.sort(key=lambda migration: (migration[1], migration[0]))
     print(tabulate(migrations, headers=["Migration", "Applied at"], tablefmt="fancy_grid"))
