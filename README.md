@@ -5,7 +5,7 @@
 [![PyPI - License](https://img.shields.io/pypi/l/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
 
-`pyneo4j-ogm` is a asynchronous `Object-Graph-Mapper` for [`Neo4j 5+`](https://neo4j.com/docs/) and [`Python 3.10+`](https://www.python.org/). It is inspired by [`beanie`](https://github.com/roman-right/beanie) and build on top of proven technologies like [`Pydantic 1.10+`](https://docs.pydantic.dev/latest/) and the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html). It saves you from writing ever-repeating boilerplate queries and allows you to focus on the `stuff that actually matters`. It is designed to be simple and easy to use, but also flexible and powerful.
+`pyneo4j-ogm` is a asynchronous `Object-Graph-Mapper` for [`Neo4j 5+`](https://neo4j.com/docs/) and [`Python 3.10+`](https://www.python.org/). It is inspired by [`beanie`](https://github.com/roman-right/beanie) and build on top of proven technologies like [`Pydantic 1.10+ and 2+`](https://docs.pydantic.dev/latest/) and the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html). It saves you from writing ever-repeating boilerplate queries and allows you to focus on the `stuff that actually matters`. It is designed to be simple and easy to use, but also flexible and powerful.
 
 ## 📣 Upcoming features
 

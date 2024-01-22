@@ -9,7 +9,7 @@ from functools import wraps
 from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union, cast
 
 from neo4j.graph import Node, Relationship
-from pydantic import BaseModel, PrivateAttr
+from pydantic import PrivateAttr
 
 from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.core.node import NodeModel
@@ -104,7 +104,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         # Check if relationship type is set, else fall back to class name
         if type_ is None:
-            logger.info("No type has been defined for model %s, using model name as type", cls.__name__)
+            logger.debug("No type has been defined for model %s, using model name as type", cls.__name__)
             # Convert class name to upper snake case
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
             setattr(cls._settings, "type", relationship_type.upper())
@@ -153,7 +153,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Resetting modified properties")
         self._db_properties = get_model_dump(self, exclude={"element_id", "id"})
-        logger.info("Updated relationship %s", self)
+        logger.debug("Updated relationship %s", self)
 
     @hooks
     @ensure_alive
@@ -179,7 +179,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
-        logger.info("Deleted relationship %s", self._element_id)
+        logger.debug("Deleted relationship %s", self._element_id)
 
     @hooks
     @ensure_alive
@@ -206,7 +206,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Updating current instance")
         self.__dict__.update(results[0][0].__dict__)
-        logger.info("Refreshed relationship %s", self)
+        logger.debug("Refreshed relationship %s", self)
 
     @hooks
     @ensure_alive
@@ -516,7 +516,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             },
         )
 
-        logger.info("Successfully updated relationship %s", getattr(new_instance, "_element_id"))
+        logger.debug("Successfully updated relationship %s", getattr(new_instance, "_element_id"))
         return new_instance if new else old_instance
 
     @classmethod
@@ -607,7 +607,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             parameters={**deflated_properties, **cls._query_builder.parameters},
         )
 
-        logger.info(
+        logger.debug(
             "Successfully updated %s relationships %s",
             len(old_instances),
             [getattr(instance, "_element_id") for instance in old_instances],
@@ -672,7 +672,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise UnexpectedEmptyResult()
 
-        logger.info("Deleted %s relationships", results[0][0])
+        logger.debug("Deleted %s relationships", results[0][0])
         if results[0][0] == 0 and raise_on_empty:
             raise NoResultFound(filters)
         return results[0][0]
@@ -728,7 +728,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             parameters=cls._query_builder.parameters,
         )
 
-        logger.info("Deleted %s relationships", results[0][0])
+        logger.debug("Deleted %s relationships", results[0][0])
         return results[0][0]
 
     @classmethod
@@ -779,15 +779,9 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns:
             Dict[str, Any]: The deflated model instance.
         """
-        logger.debug("Deflating model %s to storable dictionary", self)
         deflated: Dict[str, Any] = json.loads(get_model_dump_json(self, exclude={"_settings"}))
 
-        # Serialize nested BaseModel or dict instances to JSON strings
-        for key, value in deflated.items():
-            if isinstance(value, (dict, BaseModel)):
-                deflated[key] = json.dumps(value)
-
-        return deflated
+        return super()._deflate(deflated=deflated)
 
     @classmethod
     def _inflate(cls: Type[T], relationship: Relationship) -> T:
@@ -803,23 +797,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns:
             T: A new instance of the current model with the properties from the relationship instance.
         """
-        inflated: Dict[str, Any] = {}
-
-        def try_property_parsing(property_value: str) -> Union[str, Dict[str, Any], BaseModel]:
-            try:
-                return json.loads(property_value)
-            except:
-                return property_value
-
-        logger.debug("Inflating relationship %s to model instance", relationship)
-        for node_property in relationship.items():
-            property_name, property_value = node_property
-
-            if isinstance(property_value, str):
-                inflated[property_name] = try_property_parsing(property_value)
-            else:
-                inflated[property_name] = property_value
-
+        inflated = super()._inflate(graph_entity=relationship)
         instance = cls(**inflated)
 
         setattr(instance, "_element_id", relationship.element_id)

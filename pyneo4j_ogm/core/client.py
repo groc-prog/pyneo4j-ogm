@@ -120,7 +120,7 @@ class Pyneo4jClient:
         self._skip_constraints = skip_constraints
         self._skip_indexes = skip_indexes
 
-        logger.info("Connecting to database %s", self.uri)
+        logger.debug("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, *args, **kwargs)
 
         logger.debug("Checking if neo4j version is supported")
@@ -198,7 +198,10 @@ class Pyneo4jClient:
         """
         Closes the current connection to the database.
         """
-        logger.info("Closing connection to database")
+        if not self.is_connected:
+            return
+
+        logger.debug("Closing connection to database")
         await cast(AsyncDriver, self._driver).close()
         self._driver = None
         logger.info("Connection to database closed")
@@ -570,7 +573,7 @@ class Pyneo4jClient:
             """,
             resolve_models=False,
         )
-        logger.info("Dropped %s nodes", results[0][0])
+        logger.debug("Dropped %s nodes", results[0][0])
 
     @ensure_connection
     async def drop_constraints(self) -> None:
@@ -584,7 +587,7 @@ class Pyneo4jClient:
         for constraint in results:
             logger.debug("Dropping constraint %s", constraint[1])
             await self.cypher(f"DROP CONSTRAINT {constraint[1]}")
-        logger.info("Dropped %s constraints", len(results))
+        logger.debug("Dropped %s constraints", len(results))
 
     @ensure_connection
     async def drop_indexes(self) -> None:
@@ -604,7 +607,7 @@ class Pyneo4jClient:
                 count += 1
             except DatabaseError as exc:
                 logger.warning("Failed to drop index %s: %s", index[1], exc.message)
-        logger.info("Dropped %s indexes", count)
+        logger.debug("Dropped %s indexes", count)
 
     def batch(self) -> "BatchManager":
         """
@@ -785,5 +788,4 @@ class BookmarkManager:
         self._client._used_bookmarks = self._bookmarks
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        logger.info("Bookmarks %s used", self._bookmarks)
         self._client._used_bookmarks = None

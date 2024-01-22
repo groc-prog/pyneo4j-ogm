@@ -20,6 +20,7 @@
     "**/CVS": true,
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
+    "dist": true,
     ".pytest_cache": true,
     ".neo4j_data": true,
     ".coverage": true,
