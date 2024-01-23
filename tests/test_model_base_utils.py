@@ -105,15 +105,17 @@ async def test_hooks_decorator():
         def __init__(self):
             self._client = None  # type: ignore
             self._settings = BaseModelSettings()
-            self._settings.pre_hooks["async_test_func"] = [AsyncMock(), AsyncMock()]
-            self._settings.post_hooks["async_test_func"] = [AsyncMock(), AsyncMock()]
+            self._settings.pre_hooks["async_test_func"] = [MagicMock(__name__="MagicMock"), AsyncMock(), AsyncMock()]
+            self._settings.post_hooks["async_test_func"] = [MagicMock(__name__="MagicMock"), AsyncMock(), AsyncMock()]
             self._settings.pre_hooks["sync_test_func"] = [
                 MagicMock(__name__="MagicMock"),
                 MagicMock(__name__="MagicMock"),
+                AsyncMock(),
             ]
             self._settings.post_hooks["sync_test_func"] = [
                 MagicMock(__name__="MagicMock"),
                 MagicMock(__name__="MagicMock"),
+                AsyncMock(),
             ]
 
         @hooks
@@ -128,15 +130,15 @@ async def test_hooks_decorator():
     await test_instance.async_test_func()
 
     for hook_function in test_instance._settings.pre_hooks["async_test_func"]:
-        cast(AsyncMock, hook_function).assert_called_once_with(test_instance)
+        hook_function.assert_called_once_with(test_instance)
 
     for hook_function in test_instance._settings.post_hooks["async_test_func"]:
-        cast(AsyncMock, hook_function).assert_called_once_with(test_instance, None)
+        hook_function.assert_called_once_with(test_instance, None)
 
     test_instance.sync_test_func()
 
     for hook_function in test_instance._settings.pre_hooks["sync_test_func"]:
-        cast(AsyncMock, hook_function).assert_called_once_with(test_instance)
+        hook_function.assert_called_once_with(test_instance)
 
     for hook_function in test_instance._settings.post_hooks["sync_test_func"]:
-        cast(AsyncMock, hook_function).assert_called_once_with(test_instance, None)
+        hook_function.assert_called_once_with(test_instance, None)

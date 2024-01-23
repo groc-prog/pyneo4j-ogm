@@ -1,6 +1,7 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring, missing-class-docstring
 # pyright: reportGeneralTypeIssues=false
 
+import json
 from typing import Any, Dict
 
 import pytest
@@ -9,7 +10,14 @@ from pydantic import BaseModel
 
 from pyneo4j_ogm.core.node import NodeModel, ensure_alive
 from pyneo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated
-from tests.fixtures.db_setup import CoffeeShop
+from pyneo4j_ogm.pydantic_utils import get_model_dump, get_model_dump_json
+from tests.fixtures.db_setup import (
+    CoffeeShop,
+    Developer,
+    client,
+    session,
+    setup_test_data,
+)
 
 
 @pytest.fixture()
@@ -90,3 +98,29 @@ def test_inflate(use_deflate_inflate_model):
     assert inflated.list_field[0] == "test"
     assert inflated.list_field[1] == 12
     assert inflated.list_field[2] == {"test": "test"}
+
+
+async def test_model_parse(setup_test_data):
+    node: Developer = await Developer.find_one({"uid": 1}, auto_fetch_nodes=False)
+
+    model_dump = get_model_dump(node)
+    json_dump = get_model_dump_json(node)
+
+    parsed_model_dump = Developer(**model_dump)
+    parsed_json_dump = Developer(**json.loads(json_dump))
+
+    assert node.coffee.nodes == parsed_model_dump.coffee.nodes
+    assert node.coffee.nodes == parsed_json_dump.coffee.nodes
+
+
+async def test_model_parse_with_auto_fetched_nodes(setup_test_data):
+    node: Developer = await Developer.find_one({"uid": 1}, auto_fetch_nodes=True)
+
+    model_dump = get_model_dump(node)
+    json_dump = get_model_dump_json(node)
+
+    parsed_model_dump = Developer(**model_dump)
+    parsed_json_dump = Developer(**json.loads(json_dump))
+
+    assert node.coffee.nodes == parsed_model_dump.coffee.nodes
+    assert node.coffee.nodes == parsed_json_dump.coffee.nodes

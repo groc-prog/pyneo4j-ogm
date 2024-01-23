@@ -133,7 +133,7 @@ def test_json_schema():
 
 def test_json_schema_with_index_and_constraint():
     class TestModel(NodeModel):
-        uid: WithOptions(str, text_index=True, unique=True) = Field("test-uid")  # type: ignore
+        uid: WithOptions(str, text_index=True, unique=True, point_index=True, range_index=True) = Field("test-uid")  # type: ignore
 
     setattr(TestModel, "_client", None)
 
@@ -143,11 +143,23 @@ def test_json_schema_with_index_and_constraint():
         assert "text_index" in schema["properties"]["uid"]
         assert schema["properties"]["uid"]["text_index"]
 
+        assert "point_index" in schema["properties"]["uid"]
+        assert schema["properties"]["uid"]["point_index"]
+
+        assert "range_index" in schema["properties"]["uid"]
+        assert schema["properties"]["uid"]["range_index"]
+
         assert "uniqueness_constraint" in schema["properties"]["uid"]
         assert schema["properties"]["uid"]["uniqueness_constraint"]
     else:
         assert "text_index" in schema["properties"]["uid"]
         assert schema["properties"]["uid"]["text_index"]
+
+        assert "point_index" in schema["properties"]["uid"]
+        assert schema["properties"]["uid"]["point_index"]
+
+        assert "range_index" in schema["properties"]["uid"]
+        assert schema["properties"]["uid"]["range_index"]
 
         assert "uniqueness_constraint" in schema["properties"]["uid"]
         assert schema["properties"]["uid"]["uniqueness_constraint"]
