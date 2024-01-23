@@ -9,10 +9,10 @@
 
 ## 🔥 Hot topics for the future
 
-You never know what the future might hold. But these things are for sure happening (not necessarily in this order):
+You never know what the future might hold. But these things are happening for sure (not necessarily in this order):
 
 - [ ] Add documentation and test coverage for migrations
-- [ ] Improving the overall test coverage
+- [x] Improving the current test coverage
 - [ ] More/Better examples for simple and advanced use-cases
 - [ ] Complete documentation overhaul
 
