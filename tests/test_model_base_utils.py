@@ -1,6 +1,7 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring, missing-class-docstring
 # pyright: reportGeneralTypeIssues=false
 
+from typing import Union, cast
 from unittest.mock import AsyncMock, MagicMock
 
 from pyneo4j_ogm.core.base import hooks
@@ -129,15 +130,15 @@ async def test_hooks_decorator():
     await test_instance.async_test_func()
 
     for hook_function in test_instance._settings.pre_hooks["async_test_func"]:
-        hook_function.assert_called_once_with(test_instance)
+        cast(Union[MagicMock, AsyncMock], hook_function).assert_called_once_with(test_instance)
 
     for hook_function in test_instance._settings.post_hooks["async_test_func"]:
-        hook_function.assert_called_once_with(test_instance, None)
+        cast(Union[MagicMock, AsyncMock], hook_function).assert_called_once_with(test_instance, None)
 
     test_instance.sync_test_func()
 
     for hook_function in test_instance._settings.pre_hooks["sync_test_func"]:
-        hook_function.assert_called_once_with(test_instance)
+        cast(Union[MagicMock, AsyncMock], hook_function).assert_called_once_with(test_instance)
 
     for hook_function in test_instance._settings.post_hooks["sync_test_func"]:
-        hook_function.assert_called_once_with(test_instance, None)
+        cast(Union[MagicMock, AsyncMock], hook_function).assert_called_once_with(test_instance, None)

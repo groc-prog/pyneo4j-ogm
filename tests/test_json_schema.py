@@ -133,7 +133,7 @@ def test_json_schema():
 
 def test_json_schema_with_index_and_constraint():
     class TestModel(NodeModel):
-        uid: WithOptions(str, text_index=True, unique=True, point_index=True, range_index=True) = Field("test-uid")  # type: ignore
+        uid: WithOptions(str, text_index=True, unique=True, point_index=True, range_index=True) = Field("test-uid")
 
     setattr(TestModel, "_client", None)
 
