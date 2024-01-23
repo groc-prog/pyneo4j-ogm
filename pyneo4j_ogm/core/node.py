@@ -5,7 +5,6 @@ the database for CRUD operations on nodes.
 """
 import json
 import re
-from copy import deepcopy
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -113,7 +112,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 # Pydantic V2 does not initialize separate instances for relationship properties
                 # anymore, thus we have to do this manually here
                 # This might be a dirty hack, but it works ¯\_(ツ)_/¯
-                model_relationship_property = deepcopy(getattr(self, relationship_property))
+                model_relationship_property = getattr(self, relationship_property)
                 setattr(self, relationship_property, model_relationship_property)
                 cast(RelationshipProperty, model_relationship_property)._build_property(self, relationship_property)
             else:
@@ -350,7 +349,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             "RETURN m" if self._query_builder.query["projections"] == "" else self._query_builder.query["projections"]
         )
 
-        if auto_fetch_nodes or self._settings.auto_fetch_nodes:
+        if auto_fetch_nodes or (auto_fetch_nodes is not False and self._settings.auto_fetch_nodes):
             logger.debug("Auto-fetching nodes is enabled, checking if model with target labels is registered")
             if "$node" not in filters or "$labels" not in filters["$node"]:
                 raise InvalidFilters()
@@ -501,7 +500,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         do_auto_fetch = all(
             [
                 projections is None,
-                auto_fetch_nodes or cls._settings.auto_fetch_nodes,
+                auto_fetch_nodes or (auto_fetch_nodes is not False and cls._settings.auto_fetch_nodes),
                 cls._query_builder.query["projections"] == "",
             ]
         )
@@ -626,7 +625,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         do_auto_fetch = all(
             [
                 projections is None,
-                auto_fetch_nodes or cls._settings.auto_fetch_nodes,
+                auto_fetch_nodes or (auto_fetch_nodes is not False and cls._settings.auto_fetch_nodes),
                 cls._query_builder.query["projections"] == "",
             ]
         )

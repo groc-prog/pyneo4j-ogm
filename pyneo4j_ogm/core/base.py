@@ -256,7 +256,23 @@ class ModelBase(BaseModel, Generic[V]):
                     and isinstance(values[field_name], list)
                 ):
                     parsed = cast(RelationshipProperty, field.default)
-                    setattr(parsed, "_nodes", values[field_name])
+                    parsed._build_property(cls, field_name)
+                    target_model = getattr(parsed, "_target_model", None)
+
+                    if target_model is not None:
+                        nodes: List[NodeModel] = []
+
+                        for node in values[field_name]:
+                            instance = target_model(**node)
+
+                            if "element_id" in node:
+                                setattr(instance, "_element_id", node["element_id"])
+                            if "id" in node:
+                                setattr(instance, "_id", node["id"])
+
+                            nodes.append(instance)
+
+                        setattr(parsed, "_nodes", nodes)
 
                     values[field_name] = parsed
 
@@ -280,7 +296,23 @@ class ModelBase(BaseModel, Generic[V]):
                     and isinstance(values[field_name], list)
                 ):
                     parsed = cast(RelationshipProperty, field.default)
-                    setattr(parsed, "_nodes", values[field_name])
+                    parsed._build_property(cls, field_name)
+                    target_model = getattr(parsed, "_target_model", None)
+
+                    if target_model is not None:
+                        nodes: List[NodeModel] = []
+
+                        for node in values[field_name]:
+                            instance = target_model(**node)
+
+                            if "element_id" in node:
+                                setattr(instance, "_element_id", node["element_id"])
+                            if "id" in node:
+                                setattr(instance, "_id", node["id"])
+
+                            nodes.append(instance)
+
+                        setattr(parsed, "_nodes", nodes)
 
                     values[field_name] = parsed
 
