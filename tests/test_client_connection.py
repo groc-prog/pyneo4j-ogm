@@ -2,6 +2,7 @@
 # pyright: reportGeneralTypeIssues=false
 
 import os
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from neo4j import AsyncSession
@@ -9,7 +10,11 @@ from neo4j import AsyncSession
 from pyneo4j_ogm.core.client import EntityType, Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
-from pyneo4j_ogm.exceptions import MissingDatabaseURI, NotConnectedToDatabase
+from pyneo4j_ogm.exceptions import (
+    MissingDatabaseURI,
+    NotConnectedToDatabase,
+    UnsupportedNeo4jVersion,
+)
 from pyneo4j_ogm.fields.property_options import WithOptions
 from pyneo4j_ogm.logger import logger
 from tests.fixtures.db_setup import client, session
@@ -113,3 +118,27 @@ async def test_register_models(client: Pyneo4jClient, session: AsyncSession):
     assert index_results[11][5] == EntityType.RELATIONSHIP
     assert index_results[11][6] == ["TEST_RELATIONSHIP"]
     assert index_results[11][7] == ["d"]
+
+
+async def test_supported_neo4j_version():
+    mock_driver = MagicMock()
+    mock_driver.get_server_info = AsyncMock(return_value=MagicMock(agent="Neo4j/4.0.0"))
+
+    with patch("neo4j.AsyncGraphDatabase.driver", return_value=mock_driver):
+        with pytest.raises(UnsupportedNeo4jVersion):
+            await Pyneo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
+
+
+async def test_close():
+    mock_driver = MagicMock()
+    mock_driver.close = AsyncMock()
+
+    with patch("pyneo4j_ogm.core.client.Pyneo4jClient.is_connected", new_callable=PropertyMock) as mock_is_connected:
+        mock_is_connected.return_value = False
+        client = await Pyneo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
+
+        with patch("neo4j.AsyncGraphDatabase.driver", return_value=mock_driver):
+            await client.close()
+            mock_driver.close.assert_not_called()
+
+    await client.close()

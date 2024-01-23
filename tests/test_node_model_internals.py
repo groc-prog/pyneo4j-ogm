@@ -8,16 +8,16 @@ import pytest
 from neo4j.graph import Graph, Node
 from pydantic import BaseModel
 
-from pyneo4j_ogm.core.base import ModelBase
 from pyneo4j_ogm.core.node import NodeModel, ensure_alive
-from pyneo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated
+from pyneo4j_ogm.exceptions import (
+    InstanceDestroyed,
+    InstanceNotHydrated,
+    ListItemNotEncodable,
+)
 from pyneo4j_ogm.pydantic_utils import get_model_dump, get_model_dump_json
 from tests.fixtures.db_setup import (
-    Coffee,
     CoffeeShop,
-    Consumed,
     Developer,
-    WorkedWith,
     client,
     session,
     setup_test_data,
@@ -142,10 +142,10 @@ async def test_model_parse_with_model_instances(setup_test_data):
 
 
 def test_eq():
-    class A(ModelBase):
+    class A(NodeModel):
         pass
 
-    class B(ModelBase):
+    class B(NodeModel):
         pass
 
     setattr(A, "_client", None)
@@ -167,7 +167,7 @@ def test_eq():
 
 
 def test_repr():
-    class A(ModelBase):
+    class A(NodeModel):
         pass
 
     setattr(A, "_client", None)
@@ -186,7 +186,7 @@ def test_repr():
 
 
 def test_str():
-    class A(ModelBase):
+    class A(NodeModel):
         pass
 
     setattr(A, "_client", None)
@@ -205,7 +205,7 @@ def test_str():
 
 
 def test_iter():
-    class A(ModelBase):
+    class A(NodeModel):
         foo_prop: str = "foo"
         bar_prop: int = 1
 

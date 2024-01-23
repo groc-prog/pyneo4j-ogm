@@ -1,7 +1,6 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring, missing-class-docstring
 # pyright: reportGeneralTypeIssues=false
 
-from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 
 from pyneo4j_ogm.core.base import hooks
