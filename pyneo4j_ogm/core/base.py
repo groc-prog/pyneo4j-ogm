@@ -33,7 +33,11 @@ from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
 from pyneo4j_ogm.exceptions import ListItemNotEncodable, UnregisteredModel
-from pyneo4j_ogm.fields.relationship_property import RelationshipProperty
+from pyneo4j_ogm.fields.relationship_property import (
+    RelationshipProperty,
+    RelationshipPropertyCardinality,
+    RelationshipPropertyDirection,
+)
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import (
@@ -255,9 +259,17 @@ class ModelBase(BaseModel, Generic[V]):
                     and field_name in values
                     and isinstance(values[field_name], list)
                 ):
-                    parsed = cast(RelationshipProperty, field.default)
-                    parsed._build_property(cls, field_name)
-                    target_model = getattr(parsed, "_target_model", None)
+                    field_default = cast(RelationshipProperty, field.default)
+                    instance_copy = RelationshipProperty(
+                        target_model=getattr(field_default, "_target_model_name"),
+                        relationship_model=getattr(field_default, "_relationship_model_name"),
+                        direction=cast(RelationshipPropertyDirection, getattr(field_default, "_direction")),
+                        cardinality=cast(RelationshipPropertyCardinality, getattr(field_default, "_cardinality")),
+                        allow_multiple=cast(bool, getattr(field_default, "_allow_multiple")),
+                    )
+
+                    instance_copy._build_property(cls, field_name)
+                    target_model = getattr(instance_copy, "_target_model", None)
 
                     if target_model is not None:
                         nodes: List[NodeModel] = []
@@ -275,9 +287,9 @@ class ModelBase(BaseModel, Generic[V]):
 
                             nodes.append(instance)
 
-                        setattr(parsed, "_nodes", nodes)
+                        setattr(instance_copy, "_nodes", nodes)
 
-                    values[field_name] = parsed
+                    values[field_name] = instance_copy
 
             return values
 
@@ -298,9 +310,17 @@ class ModelBase(BaseModel, Generic[V]):
                     and field_name in values
                     and isinstance(values[field_name], list)
                 ):
-                    parsed = cast(RelationshipProperty, field.default)
-                    parsed._build_property(cls, field_name)
-                    target_model = getattr(parsed, "_target_model", None)
+                    field_default = cast(RelationshipProperty, field.default)
+                    instance_copy = RelationshipProperty(
+                        target_model=getattr(field_default, "_target_model_name"),
+                        relationship_model=getattr(field_default, "_relationship_model_name"),
+                        direction=cast(RelationshipPropertyDirection, getattr(field_default, "_direction")),
+                        cardinality=cast(RelationshipPropertyCardinality, getattr(field_default, "_cardinality")),
+                        allow_multiple=cast(bool, getattr(field_default, "_allow_multiple")),
+                    )
+
+                    instance_copy._build_property(cls, field_name)
+                    target_model = getattr(instance_copy, "_target_model", None)
 
                     if target_model is not None:
                         nodes: List[NodeModel] = []
@@ -318,9 +338,9 @@ class ModelBase(BaseModel, Generic[V]):
 
                             nodes.append(instance)
 
-                        setattr(parsed, "_nodes", nodes)
+                        setattr(instance_copy, "_nodes", nodes)
 
-                    values[field_name] = parsed
+                    values[field_name] = instance_copy
 
             return values
 
