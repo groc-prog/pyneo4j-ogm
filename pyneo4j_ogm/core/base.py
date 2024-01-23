@@ -263,8 +263,11 @@ class ModelBase(BaseModel, Generic[V]):
                         nodes: List[NodeModel] = []
 
                         for node in values[field_name]:
-                            instance = target_model(**node)
+                            if isinstance(node, target_model):
+                                nodes.append(node)
+                                continue
 
+                            instance = target_model(**node)
                             if "element_id" in node:
                                 setattr(instance, "_element_id", node["element_id"])
                             if "id" in node:
@@ -303,8 +306,11 @@ class ModelBase(BaseModel, Generic[V]):
                         nodes: List[NodeModel] = []
 
                         for node in values[field_name]:
-                            instance = target_model(**node)
+                            if isinstance(node, target_model):
+                                nodes.append(node)
+                                continue
 
+                            instance = target_model(**node)
                             if "element_id" in node:
                                 setattr(instance, "_element_id", node["element_id"])
                             if "id" in node:
