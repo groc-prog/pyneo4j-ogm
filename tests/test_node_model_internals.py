@@ -8,12 +8,16 @@ import pytest
 from neo4j.graph import Graph, Node
 from pydantic import BaseModel
 
+from pyneo4j_ogm.core.base import ModelBase
 from pyneo4j_ogm.core.node import NodeModel, ensure_alive
 from pyneo4j_ogm.exceptions import InstanceDestroyed, InstanceNotHydrated
 from pyneo4j_ogm.pydantic_utils import get_model_dump, get_model_dump_json
 from tests.fixtures.db_setup import (
+    Coffee,
     CoffeeShop,
+    Consumed,
     Developer,
+    WorkedWith,
     client,
     session,
     setup_test_data,
@@ -124,3 +128,93 @@ async def test_model_parse_with_auto_fetched_nodes(setup_test_data):
 
     assert node.coffee.nodes == parsed_model_dump.coffee.nodes
     assert node.coffee.nodes == parsed_json_dump.coffee.nodes
+
+
+async def test_model_parse_with_model_instances(setup_test_data):
+    node: Developer = await Developer.find_one({"uid": 1}, auto_fetch_nodes=True)
+
+    model_dump = get_model_dump(node)
+    model_dump["coffee"] = node.coffee.nodes
+
+    parsed_model_dump = Developer(**model_dump)
+
+    assert node.coffee.nodes == parsed_model_dump.coffee.nodes
+
+
+def test_eq():
+    class A(ModelBase):
+        pass
+
+    class B(ModelBase):
+        pass
+
+    setattr(A, "_client", None)
+    setattr(B, "_client", None)
+
+    model_a = A()
+    model_b_one = B()
+    model_b_two = B()
+    model_b_three = B()
+
+    setattr(model_a, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18")
+    setattr(model_b_one, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18")
+    setattr(model_b_two, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18")
+    setattr(model_b_three, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:19")
+
+    assert model_a != model_b_one
+    assert model_b_one == model_b_two
+    assert model_b_one != model_b_three
+
+
+def test_repr():
+    class A(ModelBase):
+        pass
+
+    setattr(A, "_client", None)
+
+    model_a = A()
+    setattr(model_a, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18")
+    setattr(model_a, "_destroyed", False)
+    assert repr(model_a) == "A(element_id=4:08f8a347-1856-487c-8705-26d2b4a69bb7:18, destroyed=False)"
+
+    setattr(model_a, "_destroyed", True)
+    assert repr(model_a) == "A(element_id=4:08f8a347-1856-487c-8705-26d2b4a69bb7:18, destroyed=True)"
+
+    setattr(model_a, "_element_id", None)
+    setattr(model_a, "_destroyed", False)
+    assert repr(model_a) == "A(element_id=None, destroyed=False)"
+
+
+def test_str():
+    class A(ModelBase):
+        pass
+
+    setattr(A, "_client", None)
+
+    model_a = A()
+    setattr(model_a, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18")
+    setattr(model_a, "_destroyed", False)
+    assert str(model_a) == "A(element_id=4:08f8a347-1856-487c-8705-26d2b4a69bb7:18, destroyed=False)"
+
+    setattr(model_a, "_destroyed", True)
+    assert str(model_a) == "A(element_id=4:08f8a347-1856-487c-8705-26d2b4a69bb7:18, destroyed=True)"
+
+    setattr(model_a, "_element_id", None)
+    setattr(model_a, "_destroyed", False)
+    assert str(model_a) == "A(element_id=None, destroyed=False)"
+
+
+def test_iter():
+    class A(ModelBase):
+        foo_prop: str = "foo"
+        bar_prop: int = 1
+
+    setattr(A, "_client", None)
+
+    model = A()
+    setattr(model, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18")
+    setattr(model, "_id", 18)
+
+    for attr_name, attr_value in model:
+        assert attr_name in ["foo_prop", "bar_prop", "element_id", "id"]
+        assert attr_value in ["foo", 1, "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18", 18]

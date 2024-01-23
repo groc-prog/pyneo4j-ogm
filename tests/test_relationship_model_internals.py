@@ -142,3 +142,41 @@ def test_inflate(use_deflate_inflate_model):
     assert inflated.list_field[0] == "test"
     assert inflated.list_field[1] == 12
     assert inflated.list_field[2] == {"test": "test"}
+
+
+def test_iter():
+    class Rel(RelationshipModel):
+        foo_prop: str = "foo"
+        bar_prop: int = 1
+
+    setattr(Rel, "_client", None)
+
+    model = Rel()
+    setattr(model, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18")
+    setattr(model, "_id", 18)
+    setattr(model, "_start_node_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:17")
+    setattr(model, "_start_node_id", 17)
+    setattr(model, "_end_node_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:19")
+    setattr(model, "_end_node_id", 19)
+
+    for attr_name, attr_value in model:
+        assert attr_name in [
+            "foo_prop",
+            "bar_prop",
+            "element_id",
+            "id",
+            "start_node_element_id",
+            "start_node_id",
+            "end_node_element_id",
+            "end_node_id",
+        ]
+        assert attr_value in [
+            "foo",
+            1,
+            "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18",
+            18,
+            "4:08f8a347-1856-487c-8705-26d2b4a69bb7:17",
+            17,
+            "4:08f8a347-1856-487c-8705-26d2b4a69bb7:19",
+            19,
+        ]
