@@ -7,6 +7,7 @@ which defines the other end of the relationship.
 
 import asyncio
 from asyncio import iscoroutinefunction
+from enum import Enum
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -42,10 +43,6 @@ from pyneo4j_ogm.exceptions import (
 from pyneo4j_ogm.fields.settings import NodeModelSettings
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2, parse_model
-from pyneo4j_ogm.queries.enums import (
-    RelationshipPropertyCardinality,
-    RelationshipPropertyDirection,
-)
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 from pyneo4j_ogm.queries.types import (
     Projection,
@@ -74,6 +71,24 @@ P = ParamSpec("P")
 T = TypeVar("T", bound=NodeModel)
 U = TypeVar("U", bound=RelationshipModel)
 V = TypeVar("V")
+
+
+class RelationshipPropertyDirection(str, Enum):
+    """
+    Available relationship directions for relationship properties.
+    """
+
+    INCOMING = "INCOMING"
+    OUTGOING = "OUTGOING"
+
+
+class RelationshipPropertyCardinality(str, Enum):
+    """
+    Available cardinality types.
+    """
+
+    ZERO_OR_ONE = "ZERO_OR_ONE"
+    ZERO_OR_MORE = "ZERO_OR_MORE"
 
 
 def hooks(func):
@@ -166,7 +181,7 @@ def check_models_registered(func):
     @wraps(func)
     async def decorator(self: "RelationshipProperty", *args, **kwargs):
         source_node = getattr(self, "_source_node")
-        client: Pyneo4jClient = getattr(self, "_client")
+        client: Optional[Pyneo4jClient] = getattr(self, "_client", None)
         target_model_name: str = getattr(self, "_target_model_name")
         relationship_model_name: str = getattr(self, "_relationship_model_name")
 
@@ -174,7 +189,7 @@ def check_models_registered(func):
             "Checking if source model %s has been registered with client",
             source_node.__class__.__name__,
         )
-        if source_node.__class__ not in client.models:
+        if client is None or source_node.__class__ not in client.models:
             raise UnregisteredModel(model=source_node.__class__.__name__)
 
         logger.debug(
@@ -986,6 +1001,9 @@ class RelationshipProperty(Generic[T, U]):
         Raises:
             UnregisteredModel: Raised if the source model has not been registered with the client.
         """
+        if getattr(source_model, "_client", None) is None:
+            raise UnregisteredModel(model=source_model.__class__.__name__)
+
         self._registered_name = property_name
         self._client = cast(Pyneo4jClient, getattr(source_model, "_client"))
         self._query_builder = QueryBuilder()

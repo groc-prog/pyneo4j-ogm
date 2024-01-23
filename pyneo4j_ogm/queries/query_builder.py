@@ -2,12 +2,21 @@
 Builds parts of queries related to filters and options.
 """
 from copy import deepcopy
-from typing import Any, Dict, List, Literal, Optional, TypedDict, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    TypedDict,
+    Union,
+    cast,
+)
 
 from pyneo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import get_model_dump
-from pyneo4j_ogm.queries.enums import RelationshipPropertyDirection
 from pyneo4j_ogm.queries.operators import Operators
 from pyneo4j_ogm.queries.types import (
     MultiHopFilters,
@@ -25,6 +34,11 @@ from pyneo4j_ogm.queries.validators import (
     RelationshipFiltersModel,
     RelationshipPropertyFiltersModel,
 )
+
+if TYPE_CHECKING:
+    from pyneo4j_ogm.fields.relationship_property import RelationshipPropertyDirection
+else:
+    RelationshipPropertyDirection = object
 
 
 class FilterQueries(TypedDict):
@@ -321,6 +335,10 @@ class QueryBuilder:
         Returns:
             str: The relationship to match.
         """
+        from pyneo4j_ogm.fields.relationship_property import (
+            RelationshipPropertyDirection,
+        )
+
         logger.debug(
             """Building relationship match with type %s, relationship ref %s, start node ref %s, start node labels %s,
             end node ref %s, end node labels %s, min hops %s and max hops %s""",

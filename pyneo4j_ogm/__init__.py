@@ -4,8 +4,8 @@ from .core.client import EntityType, Pyneo4jClient
 from .core.node import NodeModel
 from .core.relationship import RelationshipModel
 from .fields.property_options import WithOptions
-from .fields.relationship_property import RelationshipProperty
-from .queries.enums import (
+from .fields.relationship_property import (
+    RelationshipProperty,
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
 )
