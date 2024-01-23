@@ -109,6 +109,15 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             relationship_type = re.sub(r"(?<!^)(?=[A-Z])", "_", cls.__name__)
             setattr(cls._settings, "type", relationship_type.upper())
 
+    def __iter__(self):
+        for attr_name, attr_value in super().__iter__():
+            yield attr_name, attr_value
+
+        yield "start_node_element_id", self._start_node_element_id
+        yield "start_node_id", self._start_node_id
+        yield "end_node_element_id", self._end_node_element_id
+        yield "end_node_id", self._end_node_id
+
     @hooks
     @ensure_alive
     async def update(self) -> None:

@@ -502,9 +502,8 @@ class ModelBase(BaseModel, Generic[V]):
         return self.__repr__()
 
     def __iter__(self):
-        for name, value in self.__dict__.items():
-            if not name.startswith("_"):
-                yield name, value
+        for attr_name, attr_value in super().__iter__():
+            yield attr_name, attr_value
 
         yield "element_id", self._element_id
         yield "id", self._id
