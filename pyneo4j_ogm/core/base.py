@@ -86,7 +86,7 @@ def hooks(func):
     if iscoroutinefunction(func):
 
         @wraps(func)
-        async def wrapper(self, *args, **kwargs):  # type: ignore
+        async def async_wrapper(self, *args, **kwargs):
             settings: BaseModelSettings = getattr(self, "_settings")
 
             if func.__name__ in settings.pre_hooks:
@@ -100,10 +100,7 @@ def hooks(func):
                     else:
                         hook_function(self, *args, **kwargs)
 
-            if iscoroutinefunction(func):
-                result = await func(self, *args, **kwargs)
-            else:
-                result = func(self, *args, **kwargs)
+            result = await func(self, *args, **kwargs)
 
             if func.__name__ in settings.post_hooks:
                 logger.debug(
@@ -118,12 +115,13 @@ def hooks(func):
 
             return result
 
+        return async_wrapper
+
     else:
 
         @wraps(func)
-        def wrapper(self, *args, **kwargs):
+        def sync_wrapper(self, *args, **kwargs):
             settings: BaseModelSettings = getattr(self, "_settings")
-            loop = asyncio.get_event_loop()
 
             if func.__name__ in settings.pre_hooks:
                 logger.debug(
@@ -132,7 +130,7 @@ def hooks(func):
                 for hook_function in settings.pre_hooks[func.__name__]:
                     logger.debug("Running pre-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
-                        loop.run_until_complete(hook_function(self, *args, **kwargs))
+                        asyncio.create_task(hook_function(self, *args, **kwargs))
                     else:
                         hook_function(self, *args, **kwargs)
 
@@ -145,13 +143,13 @@ def hooks(func):
                 for hook_function in settings.post_hooks[func.__name__]:
                     logger.debug("Running post-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
-                        loop.run_until_complete(hook_function(self, result, *args, **kwargs))
+                        asyncio.create_task(hook_function(self, result, *args, **kwargs))
                     else:
                         hook_function(self, result, *args, **kwargs)
 
             return result
 
-    return wrapper
+        return sync_wrapper
 
 
 if IS_PYDANTIC_V2:
