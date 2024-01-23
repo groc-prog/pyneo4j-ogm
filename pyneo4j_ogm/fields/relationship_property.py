@@ -106,7 +106,7 @@ def hooks(func):
     if iscoroutinefunction(func):
 
         @wraps(func)
-        async def decorator(self: "RelationshipProperty", *args, **kwargs):  # type: ignore
+        async def async_wrapper(self: "RelationshipProperty", *args, **kwargs):
             source_node = getattr(self, "_source_node")
             settings: NodeModelSettings = getattr(source_node, "_settings")
             hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
@@ -133,10 +133,12 @@ def hooks(func):
 
             return result
 
+        return async_wrapper
+
     else:
 
         @wraps(func)
-        def decorator(self: "RelationshipProperty", *args, **kwargs):
+        def sync_wrapper(self: "RelationshipProperty", *args, **kwargs):
             source_node = getattr(self, "_source_node")
             settings: NodeModelSettings = getattr(source_node, "_settings")
             hook_name = f"{getattr(self, '_registered_name')}.{func.__name__}"
@@ -164,7 +166,7 @@ def hooks(func):
 
             return result
 
-    return decorator
+        return sync_wrapper
 
 
 def check_models_registered(func):
