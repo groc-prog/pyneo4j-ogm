@@ -302,7 +302,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         filters: MultiHopFilters,
         projections: Optional[Projection] = None,
         options: Optional[QueryOptions] = None,
-        auto_fetch_nodes: bool = False,
+        auto_fetch_nodes: Optional[bool] = None,
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
     ) -> List[Union["NodeModel", Dict[str, Any]]]:
         """
@@ -315,7 +315,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
             options (QueryOptions, optional): The options to apply to the query. Defaults to `None`.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
-                identical option defined in `Settings`. Defaults to `False`.
+                identical option defined in `Settings`. Defaults to `None`.
             auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch.
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
 
@@ -456,7 +456,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         cls: Type[T],
         filters: NodeFilters,
         projections: Optional[Projection] = None,
-        auto_fetch_nodes: bool = False,
+        auto_fetch_nodes: Optional[bool] = None,
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
         raise_on_empty: bool = False,
     ) -> Optional[Union[T, Dict[str, Any]]]:
@@ -470,7 +470,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 the new keys in the projection and the value defines the model property to be projected. A invalid
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
-                identical option defined in `Settings`. Can not be used with projections. Defaults to `False`.
+                identical option defined in `Settings`. Can not be used with projections. Defaults to `None`.
             auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch.
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
             raise_on_empty (bool, optional): Whether to raise an `NoResultFound` if no match is found. Defaults to
@@ -587,7 +587,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         filters: Optional[NodeFilters] = None,
         projections: Optional[Projection] = None,
         options: Optional[QueryOptions] = None,
-        auto_fetch_nodes: bool = False,
+        auto_fetch_nodes: Optional[bool] = None,
         auto_fetch_models: Optional[List[Union[str, Type["NodeModel"]]]] = None,
     ) -> List[Union[T, Dict[str, Any]]]:
         """
@@ -601,7 +601,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
             options (QueryOptions, optional): The options to apply to the query. Defaults to `None`.
             auto_fetch_nodes (bool, optional): Whether to automatically fetch connected nodes. Takes priority over the
-                identical option defined in `Settings`. Defaults to `False`.
+                identical option defined in `Settings`. Defaults to `None`.
             auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch.
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
 
