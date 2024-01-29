@@ -95,7 +95,8 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         self._db_properties = get_model_dump(self)
 
     def __init_subclass__(cls) -> None:
-        setattr(cls, "_settings", RelationshipModelSettings())
+        if not isinstance(getattr(cls, "_settings", None), RelationshipModelSettings):
+            setattr(cls, "_settings", RelationshipModelSettings())
 
         super().__init_subclass__()
 

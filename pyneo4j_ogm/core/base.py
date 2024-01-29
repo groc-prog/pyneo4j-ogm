@@ -45,6 +45,7 @@ from pyneo4j_ogm.pydantic_utils import (
     get_field_type,
     get_model_dump,
     get_model_fields,
+    parse_model,
 )
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 
@@ -453,19 +454,20 @@ class ModelBase(BaseModel, Generic[V]):
 
     def __init_subclass__(cls, *args, **kwargs) -> None:
         setattr(cls, "_query_builder", QueryBuilder())
+        if cls.__name__ == "B" or cls.__name__ == "A":
+            pass
 
-        logger.debug("Registering settings for model %s", cls.__name__)
-        if hasattr(cls, "Settings"):
-            for setting, value in cls.Settings.__dict__.items():
-                if not setting.startswith("__"):
-                    if isinstance(value, set) and getattr(cls._settings, setting, None) is not None:
-                        setattr(
-                            cls._settings,
-                            setting,
-                            value.union(getattr(cls._settings, setting)),
-                        )
-                    else:
-                        setattr(cls._settings, setting, value)
+        logger.debug("Merging settings for model %s", cls.__name__)
+        if hasattr(cls, "Settings") and hasattr(cls, "_settings") and issubclass(cls._settings.__class__, BaseModel):
+            # Validate settings and merge them with the parent class settings
+            parsed_settings = get_model_dump(
+                parse_model(
+                    cls._settings.__class__,
+                    {key: value for key, value in cls.Settings.__dict__.items() if not key.startswith("__")},
+                )
+            )
+            merged_settings = cls._merge_settings(parsed_settings)
+            setattr(cls, "_settings", parse_model(cls._settings.__class__, merged_settings))
 
         if not IS_PYDANTIC_V2:
             for _, field in get_model_fields(cls).items():
@@ -595,6 +597,48 @@ class ModelBase(BaseModel, Generic[V]):
             V: The model settings.
         """
         return cast(V, cls._settings)
+
+    @classmethod
+    def _merge_settings(
+        cls, settings: Dict[str, Any], current_settings: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Recursively merges the provided settings with the current model settings. Inherited settings are merged
+        if they are of type `set` or `list`, other values are overwritten.
+
+        Args:
+            settings (Dict[str, Any]): The settings to merge.
+            current_settings (Optional[Dict[str, Any]], optional): The current settings. Defaults to `None`.
+
+        Returns:
+            Dict[str, Any]: The merged settings.
+        """
+        if current_settings is None:
+            if hasattr(cls, "_settings") and issubclass(cls._settings.__class__, BaseModel):
+                current_settings = get_model_dump(cls._settings)
+            else:
+                current_settings = {}
+
+        for setting, value in settings.items():
+            if setting not in current_settings:
+                if isinstance(value, set):
+                    current_settings[setting] = set()
+                elif isinstance(value, list):
+                    current_settings[setting] = []
+                elif isinstance(value, dict):
+                    current_settings[setting] = {}
+
+            if isinstance(value, set):
+                current_settings[setting] = cast(Set, current_settings[setting]).union(value)
+            elif isinstance(value, list):
+                cast(List, current_settings[setting]).extend(value)
+            elif isinstance(value, dict):
+                new_setting = cls._merge_settings(value, current_settings[setting])
+                current_settings[setting] = new_setting
+            elif value is not None:
+                current_settings[setting] = value
+
+        return current_settings
 
     def _deflate(self, deflated: Dict[str, Any]) -> Dict[str, Any]:
         """

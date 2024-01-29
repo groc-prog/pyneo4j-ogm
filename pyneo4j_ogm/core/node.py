@@ -125,7 +125,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
     def __init_subclass__(cls) -> None:
         setattr(cls, "_relationship_properties", set())
-        setattr(cls, "_settings", NodeModelSettings())
+        if not isinstance(getattr(cls, "_settings", None), NodeModelSettings):
+            setattr(cls, "_settings", NodeModelSettings())
 
         super().__init_subclass__()
 

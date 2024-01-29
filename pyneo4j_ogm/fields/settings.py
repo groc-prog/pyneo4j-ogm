@@ -62,7 +62,7 @@ class NodeModelSettings(BaseModelSettings):
     """
 
     labels: Set[str] = set()
-    auto_fetch_nodes: bool = False
+    auto_fetch_nodes: Optional[bool] = None
 
 
 class RelationshipModelSettings(BaseModelSettings):
