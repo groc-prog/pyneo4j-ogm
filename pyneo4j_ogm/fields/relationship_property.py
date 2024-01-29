@@ -1033,8 +1033,10 @@ class RelationshipProperty(Generic[T, U]):
             InstanceDestroyed: Raised if a node has been marked as destroyed.
         """
         nodes_to_check = nodes if isinstance(nodes, list) else [nodes]
+        target_model_labels = list(cast(Type[T], self._target_model)._settings.labels)
 
         for node in nodes_to_check:
+            node_labels = list(node._settings.labels)
             logger.debug(
                 "Checking if node %s is alive and of correct type",
                 getattr(node, "_element_id", None),
@@ -1045,7 +1047,7 @@ class RelationshipProperty(Generic[T, U]):
             if getattr(node, "_destroyed", True):
                 raise InstanceDestroyed()
 
-            if cast(Type[T], self._target_model).__name__ != node.__class__.__name__:
+            if not all([label in node_labels for label in target_model_labels]):
                 raise InvalidTargetNode(
                     expected_type=cast(Type[T], self._target_model).__name__,
                     actual_type=node.__class__.__name__,

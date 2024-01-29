@@ -112,7 +112,7 @@ class InvalidTargetNode(Pyneo4jException):
 
     def __init__(self, expected_type: str, actual_type: str, *args: object) -> None:
         super().__init__(
-            f"Expected target node to be of type {expected_type}, but got {actual_type}",
+            f"Expected target node to be instance of subclass of {expected_type}, but got {actual_type}",
             *args,
         )
 

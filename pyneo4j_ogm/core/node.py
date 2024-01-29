@@ -4,7 +4,7 @@ It provides base functionality like de-/inflation, validation and methods for in
 the database for CRUD operations on nodes.
 """
 import json
-import re
+from copy import deepcopy
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -134,7 +134,6 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         super().__init_subclass__()
 
-        model_labels: Set[str] = set(re.findall(r"[A-Z][^A-Z]*", cls.__name__))
         labels: Set[str] = getattr(cls._settings, "labels", set())
         if hasattr(cls, "Settings"):
             validated_settings = parse_model(NodeModelSettings, cls.Settings.__dict__)
@@ -142,11 +141,13 @@ class NodeModel(ModelBase[NodeModelSettings]):
             if len(validated_settings.labels) != 0 and not inherited_settings:
                 labels = labels.union(validated_settings.labels)
             else:
-                labels = labels.union(model_labels)
+                labels = labels.union({cls.__name__})
         else:
-            labels = labels.union(model_labels)
+            labels = labels.union({cls.__name__})
 
-        setattr(cls._settings, "labels", labels)
+        settings = deepcopy(cls._settings)
+        settings.labels = labels
+        cls._settings = settings
 
         if not IS_PYDANTIC_V2:
             cls._register_relationship_properties()
