@@ -126,7 +126,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
     def __init_subclass__(cls) -> None:
         setattr(cls, "_relationship_properties", set())
+
+        inherited_settings = True
         if not isinstance(getattr(cls, "_settings", None), NodeModelSettings):
+            inherited_settings = False
             setattr(cls, "_settings", NodeModelSettings())
 
         super().__init_subclass__()
@@ -136,7 +139,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if hasattr(cls, "Settings"):
             validated_settings = parse_model(NodeModelSettings, cls.Settings.__dict__)
 
-            if len(validated_settings.labels) != 0 and validated_settings.labels != labels:
+            if len(validated_settings.labels) != 0 and not inherited_settings:
                 labels = labels.union(validated_settings.labels)
             else:
                 labels = labels.union(model_labels)
