@@ -42,6 +42,7 @@ from pyneo4j_ogm.pydantic_utils import (
     get_model_dump,
     get_model_dump_json,
     get_model_fields,
+    parse_model,
 )
 from pyneo4j_ogm.queries.types import (
     MultiHopFilters,
@@ -130,16 +131,19 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         super().__init_subclass__()
 
-        # Check if node labels is set, if not fall back to model name
-        labels: Union[Set[str], None] = getattr(cls._settings, "labels", None)
+        model_labels: Set[str] = set(re.findall(r"[A-Z][^A-Z]*", cls.__name__))
+        labels: Set[str] = getattr(cls._settings, "labels", set())
+        if hasattr(cls, "Settings"):
+            validated_settings = parse_model(NodeModelSettings, cls.Settings.__dict__)
 
-        if labels is None or (labels is not None and len(labels) == 0):
-            logger.debug(
-                "No labels have been defined for model %s, using model name as label",
-                cls.__name__,
-            )
-            fallback_labels = re.findall(r"[A-Z][^A-Z]*", cls.__name__)
-            setattr(cls._settings, "labels", set(fallback_labels))
+            if len(validated_settings.labels) != 0 and validated_settings.labels != labels:
+                labels = labels.union(validated_settings.labels)
+            else:
+                labels = labels.union(model_labels)
+        else:
+            labels = labels.union(model_labels)
+
+        setattr(cls._settings, "labels", labels)
 
         if not IS_PYDANTIC_V2:
             cls._register_relationship_properties()

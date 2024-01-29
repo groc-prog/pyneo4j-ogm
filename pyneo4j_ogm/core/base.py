@@ -454,8 +454,6 @@ class ModelBase(BaseModel, Generic[V]):
 
     def __init_subclass__(cls, *args, **kwargs) -> None:
         setattr(cls, "_query_builder", QueryBuilder())
-        if cls.__name__ == "B" or cls.__name__ == "A":
-            pass
 
         logger.debug("Merging settings for model %s", cls.__name__)
         if hasattr(cls, "Settings") and hasattr(cls, "_settings") and issubclass(cls._settings.__class__, BaseModel):
