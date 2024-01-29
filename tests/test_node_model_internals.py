@@ -41,7 +41,7 @@ def use_deflate_inflate_model():
 
 
 def test_labels_fallback():
-    assert CoffeeShop._settings.labels == {"Coffee", "Shop"}
+    assert CoffeeShop._settings.labels == {"CoffeeShop"}
 
 
 def test_ensure_alive_decorator():

@@ -144,9 +144,9 @@ async def setup_test_data(client: Pyneo4jClient, session: AsyncSession):
     await client.register_models([Developer, Coffee, CoffeeShop, WorkedWith, Consumed, Sells, Bestseller])
     await session.run(
         """
-    CREATE (s1:Coffee:Shop {rating: 5, tags: ["cozy", "hipster"]})
-    CREATE (s2:Coffee:Shop {rating: 1, tags: ["chain"]})
-    CREATE (s3:Coffee:Shop {rating: 3, tags: ["chain", "hipster"]})
+    CREATE (s1:CoffeeShop {rating: 5, tags: ["cozy", "hipster"]})
+    CREATE (s2:CoffeeShop {rating: 1, tags: ["chain"]})
+    CREATE (s3:CoffeeShop {rating: 3, tags: ["chain", "hipster"]})
 
     CREATE (c1:Beverage:Hot {flavor: "Espresso", sugar: false, milk: false, note: '{\"roast\": \"dark\"}'})
     CREATE (c2:Beverage:Hot {flavor: "Latte", sugar: true, milk: true, note: '{\"roast\": \"medium\"}'})

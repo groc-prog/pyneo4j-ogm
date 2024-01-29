@@ -172,7 +172,7 @@ def test_node_model_label_inheritance():
 
     assert getattr(AnotherClass, "_settings", None) is not None
     assert isinstance(getattr(AnotherClass, "_settings", None), NodeModelSettings)
-    assert AnotherClass._settings.labels == {"A", "B", "Another", "Class"}
+    assert AnotherClass._settings.labels == {"A", "B", "AnotherClass"}
 
     assert getattr(NotInherited, "_settings", None) is not None
     assert isinstance(getattr(NotInherited, "_settings", None), NodeModelSettings)
