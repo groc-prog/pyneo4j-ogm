@@ -137,3 +137,43 @@ def test_relationship_model_settings_inheritance():
     assert len(B._settings.post_hooks["save"]) == 1
     assert "delete" in B._settings.post_hooks
     assert len(B._settings.post_hooks["delete"]) == 2
+
+
+def test_node_model_label_inheritance():
+    class A(NodeModel):
+        class Settings:
+            labels = {"A"}
+
+    class B(A):
+        class Settings:
+            labels = {"B"}
+
+    class C(A):
+        pass
+
+    class AnotherClass(B):
+        pass
+
+    class NotInherited(NodeModel):
+        class Settings:
+            labels = {"A", "B"}
+
+    assert getattr(A, "_settings", None) is not None
+    assert isinstance(getattr(A, "_settings", None), NodeModelSettings)
+    assert A._settings.labels == {"A"}
+
+    assert getattr(B, "_settings", None) is not None
+    assert isinstance(getattr(B, "_settings", None), NodeModelSettings)
+    assert B._settings.labels == {"A", "B"}
+
+    assert getattr(C, "_settings", None) is not None
+    assert isinstance(getattr(C, "_settings", None), NodeModelSettings)
+    assert C._settings.labels == {"A", "C"}
+
+    assert getattr(AnotherClass, "_settings", None) is not None
+    assert isinstance(getattr(AnotherClass, "_settings", None), NodeModelSettings)
+    assert AnotherClass._settings.labels == {"A", "B", "Another", "Class"}
+
+    assert getattr(NotInherited, "_settings", None) is not None
+    assert isinstance(getattr(NotInherited, "_settings", None), NodeModelSettings)
+    assert NotInherited._settings.labels == {"A", "B"}
