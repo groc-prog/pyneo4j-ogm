@@ -24,7 +24,9 @@ def test_create(initialized_migration):
     file_name = "testmigration"
     assert len(os.listdir(os.path.join(initialized_migration, DEFAULT_MIGRATION_DIR))) == 1
 
-    create(file_name)
+    return_value = create(file_name)
+    assert "name" in return_value
+    assert "path" in return_value
     assert len(os.listdir(os.path.join(initialized_migration, DEFAULT_MIGRATION_DIR))) == 2
 
     file = [
