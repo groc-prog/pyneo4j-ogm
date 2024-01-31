@@ -14,7 +14,7 @@ from pyneo4j_ogm.migrations.utils.defaults import (
     DEFAULT_CONFIG_URI,
     DEFAULT_MIGRATION_DIR,
 )
-from tests.fixtures.cwd import tmp_cwd
+from tests.fixtures.migrations import tmp_cwd
 
 
 def test_init(tmp_cwd):

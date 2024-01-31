@@ -10,7 +10,7 @@ DEFAULT_MIGRATION_DIR = "migrations"
 DEFAULT_CONFIG_FILENAME: str = "migration-config.json"
 DEFAULT_CONFIG_LABELS: List[str] = ["migration"]
 MIGRATION_TEMPLATE = '''"""
-Auto-generated migration file 20240115234453_something_awesome.py. Do not
+Auto-generated migration file {name}. Do not
 rename this file or the `up` and `down` functions.
 """
 from pyneo4j_ogm import Pyneo4jClient
