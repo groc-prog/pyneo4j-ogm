@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from pyneo4j_ogm.core.base import hooks
 from pyneo4j_ogm.core.node import NodeModel
+from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from tests.fixtures.db_setup import Developer
 
@@ -84,8 +85,24 @@ def test_model_settings():
     assert ModelSettingsTest.model_settings().post_hooks == {"test_hook": [hook_func, hook_func]}
 
 
-def test_modified_properties():
+def test_node_model_modified_properties():
     class ModifiedPropertiesTest(NodeModel):
+        a: str = "a"
+        b: int = 1
+        c: bool = True
+
+    setattr(ModifiedPropertiesTest, "_client", None)
+
+    model = ModifiedPropertiesTest()
+    model.a = "modified"
+    assert model.modified_properties == {"a"}
+
+    model.b = 2
+    assert model.modified_properties == {"a", "b"}
+
+
+def test_relationship_model_modified_properties():
+    class ModifiedPropertiesTest(RelationshipModel):
         a: str = "a"
         b: int = 1
         c: bool = True
