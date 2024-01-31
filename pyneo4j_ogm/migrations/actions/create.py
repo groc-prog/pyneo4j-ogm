@@ -4,7 +4,7 @@ Handles the creation of new migration files.
 import os
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional
 
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.migrations.utils.defaults import MIGRATION_TEMPLATE
@@ -29,7 +29,7 @@ def normalize_filename(name: str) -> str:
     return re.sub(r"\W+", "_", converted)
 
 
-def create(name: str, config_path: Optional[str] = None) -> None:
+def create(name: str, config_path: Optional[str] = None) -> Dict[str, str]:
     """
     Creates a new, empty migration file.
 
@@ -52,3 +52,4 @@ def create(name: str, config_path: Optional[str] = None) -> None:
         f.write(MIGRATION_TEMPLATE.format(name=filename))
 
     logger.info("Created new migration file %s at %s", filename, filepath)
+    return {"name": filename, "path": filepath}
