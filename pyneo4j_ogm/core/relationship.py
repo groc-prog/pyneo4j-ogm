@@ -92,7 +92,17 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._db_properties = get_model_dump(self)
+        self._db_properties = get_model_dump(
+            self,
+            exclude={
+                "element_id",
+                "id",
+                "start_node_element_id",
+                "start_node_id",
+                "end_node_element_id",
+                "end_node_id",
+            },
+        )
 
     def __init_subclass__(cls) -> None:
         if not isinstance(getattr(cls, "_settings", None), RelationshipModelSettings):
@@ -162,7 +172,17 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             raise UnexpectedEmptyResult()
 
         logger.debug("Resetting modified properties")
-        self._db_properties = get_model_dump(self, exclude={"element_id", "id"})
+        self._db_properties = get_model_dump(
+            self,
+            exclude={
+                "element_id",
+                "id",
+                "start_node_element_id",
+                "start_node_id",
+                "end_node_element_id",
+                "end_node_id",
+            },
+        )
         logger.debug("Updated relationship %s", self)
 
     @hooks
@@ -346,7 +366,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if relationship has to be parsed to instance")
         if isinstance(results[0][0], Relationship):
-            return cls._inflate(relationship=results[0][0])
+            return cls._inflate(graph_entity=results[0][0])
         elif isinstance(results[0][0], list):
             return results[0][0][0]
 
@@ -414,7 +434,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                     continue
 
                 if isinstance(result, Relationship):
-                    instances.append(cls._inflate(relationship=result))
+                    instances.append(cls._inflate(graph_entity=result))
                 elif isinstance(result, list):
                     instances.extend(result)
                 else:
@@ -489,7 +509,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                 raise NoResultFound(filters)
             return None
 
-        old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(relationship=results[0][0])
+        old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(graph_entity=results[0][0])
 
         # Update existing instance with values and save
         logger.debug("Creating instance copy with new values %s", update)
@@ -587,7 +607,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
                     continue
 
                 if isinstance(results[0][0], Relationship):
-                    old_instances.append(cls._inflate(relationship=results[0][0]))
+                    old_instances.append(cls._inflate(graph_entity=results[0][0]))
                 else:
                     old_instances.append(result)
 
@@ -794,7 +814,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         return super()._deflate(deflated=deflated)
 
     @classmethod
-    def _inflate(cls: Type[T], relationship: Relationship) -> T:
+    def _inflate(cls: Type[T], graph_entity: Relationship) -> T:
         """
         Inflates a relationship instance into a instance of the current model.
 
@@ -807,15 +827,15 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns:
             T: A new instance of the current model with the properties from the relationship instance.
         """
-        inflated = super()._inflate(graph_entity=relationship)
+        inflated = super()._inflate(graph_entity=graph_entity)
         instance = cls(**inflated)
 
-        setattr(instance, "_element_id", relationship.element_id)
-        setattr(instance, "_id", relationship.id)
-        setattr(instance, "_start_node_element_id", cast(Node, relationship.start_node).element_id)
-        setattr(instance, "_start_node_id", cast(Node, relationship.start_node).id)
-        setattr(instance, "_end_node_element_id", cast(Node, relationship.end_node).element_id)
-        setattr(instance, "_end_node_id", cast(Node, relationship.end_node).id)
+        setattr(instance, "_element_id", graph_entity.element_id)
+        setattr(instance, "_id", graph_entity.id)
+        setattr(instance, "_start_node_element_id", cast(Node, graph_entity.start_node).element_id)
+        setattr(instance, "_start_node_id", cast(Node, graph_entity.start_node).id)
+        setattr(instance, "_end_node_element_id", cast(Node, graph_entity.end_node).element_id)
+        setattr(instance, "_end_node_id", cast(Node, graph_entity.end_node).id)
 
         return instance
 

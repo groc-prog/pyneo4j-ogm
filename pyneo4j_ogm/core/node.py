@@ -426,7 +426,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     # and need to add it to the instances list
                     if index == 0 and target_node_model is not None and instance_element_id not in instance_map:
                         instances.append(
-                            target_node_model._inflate(node=result) if isinstance(result, Node) else result
+                            target_node_model._inflate(graph_entity=result) if isinstance(result, Node) else result
                         )
                         instance_map[instance_element_id] = set()
 
@@ -562,7 +562,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             return None
 
         if isinstance(results[0][0], Node):
-            instance = cls._inflate(node=results[0][0])
+            instance = cls._inflate(graph_entity=results[0][0])
         elif isinstance(results[0][0], list):
             instance = results[0][0][0]
         else:
@@ -671,7 +671,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     # If we are at the first result, we are dealing with a instance of the target node model
                     # and need to add it to the instances list
                     if index == 0 and instance_element_id not in instance_map:
-                        instances.append(cls._inflate(node=result) if isinstance(result, Node) else result)
+                        instances.append(cls._inflate(graph_entity=result) if isinstance(result, Node) else result)
 
                         instance_map[instance_element_id] = set()
 
@@ -706,7 +706,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             for result_list in results:
                 for result in result_list:
                     if isinstance(result, Node):
-                        instances.append(cls._inflate(node=result))
+                        instances.append(cls._inflate(graph_entity=result))
                     elif isinstance(result, list):
                         instances.extend(result)
                     elif isinstance(result, cls):
@@ -773,7 +773,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 raise NoResultFound(filters)
             return None
 
-        old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(node=results[0][0])
+        old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(graph_entity=results[0][0])
 
         # Update existing instance with values and save
         logger.debug("Creating instance copy with new values %s", update)
@@ -854,7 +854,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 if result is None:
                     continue
 
-                old_instances.append(cls._inflate(node=result) if isinstance(result, Node) else result)
+                old_instances.append(cls._inflate(graph_entity=result) if isinstance(result, Node) else result)
 
         logger.debug("Checking if query returned a result")
         if len(old_instances) == 0:
@@ -1045,7 +1045,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         return super()._deflate(deflated=deflated)
 
     @classmethod
-    def _inflate(cls: Type[T], node: Node) -> T:
+    def _inflate(cls: Type[T], graph_entity: Node) -> T:
         """
         Inflates a node instance into a instance of the current model.
 
@@ -1058,14 +1058,14 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Returns:
             T: A new instance of the current model with the properties from the node instance.
         """
-        inflated = super()._inflate(graph_entity=node)
+        inflated = super()._inflate(graph_entity=graph_entity)
 
         for relationship_property in cls._relationship_properties:
             inflated.pop(relationship_property, None)
 
         instance = cls(**inflated)
-        setattr(instance, "_element_id", node._element_id)
-        setattr(instance, "_id", node._id)
+        setattr(instance, "_element_id", graph_entity._element_id)
+        setattr(instance, "_id", graph_entity._id)
         return instance
 
     @classmethod
