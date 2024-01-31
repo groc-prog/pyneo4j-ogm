@@ -498,7 +498,7 @@ class RelationshipProperty(Generic[T, U]):
                 if isinstance(result, cast(Type[U], self._relationship_model)):
                     relationships.append(result)
                 elif isinstance(result, Relationship):
-                    relationships.append(cast(Type[U], self._relationship_model)._inflate(relationship=result))
+                    relationships.append(cast(Type[U], self._relationship_model)._inflate(graph_entity=result))
                 elif projection_query != "":
                     relationships.extend(result)
 
@@ -962,7 +962,7 @@ class RelationshipProperty(Generic[T, U]):
 
                     if index == 0:
                         instances.append(
-                            cast(Type[T], self._target_model)._inflate(node=result)
+                            cast(Type[T], self._target_model)._inflate(graph_entity=result)
                             if isinstance(result, Node)
                             else result
                         )
@@ -984,7 +984,7 @@ class RelationshipProperty(Generic[T, U]):
                         continue
 
                     if isinstance(result, Node):
-                        instances.append(cast(Type[T], self._target_model)._inflate(node=result))
+                        instances.append(cast(Type[T], self._target_model)._inflate(graph_entity=result))
                     elif isinstance(result, list):
                         instances.extend(result)
                     else:

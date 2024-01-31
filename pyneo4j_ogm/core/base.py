@@ -243,6 +243,34 @@ class ModelBase(BaseModel, Generic[V]):
             ):
                 serialized["element_id"] = self.element_id
 
+            if (
+                hasattr(self, "_start_node_element_id")
+                and not (cast(RelationshipModel, self).start_node_element_id is None and info.exclude_none)
+                and not (info.exclude is not None and "start_node_element_id" in info.exclude)
+            ):
+                serialized["start_node_element_id"] = cast(RelationshipModel, self)._start_node_element_id
+
+            if (
+                hasattr(self, "_start_node_id")
+                and not (cast(RelationshipModel, self).start_node_id is None and info.exclude_none)
+                and not (info.exclude is not None and "start_node_id" in info.exclude)
+            ):
+                serialized["start_node_id"] = cast(RelationshipModel, self)._start_node_id
+
+            if (
+                hasattr(self, "_end_node_element_id")
+                and not (cast(RelationshipModel, self).end_node_element_id is None and info.exclude_none)
+                and not (info.exclude is not None and "end_node_element_id" in info.exclude)
+            ):
+                serialized["end_node_element_id"] = cast(RelationshipModel, self)._end_node_element_id
+
+            if (
+                hasattr(self, "_end_node_id")
+                and not (cast(RelationshipModel, self).end_node_id is None and info.exclude_none)
+                and not (info.exclude is not None and "end_node_id" in info.exclude)
+            ):
+                serialized["end_node_id"] = cast(RelationshipModel, self)._end_node_id
+
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
                     if field_name in serialized:
@@ -380,6 +408,33 @@ class ModelBase(BaseModel, Generic[V]):
                 exclude is not None and "element_id" in exclude
             ):
                 base_dict["element_id"] = self._element_id
+            if (
+                hasattr(self, "_start_node_element_id")
+                and not (cast(RelationshipModel, self).start_node_element_id is None and exclude_none)
+                and not (exclude is not None and "start_node_element_id" in exclude)
+            ):
+                base_dict["start_node_element_id"] = cast(RelationshipModel, self)._start_node_element_id
+
+            if (
+                hasattr(self, "_start_node_id")
+                and not (cast(RelationshipModel, self).start_node_id is None and exclude_none)
+                and not (exclude is not None and "start_node_id" in exclude)
+            ):
+                base_dict["start_node_id"] = cast(RelationshipModel, self)._start_node_id
+
+            if (
+                hasattr(self, "_end_node_element_id")
+                and not (cast(RelationshipModel, self).end_node_element_id is None and exclude_none)
+                and not (exclude is not None and "end_node_element_id" in exclude)
+            ):
+                base_dict["end_node_element_id"] = cast(RelationshipModel, self)._end_node_element_id
+
+            if (
+                hasattr(self, "_end_node_id")
+                and not (cast(RelationshipModel, self).end_node_id is None and exclude_none)
+                and not (exclude is not None and "end_node_id" in exclude)
+            ):
+                base_dict["end_node_id"] = cast(RelationshipModel, self)._end_node_id
 
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
@@ -434,6 +489,33 @@ class ModelBase(BaseModel, Generic[V]):
                 exclude is not None and "element_id" in exclude
             ):
                 modified_json["element_id"] = self._element_id
+            if (
+                hasattr(self, "_start_node_element_id")
+                and not (cast(RelationshipModel, self).start_node_element_id is None and exclude_none)
+                and not (exclude is not None and "start_node_element_id" in exclude)
+            ):
+                modified_json["start_node_element_id"] = cast(RelationshipModel, self)._start_node_element_id
+
+            if (
+                hasattr(self, "_start_node_id")
+                and not (cast(RelationshipModel, self).start_node_id is None and exclude_none)
+                and not (exclude is not None and "start_node_id" in exclude)
+            ):
+                modified_json["start_node_id"] = cast(RelationshipModel, self)._start_node_id
+
+            if (
+                hasattr(self, "_end_node_element_id")
+                and not (cast(RelationshipModel, self).end_node_element_id is None and exclude_none)
+                and not (exclude is not None and "end_node_element_id" in exclude)
+            ):
+                modified_json["end_node_element_id"] = cast(RelationshipModel, self)._end_node_element_id
+
+            if (
+                hasattr(self, "_end_node_id")
+                and not (cast(RelationshipModel, self).end_node_id is None and exclude_none)
+                and not (exclude is not None and "end_node_id" in exclude)
+            ):
+                modified_json["end_node_id"] = cast(RelationshipModel, self)._end_node_id
 
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
