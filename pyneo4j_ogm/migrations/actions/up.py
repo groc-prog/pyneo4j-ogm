@@ -2,31 +2,31 @@
 Applies the defined number of migrations in correct order.
 """
 
-from argparse import Namespace
 from copy import deepcopy
-from typing import cast
+from typing import Optional
 
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.migrations.client import MigrationClient
-from pyneo4j_ogm.migrations.models import AppliedMigration
-from pyneo4j_ogm.migrations.utils.config import get_migration_config
+from pyneo4j_ogm.migrations.utils.client import MigrationClient
 from pyneo4j_ogm.migrations.utils.migration import (
     RunMigrationCount,
     check_initialized,
+    get_migration_config,
     get_migration_files,
 )
+from pyneo4j_ogm.migrations.utils.models import AppliedMigration
 
 
-@check_initialized
-async def up(namespace: Namespace):
+async def up(up_count: RunMigrationCount = "all", config_path: Optional[str] = None) -> None:
     """
     Applies the defined number of migrations in correct order.
 
     Args:
-        namespace(Namespace): Namespace object from argparse
+        up_count(int, optional): Number of migrations to apply. Can be "all" to apply all migrations.
+            Defaults to "all".
+        config_path(str, optional): Path to the migration config file. Defaults to None.
     """
-    up_count = cast(RunMigrationCount, namespace.up_count)
-    config = get_migration_config(namespace)
+    check_initialized(config_path=config_path)
+    config = get_migration_config(config_path)
 
     logger.info("Applying next %s migrations", up_count)
     async with MigrationClient(config) as migration_client:

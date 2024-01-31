@@ -2,31 +2,31 @@
 Reverts the defined number of migrations in correct order.
 """
 
-from argparse import Namespace
 from copy import deepcopy
 from datetime import datetime
-from typing import cast
+from typing import Optional
 
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.migrations.client import MigrationClient
-from pyneo4j_ogm.migrations.utils.config import get_migration_config
+from pyneo4j_ogm.migrations.utils.client import MigrationClient
 from pyneo4j_ogm.migrations.utils.migration import (
     RunMigrationCount,
     check_initialized,
+    get_migration_config,
     get_migration_files,
 )
 
 
-@check_initialized
-async def down(namespace: Namespace):
+async def down(down_count: RunMigrationCount = "all", config_path: Optional[str] = None) -> None:
     """
     Reverts the defined number of migrations in correct order.
 
     Args:
-        namespace(Namespace): Namespace object from argparse
+        down_count(int, optional): Number of migrations to revert. Can be "all" to revert all migrations.
+            Defaults to "all".
+        config_path(str, optional): Path to the migration config file. Defaults to None.
     """
-    down_count = cast(RunMigrationCount, namespace.down_count)
-    config = get_migration_config(namespace)
+    check_initialized(config_path=config_path)
+    config = get_migration_config(config_path)
 
     logger.info("Rolling back %s migrations", down_count)
     async with MigrationClient(config) as migration_client:

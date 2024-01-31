@@ -8,7 +8,7 @@ from asyncio import iscoroutinefunction
 from typing import Any
 
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.migrations.actions import create, down, init, status, up
+from pyneo4j_ogm.migrations import create, down, init, status, up
 from pyneo4j_ogm.migrations.utils.migration import RunMigrationCount
 
 
@@ -38,14 +38,12 @@ def cli() -> None:
     init_parser.add_argument(
         "--migration-dir",
         help="Path to the directory where the migrations will be stored",
-        default="migrations",
         dest="migration_dir",
         required=False,
     )
     init_parser.add_argument(
         "--uri",
         help="URI used to connect to the database",
-        default="bolt://localhost:7687",
         required=False,
     )
     init_parser.set_defaults(func=init)
@@ -53,22 +51,16 @@ def cli() -> None:
     # Parser for `create` command
     create_parser = subparsers.add_parser("create", help="Creates a new migration file")
     create_parser.add_argument("name", help="Name of the migration")
-    create_parser.add_argument(
-        "-c", "--config", help="Path to a config file", dest="config_path", default=None, required=False
-    )
+    create_parser.add_argument("-c", "--config", help="Path to a config file", dest="config_path", required=False)
     create_parser.set_defaults(func=create)
 
     # Parser for `up` command
     up_parser = subparsers.add_parser("up", help="Applies the defined number of migrations")
+    up_parser.add_argument("-c", "--config", help="Path to a config file", dest="config_path", required=False)
     up_parser.add_argument(
-        "-c", "--config", help="Path to a config file", dest="config_path", default=None, required=False
-    )
-    up_parser.add_argument(
-        "-n",
-        "--number",
+        "--up-count",
         help="Number of migrations to apply. Can either be a integer or 'all'. Omit to apply all pending migrations",
         type=parse_migration_count,
-        default="all",
         dest="up_count",
         required=False,
     )
@@ -76,26 +68,20 @@ def cli() -> None:
 
     # Parser for `down` command
     down_parser = subparsers.add_parser("down", help="Rollbacks the defined number of migrations")
+    down_parser.add_argument("-c", "--config", help="Path to a config file", dest="config_path", required=False)
     down_parser.add_argument(
-        "-c", "--config", help="Path to a config file", dest="config_path", default=None, required=False
-    )
-    down_parser.add_argument(
-        "-n",
-        "--number",
+        "--down-count",
         dest="down_count",
         help="""Number of migrations to rollback. Can either be a integer or 'all'.
         If omitted, rolls back the last migration""",
         type=parse_migration_count,
-        default=1,
         required=False,
     )
     down_parser.set_defaults(func=down)
 
     # Parser for `status` command
     status_parser = subparsers.add_parser("status", help="Shows the status of all migrations")
-    status_parser.add_argument(
-        "-c", "--config", help="Path to a config file", dest="config_path", default=None, required=False
-    )
+    status_parser.add_argument("-c", "--config", help="Path to a config file", dest="config_path", required=False)
     status_parser.set_defaults(func=status)
 
     args = parser.parse_args()
@@ -103,11 +89,11 @@ def cli() -> None:
     if args.command:
         try:
             if iscoroutinefunction(args.func):
-                asyncio.run(args.func(args))
+                asyncio.run(args.func(vars(args)))
             else:
-                args.func(args)
+                args.func(vars(args))
         except Exception as exc:
-            logger.error("Critical error while running %s command: %s", args.func.__name__, exc)
+            logger.error("%s failed: %s", args.func.__name__, exc)
             sys.exit()
     else:
         parser.print_help()

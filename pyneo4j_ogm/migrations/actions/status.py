@@ -1,16 +1,18 @@
 """
 Shows which migrations have been run or are pending.
 """
-from argparse import Namespace
 from datetime import datetime
 from typing import List, Optional, TypedDict
 
 from tabulate import tabulate
 
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.migrations.client import MigrationClient
-from pyneo4j_ogm.migrations.utils.config import get_migration_config
-from pyneo4j_ogm.migrations.utils.migration import get_migration_files
+from pyneo4j_ogm.migrations.utils.client import MigrationClient
+from pyneo4j_ogm.migrations.utils.migration import (
+    check_initialized,
+    get_migration_config,
+    get_migration_files,
+)
 
 
 class MigrationState(TypedDict):
@@ -18,16 +20,18 @@ class MigrationState(TypedDict):
     applied_at: Optional[str]
 
 
-async def status(namespace: Namespace):
+async def status(config_path: Optional[str] = None) -> None:
     """
     Visualize the status of all migrations.
 
     Args:
-        namespace(Namespace): Namespace object from argparse
+        config_path(str, optional): Path to the migration config file. Defaults to None.
     """
+    check_initialized(config_path=config_path)
+
     logger.info("Checking status for migrations")
     migrations: List[List[str]] = []
-    config = get_migration_config(namespace)
+    config = get_migration_config(config_path)
 
     async with MigrationClient(config) as client:
         migration_files = get_migration_files(config.migration_dir)

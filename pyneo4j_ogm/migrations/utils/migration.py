@@ -1,53 +1,37 @@
 """
-Constants and utilities for checking if the migrations directory has been initialized.
+Utilities for checking if the migrations directory has been initialized.
 """
 
 import importlib.util
+import json
 import os
-from asyncio import iscoroutinefunction
-from functools import wraps
-from typing import Any, Callable, Dict, TypedDict, Union
+from typing import Callable, Dict, Optional, TypedDict, Union
 
 from typing_extensions import Literal
 
 from pyneo4j_ogm.exceptions import MigrationNotInitialized
 from pyneo4j_ogm.logger import logger
-from pyneo4j_ogm.migrations.models import CONFIG_FILENAME
+from pyneo4j_ogm.migrations.utils.defaults import DEFAULT_CONFIG_FILENAME
+from pyneo4j_ogm.migrations.utils.models import MigrationConfig
 
 RunMigrationCount = Union[int, Literal["all"]]
 MigrationFile = TypedDict("MigrationFile", {"up": Callable, "down": Callable, "name": str})
 
 
-def check_initialized(func: Callable) -> Callable:
+def check_initialized(config_path: Optional[str]) -> None:
     """
     Checks if the migrations directory has been initialized.
 
     Args:
-        func(Callable): Function to wrap
-
-    Returns:
-        Callable: Wrapped function
+        config_path(str, optional): Path to the migration config file. Defaults to None.
     """
-
     logger.debug("Checking if migrations directory and config have been initialized")
-    if iscoroutinefunction(func):
-
-        @wraps(func)
-        async def async_wrapped(*args: Any, **kwargs: Any) -> Any:
-            if not os.path.exists(CONFIG_FILENAME):
-                raise MigrationNotInitialized
-            return await func(*args, **kwargs)
-
-        return async_wrapped
+    if config_path is not None:
+        if not os.path.exists(config_path):
+            raise MigrationNotInitialized
     else:
-
-        @wraps(func)
-        def sync_wrapped(*args: Any, **kwargs: Any) -> Any:
-            if not os.path.exists(CONFIG_FILENAME):
-                raise MigrationNotInitialized
-            return func(*args, **kwargs)
-
-        return sync_wrapped
+        if not os.path.exists(DEFAULT_CONFIG_FILENAME):
+            raise MigrationNotInitialized
 
 
 def get_migration_files(directory: str) -> Dict[str, MigrationFile]:
@@ -86,3 +70,31 @@ def get_migration_files(directory: str) -> Dict[str, MigrationFile]:
                 }
 
     return migrations
+
+
+def get_migration_config(config_path: Optional[str]) -> MigrationConfig:
+    """
+    Returns the migration configuration.
+
+    Args:
+        config_path(str, optional): Path to the migration config file.
+
+    Raises:
+        MigrationNotInitialized: If the migration directory has not been initialized.
+
+    Returns:
+        MigrationConfig: Migration configuration
+    """
+    logger.debug("Attempting to load migration config")
+
+    if config_path is None:
+        config_path = os.path.join(os.getcwd(), DEFAULT_CONFIG_FILENAME)
+    else:
+        config_path = os.path.abspath(config_path)
+
+    if not os.path.exists(config_path):
+        raise MigrationNotInitialized
+
+    logger.debug("Loading migration config from %s", config_path)
+    with open(config_path, "r", encoding="utf-8") as f:
+        return MigrationConfig(**json.load(f))

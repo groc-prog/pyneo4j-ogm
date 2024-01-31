@@ -5,8 +5,7 @@ Utility for Pyneo4jClient used in migrations.
 from typing import Any
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
-from pyneo4j_ogm.migrations.models import Migration
-from pyneo4j_ogm.migrations.utils.config import MigrationConfig
+from pyneo4j_ogm.migrations.utils.models import Migration, MigrationConfig
 from pyneo4j_ogm.queries.types import QueryOptionsOrder
 
 

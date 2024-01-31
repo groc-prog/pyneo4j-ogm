@@ -7,35 +7,16 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from pyneo4j_ogm.core.node import NodeModel
+from pyneo4j_ogm.migrations.utils.defaults import (
+    DEFAULT_CONFIG_LABELS,
+    INVALID_NEO4J_OPTIONS,
+)
 from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2
 
 if IS_PYDANTIC_V2:
     from pydantic import field_validator
 else:
     from pydantic import validator
-
-INVALID_NEO4J_OPTIONS = ["resolver", "trusted_certificates", "ssl_context", "bookmark_manager"]
-CONFIG_FILENAME: str = "migration-config.json"
-MIGRATION_TEMPLATE = '''"""
-Auto-generated migration file 20240115234453_something_awesome.py. Do not
-rename this file or the `up` and `down` functions.
-"""
-from pyneo4j_ogm import Pyneo4jClient
-
-
-async def up(client: Pyneo4jClient) -> None:
-    """
-    Write your `UP migration` here.
-    """
-    pass
-
-
-async def down(client: Pyneo4jClient) -> None:
-    """
-    Write your `DOWN migration` here.
-    """
-    pass
-'''
 
 
 class Neo4jDatabaseConfig(BaseModel):
@@ -44,8 +25,8 @@ class Neo4jDatabaseConfig(BaseModel):
     """
 
     uri: str
-    options: Optional[Dict[str, Any]] = None
-    node_labels: List[str] = ["migration"]
+    options: Optional[Dict[str, Any]] = {}
+    node_labels: List[str] = DEFAULT_CONFIG_LABELS
 
     if IS_PYDANTIC_V2:
 
