@@ -1,19 +1,14 @@
 # pylint: disable=unused-argument, unused-import, redefined-outer-name, protected-access, missing-module-docstring, missing-class-docstring
 # pyright: reportGeneralTypeIssues=false
 
-import json
 import os
 
 import pytest
-from pydantic import ValidationError
 
 from pyneo4j_ogm.exceptions import MigrationNotInitialized
 from pyneo4j_ogm.migrations import create
 from pyneo4j_ogm.migrations.actions.create import normalize_filename
 from pyneo4j_ogm.migrations.utils.defaults import (
-    DEFAULT_CONFIG_FILENAME,
-    DEFAULT_CONFIG_LABELS,
-    DEFAULT_CONFIG_URI,
     DEFAULT_MIGRATION_DIR,
     MIGRATION_TEMPLATE,
 )
