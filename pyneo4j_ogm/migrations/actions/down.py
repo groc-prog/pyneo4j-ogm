@@ -55,7 +55,7 @@ async def down(down_count: RunMigrationCount = "all", config_path: Optional[str]
                 if migration.name != current_migration["name"]
             ]
 
-        migration_node.last_applied = (
+        migration_node.updated_at = (
             migration_node.applied_migrations[-1].applied_at
             if len(migration_node.applied_migrations) > 0
             else datetime.timestamp(datetime.now())

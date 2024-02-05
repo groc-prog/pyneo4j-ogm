@@ -49,5 +49,5 @@ async def up(up_count: RunMigrationCount = "all", config_path: Optional[str] = N
             migration_files.pop(current_migration_identifier)
             migration_node.applied_migrations.append(AppliedMigration(name=current_migration["name"]))
 
-        migration_node.last_applied = migration_node.applied_migrations[-1].applied_at
+        migration_node.updated_at = migration_node.applied_migrations[-1].applied_at
         await migration_node.update()

@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Optional, TypedDict
 
 from tabulate import tabulate
+from typing_extensions import Literal
 
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.migrations.utils.client import MigrationClient
@@ -21,7 +22,13 @@ class MigrationState(TypedDict):
     applied_at: Optional[str]
 
 
-async def status(config_path: Optional[str] = None) -> None:
+class MigrationStatus(TypedDict):
+    name: str
+    applied_at: Optional[float]
+    status: Literal["APPLIED", "PENDING"]
+
+
+async def status(config_path: Optional[str] = None) -> List[MigrationStatus]:
     """
     Visualize the status of all migrations.
 
@@ -32,6 +39,7 @@ async def status(config_path: Optional[str] = None) -> None:
 
     logger.info("Checking status for migrations")
     migrations: List[List[str]] = []
+    migration_status: List[MigrationStatus] = []
     config = get_migration_config(config_path)
 
     async with MigrationClient(config) as client:
@@ -42,6 +50,7 @@ async def status(config_path: Optional[str] = None) -> None:
     for _, migration_file in migration_files.items():
         if migration_node is None:
             migrations.append([migration_file["name"], "PENDING"])
+            migration_status.append({"name": migration_file["name"], "applied_at": None, "status": "PENDING"})
         else:
             migration = next(
                 (
@@ -54,6 +63,7 @@ async def status(config_path: Optional[str] = None) -> None:
 
             if migration is None:
                 migrations.append([migration_file["name"], "PENDING"])
+                migration_status.append({"name": migration_file["name"], "applied_at": None, "status": "PENDING"})
             else:
                 migrations.append(
                     [
@@ -61,7 +71,19 @@ async def status(config_path: Optional[str] = None) -> None:
                         datetime.fromtimestamp(migration.applied_at).strftime("%Y-%m-%d %H:%M:%S"),
                     ]
                 )
+                migration_status.append(
+                    {
+                        "name": migration_file["name"],
+                        "applied_at": migration.applied_at,
+                        "status": "APPLIED",
+                    }
+                )
 
     logger.debug("Sorting %s migrations by applied_at timestamp and name", len(migrations))
     migrations.sort(key=lambda migration: (migration[1], migration[0]))
     print(tabulate(migrations, headers=["Migration", "Applied at"], tablefmt="fancy_grid"))
+
+    migration_status.sort(
+        key=lambda migration: (migration["applied_at"] is None, migration["applied_at"], migration["name"])
+    )
+    return migration_status

@@ -85,7 +85,7 @@ class MigrationClient:
                 new migration node will be created and returned.
         """
         migration = await Migration.find_many(
-            options={"limit": 1, "sort": "last_applied", "order": QueryOptionsOrder.DESCENDING}
+            options={"limit": 1, "sort": "updated_at", "order": QueryOptionsOrder.DESCENDING}
         )
 
         if len(migration) > 0 and isinstance(migration[0], Migration):

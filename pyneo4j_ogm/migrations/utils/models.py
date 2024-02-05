@@ -126,7 +126,7 @@ class Migration(NodeModel):
     """
 
     applied_migrations: List[AppliedMigration] = []
-    last_applied: Optional[float] = Field(default=None)
+    updated_at: Optional[float] = Field(default=None)
 
     @property
     def get_applied_migration_identifiers(self) -> List[str]:
