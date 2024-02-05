@@ -20,7 +20,7 @@ class MigrationState(TypedDict):
     applied_at: Optional[str]
 
 
-async def status(config_path: Optional[str] = None) -> None:
+async def status(config_path: Optional[str] = None, **_) -> None:
     """
     Visualize the status of all migrations.
 

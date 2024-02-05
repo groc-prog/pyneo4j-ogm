@@ -16,7 +16,7 @@ from pyneo4j_ogm.migrations.utils.migration import (
 )
 
 
-async def down(down_count: RunMigrationCount = "all", config_path: Optional[str] = None) -> None:
+async def down(down_count: RunMigrationCount = "all", config_path: Optional[str] = None, **_) -> None:
     """
     Reverts the defined number of migrations in correct order.
 

@@ -7,13 +7,14 @@ import os
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.migrations.utils.defaults import (
     DEFAULT_CONFIG_FILENAME,
+    DEFAULT_CONFIG_URI,
     DEFAULT_MIGRATION_DIR,
 )
 from pyneo4j_ogm.migrations.utils.models import MigrationConfig, Neo4jDatabaseConfig
 from pyneo4j_ogm.pydantic_utils import get_model_dump_json
 
 
-def init(migration_dir: str = DEFAULT_MIGRATION_DIR, uri: str = "bolt://localhost:7687") -> None:
+def init(migration_dir: str = DEFAULT_MIGRATION_DIR, uri: str = DEFAULT_CONFIG_URI, **_) -> None:
     """
     Initializes the migrations directory.
 

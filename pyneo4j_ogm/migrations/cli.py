@@ -89,9 +89,9 @@ def cli() -> None:
     if args.command:
         try:
             if iscoroutinefunction(args.func):
-                asyncio.run(args.func(vars(args)))
+                asyncio.run(args.func(**vars(args)))
             else:
-                args.func(vars(args))
+                args.func(**vars(args))
         except Exception as exc:
             logger.error("%s failed: %s", args.func.__name__, exc)
             sys.exit()

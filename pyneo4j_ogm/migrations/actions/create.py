@@ -14,7 +14,7 @@ from pyneo4j_ogm.migrations.utils.migration import (
 )
 
 
-def normalize_filename(name: str) -> str:
+def normalize_filename(name: str, **_) -> str:
     """
     Converts a file name to snake case.
 
