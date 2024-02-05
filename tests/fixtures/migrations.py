@@ -97,6 +97,13 @@ async def insert_migration_nodes_and_files(session_: AsyncSession, migration_dir
         with open(os.path.join(migration_dir_path, f"{migration_file_name}.py"), "w", encoding="utf-8") as f:
             f.write(MIGRATION_FILE_TEMPLATE.format(name=migration_file_node_name))
 
+        if migration_file_name in [applied_migration["name"] for applied_migration in APPLIED_MIGRATIONS]:
+            result = await session_.run(
+                "CREATE (n:Node {name: $name})",
+                {"name": migration_file_node_name},
+            )
+            await result.consume()
+
 
 @pytest.fixture
 def tmp_cwd(tmp_path):

@@ -15,6 +15,7 @@ from tests.fixtures.migrations import (
     CUSTOM_CONFIG_FILENAME,
     LAST_APPLIED,
     MIGRATION_FILE_NAMES,
+    MIGRATION_FILE_NODE_NAMES,
     initialized_migration,
     initialized_migration_with_custom_path,
     insert_migrations,
@@ -38,6 +39,14 @@ async def test_up(tmp_cwd, insert_migrations, session):
     assert len(applied_migrations) == 2
     assert applied_migrations[1]["name"] == MIGRATION_FILE_NAMES[1]
 
+    result = await session.run("MATCH (n:Node) WHERE n.name IN $names RETURN n", {"names": MIGRATION_FILE_NODE_NAMES})
+    query_results = await result.values()
+    await result.consume()
+
+    assert len(query_results) == 2
+    assert query_results[0][0]["name"] in ["Alice", "Bob"]
+    assert query_results[1][0]["name"] in ["Alice", "Bob"]
+
 
 async def test_up_count_all(tmp_cwd, insert_migrations, session):
     await up("all")
@@ -55,6 +64,12 @@ async def test_up_count_all(tmp_cwd, insert_migrations, session):
 
     for index, migration_name in enumerate(MIGRATION_FILE_NAMES):
         assert applied_migrations[index]["name"] == migration_name
+
+    result = await session.run("MATCH (n:Node) WHERE n.name IN $names RETURN n", {"names": MIGRATION_FILE_NODE_NAMES})
+    query_results = await result.values()
+    await result.consume()
+
+    assert len(query_results) == 4
 
 
 async def test_fails_if_not_initialized(tmp_cwd):
@@ -76,3 +91,11 @@ async def test_with_custom_path(tmp_cwd, insert_migrations_with_custom_path, ses
     assert query_results[0][0]["last_applied"] != LAST_APPLIED
     assert len(applied_migrations) == 2
     assert applied_migrations[1]["name"] == MIGRATION_FILE_NAMES[1]
+
+    result = await session.run("MATCH (n:Node) WHERE n.name IN $names RETURN n", {"names": MIGRATION_FILE_NODE_NAMES})
+    query_results = await result.values()
+    await result.consume()
+
+    assert len(query_results) == 2
+    assert query_results[0][0]["name"] in ["Alice", "Bob"]
+    assert query_results[1][0]["name"] in ["Alice", "Bob"]
