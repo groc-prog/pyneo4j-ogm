@@ -25,8 +25,9 @@ MIGRATION_FILE_NAMES = [
     "20240205190146-mig-two",
     "20240205190149-mig-three",
     "20240205190152-mig-four",
+    "20240205190156-mig-five",
 ]
-MIGRATION_FILE_NODE_NAMES = ["Bob", "Alice", "Charlie", "David"]
+MIGRATION_FILE_NODE_NAMES = ["Bob", "Alice", "Charlie", "David", "Cooper"]
 MIGRATION_FILE_TEMPLATE = """
 from pyneo4j_ogm.core.client import Pyneo4jClient
 
@@ -48,9 +49,10 @@ async def down(client: Pyneo4jClient) -> None:
 CUSTOM_MIGRATION_DIR = "my_migrations"
 CUSTOM_CONFIG_FILENAME = "config.json"
 
-LAST_APPLIED = 1707158029.012881
+LAST_APPLIED = 1707158029.012884
 APPLIED_MIGRATIONS = [
     {"name": "20240205190143-mig-one", "applied_at": 1707158029.012881},
+    {"name": "20240205190146-mig-two", "applied_at": 1707158029.012884},
 ]
 
 
@@ -82,14 +84,14 @@ async def insert_migration_nodes_and_files(session_: AsyncSession, migration_dir
             LiteralString,
             f"""
         CREATE (m:{':'.join(DEFAULT_CONFIG_LABELS)} {{
-            last_applied: $last_applied,
+            updated_at: $updated_at,
             applied_migrations: $applied_migrations
         }})
         """,
         ),
         {
             "applied_migrations": [json.dumps(migration) for migration in APPLIED_MIGRATIONS],
-            "last_applied": LAST_APPLIED,
+            "updated_at": LAST_APPLIED,
         },
     )
 
