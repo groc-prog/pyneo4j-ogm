@@ -1,3 +1,5 @@
+# pylint: disable=missing-module-docstring
+
 from .actions.create import create
 from .actions.down import down
 from .actions.init import init
