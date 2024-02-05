@@ -1,6 +1,7 @@
 """
 Shows which migrations have been run or are pending.
 """
+
 from datetime import datetime
 from typing import List, Optional, TypedDict
 
@@ -20,7 +21,7 @@ class MigrationState(TypedDict):
     applied_at: Optional[str]
 
 
-async def status(config_path: Optional[str] = None, **_) -> None:
+async def status(config_path: Optional[str] = None) -> None:
     """
     Visualize the status of all migrations.
 

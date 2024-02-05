@@ -1,22 +1,95 @@
 """
 Pydantic validation models for configuration file and migration node.
 """
+
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+from typing_extensions import Literal
 
 from pyneo4j_ogm.core.node import NodeModel
-from pyneo4j_ogm.migrations.utils.defaults import (
-    DEFAULT_CONFIG_LABELS,
-    INVALID_NEO4J_OPTIONS,
-)
+from pyneo4j_ogm.migrations.utils.defaults import DEFAULT_CONFIG_LABELS
 from pyneo4j_ogm.pydantic_utils import IS_PYDANTIC_V2
 
 if IS_PYDANTIC_V2:
-    from pydantic import field_validator
+    from pydantic import model_validator
 else:
-    from pydantic import validator
+    from pydantic import root_validator
+
+Scheme = Literal["basic", "kerberos", "bearer", "custom"]
+AuthKeys = Literal[
+    "username",
+    "password",
+    "base64_encoded_ticket",
+    "base64_encoded_token",
+    "principal",
+    "credentials",
+    "realm",
+    "scheme",
+    "parameters",
+]
+
+
+class Neo4jDatabaseConfigOptions(BaseModel):
+    """
+    Neo4j database options. All options accepted by the official Neo4j driver are allowed in addition to the
+    defined ones.
+    """
+
+    scheme: Optional[Scheme] = Field(default=None)
+    auth: Optional[
+        Dict[
+            AuthKeys,
+            Any,
+        ]
+    ] = Field(default=None)
+
+    if IS_PYDANTIC_V2:
+
+        @model_validator(mode="after")  # type: ignore
+        def _validate_scheme_params(cls, values: "Neo4jDatabaseConfigOptions") -> Any:  # type: ignore
+            if values.scheme is not None:
+                if values.auth is None:
+                    raise ValueError("Missing parameters for defined auth scheme")
+
+                match values.scheme:
+                    case "basic":
+                        if "username" not in values.auth or "password" not in values.auth:
+                            raise ValueError("Basic scheme requires username and password")
+                    case "kerberos":
+                        if "base64_encoded_ticket" not in values.auth:
+                            raise ValueError("Kerberos scheme requires base64_encoded_ticket")
+                    case "bearer":
+                        if "base64_encoded_token" not in values.auth:
+                            raise ValueError("Bearer scheme requires base64_encoded_token")
+
+            return values
+
+        model_config = {"extra": "allow"}
+    else:
+
+        @root_validator  # type: ignore
+        def _validate_scheme_params(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+            if values["scheme"] is not None:
+                if values["auth"] is None:
+                    raise ValueError("Missing parameters for defined auth scheme")
+
+                match values["scheme"]:
+                    case "basic":
+                        if "username" not in values["auth"] or "password" not in values["auth"]:
+                            raise ValueError("Basic scheme requires username")
+                    case "kerberos":
+                        if "base64_encoded_ticket" not in values["auth"]:
+                            raise ValueError("Kerberos scheme requires base64_encoded_ticket")
+                    case "bearer":
+                        if "base64_encoded_token" not in values["auth"]:
+                            raise ValueError("Bearer scheme requires base64_encoded_token")
+
+            return values
+
+        class Config:
+            extra = "allow"
 
 
 class Neo4jDatabaseConfig(BaseModel):
@@ -25,38 +98,8 @@ class Neo4jDatabaseConfig(BaseModel):
     """
 
     uri: str
-    options: Optional[Dict[str, Any]] = {}
+    options: Optional[Neo4jDatabaseConfigOptions] = Neo4jDatabaseConfigOptions()
     node_labels: List[str] = DEFAULT_CONFIG_LABELS
-
-    if IS_PYDANTIC_V2:
-
-        @field_validator("options")  # type: ignore
-        def _serialize_options(cls, options: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:  # type: ignore
-            if options is None:
-                return options
-
-            for invalid_option in INVALID_NEO4J_OPTIONS:
-                options.pop(invalid_option, None)
-
-            if "auth" in options and isinstance(options["auth"], list):
-                options["auth"] = tuple(options["auth"])
-
-            return options
-
-    else:
-
-        @validator("options", pre=True)  # type: ignore
-        def _serialize_options(cls, options: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-            if options is None:
-                return options
-
-            for invalid_option in INVALID_NEO4J_OPTIONS:
-                options.pop(invalid_option, None)
-
-            if "auth" in options and isinstance(options["auth"], list):
-                options["auth"] = tuple(options["auth"])
-
-            return options
 
 
 class MigrationConfig(BaseModel):

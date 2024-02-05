@@ -1,6 +1,7 @@
 """
 Handles the creation of new migration files.
 """
+
 import os
 import re
 from datetime import datetime
@@ -14,7 +15,7 @@ from pyneo4j_ogm.migrations.utils.migration import (
 )
 
 
-def normalize_filename(name: str, **_) -> str:
+def normalize_filename(name: str) -> str:
     """
     Converts a file name to snake case.
 

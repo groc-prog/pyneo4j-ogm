@@ -16,7 +16,7 @@ from pyneo4j_ogm.migrations.utils.migration import (
 from pyneo4j_ogm.migrations.utils.models import AppliedMigration
 
 
-async def up(up_count: RunMigrationCount = "all", config_path: Optional[str] = None, **_) -> None:
+async def up(up_count: RunMigrationCount = "all", config_path: Optional[str] = None) -> None:
     """
     Applies the defined number of migrations in correct order.
 

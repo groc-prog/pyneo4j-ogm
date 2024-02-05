@@ -4,7 +4,6 @@ Constants for default values.
 
 from typing import List
 
-INVALID_NEO4J_OPTIONS = ["resolver", "trusted_certificates", "ssl_context", "bookmark_manager"]
 DEFAULT_CONFIG_URI = "bolt://localhost:7687"
 DEFAULT_MIGRATION_DIR = "migrations"
 DEFAULT_CONFIG_FILENAME: str = "migration-config.json"

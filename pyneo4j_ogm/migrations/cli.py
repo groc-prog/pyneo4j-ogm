@@ -1,6 +1,7 @@
 """
 Entry point for the CLI. It parses the arguments and calls the corresponding function.
 """
+
 import asyncio
 import sys
 from argparse import ArgumentParser, ArgumentTypeError
@@ -10,6 +11,8 @@ from typing import Any
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.migrations import create, down, init, status, up
 from pyneo4j_ogm.migrations.utils.migration import RunMigrationCount
+
+IGNORED_KEYS = ["command", "func"]
 
 
 def parse_migration_count(arg: Any) -> RunMigrationCount:
@@ -87,11 +90,13 @@ def cli() -> None:
     args = parser.parse_args()
 
     if args.command:
+        arguments = {key: value for key, value in vars(args).items() if key not in IGNORED_KEYS and value is not None}
+
         try:
             if iscoroutinefunction(args.func):
-                asyncio.run(args.func(**vars(args)))
+                asyncio.run(args.func(**arguments))
             else:
-                args.func(**vars(args))
+                args.func(**arguments)
         except Exception as exc:
             logger.error("%s failed: %s", args.func.__name__, exc)
             sys.exit()

@@ -2,10 +2,13 @@
 Utility for Pyneo4jClient used in migrations.
 """
 
-from typing import Any
+from typing import Any, Dict, Optional, cast
+
+from neo4j import Auth, basic_auth, bearer_auth, custom_auth, kerberos_auth
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.migrations.utils.models import Migration, MigrationConfig
+from pyneo4j_ogm.pydantic_utils import get_model_dump
 from pyneo4j_ogm.queries.types import QueryOptionsOrder
 
 
@@ -22,9 +25,50 @@ class MigrationClient:
         self.config = config
 
     async def __aenter__(self):
+        auth: Optional[Auth] = None
         Migration._settings.labels = set(self.config.neo4j.node_labels)
 
-        await self.client.connect(uri=self.config.neo4j.uri, **self.config.neo4j.options or {})
+        if self.config.neo4j.options is not None and self.config.neo4j.options.scheme is not None:
+            match self.config.neo4j.options.scheme:
+                case "basic":
+                    auth = basic_auth(
+                        user=cast(Dict[str, Any], self.config.neo4j.options.auth)["username"],
+                        password=cast(Dict[str, Any], self.config.neo4j.options.auth)["password"],
+                    )
+                case "kerberos":
+                    auth = kerberos_auth(
+                        base64_encoded_ticket=cast(Dict[str, Any], self.config.neo4j.options.auth)[
+                            "base64_encoded_ticket"
+                        ]
+                    )
+                case "bearer":
+                    auth = bearer_auth(
+                        base64_encoded_token=cast(Dict[str, Any], self.config.neo4j.options.auth)[
+                            "base64_encoded_token"
+                        ]
+                    )
+                case _:
+                    auth = custom_auth(
+                        principal=cast(Dict[str, Any], self.config.neo4j.options.auth)["principal"],
+                        credentials=cast(Dict[str, Any], self.config.neo4j.options.auth)["credentials"],
+                        realm=cast(Dict[str, Any], self.config.neo4j.options.auth)["realm"],
+                        scheme=cast(Dict[str, Any], self.config.neo4j.options.auth)["scheme"],
+                        **(
+                            cast(Dict[str, Any], self.config.neo4j.options.auth)["parameters"]
+                            if "parameters" in cast(Dict[str, Any], self.config.neo4j.options.auth)
+                            else {}
+                        ),
+                    )
+
+        await self.client.connect(
+            uri=self.config.neo4j.uri,
+            auth=auth,
+            **(
+                get_model_dump(self.config.neo4j.options, exclude={"scheme", "auth"})
+                if self.config.neo4j.options is not None
+                else {}
+            ),
+        )
         await self.client.register_models([Migration])
 
         return self

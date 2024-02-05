@@ -1,6 +1,7 @@
 """
 Handles the initialization of the migrations directory.
 """
+
 import json
 import os
 
@@ -14,7 +15,7 @@ from pyneo4j_ogm.migrations.utils.models import MigrationConfig, Neo4jDatabaseCo
 from pyneo4j_ogm.pydantic_utils import get_model_dump_json
 
 
-def init(migration_dir: str = DEFAULT_MIGRATION_DIR, uri: str = DEFAULT_CONFIG_URI, **_) -> None:
+def init(migration_dir: str = DEFAULT_MIGRATION_DIR, uri: str = DEFAULT_CONFIG_URI) -> None:
     """
     Initializes the migrations directory.
 
