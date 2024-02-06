@@ -2,11 +2,148 @@
 
 
 
+## v0.5.0 (2024-02-06)
+
+### Chore
+
+* chore: linter ([`2eb2352`](https://github.com/groc-prog/pyneo4j-ogm/commit/2eb2352615d576a8bff0bb33d59f8543f377c430))
+
+* chore: add coverage to task and remove from settings ([`46649a7`](https://github.com/groc-prog/pyneo4j-ogm/commit/46649a7853e205349b6c8c153d620ff860a48e4b))
+
+* chore: pylint/pyright ([`69d565b`](https://github.com/groc-prog/pyneo4j-ogm/commit/69d565b0071ced82096d56e2b8fd44b47c5bd5dd))
+
+* chore: pylint/pyright ([`ef2a086`](https://github.com/groc-prog/pyneo4j-ogm/commit/ef2a08692b108a3c2179b2e88f4dbae2462f8e77))
+
+* chore: pylint/pyright ([`c0359c4`](https://github.com/groc-prog/pyneo4j-ogm/commit/c0359c470b0d68810ac8287ad71c6a5d6a4601d0))
+
+* chore: add dist to ignored files ([`eec102c`](https://github.com/groc-prog/pyneo4j-ogm/commit/eec102c534b479843841040460c161e3a95863c0))
+
+### Ci
+
+* ci: update ci to only run if source files change ([`8349f10`](https://github.com/groc-prog/pyneo4j-ogm/commit/8349f103fe19a562ecb5afe8fd397fb978f69167))
+
+* ci: fix test coverage to only include source files ([`7b095cc`](https://github.com/groc-prog/pyneo4j-ogm/commit/7b095ccb23e834d28fadcea3323c48647614c68d))
+
+### Documentation
+
+* docs: update documentation ([`87b21af`](https://github.com/groc-prog/pyneo4j-ogm/commit/87b21af4232e916a716b5336e24e5791db0fb75c))
+
+* docs: update docs ([`892e67d`](https://github.com/groc-prog/pyneo4j-ogm/commit/892e67d9fbe2291b5464afcafb82f3ee6094a841))
+
+* docs: update docs ([`ee5fced`](https://github.com/groc-prog/pyneo4j-ogm/commit/ee5fcedaf1be408db0b025ed6d4bd0888c549c1d))
+
+### Feature
+
+* feat: add down command ([`593dcc5`](https://github.com/groc-prog/pyneo4j-ogm/commit/593dcc5789e29505708dd460d5d1eaeec574b87f))
+
+* feat: add up action in cli ([`102df70`](https://github.com/groc-prog/pyneo4j-ogm/commit/102df70db6f743df9bdde51eccf99454a27e1210))
+
+* feat: status command for displaying state of migrations ([`4e4ba14`](https://github.com/groc-prog/pyneo4j-ogm/commit/4e4ba14d3ea95d17142767419c021837776bfd86))
+
+* feat: add support for storage of deeply nested lists ([`1b5afc9`](https://github.com/groc-prog/pyneo4j-ogm/commit/1b5afc925f71439eb1e9e216d7aa55652e455aeb))
+
+### Fix
+
+* fix: correctly pass arguments ([`9d1fce5`](https://github.com/groc-prog/pyneo4j-ogm/commit/9d1fce5e57821cbbec52f2eea87c8a4a5f69f55f))
+
+* fix: return created file name and path from create action ([`3965d23`](https://github.com/groc-prog/pyneo4j-ogm/commit/3965d2300470360fdcba1392dc7dacafc92bb4ee))
+
+* fix: add missing __init__ file for migrations ([`f1e196b`](https://github.com/groc-prog/pyneo4j-ogm/commit/f1e196bf017998677fd5a5531e0fb37885ec63c5))
+
+* fix: add start/end node element_id/id to relationship serialization ([`986ebc6`](https://github.com/groc-prog/pyneo4j-ogm/commit/986ebc65a676579ffdfa784866cf4892a782b84a))
+
+* fix: rename _inflate parameter, fix element_id and id being included in modified_properties ([`e1672bd`](https://github.com/groc-prog/pyneo4j-ogm/commit/e1672bd88aa585aa4c32faf3a35593f4c184ab4f))
+
+* fix: fix exception when using polymorphism with node models ([`54e266d`](https://github.com/groc-prog/pyneo4j-ogm/commit/54e266d8553c0083a19bc9af9914b329236602fc))
+
+* fix: fix inherited node model labels ([`c49186c`](https://github.com/groc-prog/pyneo4j-ogm/commit/c49186cbe222cb3fc357073e8fc10e05e67bcee0))
+
+* fix: fix node model labels when inheriting from another model ([`4d64c65`](https://github.com/groc-prog/pyneo4j-ogm/commit/4d64c65ee8bc1eca8999e70268fb610ef2436888))
+
+* fix: correctly inherit settings from parent class ([`9f94f0c`](https://github.com/groc-prog/pyneo4j-ogm/commit/9f94f0c58f919d06ec06f074e74a1e68c943356f))
+
+* fix: fix __iter__ method ([`f945a17`](https://github.com/groc-prog/pyneo4j-ogm/commit/f945a17103ce1123347ea7f118dac7b0c5e7c162))
+
+* fix: use new relationship property instance instead of mutating the base class ([`2d084d9`](https://github.com/groc-prog/pyneo4j-ogm/commit/2d084d96409d7970e56039e3e59495c859502a53))
+
+* fix: check if node needs to be parsed before doing so ([`a867228`](https://github.com/groc-prog/pyneo4j-ogm/commit/a86722839adfa276cd3071dfd0f23545cf4ef5ac))
+
+* fix: parsing exported models now also parses relationship property nodes to their models ([`28c5efe`](https://github.com/groc-prog/pyneo4j-ogm/commit/28c5efe2e0697a6b787fe08fba4b5e4bfefacd5c))
+
+* fix: remove unnecessary coroutine check ([`2e176a0`](https://github.com/groc-prog/pyneo4j-ogm/commit/2e176a085c861d80fb9d9c320e737daf062ac02f))
+
+* fix: make auto_fetch_nodes optional ([`3d1917c`](https://github.com/groc-prog/pyneo4j-ogm/commit/3d1917c2c7a67eba1258678b5821e8a88f04a203))
+
+* fix: correctly parse dict to model when model defines RelationshipProperty field ([`9766204`](https://github.com/groc-prog/pyneo4j-ogm/commit/9766204a19d3cf70bc1c9812588d9c11a1ad716b))
+
+* fix: fix index/constraint schema ([`cb4eeb7`](https://github.com/groc-prog/pyneo4j-ogm/commit/cb4eeb7fe97bfd5ed5b2b046816bb408846ada4a))
+
+### Refactor
+
+* refactor: rename applied_at to updated_at ([`63d585c`](https://github.com/groc-prog/pyneo4j-ogm/commit/63d585c3be3a7069c2fe7e0dec9120153b667150))
+
+* refactor: refactor way auth info is passed in config ([`5ab25f0`](https://github.com/groc-prog/pyneo4j-ogm/commit/5ab25f0b8790857d8a4cbd12409a23aecc8da90d))
+
+* refactor: move defaults to separate file, actions now accept arguments instead of namespace ([`fe59988`](https://github.com/groc-prog/pyneo4j-ogm/commit/fe59988dddc60f1f1f500aa7ec11ece2a1b6e1b0))
+
+* refactor: rename inner decorator function ([`16bc5b8`](https://github.com/groc-prog/pyneo4j-ogm/commit/16bc5b8d911674a9ae1a0fd9fc2d9f2c866cfd89))
+
+* refactor: move relationship property enums to relationship property file ([`47e0b6b`](https://github.com/groc-prog/pyneo4j-ogm/commit/47e0b6b7a9b2a8ea52b133b65cb9eda37d929c6c))
+
+* refactor: remove unnecessary if statements ([`f6f7bfe`](https://github.com/groc-prog/pyneo4j-ogm/commit/f6f7bfee206ea41158e40946eafa0e21518a3307))
+
+* refactor: adjust used logging level ([`e835c7a`](https://github.com/groc-prog/pyneo4j-ogm/commit/e835c7a45410c3df13e9b2eb3940df35eb25ee81))
+
+* refactor: change file structure and move enums/types/consts ([`a6851a2`](https://github.com/groc-prog/pyneo4j-ogm/commit/a6851a2ea7dc0b8dfda53270c8e795c194d72476))
+
+### Test
+
+* test: add tests for down and status action ([`0be32e5`](https://github.com/groc-prog/pyneo4j-ogm/commit/0be32e5d0bd9a5b97c7f3bb3b61e483cf8ba0853))
+
+* test: test if nodes have been created successfully inside db ([`8ff3ad6`](https://github.com/groc-prog/pyneo4j-ogm/commit/8ff3ad6c170e86f7c0a789a32f1cd4ff725e32dc))
+
+* test: add tests for create and up action ([`e9592b1`](https://github.com/groc-prog/pyneo4j-ogm/commit/e9592b1b2848498ee3724b60b4873d56298eb807))
+
+* test: update migration create test ([`0b64f3e`](https://github.com/groc-prog/pyneo4j-ogm/commit/0b64f3e623d791a7e9e119544fb4f54de23bfdcf))
+
+* test: test create action return value ([`3290c3a`](https://github.com/groc-prog/pyneo4j-ogm/commit/3290c3a223b087a4cebaaeeb9d952b35e638c767))
+
+* test: add tests for create action ([`85101b9`](https://github.com/groc-prog/pyneo4j-ogm/commit/85101b94a9af680b5ec99d6c158a809c0a9d707e))
+
+* test: add fixture for tmp file path with adjusted cwd, add tests for init action ([`8cfe0f8`](https://github.com/groc-prog/pyneo4j-ogm/commit/8cfe0f86b5c97bfd0581ca7a0210dd7a49f4a660))
+
+* test: test serialization ([`f66cae7`](https://github.com/groc-prog/pyneo4j-ogm/commit/f66cae7f16834e17fec9766ad1307b19c90b3121))
+
+* test: adjust tests for polymorphism support ([`d6e8937`](https://github.com/groc-prog/pyneo4j-ogm/commit/d6e8937e4562a9a12a73f7ce51ae7cd230d1979e))
+
+* test: expand test case to include tests for inherited labels ([`013ec2f`](https://github.com/groc-prog/pyneo4j-ogm/commit/013ec2f18b70c490fff11fa8d10fd04359147316))
+
+* test: add test cases for settings inheritance ([`89faa2c`](https://github.com/groc-prog/pyneo4j-ogm/commit/89faa2ce7ca3142b1fc511f9d9a1267c9fe53707))
+
+* test: add missing tests ([`ed7c4ba`](https://github.com/groc-prog/pyneo4j-ogm/commit/ed7c4baac087c4642c9653ce603207a35122dbf9))
+
+* test: test __iter__ method ([`d13043f`](https://github.com/groc-prog/pyneo4j-ogm/commit/d13043f4949d2d15c2443d1f15465be701d7a025))
+
+* test: update test s ([`194402c`](https://github.com/groc-prog/pyneo4j-ogm/commit/194402c8643ff6a884fd4cf7789902bb9624948b))
+
+* test: overhaul existing tests ([`61a3687`](https://github.com/groc-prog/pyneo4j-ogm/commit/61a36876353568c025e31ade6fc3c09f403a48f4))
+
+### Unknown
+
+* Merge remote-tracking branch &#39;origin/main&#39; into develop ([`aaac6c4`](https://github.com/groc-prog/pyneo4j-ogm/commit/aaac6c495f5400e920d8bf95d27a043324976fb2))
+
+* Merge branch &#39;feat/migration-cli&#39; into develop ([`1576459`](https://github.com/groc-prog/pyneo4j-ogm/commit/1576459ddc0e9bd557763232f55aade11cdf15de))
+
+
 ## v0.4.1 (2024-01-17)
 
 ### Chore
 
 * chore: add .venv to ignore files ([`c7aa6b8`](https://github.com/groc-prog/pyneo4j-ogm/commit/c7aa6b8e5480555a6f41617836c1c0dd7e2cbc27))
+
+* chore: add .venv to excluded files ([`a07fff4`](https://github.com/groc-prog/pyneo4j-ogm/commit/a07fff403ee7873fb2daab526b4f6991c0bd979e))
+
+* chore: add argparse ([`47ce9ab`](https://github.com/groc-prog/pyneo4j-ogm/commit/47ce9aba14825ab8bbfef4861cf61d95a5de460f))
 
 * chore: fixed linting/type checking ([`7021e47`](https://github.com/groc-prog/pyneo4j-ogm/commit/7021e477f1cd8b5fc30d746db65a45f4cada627b))
 
@@ -27,6 +164,20 @@
 * docs: add docs for running test suits ([`f24f62c`](https://github.com/groc-prog/pyneo4j-ogm/commit/f24f62cec2f8f4862b9c0beab6b57d09f4b4f9e4))
 
 * docs: fix format issues for tables ([`1f0fa1e`](https://github.com/groc-prog/pyneo4j-ogm/commit/1f0fa1e6aac0601c5a742a65c27696248c49c151))
+
+* docs: add supported pydantic versions ([`5f3c637`](https://github.com/groc-prog/pyneo4j-ogm/commit/5f3c637c740bd7caab3d6f74f8486ac89631690b))
+
+### Feature
+
+* feat: fix bugs with init and create, testing, partial implementation of status command ([`e069dbd`](https://github.com/groc-prog/pyneo4j-ogm/commit/e069dbdf80e3d3e0c1b460338b3b8d54311adde9))
+
+* feat: add create command ([`8d509d4`](https://github.com/groc-prog/pyneo4j-ogm/commit/8d509d4e64ea505609de262519072d32e937679d))
+
+* feat: add init command for initializing migrations ([`bd07e09`](https://github.com/groc-prog/pyneo4j-ogm/commit/bd07e09ea83acb9e716afe92764b724d50387f6b))
+
+* feat: setup argparse with cli options ([`5294f92`](https://github.com/groc-prog/pyneo4j-ogm/commit/5294f9293fbed479955db8e466a21836dc01aa15))
+
+* feat: basic migration dir structure ([`30c3c12`](https://github.com/groc-prog/pyneo4j-ogm/commit/30c3c126808990718ef6715fa0da77cd212d86a9))
 
 ### Fix
 
@@ -52,6 +203,8 @@
 
 ### Refactor
 
+* refactor: adjust exports from __init__.py ([`5026a93`](https://github.com/groc-prog/pyneo4j-ogm/commit/5026a93071d67c0101c638cf6f84ee31ae7ea213))
+
 * refactor: implement model_serializer instead of overwriting methods ([`cfd8e0e`](https://github.com/groc-prog/pyneo4j-ogm/commit/cfd8e0e61b2c220e4adb20ae6616310555ccc440))
 
 * refactor: adjust validation for custom pydantic types and dict/json conversion for pydantic v2 ([`5c4b61c`](https://github.com/groc-prog/pyneo4j-ogm/commit/5c4b61c6c9d8ead5b5fc58121b27e932c328d401))
@@ -73,6 +226,12 @@
 * test: add test case for schema generation ([`26a9d74`](https://github.com/groc-prog/pyneo4j-ogm/commit/26a9d74498212e96d585d0fdc4e3f4d08392c09a))
 
 * test: update test case for model serialization ([`e51be3c`](https://github.com/groc-prog/pyneo4j-ogm/commit/e51be3c49143cb8c913a01d27361d498c04b2fad))
+
+### Unknown
+
+* Merge branch &#39;develop&#39; into feat/migration-cli ([`9c61e18`](https://github.com/groc-prog/pyneo4j-ogm/commit/9c61e18acb98b0e092a268c58628327a9e63a541))
+
+* Merge branch &#39;develop&#39; into feat/migration-cli ([`35c62fd`](https://github.com/groc-prog/pyneo4j-ogm/commit/35c62fd418469dd02cc8a19ad6fbd5d730087d54))
 
 
 ## v0.4.0 (2023-12-13)
