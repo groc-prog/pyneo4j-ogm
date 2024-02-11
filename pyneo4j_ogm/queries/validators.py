@@ -8,7 +8,6 @@ Pydantic validators for query operators and filters.
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 from pydantic import BaseModel, Field, ValidationError
-from pydantic.class_validators import root_validator, validator
 
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import (
@@ -25,6 +24,8 @@ from pyneo4j_ogm.queries.types import (
 
 if IS_PYDANTIC_V2:
     from pydantic import field_validator, model_validator
+else:
+    from pydantic.class_validators import root_validator, validator
 
 
 def _normalize_fields(cls: Type[BaseModel], values: Any) -> Any:
@@ -394,7 +395,7 @@ class MultiHopFiltersModel(BaseModel):
     """
 
     min_hops_: Optional[int] = Field(alias="$minHops", ge=0, default=None)
-    max_hops_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops", ge=1, default="*")
+    max_hops_: Optional[Union[int, Literal["*"]]] = Field(alias="$maxHops", default="*")
     node_: MultiHopNodeModel = Field(alias="$node")
     relationships_: Optional[List[MultiHopRelationshipOperatorsModel]] = Field(alias="$relationships", default=None)
     direction_: Optional[RelationshipMatchDirection] = Field(
@@ -404,12 +405,24 @@ class MultiHopFiltersModel(BaseModel):
     if IS_PYDANTIC_V2:
         normalize_and_validate_fields = model_validator(mode="after")(_normalize_fields)
 
+        @field_validator("max_hops_")
+        def validate_max_hops_v2(cls, v: Any) -> Any:
+            if isinstance(v, int) and v <= 0:
+                raise ValueError("$maxHops must be greater than 0")
+            return v
+
         model_config = {
             "extra": "allow",
             "use_enum_values": True,
         }
     else:
         normalize_and_validate_fields = root_validator(allow_reuse=True)(_normalize_fields)
+
+        @validator("max_hops_")
+        def validate_max_hops_v1(cls, v: Any) -> Any:
+            if isinstance(v, int) and v <= 0:
+                raise ValueError("$maxHops must be greater than 0")
+            return v
 
         class Config:
             """
