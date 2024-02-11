@@ -111,6 +111,38 @@ def test_valid_multi_hop_filters(query_builder: QueryBuilder):
     assert query_builder.parameters == {"_n_0": ["Node"], "_n_1": "Jenny"}
 
 
+def test_valid_multi_hop_filters_with_min_hops(query_builder: QueryBuilder):
+    query_builder.multi_hop_filters({"$node": {"$labels": "Node", "name": "Jenny"}, "$minHops": 3})
+
+    assert query_builder.query["match"] == ", path = (n)-[r*3..]->(m)"
+    assert query_builder.query["where"] == "ALL(i IN labels(m) WHERE i IN $_n_0) AND m.name = $_n_1"
+    assert query_builder.parameters == {"_n_0": ["Node"], "_n_1": "Jenny"}
+
+
+def test_valid_multi_hop_filters_with_max_hops(query_builder: QueryBuilder):
+    query_builder.multi_hop_filters({"$node": {"$labels": "Node", "name": "Jenny"}, "$maxHops": 3})
+
+    assert query_builder.query["match"] == ", path = (n)-[r*..3]->(m)"
+    assert query_builder.query["where"] == "ALL(i IN labels(m) WHERE i IN $_n_0) AND m.name = $_n_1"
+    assert query_builder.parameters == {"_n_0": ["Node"], "_n_1": "Jenny"}
+
+
+def test_valid_multi_hop_filters_with_max_hops_special_char(query_builder: QueryBuilder):
+    query_builder.multi_hop_filters({"$node": {"$labels": "Node", "name": "Jenny"}, "$maxHops": "*"})
+
+    assert query_builder.query["match"] == ", path = (n)-[r*]->(m)"
+    assert query_builder.query["where"] == "ALL(i IN labels(m) WHERE i IN $_n_0) AND m.name = $_n_1"
+    assert query_builder.parameters == {"_n_0": ["Node"], "_n_1": "Jenny"}
+
+
+def test_valid_multi_hop_filters_with_min_and_max_hops(query_builder: QueryBuilder):
+    query_builder.multi_hop_filters({"$node": {"$labels": "Node", "name": "Jenny"}, "$minHops": 3, "$maxHops": 5})
+
+    assert query_builder.query["match"] == ", path = (n)-[r*3..5]->(m)"
+    assert query_builder.query["where"] == "ALL(i IN labels(m) WHERE i IN $_n_0) AND m.name = $_n_1"
+    assert query_builder.parameters == {"_n_0": ["Node"], "_n_1": "Jenny"}
+
+
 def test_valid_multi_hop_filters_with_ref(query_builder: QueryBuilder):
     query_builder.multi_hop_filters({"$node": {"$labels": "Node", "name": "Jenny"}}, start_ref="start", end_ref="end")
 
