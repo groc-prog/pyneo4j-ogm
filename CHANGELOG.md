@@ -2,6 +2,29 @@
 
 
 
+## v0.5.1 (2024-02-11)
+
+### Chore
+
+* chore: fix issue template ([`6af210d`](https://github.com/groc-prog/pyneo4j-ogm/commit/6af210d22be25ae1249096acaf6e7d82492d74d5))
+
+* chore: update issue template ([`f171eec`](https://github.com/groc-prog/pyneo4j-ogm/commit/f171eeccc4a15bf1fe5a801e92196274485305e7))
+
+* chore: update issue templates ([`43d3c38`](https://github.com/groc-prog/pyneo4j-ogm/commit/43d3c384a320042d8070f2ce4264ca2be1ccacdc))
+
+* chore: add config file for issue templates ([`990be8a`](https://github.com/groc-prog/pyneo4j-ogm/commit/990be8aea71707c33f9a26468946274109da43d7))
+
+* chore: add issue template ([`f1062e8`](https://github.com/groc-prog/pyneo4j-ogm/commit/f1062e8f905450bc4ef7b543b989f4366c588306))
+
+### Documentation
+
+* docs: update docs ([`98ff03c`](https://github.com/groc-prog/pyneo4j-ogm/commit/98ff03c81ff1130b41d163242fd68d830c17785c))
+
+### Fix
+
+* fix: fix validation error when passing &#34;*&#34; to $maxHops ([`960aa76`](https://github.com/groc-prog/pyneo4j-ogm/commit/960aa76148f782089d522826052aa491dc8f0072))
+
+
 ## v0.5.0 (2024-02-06)
 
 ### Chore
