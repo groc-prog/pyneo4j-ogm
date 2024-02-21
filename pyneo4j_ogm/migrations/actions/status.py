@@ -5,7 +5,6 @@ Shows which migrations have been run or are pending.
 from datetime import datetime
 from typing import List, Optional, TypedDict
 
-from tabulate import tabulate
 from typing_extensions import Literal
 
 from pyneo4j_ogm.logger import logger
@@ -26,6 +25,30 @@ class MigrationStatus(TypedDict):
     name: str
     applied_at: Optional[float]
     status: Literal["APPLIED", "PENDING"]
+
+
+def pretty_print(migrations: List[List[str]]) -> None:
+    """
+    Prints a pretty version of the migration status.
+
+    migrations(List[List[str]]): A list of migrations where the first item is the migration
+        name and the second item is the status.
+    """
+    max_length = max(len(str(item[0])) for item in migrations)
+    top_border_line = "┌" + "─" * (max_length + 2) + "┬" + "─" * 26 + "┐"
+    bottom_border_line = "└" + "─" * (max_length + 2) + "┴" + "─" * 26 + "┘"
+    header_line = "│ " + "Migration".ljust(max_length) + " │ " + "Applied At".ljust(24) + " │"
+    separator_line = "├" + "─" * (max_length + 2) + "┼" + "─" * 26 + "┤"
+
+    print(top_border_line)
+    print(header_line)
+    print(separator_line)
+
+    for migration in migrations:
+        row = "│ " + str(migration[0]).ljust(max_length) + " │ " + str(migration[1]).ljust(24) + " │"
+        print(row)
+
+    print(bottom_border_line)
 
 
 async def status(config_path: Optional[str] = None) -> List[MigrationStatus]:
@@ -81,7 +104,7 @@ async def status(config_path: Optional[str] = None) -> List[MigrationStatus]:
 
     logger.debug("Sorting %s migrations by applied_at timestamp and name", len(migrations))
     migrations.sort(key=lambda migration: (migration[1], migration[0]))
-    print(tabulate(migrations, headers=["Migration", "Applied at"], tablefmt="fancy_grid"))
+    pretty_print(migrations)
 
     migration_status.sort(
         key=lambda migration: (migration["applied_at"] is None, migration["applied_at"], migration["name"])
