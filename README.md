@@ -1,29 +1,29 @@
-# Pyneo4j-OGM
+# pyneo4j-ogm
 
 [![PyPI](https://img.shields.io/pypi/v/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
 [![PyPI - License](https://img.shields.io/pypi/l/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/pyneo4j-ogm?style=flat-square)](https://pypi.org/project/pyneo4j-ogm/)
 
-`pyneo4j-ogm` is a asynchronous `Object-Graph-Mapper` for [`Neo4j 5+`](https://neo4j.com/docs/) and [`Python 3.10+`](https://www.python.org/). It is inspired by [`beanie`](https://github.com/roman-right/beanie) and build on top of proven technologies like [`Pydantic 1.10+ and 2+`](https://docs.pydantic.dev/latest/) and the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html). It saves you from writing ever-repeating boilerplate queries and allows you to focus on the `stuff that actually matters`. It is designed to be simple and easy to use, but also flexible and powerful.
-
-## 🔥 Hot topics for the future
-
-You never know what the future might hold. But these things are happening for sure (not necessarily in this order):
-
-- [ ] Add documentation for migrations
-- [x] Improving the current test coverage
-- [ ] More/Better examples for simple and advanced use-cases
-- [ ] Complete documentation overhaul
+[`pyneo4j-ogm`](https://github.com/groc-prog/pyneo4j-ogm/tree/main) is a asynchronous `Object-Graph-Mapper` for [`Neo4j 5+`](https://neo4j.com/docs/) and [`Python 3.10+`](https://www.python.org/). It is inspired by [`beanie`](https://github.com/roman-right/beanie) and build on top of proven technologies like [`Pydantic 1.10+ and 2+`](https://docs.pydantic.dev/latest/) and the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html). It saves you from writing ever-repeating boilerplate queries and allows you to focus on the `stuff that actually matters`. It is designed to be simple and easy to use, but also flexible and powerful.
 
 ## 🎯 Features <a name="features"></a>
 
-- [x] **Simple and easy to use**: pyneo4j-ogm is designed to be `simple and easy to use`, while also providing a solid foundation for some more `advanced use-cases`.
-- [x] **Flexible and powerful**: pyneo4j-ogm is flexible and powerful. It allows you to do all sorts of things with your data, from `simple CRUD` operations to `complex queries`.
-- [x] **Fully asynchronous**: pyneo4j-ogm is `fully asynchronous` and uses the `Neo4j Python Driver` under the hood.
-- [x] **Supports Neo4j 5+**: pyneo4j-ogm supports `Neo4j 5+` and is tested against the latest version of Neo4j.
+[`pyneo4j-ogm`](https://github.com/groc-prog/pyneo4j-ogm/tree/main) has a lot to offer, including:
+
 - [x] **Fully typed**: pyneo4j-ogm is `fully typed` out of the box.
-- [x] **Powered by Pydantic**: pyneo4j-ogm is powered by `Pydantic` and uses it's powerful validation and serialization features under the hood.
+- [x] **Powerful validation**: Since we use Pydantic under the hood, you can use it's powerful validation and serialization features without any issues.
+- [x] **Focus on developer experience**: Designed to be simple to use, pyneo4j-ogm provides features for both simple queries and more `advanced use-cases` while keeping it's API as simple as possible.
+- [x] **Build-in migration tooling**: Shipped with simple, yet flexible migration tooling.
+- [x] **Fully asynchronous**: Completely asynchronous code, thanks to the `Neo4j Python Driver`.
+- [x] **Supports Neo4j 5+**: pyneo4j-ogm supports `Neo4j 5+` and is tested against the latest version of Neo4j.
+- [x] **Multi-version Pydantic support**: Both `Pydantic 1.10+` and `2+` fully supported.
+
+## 📣 Announcements
+
+Things to come in the future. Truly exiting stuff! If you have feature requests which you think might improve `pyneo4j-ogm`, feel free to open up a feature request.
+
+- [ ] Auto-generated migrations
 
 ## 📦 Installation <a name="installation"></a>
 
@@ -41,12 +41,14 @@ poetry add pyneo4j-ogm
 
 ## 🚀 Quickstart <a name="quickstart"></a>
 
-Before we can jump right in, we have to take care of some things:
+Before we can get going, we have to take care of some things:
 
-- We need to define our models which will represent our nodes and relationships.
-- We need to initialize a `Pyneo4jClient` instance that will be used to interact with the database.
+- We need to define our models, which will represent the nodes and relationships inside our database.
+- We need a database client, which will do the actual work for us.
 
-So let's start with the first one. We are going to define a few models that will represent our `nodes and relationships` inside the graph. For this example, we will look at `Developers` and their `Coffee` consumption:
+### Defining our data structures
+
+Since every developer has a coffee addiction one way or another, we are going to use `Coffee` and `Developers` for this guide. So let's start by defining what our data should look like:
 
 ```python
 from pyneo4j_ogm import (
@@ -63,7 +65,7 @@ from uuid import UUID, uuid4
 
 class Developer(NodeModel):
   """
-  This class represents a `Developer` node inside the graph. All interaction
+  This class represents a `Developer` node inside the graph. All interactions
   with nodes of this type will be handled by this class.
   """
   uid: WithOptions(UUID, unique=True) = Field(default_factory=uuid4)
@@ -110,7 +112,7 @@ class Consumed(RelationshipModel):
   Unlike the models above, this class represents a relationship between two
   nodes. In this case, it represents the relationship between the `Developer`
   and `Coffee` models. Like with node-models, the `Settings` class allows us to
-  define some settings for this relationship.
+  define some configuration for this relationship.
 
   Note that the relationship itself does not define it's start- and end-nodes,
   making it reusable for other models as well.
@@ -121,13 +123,15 @@ class Consumed(RelationshipModel):
     type = "CHUGGED"
 ```
 
-The models above are pretty straight forward. They are basically just `Pydantic` models with some sugar on top, though there are some special things to note:
+Until now everything seems pretty standard if you have worked with other ORM's before. But if you haven't, we are going to go over what happened above:
 
-- We are defining some model-specific settings inside the `Settings` class. These settings are used by `pyneo4j-ogm` to determine how to handle the model. For example, the `labels` setting of the `Coffee` model tells `pyneo4j-ogm` that this model should have the labels `Beverage` and `Hot` inside the graph. The `type` setting of the `Consumed` model tells `pyneo4j-ogm` that this relationship should have the type `CHUGGED` inside the graph.
-- We are defining a `post_hook` for the `coffee` relationship of the `Developer` model. This hook will be called whenever a `Coffee` node is connected to a `Developer` node via the `coffee` relationship-property.
-- We are defining a `uniqueness constraint` for the `uid` field of the `Developer` model. This will create a uniqueness constraint inside the graph for the `uid` field of the `Developer` model. This means that there can only be one `Developer` node with a specific `uid` inside the graph.
+- We defined 2 node models `Developer` and `Coffee`, and a relationship `Consumed`.
+- Some models define a special inner `Settings` class. This is used to customize the behavior of our models inside the graph. More on these settings can be found ['here'](#model-settings).
+- The `WithOptions` function has been used to define `constraints and indexes` (more about them [`here`](#manual-indexing-and-constraints)) on model properties.
 
-Now that we have our models defined, we can initialize a `Pyneo4jClient` instance that will be used to interact with the database. The client will handle most of the heavy lifting for us and our models, so let's initialize a new one and connect to the database:
+### Creating a database client
+
+In pyneo4j-ogm, the real work is done by a database client. One of these bad-boys can be created by initializing a `Pyneo4jClient` instance. But for models to work as expected, we have to let our client know that we want to use them like so:
 
 ```python
 from pyneo4j_ogm import Pyneo4jClient
@@ -135,6 +139,9 @@ from pyneo4j_ogm import Pyneo4jClient
 async def main():
   # We initialize a new `Pyneo4jClient` instance and connect to the database.
   client = Pyneo4jClient()
+
+  # Replace `<connection-uri-to-database>`, `<username>` and `<password>` with the
+  # actual values.
   await client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"))
 
   # To use our models for running queries later on, we have to register
@@ -145,7 +152,11 @@ async def main():
   await client.register_models([Developer, Coffee, Consumed])
 ```
 
-Now we are ready to do some fun stuff with our models! For the sake of this [`quickstart guide`](#quickstart) we are going to keep it nice and simple, since a full-blown example would become way to long. So let's create a new `Developer` and some `Coffee` and give our developer something to drink!
+### Interacting with the database
+
+Now the fun stuff begins! We are ready to interact with our database. For the sake of this [`quickstart guide`](#quickstart) we are going to keep it nice and simple, but this is just the surface of what pyneo4j-ogm has to offer.
+
+We are going to create a new `Developer` and some `Coffee` and give him something to drink:
 
 ```python
 # Imagine your models have been defined above...
@@ -165,9 +176,7 @@ async def main():
   await john.coffee.connect(cappuccino, {"liked": True}) # Will print `John chugged another one!`
 ```
 
-### Full quickstart example
-
-Now all you have to do is to start a Neo4j instance somewhere and get to work! We can put all of the steps together and end up with something like the code below:
+### Full example
 
 ```python
 import asyncio
@@ -272,9 +281,7 @@ async def main():
 asyncio.run(main())
 ```
 
-> **Note**: This script should run `as is`. You must change the `uri` and `auth` parameters in the `connect()` method call to match the one's you need and have a running Neo4j instance before starting the script.
-
-This just scratches the surface of what `pyneo4j-ogm` can do. If you want to learn more about the library, you can check out the full [`Documentation`](#documentation).
+And that's it! You should now see a `Developer` and a `Hot/Beverage` node, connected by a `CONSUMED` relationship. If you want to learn more about the library, you can check out the full [`Documentation`](#documentation).
 
 ## 📚 Documentation <a name="documentation"></a>
 
@@ -282,17 +289,20 @@ In the following we are going to take a closer look at the different parts of `p
 
 ### Table of contents
 
-- [Pyneo4j-OGM](#pyneo4j-ogm)
-  - [🔥 Hot topics for the future](#-hot-topics-for-the-future)
+- [pyneo4j-ogm](#pyneo4j-ogm)
   - [🎯 Features ](#-features-)
+  - [📣 Announcements](#-announcements)
   - [📦 Installation ](#-installation-)
   - [🚀 Quickstart ](#-quickstart-)
-    - [Full quickstart example](#full-quickstart-example)
+    - [Defining our data structures](#defining-our-data-structures)
+    - [Creating a database client](#creating-a-database-client)
+    - [Interacting with the database](#interacting-with-the-database)
+    - [Full example](#full-example)
   - [📚 Documentation ](#-documentation-)
     - [Table of contents](#table-of-contents)
     - [Basic concepts ](#basic-concepts-)
-      - [Pydantic and supported versions/features ](#pydantic-and-supported-versionsfeatures-)
-    - [Pyneo4jClient ](#pyneo4jclient-)
+    - [A note on Pydantic version support](#a-note-on-pydantic-version-support)
+    - [Database client](#database-client)
       - [Connecting to the database ](#connecting-to-the-database-)
       - [Closing an existing connection ](#closing-an-existing-connection-)
       - [Registering models ](#registering-models-)
@@ -373,14 +383,20 @@ In the following we are going to take a closer look at the different parts of `p
       - [Projections ](#projections--5)
       - [Query options ](#query-options--4)
       - [Auto-fetching relationship-properties ](#auto-fetching-relationship-properties-)
+    - [Migrations ](#migrations-)
+      - [Initializing migrations for your project ](#initializing-migrations-for-your-project-)
+      - [Creating a new migration ](#creating-a-new-migration-)
+      - [Running migrations ](#running-migrations-)
+      - [Listing migrations ](#listing-migrations-)
+      - [Programmatic usage ](#programmatic-usage-)
     - [Logging ](#logging-)
     - [Running the test suite ](#running-the-test-suite-)
 
 ### Basic concepts <a name="basic-concepts"></a>
 
-As you might have guessed by now, `pyneo4j-ogm` is a library that allows you to interact with a Neo4j database using Python. It is designed to make your life as simple as possible while also providing a solid foundation for some more advanced use-cases.
+As you might have guessed by now, `pyneo4j-ogm` is a library that allows you to interact with a Neo4j database using Python. It is designed to make your life as simple as possible, while still providing the most common operations and some more advanced features.
 
-The basic concept boils down to the following:
+But first, how does this even work!?! Well, the basic concept boils down to the following:
 
 - You define your models that represent your nodes and relationships inside the graph.
 - You use these models to do all sorts of things with your data.
@@ -389,15 +405,15 @@ Of course, there is a lot more to it than that, but this is the basic idea. So l
 
 > **Note:** All of the examples in this documentation assume that you have already connected to a database and registered your models with the client like shown in the [`quickstart guide`](#quickstart). The models used in the following examples will build upon the ones defined there. If you are new to [`Neo4j`](https://neo4j.com/docs/) or [`Cypher`](https://neo4j.com/docs/cypher-manual/current/) in general, you should get a basic understanding of how to use them before continuing.
 
-#### Pydantic and supported versions/features <a name="pydantic-supported-version-features"></a>
+### A note on Pydantic version support
 
-`pyneo4j-ogm` currently supports both [`Pydantic V1`](https://docs.pydantic.dev/1.10/) and the latest version of [`Pydantic V2`](https://docs.pydantic.dev/2.5/). Most of the core features are pretty well supported (meaning most model methods and schema generation) for V2 and V1.
+As of version [`v0.3.0`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/CHANGELOG.md#v030-2023-11-30), pyneo4j-ogm now supports both `Pydantic 1.10+ and 2+`. All core features of pydantic should work, meaning full support for model serialization, validation and schema generation.
 
-> **Note:** For schema generation to work with Pydantic V1, `Model.update_forward_refs() has to be called` in order for Pydantic to be able to generate the schemas for `RelationshipProperty` fields.
+Should you find any issues or run into any problems, feel free to open a issue!
 
-### Pyneo4jClient <a name="pyneo4jclient"></a>
+### Database client
 
-This is where all the magic happens! The `Pyneo4jClient` is the main entry point for interacting with the database. It handles all the heavy lifting for you and your models, so you can focus on the stuff that actually matters. Since it is the brains of the operation, we have to initialize it before we can do anything else.
+This is where the magic happens! The `Pyneo4jClient` is the main entry point for interacting with the database. It handles all the heavy lifting for you and your models. Because of this, we have to always have at least one client initialized before doing anything else.
 
 #### Connecting to the database <a name="connecting-to-the-database"></a>
 
@@ -409,8 +425,6 @@ Before you can run any queries, you have to connect to a database. This is done 
 - `*args`: Additional arguments that are passed directly to Neo4j's `AsyncDriver.driver()` method.
 - `**kwargs`: Additional keyword arguments that are passed directly to Neo4j's `AsyncDriver.driver()` method.
 
-The `connect()` method returns the client instance itself, so you can chain it right after the instantiation of the class. Here is an example of how to connect to a database:
-
 ```python
 from pyneo4j_ogm import Pyneo4jClient
 
@@ -421,11 +435,11 @@ await client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<p
 client = await Pyneo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
 ```
 
-After connecting the client, you will be able to run any cypher queries against the database. Should you try to run a query without connecting to a database first, you will get a `NotConnectedToDatabase` exception.
+After connecting the client, you will be able to run any cypher queries against the database. Should you try to run a query without connecting to a database first (it happens to the best of us), you will get a `NotConnectedToDatabase` exception.
 
 #### Closing an existing connection <a name="closing-an-existing-connection"></a>
 
-Once you are done working with a database and the client is no longer needed, you can close the connection to it by calling the `close()` method on the client instance. This will close the connection to the database and free up any resources used by the client. Remember to always close your connections when you are done with them, otherwise Santa won't bring you any presents!
+Connections can explicitly be closed by calling the `close()` method. This will close the connection to the database and free up any resources used by the client. Remember to always close your connections when you are done with them!
 
 ```python
 # Do some heavy-duty work...
@@ -434,11 +448,11 @@ Once you are done working with a database and the client is no longer needed, yo
 await client.close()
 ```
 
-Once you closed the client, it will be seen as `disconnected` and if you try to run any further queries with it, you will get a `NotConnectedToDatabase` exception.
+Once you closed the client, it will be seen as `disconnected` and if you try to run any further queries with it, you will get a `NotConnectedToDatabase` exception
 
 #### Registering models <a name="registering-models"></a>
 
-As mentioned before, the basic concept is to work with models which reflect the nodes and relationships inside the graph. In order to work with these models, you have to register them with the client. You can do this by calling the `register_models()` method on the client and passing in your models as a list. Let's take a look at an example:
+Models are a core feature of pyneo4j-ogm, and therefore you probably want to use some. But to work with them, they have to be registered with the client by calling the `register_models()` method and passing in your models as a list:
 
 ```python
 # Create a new client instance and connect ...
@@ -446,13 +460,15 @@ As mentioned before, the basic concept is to work with models which reflect the 
 await client.register_models([Developer, Coffee, Consumed])
 ```
 
-This is a crucial step, because if you don't register your models with the client, you won't be able to work with them in any way. Should you try to work with a model that has not been registered, you will get a `UnregisteredModel` exception. This exception also gets raised if a database model defines a relationship-property with other (unregistered) models as a target or relationship model and then runs a query with said relationship-property. For more information about relationship-properties, see the [`Relationship-properties`](#relationship-properties) section.
+This is a crucial step, because if you don't register your models with the client, you won't be able to work with them in any way. Should you try to work with a model that has not been registered, you will get a `UnregisteredModel` exception. This exception also gets raised if a database model defines a relationship-property with other (unregistered) models as a target or relationship model and then runs a query with said relationship-property.
 
 If you have defined any indexes or constraints on your models, they will be created automatically when registering them. You can prevent this behavior by passing `skip_constraints=True` or `skip_indexes=True` to the `connect()` method. If you do this, you will have to create the indexes and constraints yourself.
 
-If you don't register your models with the client, you will still be able to run cypher queries directly with the client, but you will `lose automatic model resolution` from queries. This means that, instead of resolved models, the raw Neo4j query results are returned.
+> **Note**: If you don't register your models with the client, you will still be able to run cypher queries directly with the client, but you will `lose automatic model resolution` from queries. This means that, instead of resolved models, the raw Neo4j query results are returned.
 
 #### Executing Cypher queries <a name="executing-cypher-queries"></a>
+
+Models aren't the only things capable of running queries. The client can also be used to run queries, with some additional functionality to make your life easier.
 
 Node- and RelationshipModels provide many methods for commonly used cypher queries, but sometimes you might want to execute a custom cypher with more complex logic. For this purpose, the client instance provides a `cypher()` method that allows you to execute custom cypher queries. The `cypher()` method takes three arguments:
 
@@ -479,7 +495,7 @@ print(meta)  # ["developer_name", "d.age"]
 
 #### Batching cypher queries <a name="batching-cypher-queries"></a>
 
-Since Neo4j is ACID compliant, it is possible to batch multiple cypher queries into a single transaction. This can be useful if you want to execute multiple queries at once and make sure that either all of them succeed or none of them do. The client provides a `batch()` method that allows you to batch multiple cypher queries into a single transaction. The `batch()` method has to be called with a asynchronous context manager like in the following example:
+We provide an easy way to batch multiple database queries together, regardless of whether you are using the client directly or via a model method. To do this you can use the `batch()` method, which has to be called with a asynchronous context manager like in the following example:
 
 ```python
 async with client.batch():
@@ -499,11 +515,11 @@ async with client.batch():
   coffee = await Coffee(flavour="Americano", milk=False, sugar=False).create()
 ```
 
-You can batch anything that runs a query, regardless of whether it is a raw cypher query, a model query or a relationship-property query. If any of the queries fail, the whole transaction will be rolled back and an exception will be raised.
+You can batch anything that runs a query, be that a model method, a custom query or a relationship-property method. If any of the queries fail, the whole transaction will be rolled back and an exception will be raised.
 
 #### Using bookmarks (Enterprise Edition only) <a name="using-bookmarks"></a>
 
-If you are using the Enterprise Edition of Neo4j, you can use bookmarks to keep track of the last transaction that has been committed. This allows you to resume a transaction after a failure or a restart of the database. The client provides a `last_bookmarks` property that allows you to get the bookmarks from the last session. These bookmarks can be used in combination with the `use_bookmarks()` method. Like the `batch()` method, the `use_bookmarks()` method has to be called with a context manager. All queries run inside the context manager will use the bookmarks passed to the `use_bookmarks()` method. Here is an example of how to use bookmarks:
+If you are using the Enterprise Edition of Neo4j, you can use bookmarks to keep track of the last transaction that has been committed. The client provides a `last_bookmarks` property that allows you to get the bookmarks from the last session. These bookmarks can be used in combination with the `use_bookmarks()` method. Like the `batch()` method, the `use_bookmarks()` method has to be called with a context manager. All queries run inside the context manager will use the bookmarks passed to the `use_bookmarks()` method. Here is an example of how to use bookmarks:
 
 ```python
 # Create a new node and get the bookmarks from the last session
@@ -530,9 +546,7 @@ with client.use_bookmarks(bookmarks=bookmarks):
 
 #### Manual indexing and constraints <a name="manual-indexing-and-constraints"></a>
 
-By default, the client will automatically create any indexes and constraints defined on models when registering them. If you want to disable this behavior, you can do so by passing the `skip_indexes` and `skip_constraints` arguments to the `connect()` method when connecting your client to a database.
-
-If you want to create custom indexes and constraints, or want to add additional indexes/constraints later on (which should probably be done on the models themselves), you can do so by calling the `create_lookup_index()`, `create_range_index`, `create_text_index`, `create_point_index` and `create_uniqueness_constraint()` methods on the client.
+Most of the time, the creation of indexes/constraints will be handled by the models themselves. But it can still be handy to have a simple way of creating new ones. This is where the `create_lookup_index()`, `create_range_index`, `create_text_index`, `create_point_index` and `create_uniqueness_constraint()` methods come in.
 
 First, let's take a look at how to create a custom index in the database. The `create_range_index`, `create_text_index` and `create_point_index` methods take a few arguments:
 
@@ -562,7 +576,7 @@ await client.create_uniqueness_constraint("developer_constraint", EntityType.NOD
 
 #### Client utilities <a name="client-utilities"></a>
 
-The database client also provides a few utility methods and properties that can be useful when writing automated scripts or tests. These methods are:
+The client also provides some additional utility methods, which mostly exist for convenience when writing tests or setting up environments:
 
 - `is_connected()`: Returns whether the client is currently connected to a database.
 - `drop_nodes()`: Drops all nodes from the database.
@@ -575,9 +589,7 @@ As shown in the [`quickstart guide`](#quickstart), models are the main building 
 
 A core mechanic of `pyneo4j-ogm` is serialization and deserialization of models. Every model method uses this mechanic under the hood to convert the models to and from the format used by the Neo4j driver.
 
-> **Note:** The serialization and deserialization of models is handled automatically by `pyneo4j-ogm` and you don't have to worry about it.
-
-This is necessary because the Neo4j driver can only handle certain data types, which means models with custom or complex data types have to be serialized before they can be saved to the database. Additionally, Neo4j itself does not support nested data structures. To combat this, nested dictionaries and Pydantic models are serialized to a JSON string before being saved to the database. But this causes some new issues, especially when trying to use dictionaries or Pydantic models as properties on a model. Since `pyneo4j-ogm` can't know whether a dictionary or Pydantic model is supposed to be serialized or not, it will just not accept lists with dictionaries or Pydantic models as properties on a model.
+This is necessary because the Neo4j driver can only handle certain data types, which means models with custom or complex data types have to be serialized before they can be saved to the database. Additionally, Neo4j itself does not support nested data structures. To combat this, nested dictionaries and Pydantic models are serialized to a JSON string before being saved to the database.
 
 Filters for nested properties are also not supported, since they are stored as strings inside the database. This means that you can't use filters on nested properties when running queries with models. If you want to use filters on nested properties, you will to run a complex regular expression query.
 
@@ -612,6 +624,8 @@ class Developer(NodeModel):
   age: WithOptions(int)
 ```
 
+There also is a special type of property called `RelationshipProperty`. This property can be used to define relationships between models. For more information about this property, see the [`Relationship-properties`](#relationship-properties) section.
+
 #### Reserved properties <a name="reserved-properties"></a>
 
 Node- and RelationshipModels have a few pre-defined properties which reflect the entity inside the graph and are used internally in queries. These properties are:
@@ -627,9 +641,11 @@ The `RelationshipModel` class has some additional properties:
 - `end_node_element_id`: The element id of the end node of the relationship.
 - `end_node_id`: The ID of the end node of the relationship.
 
+These properties are implemented as class properties and allow you to access the graph properties of you models.
+
 #### Configuration settings <a name="configuration-settings"></a>
 
- Both `NodeModel` and `RelationshipModel` provide a few properties that can be configured. In this section we are going to take a closer look at how to configure your models and what options are available to you.
+Both `NodeModel` and `RelationshipModel` provide a few properties that can be configured. In this section we are going to take a closer look at how to configure your models and what options are available to you.
 
 Model configuration is done by defining a inner `Settings` class inside the model itself. The properties of this class control how the model is handled by `pyneo4j-ogm`:
 
@@ -643,8 +659,6 @@ class Coffee(NodeModel):
     # This is the place where the magic happens!
 ```
 
-There also is a special type of property called `RelationshipProperty`. This property can be used to define relationships between models. For more information about this property, see the [`Relationship-properties`](#relationship-properties) section.
-
 ##### NodeModel configuration <a name="node-model-configuration"></a>
 
 The `Settings` class of a `NodeModel` provides the following properties:
@@ -656,8 +670,6 @@ The `Settings` class of a `NodeModel` provides the following properties:
 | `labels`           | **Set[str]** | A set of labels to use for the node. If no labels are defined, the name of the model will be used as the label. Defaults to the `model name split by it's words`.                                                                                                                                                                                                                            |
 | `auto_fetch_nodes` | **bool**     | Whether to automatically fetch nodes of defined relationship-properties when getting a model instance from the database. Auto-fetched nodes are available at the `instance.<relationship-property>.nodes` property. If no specific models are passed to a method when this setting is set to `True`, nodes from all defined relationship-properties are fetched. Defaults to `False`. |
 
-> **Note:** Hooks can be defined for all methods that interact with the database. When defining a hook for a method on a relationship-property, you have to pass a string in the format `<relationship-property>.<method>` as the key. For example, if you want to define a hook for the `connect()` method of a relationship-property named `coffee`, you would have to pass `coffee.connect` as the key.
-
 ##### RelationshipModel configuration <a name="relationship-model-configuration"></a>
 
 For RelationshipModels, the `labels` setting is not available, since relationships don't have labels in Neo4j. Instead, the `type` setting can be used to define the type of the relationship. If no type is defined, the name of the model name will be used as the type.
@@ -668,18 +680,20 @@ For RelationshipModels, the `labels` setting is not available, since relationshi
 | `post_hooks`          | **Dict[str, List[Callable]]** | Same as **pre_hooks**, but the hook functions are executed after the method they are registered for. Additionally, the result of the method is passed to the hook as the second argument. Defaults to `{}`.                                                                                                                              |
 | `type`       | **str** | The type of the relationship to use. If no type is defined, the model name will be used as the type. Defaults to the `model name in all uppercase`. |
 
+> **Note:** Hooks can be defined for all native methods that interact with the database. When defining a hook for a method on a relationship-property, you have to pass a string in the format `<relationship-property>.<method>` as the key. For example, if you want to define a hook for the `connect()` method of a relationship-property named `coffee`, you would have to pass `coffee.connect` as the key. This is true for both Node- and Relationship-models.
+
 #### Available methods <a name="model-available-methods"></a>
 
-Running cypher queries manually is nice, but code running them for you is even better. That's exactly what the model methods are for. They allow you to do all sorts of things with your models and the nodes and relationships they represent. In this section we are going to take a closer look at the different methods available to you.
+Running cypher queries manually is nice and all, but something else running them for you is even better. That's exactly what the model methods are for. They allow you to do all sorts of things with your models and the nodes and relationships they represent. In this section we are going to take a closer look at the different methods available to you.
 
 But before we jump in, let's get one thing out of the way: All of the methods described in this section are `asynchronous` methods. This means that they have to be awaited when called. If you are new to asynchronous programming in Python, you should take a look at the [`asyncio documentation`](https://docs.python.org/3/library/asyncio.html) before continuing.
 
-Additionally, the name of the heading for each method defines what type of model it is available on and whether it is a `class method` or an `instance method`.
-
-- `Model.method()`: The `class method` is available on instances of both `NodeModel` and `RelationshipModel` classes.
-- `Instance.method()`: The `instance method` is available on instances of both `NodeModel` and `RelationshipModel` classes.
-- `<Type>Model.method()`: The `class method` is available on instances of the `<Type>Model` class.
-- `<Type>ModelInstance.method()`: The `instance method` is available on instances of the `<Type>Model` class.
+> **Note**: The name of the heading for each method defines what type of model it is available on and whether it is a `class method` or an `instance method`.
+>
+> - `Model.method()`: The `class method` is available on instances of both `NodeModel` and `RelationshipModel` classes.
+> - `Instance.method()`: The `instance method` is available on instances of both `NodeModel` and `RelationshipModel` classes.
+> - `<Type>Model.method()`: The `class method` is available on instances of the `<Type>Model` class.
+> - `<Type>ModelInstance.method()`: The `instance method` is available on instances of the `<Type>Model` class.
 
 ##### Instance.update() <a name="instance-update"></a>
 
@@ -1209,6 +1223,20 @@ print(end_node) # <Developer>
 
 When serializing models to a dictionary or JSON string, the models `element_id and id` fields are `automatically added` to the corresponding dictionary/JSON string when calling Pydantic's `dict()` or `json()` methods.
 
+If you want to exclude them from serialization, you can easily do so by passing them to the `exclude` parameter of the according method.
+
+On node-models:
+
+- `id`
+- `element_id`
+
+Additional properties for relationship-models:
+
+- `start_node_id`
+- `start_node_element_id`
+- `end_node_id`
+- `end_node_element_id`
+
 #### Hooks <a name="hooks"></a>
 
 Hooks are a convenient way to execute code before or after a method is called A pre-hook function always receives the `class it is used on` as it's first argument and `any arguments the decorated method receives`. They can be used to execute code that is not directly related to the method itself, but still needs to be executed when the method is called. This allows for all sorts of things, such as logging, caching, etc.
@@ -1217,7 +1245,7 @@ Hooks are a convenient way to execute code before or after a method is called A 
 
 For relationship-properties, the key under which the hook is registered has to be in the format `<relationship-property>.<method>`. For example, if you want to register a hook for the `connect()` method of a relationship-property named `coffee`, you would have to pass `coffee.connect` as the key. Additionally, instead of the `RelationshipProperty class context`, the hook function will receive the `NodeModel class context` of the model it has been called on as the first argument.
 
-> **Note:** Custom methods to define the `hook decorator` on the method you want to register hooks for.
+> **Note:** If you implement custom methods and want to use hooks for them, you can simply define the `hook decorator` on them and then register hooks under the `name of your method`.
 
 ##### Pre-hooks <a name="pre-hooks"></a>
 
@@ -1796,6 +1824,95 @@ developer = await Developer.find_one({"name": "John"}, auto_fetch_nodes=True, au
 print(developer.coffee.nodes) # [<Coffee>, <Coffee>, ...]
 print(developer.developer.nodes) # [<Developer>, <Developer>, ...]
 print(developer.other_property.nodes) # []
+```
+
+### Migrations <a name="migrations"></a>
+
+As of version `v0.5.0`, pyneo4j-ogm supports migrations using a built-in migration tool. The migration tool is basic but flexibly, which should cover most use-cases.
+
+#### Initializing migrations for your project <a name="initializing-migrations"></a>
+
+To initialize migrations for your project, you can use the `poetry run pyneo4j_ogm init` command. This will create a `migrations` directory at the given path (which defaults to `./migrations`), which will contain all your migration files.
+
+```bash
+poetry run pyneo4j_ogm init --migration-dir ./my/custom/migration/path
+```
+
+#### Creating a new migration <a name="creating-a-new-migration"></a>
+
+To create a new migration, you can use the `poetry run pyneo4j_ogm create` command. This will create a new migration file inside the `migrations` directory. The migration file will contain a `up` and `down` function, which you can use to define your migration.
+
+```bash
+poetry run pyneo4j_ogm create my_first_migration
+```
+
+Both the `up` and `down` functions will receive the client used during the migration as their only arguments. This makes the migrations pretty flexible, since you can not only use the client to execute queries, but also register models on it and use them to execute methods.
+
+> **Note**: When using models inside the migration, you have to make sure that the model used implements the same data structure as the data inside the graph. Otherwise you might run into validation issues.
+
+```python
+"""
+Auto-generated migration file {name}. Do not
+rename this file or the `up` and `down` functions.
+"""
+from pyneo4j_ogm import Pyneo4jClient
+
+
+async def up(client: Pyneo4jClient) -> None:
+    """
+    Write your `UP migration` here.
+    """
+    await client.cypher("CREATE (n:Node {name: 'John'})")
+
+
+async def down(client: Pyneo4jClient) -> None:
+    """
+    Write your `DOWN migration` here.
+    """
+    await client.cypher("MATCH (n:Node {name: 'John'}) DELETE n")
+```
+
+#### Running migrations <a name="running-migrations"></a>
+
+To run the migrations, you can use the `up` or `down` commands. The `up` command will run all migrations that have not been run yet, while the `down` command will run all migrations in reverse order.
+
+Both commands support a `--up-count` or `--down-count` argument, which can be used to limit the number of migrations to run. By default, the `up` command will run `all pending migration` and the `down` command will roll back the `last migration`.
+
+```bash
+poetry run pyneo4j_ogm up --up-count 3
+poetry run pyneo4j_ogm down --down-count 2
+```
+
+#### Listing migrations <a name="listing-migrations"></a>
+
+The current state of all migrations can be viewed anytime using the `status` command. This will show you all migrations that have been run and all migrations that are pending.
+
+```bash
+poetry run pyneo4j_ogm status
+
+# Output
+┌─────────────────────────────────────────┬─────────────────────┐
+│ Migration                               │ Applied At          │
+├─────────────────────────────────────────┼─────────────────────┤
+│ 20160608155948-my_awesome_migration     │ 2022-03-04 15:40:22 │
+│ 20160608155948-my_fixed_migration       │ 2022-03-04 15:41:13 │
+│ 20160608155948-final_fix_i_swear        │ PENDING             │
+└─────────────────────────────────────────┴─────────────────────┘
+```
+
+#### Programmatic usage <a name="migrations-programmatic-usage"></a>
+
+The migration tool can also be used programmatically. This can be useful if you want to run migrations inside your application or if you want to integrate the migration tool into your own CLI.
+
+```python
+import asyncio
+from pyneo4j_ogm.migrations import create, down, init, status, up
+
+# Call with same arguments as you would with cli
+init(migration_dir="./my/custom/migration/path")
+
+create("my_first_migration")
+asyncio.run(up())
 ```
 
 ### Logging <a name="logging"></a>
