@@ -1,6 +1,6 @@
 ## Migrations
 
-As of version [`v0.5.0`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/CHANGELOG.md#whats-changed-in-v050-2024-02-06), pyneo4j-ogm supports migrations using a built-in migration tool. The migration tool is basic but flexibly, which should cover most use-cases.
+As of version [`v0.5.0`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/CHANGELOG.md#whats-changed-in-v050-2024-02-06), pyneo4j-ogm supports migrations using a built-in migration tool. The migration tool is basic but flexibly, which should cover most use-cases.
 
 ### Initializing migrations for your project
 

@@ -55,7 +55,7 @@ print(coffee_relationships) ## []
 
 ##### Filters
 
-This method also allows for (optional) filters. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#filtering-queries) section.
+This method also allows for (optional) filters. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#filtering-queries) section.
 
 ```python
 ## Only returns the relationships between the two nodes where
@@ -67,7 +67,7 @@ print(coffee_relationships) ## [<Consumed liked=True>, <Consumed liked=True>, ..
 
 ##### Projections
 
-`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#projections) section.
+`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#projections) section.
 
 ```python
 ## Returns dictionaries with the relationships `liked` property is at the
@@ -79,7 +79,7 @@ print(coffee_relationships) ## [{"loved_it": True}, {"loved_it": False}, ...]
 
 ##### Query options
 
-`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#query-options) section.
+`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#query-options) section.
 
 ```python
 ## Skips the first 10 results and returns the next 20
@@ -168,7 +168,7 @@ print(coffees) ## []
 
 ##### Filters
 
-You can pass filters using the `filters` argument to filter the returned nodes. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#filtering-queries) section.
+You can pass filters using the `filters` argument to filter the returned nodes. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#filtering-queries) section.
 
 ```python
 ## Returns all `Coffee` nodes where the `sugar` property is set to `True`
@@ -179,7 +179,7 @@ print(coffees) ## [<Coffee sugar=True>, <Coffee sugar=True>, ...]
 
 ##### Projections
 
-`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.mdprojections) section.
+`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.mdprojections) section.
 
 ```python
 ## Returns dictionaries with the coffee's `sugar` property at the `contains_sugar` key instead
@@ -191,7 +191,7 @@ print(coffees) ## [{"contains_sugar": True}, {"contains_sugar": False}, ...]
 
 ##### Query options
 
-`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.mdquery-options) section.
+`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.mdquery-options) section.
 
 ```python
 ## Skips the first 10 results and returns the next 20
@@ -203,7 +203,7 @@ print(coffees) ## [<Coffee>, <Coffee>, ...]
 
 ##### Auto-fetching nodes
 
-The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship-properties when running the `find_many()` query. For more about auto-fetching, see [`Auto-fetching relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#auto-fetching-relationship-properties).
+The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship-properties when running the `find_many()` query. For more about auto-fetching, see [`Auto-fetching relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#auto-fetching-relationship-properties).
 
 ```python
 ## Returns coffee instances with `instance.<property>.nodes` properties already fetched

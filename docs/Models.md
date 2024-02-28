@@ -1,6 +1,6 @@
 ## Models
 
-As shown in the [`quickstart guide`](https://github.com/groc-prog/pyneo4j-ogm/blob/main?tab=readme-ov-file#quickstart), models are the main building blocks of `pyneo4j-ogm`. They represent the nodes and relationships inside the graph and provide a lot of useful methods for interacting with them.
+As shown in the [`quickstart guide`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#quickstart), models are the main building blocks of `pyneo4j-ogm`. They represent the nodes and relationships inside the graph and provide a lot of useful methods for interacting with them.
 
 A core mechanic of `pyneo4j-ogm` is serialization and deserialization of models. Every model method uses this mechanic under the hood to convert the models to and from the format used by the Neo4j driver.
 
@@ -39,7 +39,7 @@ class Developer(NodeModel):
   age: WithOptions(int)
 ```
 
-There also is a special type of property called `RelationshipProperty`. This property can be used to define relationships between models. For more information about this property, see the [`Relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/RelationshipProperty.md) section.
+There also is a special type of property called `RelationshipProperty`. This property can be used to define relationships between models. For more information about this property, see the [`Relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/RelationshipProperty.md) section.
 
 ### Reserved properties
 
@@ -162,7 +162,7 @@ print(john.name) ## 'John'
 
 The `find_one()` method can be used to find a single node or relationship in the graph. If multiple results are matched, the first one is returned. This method returns a single instance/dictionary or `None` if no results were found.
 
-This method takes a mandatory `filters` argument, which is used to filter the results. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#filtering-queries) section.
+This method takes a mandatory `filters` argument, which is used to filter the results. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#filtering-queries) section.
 
 ```python
 ## Return the first encountered node where the name property equals `John`.
@@ -174,7 +174,7 @@ print(developer) ## <Developer> or None
 
 ##### Projections
 
-`Projections` can be used to only return specific parts of the model as a dictionary. This can help to reduce bandwidth or to just pre-filter the query results to a more suitable format. For more about projections, see [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#projections)
+`Projections` can be used to only return specific parts of the model as a dictionary. This can help to reduce bandwidth or to just pre-filter the query results to a more suitable format. For more about projections, see [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#projections)
 
 ```python
 ## Return a dictionary with the developers name at the `dev_name` key instead
@@ -186,7 +186,7 @@ print(developer) ## {"dev_name": "John"}
 
 ##### Auto-fetching nodes
 
-The `auto_fetch_nodes` and `auto_fetch_models` arguments can be used to automatically fetch all or selected nodes from defined relationship-properties when running the `find_one()` query. The pre-fetched nodes are available on their respective relationship-properties. For more about auto-fetching, see [`Auto-fetching relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#auto-fetching-relationship-properties).
+The `auto_fetch_nodes` and `auto_fetch_models` arguments can be used to automatically fetch all or selected nodes from defined relationship-properties when running the `find_one()` query. The pre-fetched nodes are available on their respective relationship-properties. For more about auto-fetching, see [`Auto-fetching relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#auto-fetching-relationship-properties).
 
 > **Note**: The `auto_fetch_nodes` and `auto_fetch_models` parameters are only available for classes which inherit from the `NodeModel` class.
 
@@ -229,7 +229,7 @@ print(developers) ## [<Developer>, <Developer>, <Developer>, ...]
 
 ##### Filters
 
-Just like the `find_one()` method, the `find_many()` method also takes (optional) filters. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#filtering-queries) section.
+Just like the `find_one()` method, the `find_many()` method also takes (optional) filters. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#filtering-queries) section.
 
 ```python
 ## Returns all `Developer` nodes where the age property is greater than or
@@ -241,7 +241,7 @@ print(developers) ## [<Developer>, <Developer>, <Developer>, ...]
 
 ##### Projections
 
-`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#projections) section.
+`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#projections) section.
 
 ```python
 ## Returns dictionaries with the developers name at the `dev_name` key instead
@@ -253,7 +253,7 @@ print(developers) ## [{"dev_name": "John"}, {"dev_name": "John"}, ...]
 
 ##### Query options
 
-`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#query-options) section.
+`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#query-options) section.
 
 ```python
 ## Skips the first 10 results and returns the next 20
@@ -264,7 +264,7 @@ print(developers) ## [<Developer>, <Developer>, ...] up to 20 results
 
 ##### Auto-fetching nodes
 
-The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship-properties when running the `find_many()` query. For more about auto-fetching, see [`Auto-fetching relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#auto-fetching-relationship-properties).
+The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship-properties when running the `find_many()` query. For more about auto-fetching, see [`Auto-fetching relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#auto-fetching-relationship-properties).
 
 > **Note**: The `auto_fetch_nodes` and `auto_fetch_models` parameters are only available for classes which inherit from the `NodeModel` class.
 
@@ -292,7 +292,7 @@ The `update_one()` method finds the first matching graph entity and updates it w
 This method takes two mandatory arguments:
 
 - `update`: A dictionary containing the properties to update.
-- `filters`: A dictionary containing the filters to use when searching for a match. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#query-filters) section.
+- `filters`: A dictionary containing the filters to use when searching for a match. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#query-filters) section.
 
 ```python
 ## Updates the `age` property to `30` in the first encountered node where the name property equals `John`
@@ -344,7 +344,7 @@ print(developers) ## []
 
 ##### Filters
 
-Optionally, a `filters` argument can be provided, which defines which entities to update. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#query-filters) section.
+Optionally, a `filters` argument can be provided, which defines which entities to update. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#query-filters) section.
 
 ```python
 ## Updates all `Developer` nodes where the age property is between `22` and `30`
@@ -370,7 +370,7 @@ print(developers) ## [<Developer age=40>, <Developer age=40>, ...]
 
 The `delete_one()` method finds the first matching graph entity and deletes it. Unlike others, this method returns the number of deleted entities instead of the deleted entity itself. If no match was found, nothing is deleted and `0` is returned.
 
-This method takes one mandatory argument `filters` which defines which entity to delete. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#query-filters) section.
+This method takes one mandatory argument `filters` which defines which entity to delete. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#query-filters) section.
 
 ```python
 ## Deletes the first `Developer` node where the name property equals `John`
@@ -407,7 +407,7 @@ print(count) ## 0
 
 ##### Filters
 
-Optionally, a `filters` argument can be provided, which defines which entities to delete. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#query-filters) section.
+Optionally, a `filters` argument can be provided, which defines which entities to delete. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#query-filters) section.
 
 ```python
 ## Deletes all `Developer` nodes where the age property is greater than `65`
@@ -432,7 +432,7 @@ print(count) ## 0
 
 ##### Filters
 
-Optionally, a `filters` argument can be provided, which defines which entities to count. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#query-filters) section.
+Optionally, a `filters` argument can be provided, which defines which entities to count. For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#query-filters) section.
 
 ```python
 ## Counts all `Developer` nodes where the name property contains the letters `oH`
@@ -461,7 +461,7 @@ print(developer) ## <Developer uid="..." age=24, name="John">
 
 > **Note**: This method is only available for classes inheriting from the `NodeModel` class.
 
-The `find_connected_nodes()` method can be used to find nodes over multiple hops. It returns all matched nodes with the defined labels in the given hop range or an empty list if no nodes where found. The method requires you to define the labels of the nodes you want to find inside the filters (You can only define the labels of `one model` at a time). For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#query-filters) section.
+The `find_connected_nodes()` method can be used to find nodes over multiple hops. It returns all matched nodes with the defined labels in the given hop range or an empty list if no nodes where found. The method requires you to define the labels of the nodes you want to find inside the filters (You can only define the labels of `one model` at a time). For more about filters, see the [`Filtering queries`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#query-filters) section.
 
 ```python
 ## Picture a structure like this inside the graph:
@@ -498,7 +498,7 @@ print(developers) ## []
 
 ##### Projections
 
-`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#projections) section.
+`Projections` can be used to only return specific parts of the models as dictionaries. For more information about projections, see the [`Projections`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#projections) section.
 
 ```python
 ## Returns dictionaries with the developers name at the `dev_name` key instead
@@ -525,7 +525,7 @@ print(developers) ## [{"dev_name": "John"}, {"dev_name": "John"}, ...]
 
 ##### Query options
 
-`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#query-options) section.
+`Query options` can be used to define how results are returned from the query. They are provided via the `options` argument. For more about query options, see the [`Query options`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#query-options) section.
 
 ```python
 ## Skips the first 10 results and returns the next 20
@@ -549,7 +549,7 @@ print(developers) ## [<Developer>, <Developer>, ...]
 
 ##### Auto-fetching nodes
 
-The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship-properties when running the `find_connected_nodes()` query. For more about auto-fetching, see [`Auto-fetching relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Query.md#auto-fetching-relationship-properties).
+The `auto_fetch_nodes` and `auto_fetch_models` parameters can be used to automatically fetch all or selected nodes from defined relationship-properties when running the `find_connected_nodes()` query. For more about auto-fetching, see [`Auto-fetching relationship-properties`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Query.md#auto-fetching-relationship-properties).
 
 ```python
 ## Skips the first 10 results and returns the next 20
@@ -664,7 +664,7 @@ For relationship-properties, the key under which the hook is registered has to b
 
 #### Pre-hooks
 
-Pre-hooks are executed before the method they are registered for. They can be defined in the [`model settings`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Models.md#configuration-settings) class under the `pre_hooks` property or by calling the `register_pre_hooks()` method on the model.
+Pre-hooks are executed before the method they are registered for. They can be defined in the [`model settings`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Models.md#configuration-settings) class under the `pre_hooks` property or by calling the `register_pre_hooks()` method on the model.
 
 ```python
 class Developer(NodeModel):
@@ -687,7 +687,7 @@ Developer.register_pre_hooks("create", hook_func, overwrite=True)
 
 #### Post-hooks
 
-Post-hooks are executed after the method they are registered for. They can be defined in the [`model settings`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Models.md#configuration-settings) class under the `post_hooks` property or by calling the `register_post_hooks()` method on the model.
+Post-hooks are executed after the method they are registered for. They can be defined in the [`model settings`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Models.md#configuration-settings) class under the `post_hooks` property or by calling the `register_post_hooks()` method on the model.
 
 In addition to the same arguments a pre-hook function receives, a post-hook function also receives the result of the method it is registered for as the second argument.
 
@@ -695,7 +695,7 @@ In addition to the same arguments a pre-hook function receives, a post-hook func
 
 ### Model settings
 
-Can be used to access the model's settings. For more about model settings, see the [`model settings`]([#model-settings](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Models.md#configuration-settings)) section.
+Can be used to access the model's settings. For more about model settings, see the [`model settings`]([#model-settings](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Models.md#configuration-settings)) section.
 
 ```python
 model_settings = Developer.model_settings()

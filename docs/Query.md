@@ -156,7 +156,7 @@ developers = await Developer.find_many({
 
 #### Multi-hop filters
 
-Multi-hop filters are a special type of filter which is only available for [`NodeModelInstance.find_connected_nodes()`](https://github.com/groc-prog/pyneo4j-ogm/blob/main/docs/Models.md#nodemodelsettingsfind_connected_nodes()). They allow you to specify filter parameters on the target node and all relationships between them over, you guessed it, multiple hops. To define this filter, you have a few operators you can define:
+Multi-hop filters are a special type of filter which is only available for [`NodeModelInstance.find_connected_nodes()`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Models.md#nodemodelsettingsfind_connected_nodes()). They allow you to specify filter parameters on the target node and all relationships between them over, you guessed it, multiple hops. To define this filter, you have a few operators you can define:
 
 - `$node`: Filters applied to the target node. Expects a dictionary containing basic filters. Can not contain pattern yet.
 - `$minHops`: The minimum number of hops between the source node and the target node. Must be greater than 0.
