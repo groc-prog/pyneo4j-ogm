@@ -126,7 +126,7 @@ class Consumed(RelationshipModel):
 Until now everything seems pretty standard if you have worked with other ORM's before. But if you haven't, we are going to go over what happened above:
 
 - We defined 2 node models `Developer` and `Coffee`, and a relationship `Consumed`.
-- Some models define a special inner `Settings` class. This is used to customize the behavior of our models inside the graph. More on these settings can be found ['here'](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Models.md#configuration-settings).
+- Some models define a special inner `Settings` class. This is used to customize the behavior of our models inside the graph. More on these settings can be found [`here`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Models.md#configuration-settings).
 - The `WithOptions` function has been used to define `constraints and indexes` (more about them [`here`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/DatabaseClient.md#manual-indexing-and-constraints)) on model properties.
 
 ### Creating a database client
@@ -154,7 +154,7 @@ async def main():
 
 ### Interacting with the database
 
-Now the fun stuff begins! We are ready to interact with our database. For the sake of this [`quickstart guide`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#quickstart) we are going to keep it nice and simple, but this is just the surface of what pyneo4j-ogm has to offer.
+Now the fun stuff begins! We are ready to interact with our database. For the sake of this [`quickstart guide`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-quickstart) we are going to keep it nice and simple, but this is just the surface of what pyneo4j-ogm has to offer.
 
 We are going to create a new `Developer` and some `Coffee` and give him something to drink:
 
@@ -290,18 +290,18 @@ In the following we are going to take a closer look at the different parts of `p
 ### Table of contents
 
 - [pyneo4j-ogm](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#pyneo4j-ogm)
-  - [🎯 Features]([#-features-](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#features))
-  - [📣 Announcements](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#announcements)
-  - [📦 Installation](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#installation)
-  - [🚀 Quickstart](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#quickstart)
-    - [Defining our data structures](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#defining-our-data-structures)
-    - [Creating a database client](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#creating-a-database-client)
-    - [Interacting with the database](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#interacting-with-the-database)
-    - [Full example](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#full-example)
-  - [Running the test suite](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#running-the-test-suite)
-  - [📚 Documentation](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#documentation)
+  - [🎯 Features](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#features)
+  - [📣 Announcements](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-announcements)
+  - [📦 Installation](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-installation)
+  - [🚀 Quickstart](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-quickstart)
+    - [Defining our data structures](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-defining-our-data-structures)
+    - [Creating a database client](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-creating-a-database-client)
+    - [Interacting with the database](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-interacting-with-the-database)
+    - [Full example](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-full-example)
+  - [Running the test suite](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-running-the-test-suite)
+  - [📚 Documentation](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs)
     - [Basic concepts](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Concept.md)
-    - [A note on Pydantic version support](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Concept.mda-note-on-pydantic-version-support)
+      - [A note on Pydantic version support](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Concept.md#a-note-on-pydantic-version-support)
     - [Database client](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/DatabaseClient.md)
       - [Connecting to the database](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/DatabaseClient.md#connecting-to-the-database)
       - [Closing an existing connection](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/DatabaseClient.md#closing-an-existing-connection)

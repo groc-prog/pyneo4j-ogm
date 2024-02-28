@@ -9,7 +9,7 @@ But first, how does this even work!?! Well, the basic concept boils down to the 
 
 Of course, there is a lot more to it than that, but this is the basic idea. So let's take a closer look at the different parts of `pyneo4j-ogm` and how to use them.
 
-> **Note:** All of the examples in this documentation assume that you have already connected to a database and registered your models with the client like shown in the [`quickstart guide`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#quickstart). The models used in the following examples will build upon the ones defined there. If you are new to [`Neo4j`](https://neo4j.com/docs/) or [`Cypher`](https://neo4j.com/docs/cypher-manual/current/) in general, you should get a basic understanding of how to use them before continuing.
+> **Note:** All of the examples in this documentation assume that you have already connected to a database and registered your models with the client like shown in the [`quickstart guide`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-quickstart). The models used in the following examples will build upon the ones defined there. If you are new to [`Neo4j`](https://neo4j.com/docs/) or [`Cypher`](https://neo4j.com/docs/cypher-manual/current/) in general, you should get a basic understanding of how to use them before continuing.
 
 ### A note on Pydantic version support
 

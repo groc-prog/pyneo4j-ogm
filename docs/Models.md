@@ -1,6 +1,6 @@
 ## Models
 
-As shown in the [`quickstart guide`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#quickstart), models are the main building blocks of `pyneo4j-ogm`. They represent the nodes and relationships inside the graph and provide a lot of useful methods for interacting with them.
+As shown in the [`quickstart guide`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-quickstart), models are the main building blocks of `pyneo4j-ogm`. They represent the nodes and relationships inside the graph and provide a lot of useful methods for interacting with them.
 
 A core mechanic of `pyneo4j-ogm` is serialization and deserialization of models. Every model method uses this mechanic under the hood to convert the models to and from the format used by the Neo4j driver.
 
