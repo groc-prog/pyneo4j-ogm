@@ -8,8 +8,8 @@
   "python.testing.pytestEnabled": true,
   "markdownlint.config": {
     "MD024": false,
-    "MD033": false,
-    "MD039": false
+    "MD039": false,
+    "MD041": false
   },
   "files.exclude": {
     "**/.git": true,
