@@ -1,9 +1,7 @@
 """
-Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
-model types like registering hooks and exporting/importing models to/from dictionaries.
+Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic between the two model types
+and defines common serializers/validators used for Pydantic models.
 """
-
-# pyright: reportUnboundVariable=false
 
 import asyncio
 import json
@@ -78,8 +76,9 @@ IncEx = Optional[Union[Set[int], Set[str], Dict[int, Any], Dict[str, Any]]]
 
 def hooks(func):
     """
-    Decorator which runs defined pre- and post hooks for the decorated method. The decorator expects the
-    hooks to have the name of the decorated method. Both synchronous and asynchronous hooks are supported.
+    Calls all defined hooks for the decorated method. Pre-hooks are called before the method is executed and they
+    receive the same arguments as the decorated method. Post-hooks are called after the method is executed and they
+    receive the same arguments as a pre-hook, but with the result as the second argument.
 
     Args:
         func (Callable): The method to decorate.
@@ -95,11 +94,15 @@ def hooks(func):
             settings: BaseModelSettings = getattr(self, "_settings")
 
             if func.__name__ in settings.pre_hooks:
-                logger.debug(
+                logger.info(
                     "Found %s pre-hook functions for method %s", len(settings.pre_hooks[func.__name__]), func.__name__
                 )
+
+                # Run each pre-hook function with the same arguments as the decorated method
                 for hook_function in settings.pre_hooks[func.__name__]:
                     logger.debug("Running pre-hook function %s", hook_function.__name__)
+
+                    # Check if the hook function is asynchronous, if so await it to prevent unawaited coroutine warnings
                     if iscoroutinefunction(hook_function):
                         await hook_function(self, *args, **kwargs)
                     else:
@@ -108,11 +111,16 @@ def hooks(func):
             result = await func(self, *args, **kwargs)
 
             if func.__name__ in settings.post_hooks:
-                logger.debug(
+                logger.info(
                     "Found %s post-hook functions for method %s", len(settings.post_hooks[func.__name__]), func.__name__
                 )
+
+                # Run any post-hook functions with the same arguments as the decorated method and the result
+                # as the second argument
                 for hook_function in settings.post_hooks[func.__name__]:
                     logger.debug("Running post-hook function %s", hook_function.__name__)
+
+                    # Check again if the hook function is asynchronous and await it if necessary
                     if iscoroutinefunction(hook_function):
                         await hook_function(self, result, *args, **kwargs)
                     else:
@@ -129,9 +137,12 @@ def hooks(func):
             settings: BaseModelSettings = getattr(self, "_settings")
 
             if func.__name__ in settings.pre_hooks:
+                # Run each pre-hook function with the same arguments as the decorated method
                 logger.debug(
                     "Found %s pre-hook functions for method %s", len(settings.pre_hooks[func.__name__]), func.__name__
                 )
+
+                # Check if the hook function is asynchronous, if so create a new task to run it
                 for hook_function in settings.pre_hooks[func.__name__]:
                     logger.debug("Running pre-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
@@ -142,9 +153,12 @@ def hooks(func):
             result = func(self, *args, **kwargs)
 
             if func.__name__ in settings.post_hooks:
+                # Run any post-hook functions with the same arguments as the decorated method and the result
                 logger.debug(
                     "Found %s post-hook functions for method %s", len(settings.post_hooks[func.__name__]), func.__name__
                 )
+
+                # Check again if the hook function is asynchronous and create a new task to run it if necessary
                 for hook_function in settings.post_hooks[func.__name__]:
                     logger.debug("Running post-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
@@ -169,6 +183,8 @@ if IS_PYDANTIC_V2:
             model_cls: Optional[Type[BaseModel]] = None
 
             if "definitions" in args[0]:
+                # If a `definitions` key is present, the JSON schema contains multiple schemas for multiple models
+                # We need to get the schema ref for the model we want to add the additional information to
                 schema_ref = args[0]["schema"]["schema_ref"]
 
                 for definition in args[0]["definitions"]:
@@ -176,6 +192,7 @@ if IS_PYDANTIC_V2:
                         model_cls = cast(Type[BaseModel], definition["cls"])
                         break
             elif "cls" in args[0]:
+                # If a `cls` key is present, the JSON schema only contains our current model
                 model_cls = cast(Type[BaseModel], args[0]["cls"])
 
             if model_cls is None:
@@ -184,6 +201,8 @@ if IS_PYDANTIC_V2:
             generated_schema = super().generate(*args, **kwargs)
 
             for field_name, field in get_model_fields(model_cls).items():
+                # Check all fields defined on the model, if we find a index or constraint field, add the information
+                # to the generated schema
                 point_index = getattr(get_field_type(field), "_point_index", False)
                 range_index = getattr(get_field_type(field), "_range_index", False)
                 text_index = getattr(get_field_type(field), "_text_index", False)
@@ -211,10 +230,11 @@ if IS_PYDANTIC_V2:
 
 class ModelBase(BaseModel, Generic[V]):
     """
-    Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic for both
-    model types like registering hooks and exporting/importing models to/from dictionaries.
+    Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic between the two model types
+    and defines common serializers/validators used for Pydantic models.
 
-    Should not be used directly.
+    If you come across this class and want to use it in your own models then DON'T. This class is not meant to be used
+    directly and is only used as a base class for `NodeModel` and `RelationshipModel`.
     """
 
     _settings: BaseModelSettings = PrivateAttr()
@@ -230,11 +250,16 @@ class ModelBase(BaseModel, Generic[V]):
 
         @model_serializer(mode="wrap")
         def _model_serializer(self, serializer: Any, info: SerializationInfo) -> Any:
+            """
+            Custom model serializer which adds support for serializing `RelationshipProperty` fields, `element_id` and
+            `id` fields and any additional fields defined on the model.
+            """
             if isinstance(self, RelationshipProperty):
                 return self.nodes
 
             serialized = serializer(self)
 
+            # If the field is not excluded and not `None`, add it to the serialized dictionary
             if not (self.id is None and info.exclude_none) and not (info.exclude is not None and "id" in info.exclude):
                 serialized["id"] = self.id
 
@@ -273,6 +298,8 @@ class ModelBase(BaseModel, Generic[V]):
 
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
+                    # If a relationship property has been found and it has fetched nodes, we add the nodes to
+                    # the serialized dictionary as well
                     if field_name in serialized:
                         serialized[field_name] = cast(RelationshipProperty, getattr(self, field_name)).nodes
 
@@ -280,9 +307,14 @@ class ModelBase(BaseModel, Generic[V]):
 
         @model_validator(mode="before")  # type: ignore
         def _model_validator(cls, values: Any) -> Any:
+            """
+            Custom validation for validating the fetched nodes from a relationship property.
+            """
             relationship_properties = getattr(cls, "_relationship_properties", set())
 
             for field_name, field in get_model_fields(cls).items():
+                # Go over each relationship property field and try to build the relationship property for that
+                # field.
                 if (
                     field_name in relationship_properties
                     and field_name in values
@@ -303,6 +335,8 @@ class ModelBase(BaseModel, Generic[V]):
                     if target_model is not None:
                         nodes: List[NodeModel] = []
 
+                        # Check if the nodes are of the correct model type and if they are alive
+                        # If so add them to the parsed instance
                         for node in values[field_name]:
                             if isinstance(node, target_model):
                                 nodes.append(node)
@@ -334,6 +368,8 @@ class ModelBase(BaseModel, Generic[V]):
             relationship_properties = getattr(cls, "_relationship_properties", set())
 
             for field_name, field in get_model_fields(cls).items():
+                # Go over each relationship property field and try to build the relationship property for that
+                # field.
                 if (
                     field_name in relationship_properties
                     and field_name in values
@@ -354,6 +390,8 @@ class ModelBase(BaseModel, Generic[V]):
                     if target_model is not None:
                         nodes: List[NodeModel] = []
 
+                        # Check if the nodes are of the correct model type and if they are alive
+                        # If so add them to the parsed instance
                         for node in values[field_name]:
                             if isinstance(node, target_model):
                                 nodes.append(node)
@@ -387,6 +425,8 @@ class ModelBase(BaseModel, Generic[V]):
             excluded_fields = set()
             excluded_fields.update(exclude or set())
 
+            # Add all relationship properties to the list of excluded fields since we will handle them
+            # later on ourself
             if hasattr(self, "_relationship_properties"):
                 excluded_fields.update(cast(Set[str], getattr(self, "_relationship_properties")))
 
@@ -401,6 +441,7 @@ class ModelBase(BaseModel, Generic[V]):
                 exclude_none=exclude_none,
             )
 
+            # Add all `element_id` and `id` fields it they have not specifically been excluded
             if not (self._id is None and exclude_none) and not (exclude is not None and "id" in exclude):
                 base_dict["id"] = self._id
 
@@ -438,6 +479,8 @@ class ModelBase(BaseModel, Generic[V]):
 
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
+                    # Each relationship property gets the fetched nodes when serializing it rather than it's indexes
+                    # or constraints
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
                     if not isinstance(field, list) and not (exclude is not None and field_name in exclude):
@@ -482,6 +525,8 @@ class ModelBase(BaseModel, Generic[V]):
 
             modified_json = json.loads(base_json)
 
+            # Add all relationship properties to the list of excluded fields since we will handle them
+            # later on ourself
             if not (self._id is None and exclude_none) and not (exclude is not None and "id" in exclude):
                 modified_json["id"] = self._id
 
@@ -519,9 +564,13 @@ class ModelBase(BaseModel, Generic[V]):
 
             if hasattr(self, "_relationship_properties"):
                 for field_name in getattr(self, "_relationship_properties"):
+                    # Each relationship property gets the fetched nodes when serializing it rather than it's indexes
+                    # or constraints
                     field = cast(Union[RelationshipProperty, List], getattr(self, field_name))
 
                     if not isinstance(field, list) and not (exclude is not None and field_name in exclude):
+                        # Serialize and then deserialize each model to prevent double serialization when doing the whole
+                        # model at the end
                         modified_json[field_name] = [
                             json.loads(cast(Union[RelationshipModel, NodeModel], node).json()) for node in field.nodes
                         ]
@@ -529,6 +578,7 @@ class ModelBase(BaseModel, Generic[V]):
             return json.dumps(modified_json)
 
     def __init__(self, *args, **kwargs) -> None:
+        # Check if the models has been registered with a client
         if not hasattr(self, "_client"):
             raise UnregisteredModel(model=self.__class__.__name__)
 
@@ -556,6 +606,8 @@ class ModelBase(BaseModel, Generic[V]):
                 text_index = getattr(get_field_type(field), "_text_index", False)
                 unique = getattr(get_field_type(field), "_unique", False)
 
+                # In Pydantic 2.x.x we need to add the index and constraint information to the field's
+                # `field_info.extra` attribute to make it available in the JSON schema
                 if point_index:
                     field.field_info.extra["point_index"] = True  # type: ignore
                 if range_index:
@@ -607,9 +659,9 @@ class ModelBase(BaseModel, Generic[V]):
             overwrite (bool, optional): Whether to overwrite all defined hook functions if a new hooks function for
                 the same hook is registered. Defaults to `False`.
         """
+        logger.info("Registering pre-hook for %s", hook_name)
         valid_hook_functions: List[Callable] = []
 
-        logger.info("Registering pre-hook for %s", hook_name)
         # Normalize hooks to a list of functions
         if isinstance(hook_functions, list):
             for hook_function in hook_functions:
@@ -622,6 +674,7 @@ class ModelBase(BaseModel, Generic[V]):
             cls._settings.pre_hooks[hook_name] = []
 
         if overwrite:
+            # If `overwrite` is set to `True`, we overwrite all existing hook functions for the given hook
             logger.debug("Overwriting %s existing pre-hook functions", len(cls._settings.pre_hooks[hook_name]))
             cls._settings.pre_hooks[hook_name] = valid_hook_functions
         else:
@@ -646,9 +699,9 @@ class ModelBase(BaseModel, Generic[V]):
             overwrite (bool, optional): Whether to overwrite all defined hook functions if a new hooks function for
                 the same hook is registered. Defaults to `False`.
         """
+        logger.info("Registering post-hook for %s", hook_name)
         valid_hook_functions: List[Callable] = []
 
-        logger.info("Registering post-hook for %s", hook_name)
         # Normalize hooks to a list of functions
         if isinstance(hook_functions, list):
             for hook_function in hook_functions:
@@ -661,6 +714,7 @@ class ModelBase(BaseModel, Generic[V]):
             cls._settings.post_hooks[hook_name] = []
 
         if overwrite:
+            # If `overwrite` is set to `True`, we overwrite all existing hook functions for the given hook
             logger.debug("Overwriting %s existing post-hook functions", len(cls._settings.post_hooks[hook_name]))
             cls._settings.post_hooks[hook_name] = valid_hook_functions
         else:
@@ -732,11 +786,13 @@ class ModelBase(BaseModel, Generic[V]):
         """
         logger.debug("Deflating model %s to storable dictionary", self)
 
-        # Serialize nested BaseModel or dict instances to JSON strings
         for field_name, field in deepcopy(deflated).items():
             if isinstance(field, (dict, BaseModel)):
+                # If the field is a dictionary or a Pydantic model, we deflate it by serializing it to a JSON string
                 deflated[field_name] = json.dumps(field)
             elif isinstance(field, list):
+                # If the field is a list, we deflate it by serializing each item to a JSON string
+                # This adds the constraint that all items in the list must be encodable to a JSON string
                 for index, item in enumerate(field):
                     if not isinstance(item, (int, float, str, bool)):
                         try:
@@ -770,7 +826,11 @@ class ModelBase(BaseModel, Generic[V]):
 
         logger.debug("Inflating node %s to model instance", graph_entity)
         for node_property in graph_entity.items():
+            # Inflate each property of the node
+            # If the property is a JSON string, we try to parse it to a dictionary. If the parsing fails, we know
+            # that the property is a string and we can use it as is
             property_name, property_value = node_property
+            logger.debug("Inflating property %s with value %s", property_name, property_value)
 
             if isinstance(property_value, str):
                 inflated[property_name] = try_property_parsing(property_value)
