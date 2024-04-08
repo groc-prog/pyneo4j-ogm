@@ -183,3 +183,25 @@ jobs:
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  release-test:
+    runs-on: ubuntu-latest
+    concurrency: release
+    environment:
+      name: release
+      url: https://pypi.org/p/pyneo4j-ogm
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+
+      - name: Python Semantic Release
+        uses: python-semantic-release/python-semantic-release@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          root_options: -vv --noop
