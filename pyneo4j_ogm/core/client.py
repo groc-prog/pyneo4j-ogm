@@ -1,6 +1,7 @@
 """
 Pyneo4j database client class for running operations on the database.
 """
+
 import os
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, cast
@@ -123,6 +124,7 @@ class Pyneo4jClient:
         logger.debug("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, *args, **kwargs)
 
+        # Get server info to check the Neo4j version since versions prior to 5 are not tested yet
         logger.debug("Checking if neo4j version is supported")
         server_info = await self._driver.get_server_info()
 
@@ -150,6 +152,9 @@ class Pyneo4jClient:
 
         for model in models:
             if issubclass(model, (NodeModel, RelationshipModel)):
+                logger.debug("Found valid mode %s, registering with client", model.__name__)
+
+                # If the model is a valid model, add it to the set of models stored by the client
                 self.models.add(model)
                 setattr(model, "_client", self)
 
@@ -161,6 +166,7 @@ class Pyneo4jClient:
                         else getattr(model._settings, "type")
                     )
 
+                    # Check if we need to create any constraints
                     if not self._skip_constraints:
                         if getattr(get_field_type(property_definition), "_unique", False):
                             await self.create_uniqueness_constraint(
@@ -170,6 +176,7 @@ class Pyneo4jClient:
                                 labels_or_type=labels_or_type,
                             )
 
+                    # Check if we need to create any indexes
                     if not self._skip_indexes:
                         if getattr(get_field_type(property_definition), "_range_index", False):
                             await self.create_range_index(
@@ -231,11 +238,13 @@ class Pyneo4jClient:
 
         logger.debug("Checking for open transaction")
         if getattr(self, "_session", None) is None or getattr(self, "_transaction", None) is None:
+            # Begin a new transaction if none is open
             await self._begin_transaction()
 
         try:
             parameters = parameters if parameters is not None else {}
 
+            # Run the query and get the results and result keys used in the query
             logger.debug("Running query \n%s \nwith parameters %s", query, parameters)
             result_data = await cast(AsyncTransaction, self._transaction).run(
                 query=cast(LiteralString, query), parameters=parameters
@@ -245,6 +254,8 @@ class Pyneo4jClient:
             meta = list(result_data.keys())
 
             if resolve_models:
+                # If model resolution has been enabled, try to resolve the query results
+                # If this fails, the raw result will be returned instead
                 logger.debug("`resolve_models` is set to True, trying to resolve query results")
                 for list_index, result_list in enumerate(results):
                     for result_index, result in enumerate(result_list):
@@ -254,6 +265,8 @@ class Pyneo4jClient:
                             results[list_index][result_index] = resolved
 
             if self._batch_enabled is False:
+                # If batching is enabled, we don't want to commit the transaction yet as
+                # we might have more queries to run
                 logger.debug("No batching enabled, committing transaction")
                 await self._commit_transaction()
 
@@ -261,6 +274,7 @@ class Pyneo4jClient:
         except Exception as exc:
             logger.error("Error running query %s", exc)
             if self._batch_enabled is False:
+                # The same goes for rolling back the transaction when batching is enabled
                 await self._rollback_transaction()
 
             raise exc
