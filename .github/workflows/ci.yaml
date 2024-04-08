@@ -3,189 +3,165 @@ name: CI
 on:
   push:
     branches: [main, develop]
-    # paths:
-    #   - "pyneo4j_ogm/**"
-    #   - "tests/**"
+    paths:
+      - "pyneo4j_ogm/**"
+      - "tests/**"
   pull_request:
     branches: [main, develop]
 
 jobs:
-  # lint:
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     POETRY_VERSION: "1.5.1"
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       python-version: ["3.10", "3.11", "3.12"]
-
-  #   steps:
-  #     - uses: actions/checkout@v3
-
-  #     - name: Set up Python ${{ matrix.python-version }}
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-
-  #     - name: Cache Poetry
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: ~/.cache/pypoetry
-  #         key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-poetry-
-
-  #     - name: View python version
-  #       run: python --version
-
-  #     - name: Install Python Poetry
-  #       uses: abatilo/actions-poetry@v2.3.0
-
-  #     - name: Configure poetry
-  #       shell: bash
-  #       run: poetry config virtualenvs.in-project true
-
-  #     - name: View poetry version
-  #       run: poetry --version
-
-  #     - name: Install dependencies
-  #       run: poetry install
-
-  #     - name: Run linter
-  #       run: poetry run pylint --rcfile=.pylintrc pyneo4j_ogm tests
-
-  # type-check:
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     POETRY_VERSION: "1.5.1"
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       python-version: ["3.10", "3.11", "3.12"]
-
-  #   steps:
-  #     - uses: actions/checkout@v3
-
-  #     - name: Set up Python ${{ matrix.python-version }}
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-
-  #     - name: Cache Poetry
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: ~/.cache/pypoetry
-  #         key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-poetry-
-
-  #     - name: View python version
-  #       run: python --version
-
-  #     - name: Install Python Poetry
-  #       uses: abatilo/actions-poetry@v2.3.0
-
-  #     - name: Configure poetry
-  #       shell: bash
-  #       run: poetry config virtualenvs.in-project true
-
-  #     - name: View poetry version
-  #       run: poetry --version
-
-  #     - name: Install dependencies
-  #       run: poetry install
-
-  #     - name: Run type-checker
-  #       run: poetry run pyright pyneo4j_ogm tests
-
-  # test:
-  #   runs-on: ubuntu-latest
-  #   services:
-  #     neo4j:
-  #       image: neo4j:latest
-  #       env:
-  #         NEO4J_AUTH: ${{ secrets.NEO4J_AUTH }}
-  #       ports:
-  #         - 7687:7687
-  #   env:
-  #     POETRY_VERSION: "1.5.1"
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       python-version: ["3.10", "3.11", "3.12"]
-  #       pydantic-version: ["1.10.9", "^2"]
-
-  #   steps:
-  #     - uses: actions/checkout@v3
-
-  #     - name: Set up Python ${{ matrix.python-version }}
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-
-  #     - name: Cache Poetry
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: ~/.cache/pypoetry
-  #         key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-poetry-
-
-  #     - name: View python version
-  #       run: python --version
-
-  #     - name: Install Python Poetry
-  #       uses: abatilo/actions-poetry@v2.3.0
-
-  #     - name: Configure poetry
-  #       shell: bash
-  #       run: poetry config virtualenvs.in-project true
-
-  #     - name: View poetry version
-  #       run: poetry --version
-
-  #     - name: Install dependencies
-  #       run: |
-  #         poetry install
-  #         poetry add pydantic@${{ matrix.pydantic-version }}
-
-  #     - name: View pydantic version
-  #       run: poetry show pydantic
-
-  #     - name: Run tests
-  #       run: poetry run pytest tests --asyncio-mode=auto --cov=pyneo4j_ogm -W ignore::DeprecationWarning
-
-  # release:
-  #   runs-on: ubuntu-latest
-  #   needs: [lint, type-check, test]
-  #   if: |
-  #     github.event_name == 'push' &&
-  #     github.ref == 'refs/heads/main' &&
-  #     !contains ( github.event.head_commit.message, 'chore(release)' )
-  #   concurrency: release
-  #   environment:
-  #     name: release
-  #     url: https://pypi.org/p/pyneo4j-ogm
-  #   permissions:
-  #     id-token: write
-  #     contents: write
-
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: 0
-  #         ref: ${{ github.ref_name }}
-
-  #     - name: Python Semantic Release
-  #       uses: python-semantic-release/python-semantic-release@master
-  #       with:
-  #         github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  #     - name: Publish package distributions to PyPI
-  #       uses: pypa/gh-action-pypi-publish@release/v1
-
-  release-test:
+  lint:
     runs-on: ubuntu-latest
+    env:
+      POETRY_VERSION: "1.5.1"
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache Poetry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: View python version
+        run: python --version
+
+      - name: Install Python Poetry
+        uses: abatilo/actions-poetry@v2.3.0
+
+      - name: Configure poetry
+        shell: bash
+        run: poetry config virtualenvs.in-project true
+
+      - name: View poetry version
+        run: poetry --version
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run linter
+        run: poetry run pylint --rcfile=.pylintrc pyneo4j_ogm tests
+
+  type-check:
+    runs-on: ubuntu-latest
+    env:
+      POETRY_VERSION: "1.5.1"
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache Poetry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: View python version
+        run: python --version
+
+      - name: Install Python Poetry
+        uses: abatilo/actions-poetry@v2.3.0
+
+      - name: Configure poetry
+        shell: bash
+        run: poetry config virtualenvs.in-project true
+
+      - name: View poetry version
+        run: poetry --version
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run type-checker
+        run: poetry run pyright pyneo4j_ogm tests
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:latest
+        env:
+          NEO4J_AUTH: ${{ secrets.NEO4J_AUTH }}
+        ports:
+          - 7687:7687
+    env:
+      POETRY_VERSION: "1.5.1"
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+        pydantic-version: ["1.10.9", "^2"]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache Poetry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: View python version
+        run: python --version
+
+      - name: Install Python Poetry
+        uses: abatilo/actions-poetry@v2.3.0
+
+      - name: Configure poetry
+        shell: bash
+        run: poetry config virtualenvs.in-project true
+
+      - name: View poetry version
+        run: poetry --version
+
+      - name: Install dependencies
+        run: |
+          poetry install
+          poetry add pydantic@${{ matrix.pydantic-version }}
+
+      - name: View pydantic version
+        run: poetry show pydantic
+
+      - name: Run tests
+        run: poetry run pytest tests --asyncio-mode=auto --cov=pyneo4j_ogm -W ignore::DeprecationWarning
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [lint, type-check, test]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      !contains ( github.event.head_commit.message, 'chore(release)' )
     concurrency: release
     environment:
       name: release
@@ -204,4 +180,6 @@ jobs:
         uses: python-semantic-release/python-semantic-release@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          root_options: -vv --noop
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
