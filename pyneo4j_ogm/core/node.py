@@ -3,6 +3,7 @@ Holds the base node class `NodeModel` which is used to define database models fo
 It provides base functionality like de-/inflation, validation and methods for interacting with
 the database for CRUD operations on nodes.
 """
+
 import json
 from copy import deepcopy
 from functools import wraps
@@ -363,12 +364,16 @@ class NodeModel(ModelBase[NodeModelSettings]):
             if "$node" not in filters or "$labels" not in filters["$node"]:
                 raise InvalidFilters()
 
-            labels = cast(List[str], filters["$node"]["$labels"])
+            labels = set(filters["$node"]["$labels"])
 
             # Get target node model from the models registered with the client
             # If no model is found, someone forgot to register it
             for model in self._client.models:
-                if hasattr(model._settings, "labels") and list(getattr(model._settings, "labels", [])) == labels:
+                if not issubclass(model, NodeModel):
+                    continue
+
+                model_labels = set(getattr(model._settings, "labels", []))
+                if not model_labels.difference(labels):
                     target_node_model = cast("NodeModel", model)
                     break
 

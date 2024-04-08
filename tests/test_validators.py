@@ -1,5 +1,4 @@
 # pylint: disable=missing-module-docstring, missing-class-docstring
-# pyright: reportUnboundVariable=false
 
 from pydantic import BaseModel
 from pydantic.class_validators import root_validator
