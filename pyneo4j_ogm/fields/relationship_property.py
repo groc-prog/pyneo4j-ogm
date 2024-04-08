@@ -3,8 +3,6 @@ Relationship property class used to define relationships between the model this 
 which defines the other end of the relationship.
 """
 
-# pyright: reportUnboundVariable=false
-
 import asyncio
 from asyncio import iscoroutinefunction
 from enum import Enum

@@ -23,5 +23,8 @@
     ".neo4j_data": true,
     ".coverage": true,
     ".venv": true
-  }
+  },
+  "cSpell.words": [
+    "pyneo"
+  ]
 }

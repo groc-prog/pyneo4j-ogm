@@ -2,8 +2,6 @@
 Utility functions for staying compatible with Pydantic V1 and V2
 """
 
-# pyright: reportUnboundVariable=false
-
 from typing import Any, Type, Union
 
 import pydantic

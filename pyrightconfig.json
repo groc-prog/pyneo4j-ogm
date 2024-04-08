@@ -1,5 +1,6 @@
 {
   "reportIncompatibleVariableOverride": false,
   "reportInvalidTypeForm": false,
-  "reportIncompatibleMethodOverride": false
+  "reportIncompatibleMethodOverride": false,
+  "reportUnboundVariable": false
 }

@@ -2,8 +2,6 @@
 Settings for model classes.
 """
 
-# pyright: reportUnboundVariable=false
-
 from typing import Callable, Dict, List, Optional, Set, Union
 
 from pydantic import BaseModel

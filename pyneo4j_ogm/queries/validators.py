@@ -2,7 +2,6 @@
 Pydantic validators for query operators and filters.
 """
 
-# pyright: reportUnboundVariable=false
 # pylint: disable=unused-argument
 
 from typing import Any, Dict, List, Literal, Optional, Type, Union
