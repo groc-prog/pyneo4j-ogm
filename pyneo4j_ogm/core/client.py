@@ -672,13 +672,12 @@ class Pyneo4jClient:
         Commits the currently active transaction and closes it.
         """
         logger.debug("Committing transaction %s", self._transaction)
-        try:
-            await cast(AsyncTransaction, self._transaction).commit()  # type: ignore
-            bookmarks = await cast(AsyncSession, self._session).last_bookmarks()
-            self.last_bookmarks = set(bookmarks.raw_values)
-        finally:
-            self._session = None
-            self._transaction = None
+        await cast(AsyncTransaction, self._transaction).commit()  # type: ignore
+        bookmarks = await cast(AsyncSession, self._session).last_bookmarks()
+        self.last_bookmarks = set(bookmarks.raw_values)
+
+        self._session = None
+        self._transaction = None
 
     @ensure_connection
     async def _rollback_transaction(self) -> None:
@@ -686,11 +685,9 @@ class Pyneo4jClient:
         Rolls back the currently active transaction and closes it.
         """
         logger.debug("Rolling back transaction %s", self._transaction)
-        try:
-            await cast(AsyncTransaction, self._transaction).rollback()  # type: ignore
-        finally:
-            self._session = None
-            self._transaction = None
+        await cast(AsyncTransaction, self._transaction).rollback()  # type: ignore
+        self._session = None
+        self._transaction = None
 
     def _resolve_database_model(self, query_result: Any) -> Optional[Any]:
         """
@@ -704,6 +701,7 @@ class Pyneo4jClient:
                 with `Path.nodes` and `Path.relationships` resolved to the database models.
         """
         if isinstance(query_result, Path):
+            # If the result is a path, resolve the nodes and relationships inside the path
             logger.debug("Query result %s is a path, resolving nodes and relationship", query_result)
             nodes = []
             relationships = []
@@ -723,6 +721,7 @@ class Pyneo4jClient:
 
             return query_result
         elif isinstance(query_result, (Node, Relationship)):
+            # Get type or labels and try to resolve the query result to a registered model
             logger.debug("Query result %s is a node or relationship, resolving", query_result)
             labels = set(query_result.labels) if isinstance(query_result, Node) else {query_result.type}
 
