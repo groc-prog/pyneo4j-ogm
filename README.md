@@ -23,7 +23,8 @@
 
 Things to come in the future. Truly exiting stuff! If you have feature requests which you think might improve `pyneo4j-ogm`, feel free to open up a feature request.
 
-- [ ] Auto-generated migrations
+- [ ] [MemGraph](https://memgraph.com/) support.
+- [ ] Usage examples for `pyneo4j-ogm` in different environments.
 
 ## 📦 Installation
 
