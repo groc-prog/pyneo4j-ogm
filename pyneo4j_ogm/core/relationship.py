@@ -3,6 +3,7 @@ Holds the base relationship class `RelationshipModel` which is used to define da
 relationships. It provides base functionality like de-/inflation and validation and methods for interacting with
 the database for CRUD operations on relationships.
 """
+
 import json
 import re
 from functools import wraps
@@ -83,7 +84,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     `pyneo4j_ogm.fields.settings.RelationshipModelSettings`.
     """
 
-    _settings: RelationshipModelSettings
+    _settings: RelationshipModelSettings = PrivateAttr()
     _start_node_element_id: Optional[str] = PrivateAttr(default=None)
     _start_node_id: Optional[int] = PrivateAttr(default=None)
     _end_node_element_id: Optional[str] = PrivateAttr(default=None)
@@ -427,6 +428,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             parameters=cls._query_builder.parameters,
         )
 
+        # Normalize results to instance classes
         logger.debug("Building instances from query results")
         for result_list in results:
             for result in result_list:

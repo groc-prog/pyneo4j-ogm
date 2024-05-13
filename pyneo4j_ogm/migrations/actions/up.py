@@ -41,6 +41,8 @@ async def up(up_count: RunMigrationCount = "all", config_path: Optional[str] = N
             if up_count != "all" and count >= up_count:
                 break
 
+            # Since the migration files are sorted by identifier, we can get the current migration
+            # by getting the min identifier, which is a UNIX timestamp meaning the lowest value is the oldest migration
             current_migration_identifier = min(migration_files.keys())
             current_migration = migration_files[current_migration_identifier]
 

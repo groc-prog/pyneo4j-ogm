@@ -100,7 +100,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
     model and are defined in `pyneo4j_ogm.fields.settings.NodeModelSettings`.
     """
 
-    _settings: NodeModelSettings
+    _settings: NodeModelSettings = PrivateAttr()
     _relationship_properties: Set[str] = PrivateAttr()
     Settings: ClassVar[Type[NodeModelSettings]]
 
@@ -196,6 +196,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise UnexpectedEmptyResult()
 
+        # Since the instance is now hydrated, we can set the element id and id and reset the modified properties
+        # to the current instance values
         logger.debug("Hydrating instance values")
         setattr(self, "_element_id", getattr(cast(T, results[0][0]), "_element_id"))
         setattr(self, "_id", getattr(cast(T, results[0][0]), "_id"))
@@ -230,6 +232,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             ]
         )
 
+        # We return the updated node to check if the query was successful
+        # since Neo4j does not raise any exceptions if the node does not exist
         results, _ = await self._client.cypher(
             query=f"""
                 MATCH {self._query_builder.node_match(list(self._settings.labels))}
@@ -269,6 +273,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             parameters={"element_id": self._element_id},
         )
 
+        # If the returned value is empty, the node does not exist and the query failed
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise UnexpectedEmptyResult()
@@ -296,6 +301,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
             parameters={"element_id": self._element_id},
         )
 
+        # If the returned value is empty, we can not refresh the instance
+        # since the node does not exist anymore
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             raise UnexpectedEmptyResult()
@@ -520,6 +527,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         )
 
         if do_auto_fetch:
+            # If auto-fetch is enabled, we need to build the auto-fetch queries in addition to the normal query
             logger.debug("Querying database with auto-fetch enabled")
             projection_query = (
                 "RETURN n" if cls._query_builder.query["projections"] == "" else cls._query_builder.query["projections"]
@@ -562,10 +570,12 @@ class NodeModel(ModelBase[NodeModelSettings]):
             or results[0][0] is None
             or (isinstance(results[0][0], dict) and len(results[0][0]) == 0)
         ):
+            # If no results are found, we return None or raise an exception
             if raise_on_empty:
                 raise NoResultFound(filters)
             return None
 
+        # Normalize results to a single instance
         if isinstance(results[0][0], Node):
             instance = cls._inflate(graph_entity=results[0][0])
         elif isinstance(results[0][0], list):

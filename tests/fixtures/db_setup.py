@@ -1,6 +1,7 @@
 """
 Fixture for setup/teardown of a Neo4j database for integration tests.
 """
+
 # pylint: disable=redefined-outer-name, missing-class-docstring
 
 from typing import Any, Dict, List
@@ -141,6 +142,7 @@ async def session():
 
 @pytest.fixture
 async def setup_test_data(client: Pyneo4jClient, session: AsyncSession):
+    client.models = set()
     await client.register_models([Developer, Coffee, CoffeeShop, WorkedWith, Consumed, Sells, Bestseller])
     await session.run(
         """
@@ -203,6 +205,8 @@ async def setup_test_data(client: Pyneo4jClient, session: AsyncSession):
     await result.consume()
 
     yield result_values
+
+    client.models = set()
 
 
 @pytest.fixture

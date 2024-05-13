@@ -35,6 +35,7 @@ async def down(down_count: RunMigrationCount = "all", config_path: Optional[str]
 
         logger.debug("Filtering migration files for applied migrations")
         applied_migration_identifiers = migration_node.get_applied_migration_identifiers
+        # Remove all migration files that have not been applied
         for identifier in deepcopy(migration_files).keys():
             if identifier not in applied_migration_identifiers:
                 migration_files.pop(identifier, None)
@@ -43,6 +44,8 @@ async def down(down_count: RunMigrationCount = "all", config_path: Optional[str]
             if down_count != "all" and count >= down_count:
                 break
 
+            # We can get the current migration by getting the max identifier, which is a
+            # UNIX timestamp meaning the highest value is the most recent migration
             current_migration_identifier = max(migration_files.keys())
             current_migration = migration_files[current_migration_identifier]
 

@@ -35,7 +35,11 @@ from pyneo4j_ogm.fields.relationship_property import (
     RelationshipPropertyCardinality,
     RelationshipPropertyDirection,
 )
-from pyneo4j_ogm.fields.settings import BaseModelSettings
+from pyneo4j_ogm.fields.settings import (
+    BaseModelSettings,
+    NodeModelSettings,
+    RelationshipModelSettings,
+)
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import (
     IS_PYDANTIC_V2,
@@ -236,7 +240,7 @@ class ModelBase(BaseModel, Generic[V]):
     directly and is only used as a base class for `NodeModel` and `RelationshipModel`.
     """
 
-    _settings: BaseModelSettings = PrivateAttr()
+    _settings: Union[NodeModelSettings, RelationshipModelSettings] = PrivateAttr()
     _client: Pyneo4jClient = PrivateAttr()
     _query_builder: QueryBuilder = PrivateAttr()
     _db_properties: Dict[str, Any] = PrivateAttr(default={})

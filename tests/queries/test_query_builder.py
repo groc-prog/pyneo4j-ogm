@@ -4,8 +4,198 @@
 import pytest
 from pydantic import ValidationError
 
+from pyneo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
+from pyneo4j_ogm.queries.types import QueryOptionsOrder, RelationshipMatchDirection
 from tests.fixtures.query_builder import query_builder
+from tests.utils.string_utils import assert_string_equality
+
+
+def test_relationship_match_without_parameters(query_builder: QueryBuilder):
+    result = query_builder.relationship_match()
+    assert result == "()-[r]-()"
+
+
+def test_relationship_match_with_ref(query_builder: QueryBuilder):
+    result = query_builder.relationship_match(ref="a")
+    assert result == "()-[a]-()"
+
+
+def test_relationship_match_with_type(query_builder: QueryBuilder):
+    result = query_builder.relationship_match(type_="REL")
+    assert result == "()-[r:REL]-()"
+
+    result = query_builder.relationship_match(type_="")
+    assert result == "()-[r]-()"
+
+
+def test_relationship_match_with_node_labels(query_builder: QueryBuilder):
+    result = query_builder.relationship_match(start_node_labels=["A"], end_node_labels=["B", "C"])
+    assert result == "(:A)-[r]-(:B:C)"
+
+    result = query_builder.relationship_match(start_node_labels=["A"], end_node_labels=[])
+    assert result == "(:A)-[r]-()"
+
+
+def test_relationship_match_with_node_refs(query_builder: QueryBuilder):
+    result = query_builder.relationship_match(start_node_ref="a", end_node_ref="b")
+    assert result == "(a)-[r]-(b)"
+
+
+def test_relationship_match_with_direction(query_builder: QueryBuilder):
+    result = query_builder.relationship_match(direction=RelationshipMatchDirection.OUTGOING)
+    assert result == "()-[r]->()"
+
+    result = query_builder.relationship_match(direction=RelationshipMatchDirection.INCOMING)
+    assert result == "()<-[r]-()"
+
+    result = query_builder.relationship_match(direction=RelationshipMatchDirection.BOTH)
+    assert result == "()-[r]-()"
+
+    with pytest.raises(InvalidRelationshipDirection):
+        query_builder.relationship_match(direction="invalid")  # type: ignore
+
+
+def test_relationship_match_hops(query_builder: QueryBuilder):
+    result = query_builder.relationship_match(min_hops=3)
+    assert result == "()-[r*3..]-()"
+
+    result = query_builder.relationship_match(min_hops=3, max_hops="*")
+    assert result == "()-[r*3..]-()"
+
+    result = query_builder.relationship_match(min_hops=3, max_hops=10)
+    assert result == "()-[r*3..10]-()"
+
+    result = query_builder.relationship_match(max_hops=10)
+    assert result == "()-[r*..10]-()"
+
+    result = query_builder.relationship_match(max_hops="*")
+    assert result == "()-[r*]-()"
+
+
+def test_invalid_relationship_hops(query_builder: QueryBuilder):
+    with pytest.raises(InvalidRelationshipHops):
+        query_builder.relationship_match(min_hops=-1)
+
+    with pytest.raises(InvalidRelationshipHops):
+        query_builder.relationship_match(max_hops="INVALID_VALUE")  # type: ignore
+
+    with pytest.raises(InvalidRelationshipHops):
+        query_builder.relationship_match(max_hops=-1)
+
+
+def test_build_projections_with_empty_projections(query_builder: QueryBuilder):
+    query_builder.build_projections(projections={}, ref="n")
+    assert query_builder.query["projections"] == ""
+
+
+def test_build_projections_with_non_dict_param(query_builder: QueryBuilder):
+    query_builder.build_projections(projections="not a dict", ref="n")  # type: ignore
+    assert query_builder.query["projections"] == ""
+
+
+def test_build_projections_with_projections(query_builder: QueryBuilder):
+    projections = {"name_prop": "name", "age_prop": "age"}
+    expected_result = "WITH DISTINCT n RETURN DISTINCT collect({name_prop: n.name, age_prop: n.age})"
+
+    query_builder.build_projections(projections=projections, ref="n")
+    assert_string_equality(query_builder.query["projections"], expected_result)
+
+
+def test_build_projections_with_ref(query_builder: QueryBuilder):
+    projections = {"name_prop": "name", "age_prop": "age"}
+    expected_result = "WITH DISTINCT a RETURN DISTINCT collect({name_prop: a.name, age_prop: a.age})"
+
+    query_builder.build_projections(projections=projections, ref="a")
+    assert_string_equality(query_builder.query["projections"], expected_result)
+
+
+def test_build_projections_with_special_keys(query_builder: QueryBuilder):
+    projections = {"element_id": "$elementId", "id": "$id"}
+    expected_result = "WITH DISTINCT n RETURN DISTINCT collect({element_id: elementId(n), id: ID(n)})"
+
+    query_builder.build_projections(projections=projections)
+    assert_string_equality(query_builder.query["projections"], expected_result)
+
+
+def test_query_options_with_empty_options(query_builder: QueryBuilder):
+    query_builder.query_options(options={})
+    assert query_builder.query["options"] == ""
+
+
+def test_query_options_with_sort_option(query_builder: QueryBuilder):
+    query_builder.query_options(options={"sort": ["name", "age"]})
+    expected_result = "ORDER BY n.name, n.age"
+    assert query_builder.query["options"] == expected_result
+
+    query_builder.query_options(options={"sort": "name"})
+    expected_result = "ORDER BY n.name"
+    assert query_builder.query["options"] == expected_result
+
+
+def test_query_options_with_order_option(query_builder: QueryBuilder):
+    query_builder.query_options(options={"order": QueryOptionsOrder.DESCENDING})
+    expected_result = "ORDER BY n DESC"
+    assert query_builder.query["options"] == expected_result
+
+
+def test_query_options_with_limit_option(query_builder: QueryBuilder):
+    query_builder.query_options(options={"limit": 10})
+    expected_result = "LIMIT 10"
+    assert query_builder.query["options"] == expected_result
+
+
+def test_query_options_with_skip_option(query_builder: QueryBuilder):
+    query_builder.query_options(options={"skip": 5})
+    expected_result = "SKIP 5"
+    assert query_builder.query["options"] == expected_result
+
+
+def test_query_options_with_ref(query_builder: QueryBuilder):
+    query_builder.query_options(options={"sort": "name"}, ref="a")
+    expected_result = "ORDER BY a.name"
+    assert query_builder.query["options"] == expected_result
+
+
+def test_query_options_with_all_options(query_builder: QueryBuilder):
+    query_builder.query_options(
+        options={"sort": ["name", "age"], "order": QueryOptionsOrder.DESCENDING, "limit": 10, "skip": 5}
+    )
+    expected_result = "ORDER BY n.name, n.age DESC SKIP 5 LIMIT 10"
+    assert query_builder.query["options"] == expected_result
+
+
+def test_node_match_with_labels(query_builder: QueryBuilder):
+    result = query_builder.node_match(labels=["Person"], ref="p")
+    assert result == "(p:Person)"
+
+
+def test_node_match_without_labels(query_builder: QueryBuilder):
+    result = query_builder.node_match(ref="p")
+    assert result == "(p)"
+
+
+def test_node_match_with_empty_ref(query_builder: QueryBuilder):
+    result = query_builder.node_match(labels=["Person"], ref="")
+    assert result == "(:Person)"
+
+
+def test_node_match_with_empty_labels(query_builder: QueryBuilder):
+    result = query_builder.node_match(labels=[], ref="p")
+    assert result == "(p)"
+
+    result = query_builder.node_match(labels=[""], ref="p")
+    assert result == "(p)"
+
+
+def test_node_match_with_none_ref(query_builder: QueryBuilder):
+    result = query_builder.node_match(labels=["Person"], ref=None)
+    assert result == "(:Person)"
+
+
+def test_node_match_with_none_labels(query_builder: QueryBuilder):
+    result = query_builder.node_match(labels=None, ref="p")
+    assert result == "(p)"
 
 
 def test_invalid_node_filters(query_builder: QueryBuilder):
