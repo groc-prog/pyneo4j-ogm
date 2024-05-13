@@ -1,6 +1,5 @@
 """
-Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic between the two model types
-and defines common serializers/validators used for Pydantic models.
+Base Node/Relationship class module.
 """
 
 import asyncio
@@ -890,10 +889,6 @@ class ModelBase(BaseModel, Generic[V]):
     else:
 
         class Config:
-            """
-            Pydantic configuration options.
-            """
-
             validate_all = True
             validate_assignment = True
             revalidate_instances = "always"

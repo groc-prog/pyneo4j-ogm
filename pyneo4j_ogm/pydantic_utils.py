@@ -1,5 +1,5 @@
 """
-Utility functions for staying compatible with Pydantic V1 and V2
+Pydantic compatibility utility module.
 """
 
 from typing import Any, Type, Union

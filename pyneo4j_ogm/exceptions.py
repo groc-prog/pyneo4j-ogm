@@ -1,12 +1,13 @@
 """
-Pyneo4j exceptions raised by the client or model classes.
+Exceptions module for Pyneo4j OGM.
 """
-from typing import Any, List
+
+from typing import Any, List, Set, Union
 
 
 class Pyneo4jException(Exception):
     """
-    Base exception for all Pyneo4j exceptions
+    Base exception for all Pyneo4j exceptions.
     """
 
 
@@ -214,3 +215,14 @@ class ListItemNotEncodable(Pyneo4jException):
 
     def __init__(self, *args: object) -> None:
         super().__init__("List item is not JSON encodable and can not be stored inside the database", *args)
+
+
+class AlreadyRegistered(Pyneo4jException):
+    """
+    Multiple models are using the same labels/type as a already registered model.
+    """
+
+    def __init__(self, labels_or_type: Union[Set[str], str], *args: object) -> None:
+        received = f"[{', '.join(labels_or_type)}]" if isinstance(labels_or_type, set) else f"[{labels_or_type}]"
+        label_or_type = "labels" if isinstance(labels_or_type, set) else "type"
+        super().__init__(f"A model is using the same {label_or_type} as another model. Got {received}", *args)

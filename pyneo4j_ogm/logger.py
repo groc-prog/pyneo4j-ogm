@@ -1,5 +1,5 @@
 """
-Logging configuration for pyneo4j-ogm
+Logging module.
 
 Logging is controlled by two environment variables:
 - PYNEO4J_OGM_LOG_LEVEL: the log level to use. Defaults to `WARNING`.
