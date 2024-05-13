@@ -32,8 +32,6 @@ from tests.fixtures.db_setup import (
 
 
 async def test_update(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     relationship: Relationship = [
         result
         for result in setup_test_data[0][1]
@@ -75,8 +73,6 @@ async def test_update(client: Pyneo4jClient, session: AsyncSession, setup_test_d
 
 
 async def test_update_no_result(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     relationship: Relationship = [
         result
         for result in setup_test_data[0][1]
@@ -100,8 +96,6 @@ async def test_update_no_result(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_update_one(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.update_one({"language": "Rust"}, {"language": "Python"})
     assert result is not None
     assert isinstance(result, WorkedWith)
@@ -123,8 +117,6 @@ async def test_update_one(client: Pyneo4jClient, session: AsyncSession, setup_te
 
 
 async def test_update_one_return_new(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.update_one({"language": "Rust"}, {"language": "Python"}, new=True)
     assert result is not None
     assert isinstance(result, WorkedWith)
@@ -132,8 +124,6 @@ async def test_update_one_return_new(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_update_one_no_match(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.update_one({"language": "non-existent"}, {"language": "non-existent"})
     assert result is None
 
@@ -142,8 +132,6 @@ async def test_update_one_no_match(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_update_one_missing_filter(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     with pytest.raises(InvalidFilters):
         await WorkedWith.update_one({}, {})
 
@@ -190,8 +178,6 @@ async def test_update_one_raw_result(client: Pyneo4jClient):
 
 
 async def test_update_many(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     results = await WorkedWith.update_many({"language": "Rust"}, {"language": "Python"})
     assert len(results) == 2
     assert all(isinstance(result, WorkedWith) for result in results)
@@ -213,8 +199,6 @@ async def test_update_many(client: Pyneo4jClient, session: AsyncSession, setup_t
 
 
 async def test_update_many_return_new(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     results = await WorkedWith.update_many({"language": "Rust"}, {"language": "Python"}, new=True)
     assert len(results) == 2
     assert all(isinstance(result, WorkedWith) for result in results)
@@ -222,8 +206,6 @@ async def test_update_many_return_new(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_update_many_no_match(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     results = await WorkedWith.update_many({"language": "non-existent"}, {"language": "non-existent"})
     assert len(results) == 0
 
@@ -270,8 +252,6 @@ async def test_update_many_raw_result(client: Pyneo4jClient):
 
 
 async def test_start_node(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     relationship: Relationship = [
         result
         for result in setup_test_data[0][1]
@@ -295,8 +275,6 @@ async def test_start_node(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_start_node_no_result(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     relationship: Relationship = [
         result
         for result in setup_test_data[0][1]
@@ -319,8 +297,6 @@ async def test_start_node_no_result(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_refresh(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     relationship: Relationship = [
         result
         for result in setup_test_data[0][1]
@@ -341,8 +317,6 @@ async def test_refresh(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_refresh_no_result(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     relationship: Relationship = [
         result
         for result in setup_test_data[0][1]
@@ -584,8 +558,6 @@ def test_iter():
 
 
 async def test_find_one(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.find_one({"language": "Go"})
     assert result is not None
     assert isinstance(result, WorkedWith)
@@ -593,8 +565,6 @@ async def test_find_one(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_find_one_no_match(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.find_one({"language": "non-existent"})
     assert result is None
 
@@ -603,8 +573,6 @@ async def test_find_one_no_match(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_find_one_missing_filter(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     with pytest.raises(InvalidFilters):
         await WorkedWith.find_one({})
 
@@ -651,8 +619,6 @@ async def test_find_one_raw_result(client: Pyneo4jClient):
 
 
 async def test_find_one_projections(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.find_one({"language": "Go"}, {"lang": "language"})
     assert result is not None
     assert isinstance(result, dict)
@@ -661,8 +627,6 @@ async def test_find_one_projections(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_end_node(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     relationship: Relationship = [
         result
         for result in setup_test_data[0][1]
@@ -686,8 +650,6 @@ async def test_end_node(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_end_node_no_result(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     relationship: Relationship = [
         result
         for result in setup_test_data[0][1]
@@ -710,8 +672,6 @@ async def test_end_node_no_result(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_delete(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     relationship: Relationship = [
         result
         for result in setup_test_data[0][1]
@@ -747,8 +707,6 @@ async def test_delete(client: Pyneo4jClient, session: AsyncSession, setup_test_d
 
 
 async def test_delete_one(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.delete_one({"language": "Javascript"})
     assert result == 1
 
@@ -768,8 +726,6 @@ async def test_delete_one(client: Pyneo4jClient, session: AsyncSession, setup_te
 
 
 async def test_delete_one_no_match(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.delete_one({"language": "I dont exist"})
     assert result == 0
 
@@ -790,8 +746,6 @@ async def test_delete_one_no_match(client: Pyneo4jClient, session: AsyncSession,
 
 
 async def test_delete_one_no_result(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
@@ -814,15 +768,11 @@ async def test_delete_one_no_result(client: Pyneo4jClient, session: AsyncSession
 
 
 async def test_delete_one_missing_filter(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     with pytest.raises(InvalidFilters):
         await WorkedWith.delete_one({})
 
 
 async def test_delete_many(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.delete_many({"language": "Javascript"})
     assert result == 2
 
@@ -842,8 +792,6 @@ async def test_delete_many(client: Pyneo4jClient, session: AsyncSession, setup_t
 
 
 async def test_delete_many_no_match(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.delete_many({"language": "non-existent"})
     assert result == 0
 
@@ -863,8 +811,6 @@ async def test_delete_many_no_match(client: Pyneo4jClient, session: AsyncSession
 
 
 async def test_delete_many_no_results(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([WorkedWith])
-
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
@@ -873,22 +819,16 @@ async def test_delete_many_no_results(client: Pyneo4jClient, session: AsyncSessi
 
 
 async def test_count(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.count({"language": "Python"})
     assert result == 2
 
 
 async def test_count_no_match(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     result = await WorkedWith.count({"language": "non-existent"})
     assert result == 0
 
 
 async def test_count_no_query_result(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
         with pytest.raises(UnexpectedEmptyResult):
@@ -896,8 +836,6 @@ async def test_count_no_query_result(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_find_many(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     results = await WorkedWith.find_many({"language": "Javascript"})
     assert len(results) == 2
     assert all(isinstance(result, WorkedWith) for result in results)
@@ -905,8 +843,6 @@ async def test_find_many(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_find_many_no_match(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     results = await WorkedWith.find_many({"language": "non-existent"})
     assert len(results) == 0
 
@@ -953,8 +889,6 @@ async def test_find_many_raw_result(client: Pyneo4jClient):
 
 
 async def test_find_many_projections(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     results = await WorkedWith.find_many({"language": "Javascript"}, {"lang": "language"})
     assert len(results) == 2
     assert all(isinstance(result, dict) for result in results)
@@ -963,8 +897,6 @@ async def test_find_many_projections(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_find_many_options(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     results = await WorkedWith.find_many({"language": "Javascript"}, options={"limit": 1})
     assert len(results) == 1
     assert all(isinstance(result, WorkedWith) for result in results)
@@ -972,8 +904,6 @@ async def test_find_many_options(client: Pyneo4jClient, setup_test_data):
 
 
 async def test_find_many_options_and_projections(client: Pyneo4jClient, setup_test_data):
-    await client.register_models([WorkedWith])
-
     results = await WorkedWith.find_many(options={"skip": 1}, projections={"lang": "language"})
     assert len(results) == 6
     assert all(isinstance(result, dict) for result in results)

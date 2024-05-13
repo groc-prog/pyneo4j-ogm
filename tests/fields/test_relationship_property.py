@@ -35,8 +35,6 @@ from tests.fixtures.db_setup import (
 
 
 async def test_replace(client: Pyneo4jClient, session: AsyncSession, dev_model_instances, coffee_model_instances):
-    await client.register_models([Developer, Coffee, Consumed])
-
     john_model, *_ = dev_model_instances
     latte_model, mocha_model, *_ = coffee_model_instances
     replaced_relationships = await john_model.coffee.replace(latte_model, mocha_model)
@@ -88,8 +86,6 @@ async def test_replace(client: Pyneo4jClient, session: AsyncSession, dev_model_i
 async def test_replace_with_existing(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances, coffee_model_instances
 ):
-    await client.register_models([Developer, Coffee, Consumed])
-
     john_model, *_ = dev_model_instances
     latte_model, _, espresso_model, *_ = coffee_model_instances
     replaced_relationships = await john_model.coffee.replace(latte_model, espresso_model)
@@ -141,8 +137,6 @@ async def test_replace_with_existing(
 async def test_replace_with_existing_and_allow_multiple(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances
 ):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, sam_model, alice_model, *_ = dev_model_instances
     replaced_relationships = await john_model.colleagues.replace(alice_model, sam_model)
 
@@ -191,8 +185,6 @@ async def test_replace_with_existing_and_allow_multiple(
 
 
 async def test_replace_multiple(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, sam_model, alice_model, *_ = dev_model_instances
     replaced_relationships = await john_model.colleagues.replace(sam_model, alice_model)
 
@@ -241,8 +233,6 @@ async def test_replace_multiple(client: Pyneo4jClient, session: AsyncSession, de
 async def test_replace_not_connected_exc(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances, coffee_model_instances
 ):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, *_ = dev_model_instances
     latte_model, mocha_model, *_ = coffee_model_instances
 
@@ -251,8 +241,6 @@ async def test_replace_not_connected_exc(
 
 
 async def test_relationships(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, sam_model, alice_model, *_ = dev_model_instances
     multi_relationships = await john_model.colleagues.relationships(sam_model)
 
@@ -269,8 +257,6 @@ async def test_relationships(client: Pyneo4jClient, dev_model_instances):
 
 
 async def test_relationships_no_match(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, _, _, bob_model = dev_model_instances
     multi_relationships = await john_model.colleagues.relationships(bob_model)
 
@@ -278,8 +264,6 @@ async def test_relationships_no_match(client: Pyneo4jClient, dev_model_instances
 
 
 async def test_relationships_raw_result(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     with patch.object(client, "cypher") as mock_cypher:
         mock_start_node = Node(
             graph=Graph(),
@@ -319,8 +303,6 @@ async def test_relationships_raw_result(client: Pyneo4jClient, dev_model_instanc
 
 
 async def test_relationships_projections(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, sam_model, alice_model, *_ = dev_model_instances
     multi_relationships = await john_model.colleagues.relationships(sam_model, projections={"lang": "language"})
 
@@ -336,8 +318,6 @@ async def test_relationships_projections(client: Pyneo4jClient, dev_model_instan
 
 
 async def test_relationships_options(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, sam_model, *_ = dev_model_instances
     multi_relationships = await john_model.colleagues.relationships(sam_model, options={"skip": 1})
 
@@ -346,8 +326,6 @@ async def test_relationships_options(client: Pyneo4jClient, dev_model_instances)
 
 
 async def test_relationships_filters(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, sam_model, *_ = dev_model_instances
     multi_relationships = await john_model.colleagues.relationships(sam_model, filters={"language": "Java"})
 
@@ -356,8 +334,6 @@ async def test_relationships_filters(client: Pyneo4jClient, dev_model_instances)
 
 
 async def test_find_connected_nodes(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, *_ = dev_model_instances
     colleagues = await john_model.colleagues.find_connected_nodes()
 
@@ -366,8 +342,6 @@ async def test_find_connected_nodes(client: Pyneo4jClient, session: AsyncSession
 
 
 async def test_find_connected_nodes_no_result(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, Coffee, Consumed])
-
     bob_model = dev_model_instances[3]
     coffees = await bob_model.coffee.find_connected_nodes()
 
@@ -375,8 +349,6 @@ async def test_find_connected_nodes_no_result(client: Pyneo4jClient, session: As
 
 
 async def test_find_connected_nodes_raw_result(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, Coffee, Consumed])
-
     john_model, *_ = dev_model_instances
 
     with patch.object(client, "cypher") as mock_cypher:
@@ -398,8 +370,6 @@ async def test_find_connected_nodes_raw_result(client: Pyneo4jClient, session: A
 
 
 async def test_find_connected_nodes_filter(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, *_ = dev_model_instances
     colleagues = await john_model.colleagues.find_connected_nodes({"$relationship": {"language": "Java"}})
 
@@ -408,8 +378,6 @@ async def test_find_connected_nodes_filter(client: Pyneo4jClient, session: Async
 
 
 async def test_find_connected_nodes_projections(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, *_ = dev_model_instances
     colleagues = await john_model.colleagues.find_connected_nodes({}, projections={"dev_name": "name"})
 
@@ -419,8 +387,6 @@ async def test_find_connected_nodes_projections(client: Pyneo4jClient, session: 
 
 
 async def test_find_connected_nodes_options(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, Coffee, Consumed])
-
     alice_model = dev_model_instances[2]
     coffees = await alice_model.coffee.find_connected_nodes(options={"skip": 1})
 
@@ -431,8 +397,6 @@ async def test_find_connected_nodes_options(client: Pyneo4jClient, session: Asyn
 async def test_find_connected_nodes_options_and_projections(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances
 ):
-    await client.register_models([Developer, Coffee, Consumed])
-
     alice_model = dev_model_instances[2]
     coffees = await alice_model.coffee.find_connected_nodes(projections={"name": "flavor"}, options={"skip": 1})
 
@@ -444,8 +408,6 @@ async def test_find_connected_nodes_options_and_projections(
 async def test_find_connected_nodes_options_and_projections_and_auto_fetch(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances
 ):
-    await client.register_models([Developer, Coffee, Consumed, Bestseller])
-
     alice_model = dev_model_instances[2]
     coffees = await alice_model.coffee.find_connected_nodes(
         projections={"name": "flavor"}, options={"skip": 1}, auto_fetch_nodes=True
@@ -457,8 +419,6 @@ async def test_find_connected_nodes_options_and_projections_and_auto_fetch(
 
 
 async def test_find_connected_nodes_auto_fetch(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, Coffee, Consumed, Bestseller])
-
     alice_model = dev_model_instances[2]
     coffees = await alice_model.coffee.find_connected_nodes(auto_fetch_nodes=True)
 
@@ -471,8 +431,6 @@ async def test_find_connected_nodes_auto_fetch(client: Pyneo4jClient, session: A
 async def test_find_connected_nodes_auto_fetch_models(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances
 ):
-    await client.register_models([Developer, Coffee, Consumed, Bestseller])
-
     alice_model = dev_model_instances[2]
     coffees = await alice_model.coffee.find_connected_nodes(auto_fetch_nodes=True, auto_fetch_models=[Developer])
 
@@ -483,8 +441,6 @@ async def test_find_connected_nodes_auto_fetch_models(
 
 
 async def test_ensure_cardinality(client: Pyneo4jClient, coffee_shop_model_instances, coffee_model_instances):
-    await client.register_models([CoffeeShop, Coffee, Bestseller])
-
     espresso_model = coffee_model_instances[2]
     rating_five_model, *_ = coffee_shop_model_instances
 
@@ -493,8 +449,6 @@ async def test_ensure_cardinality(client: Pyneo4jClient, coffee_shop_model_insta
 
 
 async def test_ensure_alive_not_hydrated(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     dev = Developer(name="Sindhu", age=23, uid=12)
 
     john_model, *_ = dev_model_instances
@@ -504,8 +458,6 @@ async def test_ensure_alive_not_hydrated(client: Pyneo4jClient, dev_model_instan
 
 
 async def test_ensure_alive_destroyed(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     dev = Developer(name="Sindhu", age=23, uid=12)
     setattr(dev, "_element_id", "element-id")
     setattr(dev, "_id", 1)
@@ -518,8 +470,6 @@ async def test_ensure_alive_destroyed(client: Pyneo4jClient, dev_model_instances
 
 
 async def test_ensure_alive_invalid_node(client: Pyneo4jClient, dev_model_instances, coffee_model_instances):
-    await client.register_models([Developer, WorkedWith, Coffee])
-
     john_model, *_ = dev_model_instances
     latte_model, *_ = coffee_model_instances
 
@@ -528,8 +478,6 @@ async def test_ensure_alive_invalid_node(client: Pyneo4jClient, dev_model_instan
 
 
 async def test_ensure_alive_source_not_hydrated(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     dev = Developer(name="Sindhu", age=23, uid=12)
 
     john_model, *_ = dev_model_instances
@@ -539,8 +487,6 @@ async def test_ensure_alive_source_not_hydrated(client: Pyneo4jClient, dev_model
 
 
 async def test_ensure_alive_source_destroyed(client: Pyneo4jClient, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     dev = Developer(name="Sindhu", age=23, uid=12)
     setattr(dev, "_element_id", "element-id")
     setattr(dev, "_id", 1)
@@ -553,8 +499,6 @@ async def test_ensure_alive_source_destroyed(client: Pyneo4jClient, dev_model_in
 
 
 async def test_disconnect(client: Pyneo4jClient, session: AsyncSession, dev_model_instances, coffee_model_instances):
-    await client.register_models([Developer, Coffee, Consumed])
-
     john_model, *_ = dev_model_instances
     latte_model, *_ = coffee_model_instances
     count = await john_model.coffee.disconnect(latte_model)
@@ -582,8 +526,6 @@ async def test_disconnect(client: Pyneo4jClient, session: AsyncSession, dev_mode
 
 
 async def test_disconnect_multiple(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, sam_model, *_ = dev_model_instances
     count = await john_model.colleagues.disconnect(sam_model)
 
@@ -612,8 +554,6 @@ async def test_disconnect_multiple(client: Pyneo4jClient, session: AsyncSession,
 async def test_disconnect_no_connections(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances, coffee_model_instances
 ):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, *_ = dev_model_instances
     _, mocha_model, *_ = coffee_model_instances
     count = await john_model.coffee.disconnect(mocha_model)
@@ -625,8 +565,6 @@ async def test_disconnect_no_connections(
 
 
 async def test_disconnect_all(client: Pyneo4jClient, session: AsyncSession, dev_model_instances):
-    await client.register_models([Developer, Coffee, Consumed])
-
     john_model, *_ = dev_model_instances
     count = await john_model.coffee.disconnect_all()
 
@@ -654,8 +592,6 @@ async def test_disconnect_all(client: Pyneo4jClient, session: AsyncSession, dev_
 async def test_connect_not_allow_multiple(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances, coffee_model_instances
 ):
-    await client.register_models([Developer, Coffee, Consumed])
-
     john_model, *_ = dev_model_instances
     latte_model, mocha_model, *_ = coffee_model_instances
     updated_relationship = await john_model.coffee.connect(latte_model, {"liked": True})
@@ -701,8 +637,6 @@ async def test_connect_not_allow_multiple(
 async def test_connect_allow_multiple(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances, coffee_model_instances
 ):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, sam_model, *_ = dev_model_instances
 
     new_relationship = await john_model.colleagues.connect(sam_model, {"language": "PHP"})
@@ -729,8 +663,6 @@ async def test_connect_allow_multiple(
 async def test_connect_no_result(
     client: Pyneo4jClient, session: AsyncSession, dev_model_instances, coffee_model_instances
 ):
-    await client.register_models([Developer, WorkedWith])
-
     john_model, sam_model, *_ = dev_model_instances
 
     with patch.object(john_model.colleagues._client, "cypher") as mock_cypher:

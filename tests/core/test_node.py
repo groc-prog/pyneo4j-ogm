@@ -972,8 +972,6 @@ async def test_delete_one_invalid_filter(setup_test_data):
 
 
 async def test_delete_one_no_results(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([CoffeeShop])
-
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
@@ -1001,8 +999,6 @@ async def test_delete_many(session: AsyncSession, setup_test_data):
 
 
 async def test_delete_many_no_match(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([CoffeeShop])
-
     count = await CoffeeShop.delete_many({"tags": {"$in": ["oh-no"]}})
     assert count == 0
 
@@ -1022,8 +1018,6 @@ async def test_delete_many_no_match(client: Pyneo4jClient, session: AsyncSession
 
 
 async def test_delete_many_no_results(client: Pyneo4jClient, session: AsyncSession, setup_test_data):
-    await client.register_models([CoffeeShop])
-
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 

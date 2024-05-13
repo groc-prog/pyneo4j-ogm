@@ -153,22 +153,22 @@ class Pyneo4jClient:
         logger.info("Registering models %s with client %s", models, self)
 
         for model in models:
-            # for registered_model in self.models:
-            #     registered_model_settings = registered_model.model_settings()
-            #     model_settings = model.model_settings()
+            for registered_model in self.models:
+                registered_model_settings = registered_model.model_settings()
+                model_settings = model.model_settings()
 
-            #     if (
-            #         isinstance(registered_model_settings, RelationshipModelSettings)
-            #         and isinstance(model_settings, RelationshipModelSettings)
-            #         and registered_model_settings.type == model_settings.type
-            #     ):
-            #         raise AlreadyRegistered(cast(str, model_settings.type))
-            #     elif (
-            #         isinstance(registered_model_settings, NodeModelSettings)
-            #         and isinstance(model_settings, NodeModelSettings)
-            #         and set(registered_model_settings.labels) == set(model_settings.labels)
-            #     ):
-            #         raise AlreadyRegistered(cast(str, model_settings.labels))
+                if (
+                    isinstance(registered_model_settings, RelationshipModelSettings)
+                    and isinstance(model_settings, RelationshipModelSettings)
+                    and registered_model_settings.type == model_settings.type
+                ):
+                    raise AlreadyRegistered(cast(str, model_settings.type))
+                elif (
+                    isinstance(registered_model_settings, NodeModelSettings)
+                    and isinstance(model_settings, NodeModelSettings)
+                    and set(registered_model_settings.labels) == set(model_settings.labels)
+                ):
+                    raise AlreadyRegistered(cast(str, model_settings.labels))
 
             if issubclass(model, (NodeModel, RelationshipModel)):
                 logger.debug("Found valid mode %s, registering with client", model.__name__)

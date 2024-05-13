@@ -24,7 +24,6 @@
 Things to come in the future. Truly exiting stuff! If you have feature requests which you think might improve `pyneo4j-ogm`, feel free to open up a feature request.
 
 - [ ] [MemGraph](https://memgraph.com/) support.
-- [ ] Usage examples for `pyneo4j-ogm` in different environments.
 
 ## 📦 Installation
 
@@ -369,7 +368,7 @@ In the following we are going to take a closer look at the different parts of `p
 
 ### Running the test suite
 
-To run the test suite, you have to install the development dependencies and run the tests using `pytest`. The tests are located in the `tests` directory. Any tests located in the `tests/integration` directory will require you to have a Neo4j instance running on `localhost:7687` with the credentials (`neo4j:password`). This can easily be done using the provided `docker-compose.yml` file.
+To run the test suite, you have to install the development dependencies and run the tests using `pytest`. The tests are located in the `tests` directory. Some tests will require you to have a Neo4j instance running on `localhost:7687` with the credentials (`neo4j:password`). This can easily be done using the provided `docker-compose.yml` file.
 
 ```bash
 poetry run pytest tests --asyncio-mode=auto -W ignore::DeprecationWarning
@@ -377,8 +376,8 @@ poetry run pytest tests --asyncio-mode=auto -W ignore::DeprecationWarning
 
 > **Note:** The `-W ignore::DeprecationWarning` can be omitted but will result in a lot of deprication warnings by Neo4j itself about the usage of the now deprecated `ID`.
 
-As for running the tests with a different pydantic version, you can just run the following command locally:
+As for running the tests with a different pydantic version, you can just install a different pydantic version with the following command:
 
 ```bash
-poetry add pydantic@1.10
+poetry add pydantic@<version>
 ```

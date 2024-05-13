@@ -124,6 +124,7 @@ async def client():
 
     yield client
 
+    client.models = set()
     await client.close()
 
 

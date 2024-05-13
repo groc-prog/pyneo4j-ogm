@@ -14,6 +14,7 @@ from pyneo4j_ogm.core.client import EntityType, Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
+    AlreadyRegistered,
     InvalidEntityType,
     InvalidLabelOrType,
     MissingDatabaseURI,
@@ -38,6 +39,19 @@ class CypherResolvingRelationship(RelationshipModel):
 
     class Settings:
         type = "TEST_RELATIONSHIP"
+
+
+async def test_duplicate_model_register(client: Pyneo4jClient):
+    class TestNode(NodeModel):
+        name: str
+
+        class Settings:
+            labels = {"TestNode"}
+
+    await client.register_models([TestNode])
+
+    with pytest.raises(AlreadyRegistered):
+        await client.register_models([TestNode])
 
 
 async def test_batch(client: Pyneo4jClient, session: AsyncSession):
