@@ -3,6 +3,49 @@
 
 
 
+## What's Changed in v0.5.3 (2024-05-13)
+
+
+
+
+
+### Documentation
+
+
+* docs: update README ([`96b906d`](https://github.com/groc-prog/pyneo4j-ogm/commit/96b906d86a84c45506381fa10825c5908820498b))
+
+
+* docs: update README.md ([`4836cc7`](https://github.com/groc-prog/pyneo4j-ogm/commit/4836cc789e31561d666d2bedb3ee84e96885782c))
+
+
+* docs: add comments to remaining client methods ([`f16ba40`](https://github.com/groc-prog/pyneo4j-ogm/commit/f16ba40f166769cdae070e2fc7d3777989b6b96f))
+
+
+* docs: add comments to db client ([`d1b6872`](https://github.com/groc-prog/pyneo4j-ogm/commit/d1b687211b926672784cc457edddd568b7d1f4dc))
+
+
+* docs: add comments and update docstrings ([`b8c479d`](https://github.com/groc-prog/pyneo4j-ogm/commit/b8c479d731a55fe18b9ecf8513906b3348d96867))
+
+
+* docs: update documentation and split docs into separate files ([`77d0a28`](https://github.com/groc-prog/pyneo4j-ogm/commit/77d0a280a51272ae5104238c17556f8d9fac8580))
+
+
+* docs: fix invalid links ([`b0d147f`](https://github.com/groc-prog/pyneo4j-ogm/commit/b0d147fc15ea643111fefd8a6f5a0caacfb54969))
+
+
+* docs: update docs branch for testing links ([`b76c491`](https://github.com/groc-prog/pyneo4j-ogm/commit/b76c49124c543d5bca4a1f26bea6f48469750ccd))
+
+
+* docs: split docs into multiple files inside docs directory ([`360b689`](https://github.com/groc-prog/pyneo4j-ogm/commit/360b68931ba90b886406a680be507dd92babbf29))
+
+
+### Fix
+
+
+* fix: convert list to set before comparing contents ([`b4468f9`](https://github.com/groc-prog/pyneo4j-ogm/commit/b4468f966f09d77a39d71f53744d584138a5b051))
+
+
+
 ## What's Changed in v0.5.2 (2024-02-22)
 
 
@@ -37,6 +80,7 @@
 
 
 * fix: fix validation error when passing &#34;*&#34; to $maxHops ([`753af19`](https://github.com/groc-prog/pyneo4j-ogm/commit/753af193a60042559d3be0e67471dddb4f66544a))
+
 
 ## What's Changed in v0.5.0 (2024-02-06)
 
