@@ -3,6 +3,34 @@
 
 
 
+## What's Changed in v0.6.0 (2024-05-23)
+
+
+
+### Documentation
+
+
+* docs: add documentation for register_models_from_directory method ([`6c0f6e0`](https://github.com/groc-prog/pyneo4j-ogm/commit/6c0f6e012a1401c6c5d9a59238989cd2fc110daf))
+
+
+### Feature
+
+
+* feat: allow model registration using directory path ([`8a4b93d`](https://github.com/groc-prog/pyneo4j-ogm/commit/8a4b93d27c7dfd3528f6db12b6490c382a620558))
+
+
+### Fix
+
+
+* fix: prepare models correctly when using directory ([`50c4c04`](https://github.com/groc-prog/pyneo4j-ogm/commit/50c4c0411b36df49e2640fc72f4bbde7484b29c2))
+
+
+### Refactor
+
+
+* refactor: rename register_models_dir to register_models_from_directory ([`e83c8e4`](https://github.com/groc-prog/pyneo4j-ogm/commit/e83c8e45623516db03b1f0eec286d4235023f670))
+
+
 ## What's Changed in v0.5.3 (2024-05-13)
 
 

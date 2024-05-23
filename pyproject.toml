@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyneo4j-ogm"
-version = "0.5.3"
+version = "0.6.0"
 description = "Asynchronous Python OGM for Neo4j"
 authors = ["groc-prog <marc.troisner@gmail.com>"]
 maintainers = ["groc-prog <marc.troisner@gmail.com>"]
