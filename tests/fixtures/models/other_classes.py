@@ -1,0 +1,2 @@
+class NotMePlease:
+    pass

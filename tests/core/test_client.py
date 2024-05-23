@@ -14,7 +14,6 @@ from pyneo4j_ogm.core.client import EntityType, Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
-    AlreadyRegistered,
     InvalidEntityType,
     InvalidLabelOrType,
     MissingDatabaseURI,
@@ -25,6 +24,12 @@ from pyneo4j_ogm.exceptions import (
 from pyneo4j_ogm.fields.property_options import WithOptions
 from pyneo4j_ogm.logger import logger
 from tests.fixtures.db_setup import client, session
+from tests.fixtures.models.models_top import ModelOne, ModelTwo
+from tests.fixtures.models.nested.deeply_nested.model_deeply_nested import (
+    ModelFive,
+    ModelSix,
+)
+from tests.fixtures.models.nested.model_nested import ModelFour, ModelThree
 
 
 class CypherResolvingNode(NodeModel):
@@ -39,19 +44,6 @@ class CypherResolvingRelationship(RelationshipModel):
 
     class Settings:
         type = "TEST_RELATIONSHIP"
-
-
-async def test_duplicate_model_register(client: Pyneo4jClient):
-    class TestNode(NodeModel):
-        name: str
-
-        class Settings:
-            labels = {"TestNode"}
-
-    await client.register_models([TestNode])
-
-    with pytest.raises(AlreadyRegistered):
-        await client.register_models([TestNode])
 
 
 async def test_batch(client: Pyneo4jClient, session: AsyncSession):
@@ -621,3 +613,8 @@ async def test_drop_indexes(client: Pyneo4jClient, session: AsyncSession):
     await query_results.consume()
 
     assert len(results) == 0
+
+
+async def test_register_models_dir(client: Pyneo4jClient):
+    await client.register_models_dir("tests/fixtures/models")
+    assert len(client.models) == 6

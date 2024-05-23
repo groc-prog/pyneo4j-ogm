@@ -2,6 +2,8 @@
 Pyneo4j database client class for running operations on the database.
 """
 
+import importlib.util
+import inspect
 import os
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, cast
@@ -14,7 +16,6 @@ from typing_extensions import LiteralString
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
-    AlreadyRegistered,
     InvalidBookmark,
     InvalidEntityType,
     InvalidLabelOrType,
@@ -23,7 +24,6 @@ from pyneo4j_ogm.exceptions import (
     TransactionInProgress,
     UnsupportedNeo4jVersion,
 )
-from pyneo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import get_field_type, get_model_fields
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
@@ -139,6 +139,41 @@ class Pyneo4jClient:
         return self
 
     @ensure_connection
+    async def register_models_dir(self, dir_path: str) -> None:
+        """
+        Registers all models in a directory and all subdirectories.
+        """
+        logger.info("Registering models in directory %s", dir_path)
+        for root, _, files in os.walk(dir_path):
+            # Check all files for models
+            logger.debug("Checking %s files for models", len(files))
+            for file in files:
+                if not file.endswith(".py"):
+                    continue
+
+                filepath = os.path.join(root, file)
+
+                # Load the module
+                logger.debug("Found file %s, importing", filepath)
+                module_name = os.path.splitext(os.path.basename(filepath))[0]
+                spec = importlib.util.spec_from_file_location(module_name, filepath)
+
+                if spec is None or spec.loader is None:
+                    raise ImportError(f"Could not import migration file {filepath}")
+
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+                for member in inspect.getmembers(
+                    module,
+                    lambda x: inspect.isclass(x)
+                    and issubclass(x, (NodeModel, RelationshipModel))
+                    and x is not NodeModel
+                    and x is not RelationshipModel,
+                ):
+                    self.models.add(member[1])
+
+    @ensure_connection
     async def register_models(self, models: List[Type[Union[NodeModel, RelationshipModel]]]) -> None:
         """
         Registers models which are used with the client to resolve query results to their
@@ -153,23 +188,6 @@ class Pyneo4jClient:
         logger.info("Registering models %s with client %s", models, self)
 
         for model in models:
-            for registered_model in self.models:
-                registered_model_settings = registered_model.model_settings()
-                model_settings = model.model_settings()
-
-                if (
-                    isinstance(registered_model_settings, RelationshipModelSettings)
-                    and isinstance(model_settings, RelationshipModelSettings)
-                    and registered_model_settings.type == model_settings.type
-                ):
-                    raise AlreadyRegistered(cast(str, model_settings.type))
-                elif (
-                    isinstance(registered_model_settings, NodeModelSettings)
-                    and isinstance(model_settings, NodeModelSettings)
-                    and set(registered_model_settings.labels) == set(model_settings.labels)
-                ):
-                    raise AlreadyRegistered(cast(str, model_settings.labels))
-
             if issubclass(model, (NodeModel, RelationshipModel)):
                 logger.debug("Found valid mode %s, registering with client", model.__name__)
 

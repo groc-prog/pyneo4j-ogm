@@ -7,6 +7,7 @@ unsafe-load-any-extension=no
 
 [MESSAGES CONTROL]
 disable=abstract-method,
+        inconsistent-quotes,
         protected-access,
         broad-exception-caught,
         ungrouped-imports,
