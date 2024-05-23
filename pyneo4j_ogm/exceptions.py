@@ -2,7 +2,7 @@
 Exceptions module for Pyneo4j OGM.
 """
 
-from typing import Any, List, Set, Union
+from typing import Any, List
 
 
 class Pyneo4jException(Exception):
