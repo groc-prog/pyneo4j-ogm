@@ -139,7 +139,7 @@ class Pyneo4jClient:
         return self
 
     @ensure_connection
-    async def register_models_dir(self, dir_path: str) -> None:
+    async def register_models_from_directory(self, dir_path: str) -> None:
         """
         Registers all models in a directory and all subdirectories.
         """

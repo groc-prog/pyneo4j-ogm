@@ -616,7 +616,7 @@ async def test_drop_indexes(client: Pyneo4jClient, session: AsyncSession):
 
 
 async def test_register_models_dir(client: Pyneo4jClient):
-    await client.register_models_dir("tests/fixtures/models")
+    await client.register_models_from_directory("tests/fixtures/models")
     assert len(client.models) == 6
 
     for model in client.models:
