@@ -47,6 +47,14 @@ Models are a core feature of pyneo4j-ogm, and therefore you probably want to use
 await client.register_models([Developer, Coffee, Consumed])
 ```
 
+or by providing the path to a directory holding all your models. The `register_models_from_directory()` method will automatically discover all models in the directory and all of it's subdirectories and register them:
+
+```python
+## Create a new client instance and connect ...
+
+await client.register_models_from_directory("path/to/models")
+```
+
 This is a crucial step, because if you don't register your models with the client, you won't be able to work with them in any way. Should you try to work with a model that has not been registered, you will get a `UnregisteredModel` exception. This exception also gets raised if a database model defines a relationship-property with other (unregistered) models as a target or relationship model and then runs a query with said relationship-property.
 
 If you have defined any indexes or constraints on your models, they will be created automatically when registering them. You can prevent this behavior by passing `skip_constraints=True` or `skip_indexes=True` to the `connect()` method. If you do this, you will have to create the indexes and constraints yourself.
