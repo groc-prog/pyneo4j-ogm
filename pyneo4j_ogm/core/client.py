@@ -173,6 +173,8 @@ class Pyneo4jClient:
                 ):
                     self.models.add(member[1])
 
+        await self._prepare_registered_models()
+
     @ensure_connection
     async def register_models(self, models: List[Type[Union[NodeModel, RelationshipModel]]]) -> None:
         """
@@ -193,49 +195,8 @@ class Pyneo4jClient:
 
                 # If the model is a valid model, add it to the set of models stored by the client
                 self.models.add(model)
-                setattr(model, "_client", self)
 
-                for property_name, property_definition in get_model_fields(model).items():
-                    entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
-                    labels_or_type = (
-                        list(getattr(model._settings, "labels"))
-                        if issubclass(model, NodeModel)
-                        else getattr(model._settings, "type")
-                    )
-
-                    # Check if we need to create any constraints
-                    if not self._skip_constraints:
-                        if getattr(get_field_type(property_definition), "_unique", False):
-                            await self.create_uniqueness_constraint(
-                                name=model.__name__,
-                                entity_type=entity_type,
-                                properties=[property_name],
-                                labels_or_type=labels_or_type,
-                            )
-
-                    # Check if we need to create any indexes
-                    if not self._skip_indexes:
-                        if getattr(get_field_type(property_definition), "_range_index", False):
-                            await self.create_range_index(
-                                name=model.__name__,
-                                entity_type=entity_type,
-                                properties=[property_name],
-                                labels_or_type=labels_or_type,
-                            )
-                        if getattr(get_field_type(property_definition), "_point_index", False):
-                            await self.create_point_index(
-                                name=model.__name__,
-                                entity_type=entity_type,
-                                properties=[property_name],
-                                labels_or_type=labels_or_type,
-                            )
-                        if getattr(get_field_type(property_definition), "_text_index", False):
-                            await self.create_text_index(
-                                name=model.__name__,
-                                entity_type=entity_type,
-                                properties=[property_name],
-                                labels_or_type=labels_or_type,
-                            )
+        await self._prepare_registered_models()
 
     @ensure_connection
     async def close(self) -> None:
@@ -781,6 +742,56 @@ class Pyneo4jClient:
 
         logger.debug("Query result %s is not a node, relationship, or path, skipping", type(query_result))
         return None
+
+    async def _prepare_registered_models(self) -> None:
+        """
+        Prepares the registered models by setting the client and creating all indexes and constraints.
+        """
+
+        for model in self.models:
+            setattr(model, "_client", self)
+
+            for property_name, property_definition in get_model_fields(model).items():
+                entity_type = EntityType.NODE if issubclass(model, NodeModel) else EntityType.RELATIONSHIP
+                labels_or_type = (
+                    list(getattr(model._settings, "labels"))
+                    if issubclass(model, NodeModel)
+                    else getattr(model._settings, "type")
+                )
+
+                # Check if we need to create any constraints
+                if not self._skip_constraints:
+                    if getattr(get_field_type(property_definition), "_unique", False):
+                        await self.create_uniqueness_constraint(
+                            name=model.__name__,
+                            entity_type=entity_type,
+                            properties=[property_name],
+                            labels_or_type=labels_or_type,
+                        )
+
+                # Check if we need to create any indexes
+                if not self._skip_indexes:
+                    if getattr(get_field_type(property_definition), "_range_index", False):
+                        await self.create_range_index(
+                            name=model.__name__,
+                            entity_type=entity_type,
+                            properties=[property_name],
+                            labels_or_type=labels_or_type,
+                        )
+                    if getattr(get_field_type(property_definition), "_point_index", False):
+                        await self.create_point_index(
+                            name=model.__name__,
+                            entity_type=entity_type,
+                            properties=[property_name],
+                            labels_or_type=labels_or_type,
+                        )
+                    if getattr(get_field_type(property_definition), "_text_index", False):
+                        await self.create_text_index(
+                            name=model.__name__,
+                            entity_type=entity_type,
+                            properties=[property_name],
+                            labels_or_type=labels_or_type,
+                        )
 
     @property
     def is_connected(self) -> bool:
