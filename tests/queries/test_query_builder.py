@@ -4,7 +4,10 @@
 import pytest
 from pydantic import ValidationError
 
-from pyneo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
+from pyneo4j_ogm.exceptions import (
+    InvalidRelationshipDirectionError,
+    InvalidRelationshipHopsError,
+)
 from pyneo4j_ogm.queries.query_builder import QueryBuilder
 from pyneo4j_ogm.queries.types import QueryOptionsOrder, RelationshipMatchDirection
 from tests.fixtures.query_builder import query_builder
@@ -52,7 +55,7 @@ def test_relationship_match_with_direction(query_builder: QueryBuilder):
     result = query_builder.relationship_match(direction=RelationshipMatchDirection.BOTH)
     assert result == "()-[r]-()"
 
-    with pytest.raises(InvalidRelationshipDirection):
+    with pytest.raises(InvalidRelationshipDirectionError):
         query_builder.relationship_match(direction="invalid")  # type: ignore
 
 
@@ -74,13 +77,13 @@ def test_relationship_match_hops(query_builder: QueryBuilder):
 
 
 def test_invalid_relationship_hops(query_builder: QueryBuilder):
-    with pytest.raises(InvalidRelationshipHops):
+    with pytest.raises(InvalidRelationshipHopsError):
         query_builder.relationship_match(min_hops=-1)
 
-    with pytest.raises(InvalidRelationshipHops):
+    with pytest.raises(InvalidRelationshipHopsError):
         query_builder.relationship_match(max_hops="INVALID_VALUE")  # type: ignore
 
-    with pytest.raises(InvalidRelationshipHops):
+    with pytest.raises(InvalidRelationshipHopsError):
         query_builder.relationship_match(max_hops=-1)
 
 

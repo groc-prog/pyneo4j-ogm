@@ -1,5 +1,5 @@
 """
-Pydantic compatibility utility module.
+Utilities and functions for Pydantic versioning and compatibility helpers.
 """
 
 from typing import Any, Type, Union

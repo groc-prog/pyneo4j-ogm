@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from pyneo4j_ogm.exceptions import MigrationNotInitialized
+from pyneo4j_ogm.exceptions import MigrationNotInitializedError
 from pyneo4j_ogm.migrations import up
 from pyneo4j_ogm.migrations.utils.defaults import DEFAULT_CONFIG_LABELS
 from tests.fixtures.db_setup import session
@@ -73,7 +73,7 @@ async def test_up_count_all(tmp_cwd, insert_migrations, session):
 
 
 async def test_fails_if_not_initialized(tmp_cwd):
-    with pytest.raises(MigrationNotInitialized):
+    with pytest.raises(MigrationNotInitializedError):
         await up()
 
 

@@ -28,12 +28,12 @@ from pydantic import PrivateAttr
 
 from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.exceptions import (
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    InvalidFilters,
-    NoResultFound,
-    UnexpectedEmptyResult,
-    UnregisteredModel,
+    InstanceDestroyedError,
+    InstanceNotHydratedError,
+    InvalidFiltersError,
+    NoResultFoundError,
+    UnexpectedEmptyResultError,
+    UnregisteredModelError,
 )
 from pyneo4j_ogm.fields.settings import NodeModelSettings, RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
@@ -80,10 +80,10 @@ def ensure_alive(func):
     def wrapper(self, *args: Any, **kwargs: Any):
         logger.debug("Checking if instance is alive and hydrated")
         if getattr(self, "_destroyed", False):
-            raise InstanceDestroyed()
+            raise InstanceDestroyedError()
 
         if getattr(self, "_element_id", None) is None or getattr(self, "_id", None) is None:
-            raise InstanceNotHydrated()
+            raise InstanceNotHydratedError()
 
         return func(self, *args, **kwargs)
 
@@ -194,7 +194,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         # Since the instance is now hydrated, we can set the element id and id and reset the modified properties
         # to the current instance values
@@ -246,7 +246,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         logger.debug("Resetting modified properties")
         self._db_properties = get_model_dump(self, exclude={*self._relationship_properties, "element_id", "id"})
@@ -276,7 +276,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         # If the returned value is empty, the node does not exist and the query failed
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         logger.debug("Marking instance as destroyed")
         setattr(self, "_destroyed", True)
@@ -305,7 +305,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         # since the node does not exist anymore
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         logger.debug("Updating current instance")
         self.__dict__.update(results[0][0].__dict__)
@@ -369,7 +369,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         if auto_fetch_nodes or (auto_fetch_nodes is not False and self._settings.auto_fetch_nodes):
             logger.debug("Auto-fetching nodes is enabled, checking if model with target labels is registered")
             if "$node" not in filters or "$labels" not in filters["$node"]:
-                raise InvalidFilters()
+                raise InvalidFiltersError()
 
             labels = set(filters["$node"]["$labels"])
 
@@ -385,7 +385,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     break
 
             if target_node_model is None:
-                raise UnregisteredModel(f"with labels {labels}")
+                raise UnregisteredModelError(f"with labels {labels}")
 
             logger.debug("Model with labels %s is registered, building auto-fetch query", labels)
             match_queries, return_queries = target_node_model._build_auto_fetch(  # pylint: disable=protected-access
@@ -516,7 +516,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
             cls._query_builder.build_projections(projections=projections)
 
         if cls._query_builder.query["where"] == "":
-            raise InvalidFilters()
+            raise InvalidFiltersError()
 
         do_auto_fetch = all(
             [
@@ -572,7 +572,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         ):
             # If no results are found, we return None or raise an exception
             if raise_on_empty:
-                raise NoResultFound(filters)
+                raise NoResultFoundError(filters)
             return None
 
         # Normalize results to a single instance
@@ -770,7 +770,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         cls._query_builder.node_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
-            raise InvalidFilters()
+            raise InvalidFiltersError()
 
         results, _ = await cls._client.cypher(
             query=f"""
@@ -785,7 +785,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             if raise_on_empty:
-                raise NoResultFound(filters)
+                raise NoResultFoundError(filters)
             return None
 
         old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(graph_entity=results[0][0])
@@ -941,7 +941,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         cls._query_builder.node_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
-            raise InvalidFilters()
+            raise InvalidFiltersError()
 
         result, _ = await cls._client.cypher(
             query=f"""
@@ -957,11 +957,11 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(result) == 0 or len(result[0]) == 0 or result[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         logger.debug("Deleted %s nodes", result[0][0])
         if result[0][0] == 0 and raise_on_empty:
-            raise NoResultFound(filters)
+            raise NoResultFoundError(filters)
         return result[0][0]
 
     @classmethod
@@ -993,7 +993,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         logger.debug("Deleted %s nodes", len(results))
         return results[0][0]
@@ -1030,7 +1030,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         return results[0][0]
 
@@ -1132,7 +1132,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
                     break
 
             if relationship_type is None or end_node_labels is None:
-                raise UnregisteredModel(cls.__name__)
+                raise UnregisteredModelError(cls.__name__)
 
             return_queries.append(defined_relationship)
             match_queries.append(

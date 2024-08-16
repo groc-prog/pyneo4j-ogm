@@ -11,12 +11,12 @@ from typing_extensions import LiteralString
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.exceptions import (
-    CardinalityViolation,
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    InvalidTargetNode,
-    NotConnectedToSourceNode,
-    UnexpectedEmptyResult,
+    CardinalityViolationError,
+    InstanceDestroyedError,
+    InstanceNotHydratedError,
+    InvalidTargetNodeModel,
+    NotConnectedToSourceNodeError,
+    UnexpectedEmptyResultError,
 )
 from tests.fixtures.db_setup import (
     Bestseller,
@@ -236,7 +236,7 @@ async def test_replace_not_connected_exc(
     john_model, *_ = dev_model_instances
     latte_model, mocha_model, *_ = coffee_model_instances
 
-    with pytest.raises(NotConnectedToSourceNode):
+    with pytest.raises(NotConnectedToSourceNodeError):
         await john_model.coffee.replace(mocha_model, latte_model)
 
 
@@ -444,7 +444,7 @@ async def test_ensure_cardinality(client: Pyneo4jClient, coffee_shop_model_insta
     espresso_model = coffee_model_instances[2]
     rating_five_model, *_ = coffee_shop_model_instances
 
-    with pytest.raises(CardinalityViolation):
+    with pytest.raises(CardinalityViolationError):
         await rating_five_model.bestseller.connect(espresso_model)
 
 
@@ -453,7 +453,7 @@ async def test_ensure_alive_not_hydrated(client: Pyneo4jClient, dev_model_instan
 
     john_model, *_ = dev_model_instances
 
-    with pytest.raises(InstanceNotHydrated):
+    with pytest.raises(InstanceNotHydratedError):
         await john_model.colleagues.connect(dev)
 
 
@@ -465,7 +465,7 @@ async def test_ensure_alive_destroyed(client: Pyneo4jClient, dev_model_instances
 
     john_model, *_ = dev_model_instances
 
-    with pytest.raises(InstanceDestroyed):
+    with pytest.raises(InstanceDestroyedError):
         await john_model.colleagues.connect(dev)
 
 
@@ -473,7 +473,7 @@ async def test_ensure_alive_invalid_node(client: Pyneo4jClient, dev_model_instan
     john_model, *_ = dev_model_instances
     latte_model, *_ = coffee_model_instances
 
-    with pytest.raises(InvalidTargetNode):
+    with pytest.raises(InvalidTargetNodeModel):
         await john_model.colleagues.connect(latte_model)
 
 
@@ -482,7 +482,7 @@ async def test_ensure_alive_source_not_hydrated(client: Pyneo4jClient, dev_model
 
     john_model, *_ = dev_model_instances
 
-    with pytest.raises(InstanceNotHydrated):
+    with pytest.raises(InstanceNotHydratedError):
         await dev.colleagues.connect(john_model)
 
 
@@ -494,7 +494,7 @@ async def test_ensure_alive_source_destroyed(client: Pyneo4jClient, dev_model_in
 
     john_model, *_ = dev_model_instances
 
-    with pytest.raises(InstanceDestroyed):
+    with pytest.raises(InstanceDestroyedError):
         await dev.colleagues.connect(john_model)
 
 
@@ -560,7 +560,7 @@ async def test_disconnect_no_connections(
 
     assert count == 0
 
-    with pytest.raises(NotConnectedToSourceNode):
+    with pytest.raises(NotConnectedToSourceNodeError):
         await john_model.coffee.disconnect(mocha_model, raise_on_empty=True)
 
 
@@ -668,5 +668,5 @@ async def test_connect_no_result(
     with patch.object(john_model.colleagues._client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await john_model.colleagues.connect(sam_model, {"language": "PHP"})

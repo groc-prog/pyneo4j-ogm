@@ -13,12 +13,12 @@ from typing_extensions import LiteralString
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.core.relationship import RelationshipModel, ensure_alive
 from pyneo4j_ogm.exceptions import (
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    InvalidFilters,
-    NoResultFound,
-    UnexpectedEmptyResult,
-    UnregisteredModel,
+    InstanceDestroyedError,
+    InstanceNotHydratedError,
+    InvalidFiltersError,
+    NoResultFoundError,
+    UnexpectedEmptyResultError,
+    UnregisteredModelError,
 )
 from pyneo4j_ogm.fields.relationship_property import check_models_registered
 from tests.fixtures.db_setup import (
@@ -90,7 +90,7 @@ async def test_update_no_result(client: Pyneo4jClient, setup_test_data):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             relationship_model.language = "TypeScript"
             await relationship_model.update()
 
@@ -127,12 +127,12 @@ async def test_update_one_no_match(client: Pyneo4jClient, setup_test_data):
     result = await WorkedWith.update_one({"language": "non-existent"}, {"language": "non-existent"})
     assert result is None
 
-    with pytest.raises(NoResultFound):
+    with pytest.raises(NoResultFoundError):
         await WorkedWith.update_one({"language": "non-existent"}, {"language": "non-existent"}, raise_on_empty=True)
 
 
 async def test_update_one_missing_filter(client: Pyneo4jClient, setup_test_data):
-    with pytest.raises(InvalidFilters):
+    with pytest.raises(InvalidFiltersError):
         await WorkedWith.update_one({}, {})
 
 
@@ -292,7 +292,7 @@ async def test_start_node_no_result(client: Pyneo4jClient, setup_test_data):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await relationship_model.start_node()
 
 
@@ -334,7 +334,7 @@ async def test_refresh_no_result(client: Pyneo4jClient, setup_test_data):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             relationship_model.language = "TypeScript"
             await relationship_model.refresh()
 
@@ -354,7 +354,7 @@ def mock_relationship_property():
 async def test_unregistered_source_model(mock_relationship_property):
     mock_relationship_property._client.models = {}
 
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
 
         @check_models_registered
         async def test_function(self):
@@ -366,7 +366,7 @@ async def test_unregistered_source_model(mock_relationship_property):
 async def test_unregistered_target_model(mock_relationship_property):
     mock_relationship_property._target_model = None
 
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
 
         @check_models_registered
         async def test_function(self):
@@ -378,7 +378,7 @@ async def test_unregistered_target_model(mock_relationship_property):
 async def test_unregistered_relationship_model(mock_relationship_property):
     mock_relationship_property._relationship_model = None
 
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
 
         @check_models_registered
         async def test_function(self):
@@ -436,12 +436,12 @@ def test_ensure_alive_decorator():
         def test_func(cls):
             return True
 
-    with pytest.raises(InstanceNotHydrated):
+    with pytest.raises(InstanceNotHydratedError):
         EnsureAliveTest.test_func()
 
     setattr(EnsureAliveTest, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18")
     setattr(EnsureAliveTest, "_id", 1)
-    with pytest.raises(InstanceNotHydrated):
+    with pytest.raises(InstanceNotHydratedError):
         EnsureAliveTest.test_func()
 
     setattr(EnsureAliveTest, "_start_node_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:17")
@@ -449,7 +449,7 @@ def test_ensure_alive_decorator():
     setattr(EnsureAliveTest, "_end_node_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:19")
     setattr(EnsureAliveTest, "_end_node_id", 2)
     setattr(EnsureAliveTest, "_destroyed", True)
-    with pytest.raises(InstanceDestroyed):
+    with pytest.raises(InstanceDestroyedError):
         EnsureAliveTest.test_func()
 
     setattr(EnsureAliveTest, "_destroyed", False)
@@ -568,12 +568,12 @@ async def test_find_one_no_match(client: Pyneo4jClient, setup_test_data):
     result = await WorkedWith.find_one({"language": "non-existent"})
     assert result is None
 
-    with pytest.raises(NoResultFound):
+    with pytest.raises(NoResultFoundError):
         await WorkedWith.find_one({"language": "non-existent"}, raise_on_empty=True)
 
 
 async def test_find_one_missing_filter(client: Pyneo4jClient, setup_test_data):
-    with pytest.raises(InvalidFilters):
+    with pytest.raises(InvalidFiltersError):
         await WorkedWith.find_one({})
 
 
@@ -667,7 +667,7 @@ async def test_end_node_no_result(client: Pyneo4jClient, setup_test_data):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await relationship_model.end_node()
 
 
@@ -729,7 +729,7 @@ async def test_delete_one_no_match(client: Pyneo4jClient, session: AsyncSession,
     result = await WorkedWith.delete_one({"language": "I dont exist"})
     assert result == 0
 
-    with pytest.raises(NoResultFound):
+    with pytest.raises(NoResultFoundError):
         await WorkedWith.delete_one({"language": "I dont exist"}, raise_on_empty=True)
 
     results = await session.run(
@@ -749,7 +749,7 @@ async def test_delete_one_no_result(client: Pyneo4jClient, session: AsyncSession
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await WorkedWith.delete_one({"language": "non-existent"})
 
     results = await session.run(
@@ -768,7 +768,7 @@ async def test_delete_one_no_result(client: Pyneo4jClient, session: AsyncSession
 
 
 async def test_delete_one_missing_filter(client: Pyneo4jClient, setup_test_data):
-    with pytest.raises(InvalidFilters):
+    with pytest.raises(InvalidFiltersError):
         await WorkedWith.delete_one({})
 
 
@@ -814,7 +814,7 @@ async def test_delete_many_no_results(client: Pyneo4jClient, session: AsyncSessi
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await WorkedWith.delete_many({"language": "non-existent"})
 
 
@@ -831,7 +831,7 @@ async def test_count_no_match(client: Pyneo4jClient, setup_test_data):
 async def test_count_no_query_result(client: Pyneo4jClient, setup_test_data):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await WorkedWith.count({})
 
 

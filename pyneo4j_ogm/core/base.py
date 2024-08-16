@@ -29,7 +29,7 @@ from typing import (
 from neo4j.graph import Node, Relationship
 from pydantic import BaseModel, PrivateAttr
 
-from pyneo4j_ogm.exceptions import ListItemNotEncodable, UnregisteredModel
+from pyneo4j_ogm.exceptions import ListItemNotEncodableError, UnregisteredModelError
 from pyneo4j_ogm.fields.relationship_property import (
     RelationshipProperty,
     RelationshipPropertyCardinality,
@@ -583,7 +583,7 @@ class ModelBase(BaseModel, Generic[V]):
     def __init__(self, *args, **kwargs) -> None:
         # Check if the models has been registered with a client
         if not hasattr(self, "_client"):
-            raise UnregisteredModel(model=self.__class__.__name__)
+            raise UnregisteredModelError(model=self.__class__.__name__)
 
         super().__init__(*args, **kwargs)
 
@@ -801,7 +801,7 @@ class ModelBase(BaseModel, Generic[V]):
                         try:
                             deflated[field_name][index] = json.dumps(item)
                         except TypeError as exc:
-                            raise ListItemNotEncodable from exc
+                            raise ListItemNotEncodableError from exc
 
         return deflated
 

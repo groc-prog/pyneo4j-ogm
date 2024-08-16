@@ -1,6 +1,7 @@
 """
 Builds parts of queries related to filters and options.
 """
+
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
@@ -14,7 +15,10 @@ from typing import (
     cast,
 )
 
-from pyneo4j_ogm.exceptions import InvalidRelationshipDirection, InvalidRelationshipHops
+from pyneo4j_ogm.exceptions import (
+    InvalidRelationshipDirectionError,
+    InvalidRelationshipHopsError,
+)
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import get_model_dump
 from pyneo4j_ogm.queries.operators import Operators
@@ -196,9 +200,11 @@ class QueryBuilder:
 
         # Build path match
         relationship_match = self.relationship_match(
-            direction=validated_filters["$direction"]
-            if "$direction" in validated_filters
-            else RelationshipMatchDirection.OUTGOING,
+            direction=(
+                validated_filters["$direction"]
+                if "$direction" in validated_filters
+                else RelationshipMatchDirection.OUTGOING
+            ),
             start_node_ref=start_ref,
             end_node_ref=end_ref,
             min_hops=validated_filters["$minHops"] if "$minHops" in validated_filters else None,
@@ -362,7 +368,7 @@ class QueryBuilder:
                 (isinstance(max_hops, int) and max_hops < 0),
             ]
         ):
-            raise InvalidRelationshipHops()
+            raise InvalidRelationshipHopsError()
 
         if min_hops is None and max_hops == "*":
             hops = "*"
@@ -385,7 +391,7 @@ class QueryBuilder:
             case RelationshipMatchDirection.BOTH:
                 return f"{start_node_match}-{relationship_match}-{end_node_match}"
             case _:
-                raise InvalidRelationshipDirection(direction)
+                raise InvalidRelationshipDirectionError(direction)
 
     def build_projections(self, projections: Projection, ref: str = "n") -> None:
         """

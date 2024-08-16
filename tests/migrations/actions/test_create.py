@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from pyneo4j_ogm.exceptions import MigrationNotInitialized
+from pyneo4j_ogm.exceptions import MigrationNotInitializedError
 from pyneo4j_ogm.migrations import create
 from pyneo4j_ogm.migrations.actions.create import normalize_filename
 from pyneo4j_ogm.migrations.utils.defaults import (
@@ -40,7 +40,7 @@ def test_create(initialized_migration):
 
 
 def test_fails_if_not_initialized(tmp_cwd):
-    with pytest.raises(MigrationNotInitialized):
+    with pytest.raises(MigrationNotInitializedError):
         create("testmigration")
 
 

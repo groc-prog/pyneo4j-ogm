@@ -10,7 +10,7 @@ import pytest
 from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
-from pyneo4j_ogm.exceptions import ListItemNotEncodable, UnregisteredModel
+from pyneo4j_ogm.exceptions import ListItemNotEncodableError, UnregisteredModelError
 from pyneo4j_ogm.fields.settings import BaseModelSettings
 from pyneo4j_ogm.pydantic_utils import get_model_dump, get_model_dump_json
 from tests.fixtures.db_setup import Developer
@@ -167,7 +167,7 @@ async def test_hooks_decorator():
 
 
 def test_unregistered_model_exc():
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
         ModelBase()
 
 
@@ -177,7 +177,7 @@ def test_deflate_non_encodable_list():
 
     setattr(NonEncodableModel, "_client", None)
 
-    with pytest.raises(ListItemNotEncodable):
+    with pytest.raises(ListItemNotEncodableError):
         NonEncodableModel()._deflate({"list_field": [object()]})
 
 

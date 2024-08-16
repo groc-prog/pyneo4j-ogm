@@ -9,7 +9,7 @@ from typing import Callable, Dict, Optional, TypedDict, Union
 
 from typing_extensions import Literal
 
-from pyneo4j_ogm.exceptions import MigrationNotInitialized
+from pyneo4j_ogm.exceptions import MigrationNotInitializedError
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.migrations.utils.defaults import DEFAULT_CONFIG_FILENAME
 from pyneo4j_ogm.migrations.utils.models import MigrationConfig
@@ -28,10 +28,10 @@ def check_initialized(config_path: Optional[str]) -> None:
     logger.debug("Checking if migrations directory and config have been initialized")
     if config_path is not None:
         if not os.path.exists(config_path):
-            raise MigrationNotInitialized
+            raise MigrationNotInitializedError
     else:
         if not os.path.exists(DEFAULT_CONFIG_FILENAME):
-            raise MigrationNotInitialized
+            raise MigrationNotInitializedError
 
 
 def get_migration_files(directory: str) -> Dict[str, MigrationFile]:
@@ -93,7 +93,7 @@ def get_migration_config(config_path: Optional[str]) -> MigrationConfig:
         config_path = os.path.abspath(config_path)
 
     if not os.path.exists(config_path):
-        raise MigrationNotInitialized
+        raise MigrationNotInitializedError
 
     logger.debug("Loading migration config from %s", config_path)
     with open(config_path, "r", encoding="utf-8") as f:

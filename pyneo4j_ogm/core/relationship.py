@@ -15,11 +15,11 @@ from pydantic import PrivateAttr
 from pyneo4j_ogm.core.base import ModelBase, hooks
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.exceptions import (
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    InvalidFilters,
-    NoResultFound,
-    UnexpectedEmptyResult,
+    InstanceDestroyedError,
+    InstanceNotHydratedError,
+    InvalidFiltersError,
+    NoResultFoundError,
+    UnexpectedEmptyResultError,
 )
 from pyneo4j_ogm.fields.settings import RelationshipModelSettings
 from pyneo4j_ogm.logger import logger
@@ -56,7 +56,7 @@ def ensure_alive(func):
     @wraps(func)
     def wrapper(self, *args: Any, **kwargs: Any):
         if getattr(self, "_destroyed", False):
-            raise InstanceDestroyed()
+            raise InstanceDestroyedError()
 
         if any(
             [
@@ -67,7 +67,7 @@ def ensure_alive(func):
                 getattr(self, "_end_node_id", None) is None,
             ]
         ):
-            raise InstanceNotHydrated()
+            raise InstanceNotHydratedError()
 
         return func(self, *args, **kwargs)
 
@@ -170,7 +170,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         logger.debug("Resetting modified properties")
         self._db_properties = get_model_dump(
@@ -233,7 +233,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         logger.debug("Updating current instance")
         self.__dict__.update(results[0][0].__dict__)
@@ -265,7 +265,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         return results[0][0]
 
@@ -295,7 +295,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         return results[0][0]
 
@@ -342,7 +342,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         )
 
         if cls._query_builder.query["where"] == "":
-            raise InvalidFilters()
+            raise InvalidFiltersError()
 
         match_query = cls._query_builder.relationship_match(
             type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
@@ -362,7 +362,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             if raise_on_empty:
-                raise NoResultFound(filters)
+                raise NoResultFoundError(filters)
             return None
 
         logger.debug("Checking if relationship has to be parsed to instance")
@@ -489,7 +489,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         cls._query_builder.relationship_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
-            raise InvalidFilters()
+            raise InvalidFiltersError()
 
         match_query = cls._query_builder.relationship_match(
             type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
@@ -508,7 +508,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
             if raise_on_empty:
-                raise NoResultFound(filters)
+                raise NoResultFoundError(filters)
             return None
 
         old_instance = results[0][0] if isinstance(results[0][0], cls) else cls._inflate(graph_entity=results[0][0])
@@ -683,7 +683,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         cls._query_builder.relationship_filters(filters=filters)
 
         if cls._query_builder.query["where"] == "":
-            raise InvalidFilters()
+            raise InvalidFiltersError()
 
         match_query = cls._query_builder.relationship_match(
             type_=cls._settings.type, direction=RelationshipMatchDirection.OUTGOING
@@ -702,11 +702,11 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         )
 
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         logger.debug("Deleted %s relationships", results[0][0])
         if results[0][0] == 0 and raise_on_empty:
-            raise NoResultFound(filters)
+            raise NoResultFoundError(filters)
         return results[0][0]
 
     @classmethod
@@ -747,7 +747,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         logger.debug("Deleting relationships")
         await cls._client.cypher(
@@ -800,7 +800,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
 
         logger.debug("Checking if query returned a result")
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
 
         return results[0][0]
 

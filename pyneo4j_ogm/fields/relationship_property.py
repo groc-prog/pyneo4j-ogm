@@ -30,13 +30,13 @@ from typing import (
 from neo4j.graph import Node, Relationship
 
 from pyneo4j_ogm.exceptions import (
-    CardinalityViolation,
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    InvalidTargetNode,
-    NotConnectedToSourceNode,
-    UnexpectedEmptyResult,
-    UnregisteredModel,
+    CardinalityViolationError,
+    InstanceDestroyedError,
+    InstanceNotHydratedError,
+    InvalidTargetNodeModel,
+    NotConnectedToSourceNodeError,
+    UnexpectedEmptyResultError,
+    UnregisteredModelError,
 )
 from pyneo4j_ogm.fields.settings import NodeModelSettings
 from pyneo4j_ogm.logger import logger
@@ -190,21 +190,21 @@ def check_models_registered(func):
             source_node.__class__.__name__,
         )
         if client is None or source_node.__class__ not in client.models:
-            raise UnregisteredModel(model=source_node.__class__.__name__)
+            raise UnregisteredModelError(model=source_node.__class__.__name__)
 
         logger.debug(
             "Checking if target model %s has been registered with client",
             target_model_name,
         )
         if getattr(self, "_target_model", None) is None:
-            raise UnregisteredModel(model=target_model_name)
+            raise UnregisteredModelError(model=target_model_name)
 
         logger.debug(
             "Checking if relationship model %s has been registered with client",
             relationship_model_name,
         )
         if getattr(self, "_relationship_model", None) is None:
-            raise UnregisteredModel(model=relationship_model_name)
+            raise UnregisteredModelError(model=relationship_model_name)
 
         result = await func(self, *args, **kwargs)
         return result
@@ -573,7 +573,7 @@ class RelationshipProperty(Generic[T, U]):
         )
 
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise UnexpectedEmptyResult()
+            raise UnexpectedEmptyResultError()
         return results[0][0]
 
     @hooks
@@ -636,7 +636,7 @@ class RelationshipProperty(Generic[T, U]):
                 getattr(node, "_element_id", None),
             )
             if raise_on_empty:
-                raise NotConnectedToSourceNode()
+                raise NotConnectedToSourceNodeError()
             return 0
 
         logger.debug("Found %s, deleting relationships", count_results[0][0])
@@ -791,7 +791,7 @@ class RelationshipProperty(Generic[T, U]):
         )
 
         if len(results) == 0 or len(results[0]) == 0 or results[0][0] is None:
-            raise NotConnectedToSourceNode()
+            raise NotConnectedToSourceNodeError()
 
         logger.debug("Deleting relationship between source node and old node")
         await self._client.cypher(
@@ -1002,7 +1002,7 @@ class RelationshipProperty(Generic[T, U]):
             UnregisteredModel: Raised if the source model has not been registered with the client.
         """
         if getattr(source_model, "_client", None) is None:
-            raise UnregisteredModel(model=source_model.__class__.__name__)
+            raise UnregisteredModelError(model=source_model.__class__.__name__)
 
         self._registered_name = property_name
         self._client = cast(Pyneo4jClient, getattr(source_model, "_client"))
@@ -1040,22 +1040,22 @@ class RelationshipProperty(Generic[T, U]):
                 getattr(node, "_element_id", None),
             )
             if getattr(node, "_element_id", None) is None or getattr(node, "_id", None) is None:
-                raise InstanceNotHydrated()
+                raise InstanceNotHydratedError()
 
             if getattr(node, "_destroyed", True):
-                raise InstanceDestroyed()
+                raise InstanceDestroyedError()
 
             if not all([label in node_labels for label in target_model_labels]):
-                raise InvalidTargetNode(
+                raise InvalidTargetNodeModel(
                     expected_type=cast(Type[T], self._target_model).__name__,
                     actual_type=node.__class__.__name__,
                 )
 
         if getattr(self._source_node, "_element_id", None) is None or getattr(self._source_node, "_id", None) is None:
-            raise InstanceNotHydrated()
+            raise InstanceNotHydratedError()
 
         if getattr(self._source_node, "_destroyed", True):
-            raise InstanceDestroyed()
+            raise InstanceDestroyedError()
 
     async def _ensure_cardinality(self) -> None:
         """
@@ -1086,7 +1086,7 @@ class RelationshipProperty(Generic[T, U]):
                 )
 
                 if results[0][0] > 0:
-                    raise CardinalityViolation(
+                    raise CardinalityViolationError(
                         cardinality_type=self._cardinality,
                         relationship_type=cast(str, cast(Type[U], self._relationship_model)._settings.type),
                         start_model=self._source_node.__class__.__name__,

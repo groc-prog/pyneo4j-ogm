@@ -17,12 +17,12 @@ from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
     InvalidBookmark,
-    InvalidEntityType,
-    InvalidLabelOrType,
-    MissingDatabaseURI,
-    NotConnectedToDatabase,
-    TransactionInProgress,
-    UnsupportedNeo4jVersion,
+    InvalidEntityTypeError,
+    InvalidLabelOrTypeError,
+    InvalidUriError,
+    Neo4jVersionError,
+    NotConnectedError,
+    TransactionInProgressError,
 )
 from pyneo4j_ogm.logger import logger
 from pyneo4j_ogm.pydantic_utils import get_field_type, get_model_fields
@@ -50,7 +50,7 @@ def ensure_connection(func: Callable):
     async def decorator(self, *args, **kwargs):
         logger.debug("Ensuring connection to database before running method %s", func.__name__)
         if getattr(self, "_driver", None) is None:
-            raise NotConnectedToDatabase()
+            raise NotConnectedError()
 
         result = await func(self, *args, **kwargs)
 
@@ -117,7 +117,7 @@ class Pyneo4jClient:
         db_uri = uri if uri is not None else os.environ.get("NEO4J_OGM_URI", None)
 
         if db_uri is None:
-            raise MissingDatabaseURI()
+            raise InvalidUriError()
 
         self.uri = db_uri
         self._skip_constraints = skip_constraints
@@ -133,7 +133,7 @@ class Pyneo4jClient:
         version = server_info.agent.split("/")[1]
 
         if int(version.split(".")[0]) < 5:
-            raise UnsupportedNeo4jVersion()
+            raise Neo4jVersionError()
 
         logger.info("Connected to database")
         return self
@@ -303,7 +303,7 @@ class Pyneo4jClient:
         match entity_type:
             case EntityType.NODE:
                 if not isinstance(labels_or_type, list):
-                    raise InvalidLabelOrType()
+                    raise InvalidLabelOrTypeError()
 
                 for label in labels_or_type:
                     constraint_name = f"{name}_{label}_{'_'.join(properties)}_unique_constraint"
@@ -319,7 +319,7 @@ class Pyneo4jClient:
                     )
             case EntityType.RELATIONSHIP:
                 if not isinstance(labels_or_type, str):
-                    raise InvalidLabelOrType()
+                    raise InvalidLabelOrTypeError()
 
                 constraint_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_unique_constraint"
 
@@ -335,7 +335,7 @@ class Pyneo4jClient:
                     resolve_models=False,
                 )
             case _:
-                raise InvalidEntityType(
+                raise InvalidEntityTypeError(
                     available_types=[option.value for option in EntityType],
                     entity_type=entity_type,
                 )
@@ -379,7 +379,7 @@ class Pyneo4jClient:
                     resolve_models=False,
                 )
             case _:
-                raise InvalidEntityType(
+                raise InvalidEntityTypeError(
                     available_types=[option.value for option in EntityType],
                     entity_type=entity_type,
                 )
@@ -410,7 +410,7 @@ class Pyneo4jClient:
         match entity_type:
             case EntityType.NODE:
                 if not isinstance(labels_or_type, list):
-                    raise InvalidLabelOrType()
+                    raise InvalidLabelOrTypeError()
 
                 for label in labels_or_type:
                     index_name = f"{name}_{label}_{'_'.join(properties)}_range_index"
@@ -426,7 +426,7 @@ class Pyneo4jClient:
                     )
             case EntityType.RELATIONSHIP:
                 if not isinstance(labels_or_type, str):
-                    raise InvalidLabelOrType()
+                    raise InvalidLabelOrTypeError()
 
                 index_name = f"{name}_{labels_or_type}_{'_'.join(properties)}_range_index"
 
@@ -440,7 +440,7 @@ class Pyneo4jClient:
                     resolve_models=False,
                 )
             case _:
-                raise InvalidEntityType(
+                raise InvalidEntityTypeError(
                     available_types=[option.value for option in EntityType],
                     entity_type=entity_type,
                 )
@@ -471,7 +471,7 @@ class Pyneo4jClient:
         match entity_type:
             case EntityType.NODE:
                 if not isinstance(labels_or_type, list):
-                    raise InvalidLabelOrType()
+                    raise InvalidLabelOrTypeError()
 
                 for label in labels_or_type:
                     for property_name in properties:
@@ -488,7 +488,7 @@ class Pyneo4jClient:
                         )
             case EntityType.RELATIONSHIP:
                 if not isinstance(labels_or_type, str):
-                    raise InvalidLabelOrType()
+                    raise InvalidLabelOrTypeError()
 
                 for property_name in properties:
                     index_name = f"{name}_{labels_or_type}_{property_name}_text_index"
@@ -503,7 +503,7 @@ class Pyneo4jClient:
                         resolve_models=False,
                     )
             case _:
-                raise InvalidEntityType(
+                raise InvalidEntityTypeError(
                     available_types=[option.value for option in EntityType],
                     entity_type=entity_type,
                 )
@@ -534,7 +534,7 @@ class Pyneo4jClient:
         match entity_type:
             case EntityType.NODE:
                 if not isinstance(labels_or_type, list):
-                    raise InvalidLabelOrType()
+                    raise InvalidLabelOrTypeError()
 
                 for label in labels_or_type:
                     for property_name in properties:
@@ -551,7 +551,7 @@ class Pyneo4jClient:
                         )
             case EntityType.RELATIONSHIP:
                 if not isinstance(labels_or_type, str):
-                    raise InvalidLabelOrType()
+                    raise InvalidLabelOrTypeError()
 
                 for property_name in properties:
                     index_name = f"{name}_{labels_or_type}_{property_name}_point_index"
@@ -566,7 +566,7 @@ class Pyneo4jClient:
                         resolve_models=False,
                     )
             case _:
-                raise InvalidEntityType(
+                raise InvalidEntityTypeError(
                     available_types=[option.value for option in EntityType],
                     entity_type=entity_type,
                 )
@@ -654,7 +654,7 @@ class Pyneo4jClient:
         Begin a new transaction from a session. If no session exists, a new one will be cerated.
         """
         if getattr(self, "_session", None):
-            raise TransactionInProgress()
+            raise TransactionInProgressError()
 
         logger.debug("Beginning new session")
         self._session = cast(AsyncDriver, self._driver).session(bookmarks=self._used_bookmarks)

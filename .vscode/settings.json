@@ -25,6 +25,7 @@
     ".venv": true
   },
   "cSpell.words": [
+    "Memgraph",
     "pyneo"
   ]
 }

@@ -14,13 +14,13 @@ from typing_extensions import LiteralString
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel, ensure_alive
 from pyneo4j_ogm.exceptions import (
-    InstanceDestroyed,
-    InstanceNotHydrated,
-    InvalidFilters,
-    ListItemNotEncodable,
-    NoResultFound,
-    UnexpectedEmptyResult,
-    UnregisteredModel,
+    InstanceDestroyedError,
+    InstanceNotHydratedError,
+    InvalidFiltersError,
+    ListItemNotEncodableError,
+    NoResultFoundError,
+    UnexpectedEmptyResultError,
+    UnregisteredModelError,
 )
 from pyneo4j_ogm.fields.property_options import WithOptions
 from pyneo4j_ogm.pydantic_utils import (
@@ -85,7 +85,7 @@ async def test_update_no_result(client: Pyneo4jClient):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             node.rating = 2
             await node.update()
 
@@ -154,14 +154,14 @@ async def test_update_one_no_match(setup_test_data):
 
     assert updated_node is None
 
-    with pytest.raises(NoResultFound):
+    with pytest.raises(NoResultFoundError):
         await Developer.update_one({"age": 50}, {"uid": 99999}, raise_on_empty=True)
 
 
 async def test_update_one_missing_filters(client: Pyneo4jClient):
     await client.register_models([Developer])
 
-    with pytest.raises(InvalidFilters):
+    with pytest.raises(InvalidFiltersError):
         await Developer.update_one({"my_prop": "updated"}, {})
 
 
@@ -281,7 +281,7 @@ async def test_refresh_no_result(client: Pyneo4jClient):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await node.refresh()
 
 
@@ -316,16 +316,16 @@ def test_ensure_alive_decorator():
         def test_func(cls):
             return True
 
-    with pytest.raises(InstanceNotHydrated):
+    with pytest.raises(InstanceNotHydratedError):
         EnsureAliveTest.test_func()
 
     setattr(EnsureAliveTest, "_element_id", "4:08f8a347-1856-487c-8705-26d2b4a69bb7:18")
-    with pytest.raises(InstanceNotHydrated):
+    with pytest.raises(InstanceNotHydratedError):
         EnsureAliveTest.test_func()
 
     setattr(EnsureAliveTest, "_id", 1)
     setattr(EnsureAliveTest, "_destroyed", True)
-    with pytest.raises(InstanceDestroyed):
+    with pytest.raises(InstanceDestroyedError):
         EnsureAliveTest.test_func()
 
     setattr(EnsureAliveTest, "_destroyed", False)
@@ -499,7 +499,7 @@ async def test_find_one_no_match(setup_test_data):
 
     assert found_node is None
 
-    with pytest.raises(NoResultFound):
+    with pytest.raises(NoResultFoundError):
         await Developer.find_one({"my_prop": "non-existent"}, raise_on_empty=True)
 
 
@@ -532,7 +532,7 @@ async def test_find_one_raw_result(client: Pyneo4jClient):
 async def test_find_one_missing_filter(client: Pyneo4jClient):
     await client.register_models([Developer])
 
-    with pytest.raises(InvalidFilters):
+    with pytest.raises(InvalidFiltersError):
         await Developer.find_one({})
 
 
@@ -574,14 +574,14 @@ async def test_find_one_auto_fetch_models_as_string(setup_test_data):
 async def test_find_one_auto_fetch_models_unregistered_relationship(setup_test_data):
     Developer._client.models.remove(Consumed)
 
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
         await Developer.find_one({"uid": 1}, auto_fetch_nodes=True, auto_fetch_models=[Coffee])
 
 
 async def test_find_one_auto_fetch_models_unregistered_node(setup_test_data):
     Developer._client.models.remove(Coffee)
 
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
         await Developer.find_one({"uid": 1}, auto_fetch_nodes=True, auto_fetch_models=[Coffee])
 
 
@@ -688,14 +688,14 @@ async def test_find_many_auto_fetch_models_as_string(setup_test_data):
 async def test_find_many_auto_fetch_models_unregistered_relationship(setup_test_data):
     Coffee._client.models.remove(Bestseller)
 
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
         await Coffee.find_many({"flavor": "Mocha"}, auto_fetch_nodes=True, auto_fetch_models=[CoffeeShop])
 
 
 async def test_find_many_auto_fetch_models_unregistered_node(setup_test_data):
     Coffee._client.models.remove(CoffeeShop)
 
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
         await Coffee.find_many({"flavor": "Mocha"}, auto_fetch_nodes=True, auto_fetch_models=["CoffeeShop"])
 
 
@@ -857,7 +857,7 @@ async def test_find_connected_nodes_auto_fetch_models_unregistered_node(setup_te
 
     CoffeeShop._client.models.remove(Developer)
 
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
         await cast(CoffeeShop, node).find_connected_nodes(
             {
                 "$node": {"$labels": list(Developer.model_settings().labels), "uid": 3},
@@ -874,7 +874,7 @@ async def test_find_connected_nodes_auto_fetch_models_unregistered_relationship(
 
     CoffeeShop._client.models.remove(WorkedWith)
 
-    with pytest.raises(UnregisteredModel):
+    with pytest.raises(UnregisteredModelError):
         await cast(CoffeeShop, node).find_connected_nodes(
             {
                 "$node": {"$labels": list(Developer.model_settings().labels), "uid": 3},
@@ -921,7 +921,7 @@ async def test_delete_no_result(client: Pyneo4jClient):
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = ([], [])
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await node.delete()
 
 
@@ -948,7 +948,7 @@ async def test_delete_one_no_match(session: AsyncSession, setup_test_data):
     results = await CoffeeShop.delete_one({"tags": {"$in": ["oh-no"]}})
     assert results == 0
 
-    with pytest.raises(NoResultFound):
+    with pytest.raises(NoResultFoundError):
         await CoffeeShop.delete_one({"tags": {"$in": ["oh-no"]}}, raise_on_empty=True)
 
     results = await session.run(
@@ -967,7 +967,7 @@ async def test_delete_one_no_match(session: AsyncSession, setup_test_data):
 
 
 async def test_delete_one_invalid_filter(setup_test_data):
-    with pytest.raises(InvalidFilters):
+    with pytest.raises(InvalidFiltersError):
         await CoffeeShop.delete_one({})
 
 
@@ -975,7 +975,7 @@ async def test_delete_one_no_results(client: Pyneo4jClient, session: AsyncSessio
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await CoffeeShop.delete_one({"tags": {"$in": ["oh-no"]}})
 
 
@@ -1021,7 +1021,7 @@ async def test_delete_many_no_results(client: Pyneo4jClient, session: AsyncSessi
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await CoffeeShop.delete_many({"tags": {"$in": ["oh-no"]}})
 
 
@@ -1076,7 +1076,7 @@ async def test_create_no_result(client: Pyneo4jClient):
 
         node = Coffee(flavor="Mocha", sugar=True, milk=True, note={"roast": "dark"})
 
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await node.create()
 
 
@@ -1095,7 +1095,7 @@ async def test_count_no_query_result(client: Pyneo4jClient):
 
     with patch.object(client, "cypher") as mock_cypher:
         mock_cypher.return_value = [[], []]
-        with pytest.raises(UnexpectedEmptyResult):
+        with pytest.raises(UnexpectedEmptyResultError):
             await Coffee.count({"milk": True})
 
 

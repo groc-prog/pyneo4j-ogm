@@ -14,12 +14,12 @@ from pyneo4j_ogm.core.client import EntityType, Pyneo4jClient
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
-    InvalidEntityType,
-    InvalidLabelOrType,
-    MissingDatabaseURI,
-    NotConnectedToDatabase,
-    TransactionInProgress,
-    UnsupportedNeo4jVersion,
+    InvalidEntityTypeError,
+    InvalidLabelOrTypeError,
+    InvalidUriError,
+    Neo4jVersionError,
+    NotConnectedError,
+    TransactionInProgressError,
 )
 from pyneo4j_ogm.fields.property_options import WithOptions
 from pyneo4j_ogm.logger import logger
@@ -76,7 +76,7 @@ async def test_batch_exception(client: Pyneo4jClient, session: AsyncSession):
 async def test_transaction_in_progress_exception(client: Pyneo4jClient):
     await client._begin_transaction()
 
-    with pytest.raises(TransactionInProgress):
+    with pytest.raises(TransactionInProgressError):
         await client._begin_transaction()
 
 
@@ -101,12 +101,12 @@ async def test_connection():
 
     os.environ.pop("NEO4J_OGM_URI")
 
-    with pytest.raises(MissingDatabaseURI):
+    with pytest.raises(InvalidUriError):
         client = await Pyneo4jClient().connect()
 
 
 async def test_ensure_connection(client: Pyneo4jClient):
-    with pytest.raises(NotConnectedToDatabase):
+    with pytest.raises(NotConnectedError):
         client = Pyneo4jClient()
         await client.cypher("MATCH (n) RETURN n")
 
@@ -114,7 +114,7 @@ async def test_ensure_connection(client: Pyneo4jClient):
     results, _ = await client.cypher("MATCH (n) RETURN n")
     assert results == []
 
-    with pytest.raises(NotConnectedToDatabase):
+    with pytest.raises(NotConnectedError):
         await client.close()
         await client.cypher("MATCH (n) RETURN n")
 
@@ -185,7 +185,7 @@ async def test_supported_neo4j_version():
     mock_driver.get_server_info = AsyncMock(return_value=MagicMock(agent="Neo4j/4.0.0"))
 
     with patch("neo4j.AsyncGraphDatabase.driver", return_value=mock_driver):
-        with pytest.raises(UnsupportedNeo4jVersion):
+        with pytest.raises(Neo4jVersionError):
             await Pyneo4jClient().connect("bolt://localhost:7687", auth=("neo4j", "password"))
 
 
@@ -205,17 +205,17 @@ async def test_close():
 
 
 async def test_invalid_constraints(client: Pyneo4jClient):
-    with pytest.raises(InvalidLabelOrType):
+    with pytest.raises(InvalidLabelOrTypeError):
         await client.create_uniqueness_constraint(
             "invalid_node_constraint", EntityType.NODE, ["prop_a", "prop_b"], "Test"
         )
 
-    with pytest.raises(InvalidLabelOrType):
+    with pytest.raises(InvalidLabelOrTypeError):
         await client.create_uniqueness_constraint(
             "invalid_relationship_constraint", EntityType.RELATIONSHIP, ["prop_a", "prop_b"], ["Test", "Relationship"]
         )
 
-    with pytest.raises(InvalidEntityType):
+    with pytest.raises(InvalidEntityTypeError):
         await client.create_uniqueness_constraint(
             "invalid_constraint", "invalid entity", ["prop_a", "prop_b"], ["Test", "Relationship"]  # type: ignore
         )
@@ -260,44 +260,44 @@ async def test_create_relationship_constraints(client: Pyneo4jClient, session: A
 
 
 async def test_invalid_indexes(client: Pyneo4jClient):
-    with pytest.raises(InvalidEntityType):
+    with pytest.raises(InvalidEntityTypeError):
         await client.create_range_index(
             "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]  # type: ignore
         )
 
-    with pytest.raises(InvalidEntityType):
+    with pytest.raises(InvalidEntityTypeError):
         await client.create_text_index(
             "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]  # type: ignore
         )
 
-    with pytest.raises(InvalidEntityType):
+    with pytest.raises(InvalidEntityTypeError):
         await client.create_point_index(
             "invalid_entity_index", "invalid entity", ["prop_a", "prop_b"], ["Test", "Node"]  # type: ignore
         )
 
-    with pytest.raises(InvalidEntityType):
+    with pytest.raises(InvalidEntityTypeError):
         await client.create_lookup_index("invalid_entity_index", "invalid entity")  # type: ignore
 
-    with pytest.raises(InvalidLabelOrType):
+    with pytest.raises(InvalidLabelOrTypeError):
         await client.create_range_index("invalid_node_index", EntityType.NODE, [], "Test")
 
-    with pytest.raises(InvalidLabelOrType):
+    with pytest.raises(InvalidLabelOrTypeError):
         await client.create_range_index(
             "invalid_relationship_index", EntityType.RELATIONSHIP, [], ["Test", "Relationship"]
         )
 
-    with pytest.raises(InvalidLabelOrType):
+    with pytest.raises(InvalidLabelOrTypeError):
         await client.create_text_index("invalid_node_index", EntityType.NODE, [], "Test")
 
-    with pytest.raises(InvalidLabelOrType):
+    with pytest.raises(InvalidLabelOrTypeError):
         await client.create_text_index(
             "invalid_relationship_index", EntityType.RELATIONSHIP, [], ["Test", "Relationship"]
         )
 
-    with pytest.raises(InvalidLabelOrType):
+    with pytest.raises(InvalidLabelOrTypeError):
         await client.create_point_index("invalid_node_index", EntityType.NODE, [], "Test")
 
-    with pytest.raises(InvalidLabelOrType):
+    with pytest.raises(InvalidLabelOrTypeError):
         await client.create_point_index(
             "invalid_relationship_index", EntityType.RELATIONSHIP, [], ["Test", "Relationship"]
         )
@@ -324,7 +324,7 @@ async def test_create_node_range_indexes(client: Pyneo4jClient, session: AsyncSe
 
 
 async def test_create_relationship_range_indexes(client: Pyneo4jClient, session: AsyncSession):
-    with pytest.raises(InvalidLabelOrType):
+    with pytest.raises(InvalidLabelOrTypeError):
         await client.create_range_index(
             "invalid_relationship_index",
             EntityType.RELATIONSHIP,
