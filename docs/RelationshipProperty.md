@@ -121,7 +121,7 @@ print(coffee_relationship_count) ## However many relationships were deleted
 By default, the `disconnect()` method will return `None` if no results were found. If you want to raise an exception instead, you can pass `raise_on_empty=True` to the method.
 
 ```python
-## Raises a `NoResultFound` exception if no results were matched
+## Raises a `NoResultFoundError` exception if no results were matched
 coffee_relationship_count = await developer.coffee.disconnect(coffee, raise_on_empty=True)
 ```
 

@@ -1,5 +1,5 @@
 """
-Pyneo4j database client class for running operations on the database.
+Database client module used for all interactions with the database.
 """
 
 import importlib.util
@@ -16,7 +16,7 @@ from typing_extensions import LiteralString
 from pyneo4j_ogm.core.node import NodeModel
 from pyneo4j_ogm.core.relationship import RelationshipModel
 from pyneo4j_ogm.exceptions import (
-    InvalidBookmark,
+    InvalidBookmarkError,
     InvalidEntityTypeError,
     InvalidLabelOrTypeError,
     InvalidUriError,
@@ -44,7 +44,7 @@ def ensure_connection(func: Callable):
     any operations on it.
 
     Raises:
-        NotConnectedToDatabase: Raised if the client is not connected to a database.
+        NotConnectedError: Raised if the client is not connected to a database.
     """
 
     async def decorator(self, *args, **kwargs):
@@ -64,8 +64,7 @@ class Pyneo4jClient:
     Database client class for running operations on the database.
 
     All models use a instance of this class to run operations on the database. Can also be used
-    directly to run queries and other operations against the database. Provides methods for
-    handling transactions/constraints/indexes and utility methods.
+    directly to run queries and other operations.
     """
 
     _builder: QueryBuilder
@@ -109,7 +108,8 @@ class Pyneo4jClient:
                 Defaults to `False`.
 
         Raises:
-            MissingDatabaseURI: If no uri is provided and the NEO4J_URI env variable is not set.
+            InvalidUriError: If no uri is provided and the NEO4J_URI env variable is not set.
+            Neo4jVersionError: If the version of the Neo4j database is <5.
 
         Returns:
             Pyneo4jClient: The client instance.
@@ -123,7 +123,7 @@ class Pyneo4jClient:
         self._skip_constraints = skip_constraints
         self._skip_indexes = skip_indexes
 
-        logger.debug("Connecting to database %s", self.uri)
+        logger.info("Connecting to database %s", self.uri)
         self._driver = AsyncGraphDatabase.driver(uri=self.uri, *args, **kwargs)
 
         # Get server info to check the Neo4j version since versions prior to 5 are not tested yet
@@ -131,11 +131,10 @@ class Pyneo4jClient:
         server_info = await self._driver.get_server_info()
 
         version = server_info.agent.split("/")[1]
-
         if int(version.split(".")[0]) < 5:
-            raise Neo4jVersionError()
+            raise Neo4jVersionError(version)
 
-        logger.info("Connected to database")
+        logger.info("Connected to database %s", self.uri)
         return self
 
     @ensure_connection
@@ -145,7 +144,6 @@ class Pyneo4jClient:
         """
         logger.info("Registering models in directory %s", dir_path)
         for root, _, files in os.walk(dir_path):
-            # Check all files for models
             logger.debug("Checking %s files for models", len(files))
             for file in files:
                 if not file.endswith(".py"):
@@ -153,7 +151,8 @@ class Pyneo4jClient:
 
                 filepath = os.path.join(root, file)
 
-                # Load the module
+                # Load the module and filter out all classes based on either the node or
+                # relationship model class
                 logger.debug("Found file %s, importing", filepath)
                 module_name = os.path.splitext(os.path.basename(filepath))[0]
                 spec = importlib.util.spec_from_file_location(module_name, filepath)
@@ -209,7 +208,7 @@ class Pyneo4jClient:
         logger.debug("Closing connection to database")
         await cast(AsyncDriver, self._driver).close()
         self._driver = None
-        logger.info("Connection to database closed")
+        logger.info("Connection to database %s closed", self.uri)
 
     @ensure_connection
     async def cypher(
@@ -226,6 +225,9 @@ class Pyneo4jClient:
             parameters (Dict[str, Any]): Parameters passed to the transaction. Defaults to `None`.
             resolve_models (bool, optional): Whether to try and resolve query results to their
                 corresponding database models or not. Defaults to `True`.
+
+        Raises:
+            Exception: Any exception which occurred while the batching was in progress.
 
         Returns:
             Tuple[List[List[Any]], List[str]]: A tuple containing the query result and the names
@@ -298,7 +300,8 @@ class Pyneo4jClient:
                 be applied. For relationships, a string representing the relationship type.
 
         Raises:
-            InvalidEntityType: If an invalid entity_type is provided.
+            InvalidEntityTypeError: If an invalid entity_type is provided.
+            InvalidLabelOrTypeError: If the type or labels are invalid for the given entity type.
         """
         match entity_type:
             case EntityType.NODE:
@@ -351,7 +354,7 @@ class Pyneo4jClient:
                 `NODE` or `RELATIONSHIP`.
 
         Raises:
-            InvalidEntityType: If an invalid entity_type is provided.
+            InvalidEntityTypeError: If an invalid entity_type is provided.
         """
         match entity_type:
             case EntityType.NODE:
@@ -404,8 +407,8 @@ class Pyneo4jClient:
                 be applied. For relationships, a string representing the relationship type.
 
         Raises:
-            InvalidEntityType: If an invalid entity_type is provided.
-            InvalidLabelOrType: If an invalid label or type is provided.
+            InvalidEntityTypeError: If an invalid entity_type is provided.
+            InvalidLabelOrTypeError: If an invalid label or type is provided for the given entity type.
         """
         match entity_type:
             case EntityType.NODE:
@@ -465,8 +468,8 @@ class Pyneo4jClient:
                 be applied. For relationships, a string representing the relationship type.
 
         Raises:
-            InvalidEntityType: If an invalid entity_type is provided.
-            InvalidLabelOrType: If an invalid label or type is provided.
+            InvalidEntityTypeError: If an invalid entity_type is provided.
+            InvalidLabelOrTypeError: If an invalid label or type is provided for the given entity type.
         """
         match entity_type:
             case EntityType.NODE:
@@ -528,8 +531,8 @@ class Pyneo4jClient:
                 be applied. For relationships, a string representing the relationship type.
 
         Raises:
-            InvalidEntityType: If an invalid entity_type is provided.
-            InvalidLabelOrType: If an invalid label or type is provided.
+            InvalidEntityTypeError: If an invalid entity_type is provided.
+            InvalidLabelOrTypeError: If an invalid label or type is provided for the given entity type.
         """
         match entity_type:
             case EntityType.NODE:
@@ -843,7 +846,7 @@ class BookmarkManager:
 
     def __enter__(self) -> None:
         if self._bookmarks is None or not all(isinstance(bookmark, str) for bookmark in self._bookmarks):
-            raise InvalidBookmark(bookmarks=self._bookmarks)
+            raise InvalidBookmarkError(bookmarks=self._bookmarks)
 
         logger.info("Using bookmarks %s", self._bookmarks)
         self._client._used_bookmarks = self._bookmarks

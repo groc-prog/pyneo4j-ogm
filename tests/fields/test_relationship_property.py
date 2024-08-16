@@ -14,7 +14,7 @@ from pyneo4j_ogm.exceptions import (
     CardinalityViolationError,
     InstanceDestroyedError,
     InstanceNotHydratedError,
-    InvalidTargetNodeModel,
+    InvalidTargetNodeModelError,
     NotConnectedToSourceNodeError,
     UnexpectedEmptyResultError,
 )
@@ -473,7 +473,7 @@ async def test_ensure_alive_invalid_node(client: Pyneo4jClient, dev_model_instan
     john_model, *_ = dev_model_instances
     latte_model, *_ = coffee_model_instances
 
-    with pytest.raises(InvalidTargetNodeModel):
+    with pytest.raises(InvalidTargetNodeModelError):
         await john_model.colleagues.connect(latte_model)
 
 

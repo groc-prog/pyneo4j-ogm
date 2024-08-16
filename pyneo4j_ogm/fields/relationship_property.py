@@ -33,7 +33,7 @@ from pyneo4j_ogm.exceptions import (
     CardinalityViolationError,
     InstanceDestroyedError,
     InstanceNotHydratedError,
-    InvalidTargetNodeModel,
+    InvalidTargetNodeModelError,
     NotConnectedToSourceNodeError,
     UnexpectedEmptyResultError,
     UnregisteredModelError,
@@ -515,7 +515,7 @@ class RelationshipProperty(Generic[T, U]):
             properties (Dict[str, Any] | None): Properties defined on the relationship model. Defaults to `None`.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
 
         Returns:
             U: The created relationship.
@@ -589,7 +589,7 @@ class RelationshipProperty(Generic[T, U]):
                 to `False`.
 
         Raises:
-            NotConnectedToSourceNode: If the node is not connected to the source node.
+            NotConnectedToSourceNodeError: If the node is not connected to the source node.
 
         Returns:
             int: The number of disconnected nodes.
@@ -727,7 +727,7 @@ class RelationshipProperty(Generic[T, U]):
             new_node (T): The node which replaces the currently connected node.
 
         Raises:
-            NotConnectedToSourceNode: If the old node is not connected to the source node.
+            NotConnectedToSourceNodeError: If the old node is not connected to the source node.
 
         Returns:
             List[U]: The new relationships between the source node and the newly connected node.
@@ -999,7 +999,7 @@ class RelationshipProperty(Generic[T, U]):
             property_name (str): The name under which the relationship property is defined on the source model.
 
         Raises:
-            UnregisteredModel: Raised if the source model has not been registered with the client.
+            UnregisteredModelError: Raised if the source model has not been registered with the client.
         """
         if getattr(source_model, "_client", None) is None:
             raise UnregisteredModelError(model=source_model.__class__.__name__)
@@ -1027,8 +1027,8 @@ class RelationshipProperty(Generic[T, U]):
             nodes (T | List[T]): Nodes to check for hydration and alive.
 
         Raises:
-            InstanceNotHydrated: Raised if a node is not hydrated yet.
-            InstanceDestroyed: Raised if a node has been marked as destroyed.
+            InvalidRelationshipDirectionError: Raised if a node is not hydrated yet.
+            InstanceDestroyedError: Raised if a node has been marked as destroyed.
         """
         nodes_to_check = nodes if isinstance(nodes, list) else [nodes]
         target_model_labels = list(cast(Type[T], self._target_model)._settings.labels)
@@ -1046,7 +1046,7 @@ class RelationshipProperty(Generic[T, U]):
                 raise InstanceDestroyedError()
 
             if not all([label in node_labels for label in target_model_labels]):
-                raise InvalidTargetNodeModel(
+                raise InvalidTargetNodeModelError(
                     expected_type=cast(Type[T], self._target_model).__name__,
                     actual_type=node.__class__.__name__,
                 )

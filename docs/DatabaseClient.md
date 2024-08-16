@@ -22,7 +22,7 @@ await client.connect(uri="<connection-uri-to-database>", auth=("<username>", "<p
 client = await Pyneo4jClient().connect(uri="<connection-uri-to-database>", auth=("<username>", "<password>"), max_connection_pool_size=10, ...)
 ```
 
-After connecting the client, you will be able to run any cypher queries against the database. Should you try to run a query without connecting to a database first (it happens to the best of us), you will get a `NotConnectedToDatabase` exception.
+After connecting the client, you will be able to run any cypher queries against the database. Should you try to run a query without connecting to a database first (it happens to the best of us), you will get a `NotConnectedError` exception.
 
 ### Closing an existing connection
 
@@ -35,7 +35,7 @@ Connections can explicitly be closed by calling the `close()` method. This will 
 await client.close()
 ```
 
-Once you closed the client, it will be seen as `disconnected` and if you try to run any further queries with it, you will get a `NotConnectedToDatabase` exception
+Once you closed the client, it will be seen as `disconnected` and if you try to run any further queries with it, you will get a `NotConnectedError` exception
 
 ### Registering models
 
@@ -55,7 +55,7 @@ or by providing the path to a directory holding all your models. The `register_m
 await client.register_models_from_directory("path/to/models")
 ```
 
-This is a crucial step, because if you don't register your models with the client, you won't be able to work with them in any way. Should you try to work with a model that has not been registered, you will get a `UnregisteredModel` exception. This exception also gets raised if a database model defines a relationship-property with other (unregistered) models as a target or relationship model and then runs a query with said relationship-property.
+This is a crucial step, because if you don't register your models with the client, you won't be able to work with them in any way. Should you try to work with a model that has not been registered, you will get a `UnregisteredModelError` exception. This exception also gets raised if a database model defines a relationship-property with other (unregistered) models as a target or relationship model and then runs a query with said relationship-property.
 
 If you have defined any indexes or constraints on your models, they will be created automatically when registering them. You can prevent this behavior by passing `skip_constraints=True` or `skip_indexes=True` to the `connect()` method. If you do this, you will have to create the indexes and constraints yourself.
 

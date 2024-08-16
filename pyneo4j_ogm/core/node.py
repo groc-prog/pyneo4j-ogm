@@ -69,8 +69,8 @@ def ensure_alive(func):
         func (Callable): The method to decorate.
 
     Raises:
-        InstanceDestroyed: If the instance is destroyed.
-        InstanceNotHydrated: If the instance is not hydrated.
+        InstanceDestroyedError: If the instance is destroyed.
+        InvalidRelationshipDirectionError: If the instance is not hydrated.
 
     Returns:
         Callable: The decorated method.
@@ -169,7 +169,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         instance is seen as `hydrated` and all methods can be called on it.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
 
         Returns:
             T: The current model instance.
@@ -215,7 +215,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Updates the corresponding node in the graph with the current instance values.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
         """
         deflated = self._deflate()
 
@@ -257,10 +257,10 @@ class NodeModel(ModelBase[NodeModelSettings]):
     async def delete(self) -> None:
         """
         Deletes the corresponding node in the graph and marks this instance as destroyed. If
-        another method is called on this instance, an `InstanceDestroyed` will be raised.
+        another method is called on this instance, an `InstanceDestroyedError` will be raised.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
         """
         logger.info("Deleting node %s", self)
         results, _ = await self._client.cypher(
@@ -289,7 +289,7 @@ class NodeModel(ModelBase[NodeModelSettings]):
         Refreshes the current instance with the corresponding values from the graph.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
         """
         logger.info("Refreshing node %s with values from database", self)
         results, _ = await self._client.cypher(
@@ -336,8 +336,8 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
 
         Raises:
-            InvalidFilters: If auto-fetch is enabled and no node labels are provided.
-            UnregisteredModel: If auto-fetch is enabled and a model with the provided labels is not registered.
+            InvalidFiltersError: If auto-fetch is enabled and no node labels are provided.
+            UnregisteredModelError: If auto-fetch is enabled and a model with the provided labels is not registered.
 
         Returns:
             List["NodeModel" | Dict[str, Any]]: The nodes matched by the query or dictionaries of the projected
@@ -493,12 +493,12 @@ class NodeModel(ModelBase[NodeModelSettings]):
                 identical option defined in `Settings`. Can not be used with projections. Defaults to `None`.
             auto_fetch_models (List[Union[str, Type["NodeModel"]]], optional): A list of models to auto-fetch.
                 `auto_fetch_nodes` has to be set to `True` for this to have any effect. Defaults to `[]`.
-            raise_on_empty (bool, optional): Whether to raise an `NoResultFound` if no match is found. Defaults to
+            raise_on_empty (bool, optional): Whether to raise an `NoResultFoundError` if no match is found. Defaults to
                 `False`.
 
         Raises:
-            InvalidFilters: If no filters or invalid filters are provided.
-            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
+            InvalidFiltersError: If no filters or invalid filters are provided.
+            NoResultFoundError: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             T | Dict[str, Any] | None: A instance of the model or None if no match is found or a dictionary of the
@@ -743,12 +743,12 @@ class NodeModel(ModelBase[NodeModelSettings]):
             filters (NodeFilters): The filters to apply to the query.
             new (bool, optional): Whether to return the updated node. By default, the old node is
                 returned. Defaults to `False`.
-            raise_on_empty (bool, optional): Whether to raise an `NoResultFound` if no match is found. Defaults to
+            raise_on_empty (bool, optional): Whether to raise an `NoResultFoundError` if no match is found. Defaults to
                 `False`.
 
         Raises:
-            InvalidFilters: If no filters or invalid filters are provided.
-            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
+            InvalidFiltersError: If no filters or invalid filters are provided.
+            NoResultFoundError: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             T | None: By default, the old node instance is returned. If `new` is set to `True`, the result
@@ -917,17 +917,17 @@ class NodeModel(ModelBase[NodeModelSettings]):
     async def delete_one(cls: Type[T], filters: NodeFilters, raise_on_empty: bool = False) -> int:
         """
         Finds the first node that matches `filters` and deletes it. If no match is found, a
-        `UnexpectedEmptyResult` is raised.
+        `UnexpectedEmptyResultError` is raised.
 
         Args:
             filters (NodeFilters): The filters to apply to the query.
-            raise_on_empty (bool, optional): Whether to raise an `NoResultFound` if no match is found. Defaults to
+            raise_on_empty (bool, optional): Whether to raise an `NoResultFoundError` if no match is found. Defaults to
                 `False`.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
-            InvalidFilters: If no filters or invalid filters are provided.
-            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
+            InvalidFiltersError: If no filters or invalid filters are provided.
+            NoResultFoundError: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             int: The number of deleted nodes.

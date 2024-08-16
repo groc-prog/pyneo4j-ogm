@@ -130,7 +130,7 @@ await john.update()
 
 #### Instance.delete()
 
-The `delete()` method can be used to delete the graph entity tied to the current model instance. Once deleted, the model instance will be marked as `destroyed` and any further operations on it will raise a `InstanceDestroyed` exception.
+The `delete()` method can be used to delete the graph entity tied to the current model instance. Once deleted, the model instance will be marked as `destroyed` and any further operations on it will raise a `InstanceDestroyedError` exception.
 
 ```python
 ## In this context, the developer `john` has been created before and is seen as `hydrated` (aka it
@@ -139,7 +139,7 @@ The `delete()` method can be used to delete the graph entity tied to the current
 ## This will delete the `john` node inside the graph and mark your local instance as `destroyed`.
 await john.delete()
 
-await john.update()  ## Raises `InstanceDestroyed` exception
+await john.update()  ## Raises `InstanceDestroyedError` exception
 ```
 
 #### Instance.refresh()
@@ -212,7 +212,7 @@ print(developer.other_property.nodes) ## []
 By default, the `find_one()` method will return `None` if no results were found. If you want to raise an exception instead, you can pass `raise_on_empty=True` to the method.
 
 ```python
-## Raises a `NoResultFound` exception if no results were found
+## Raises a `NoResultFoundError` exception if no results were found
 developer = await Developer.find_one({"name": "John"}, raise_on_empty=True)
 ```
 
@@ -322,7 +322,7 @@ print(developer) ## <Developer age=30>
 By default, the `update_one()` method will return `None` if no results were found. If you want to raise an exception instead, you can pass `raise_on_empty=True` to the method.
 
 ```python
-## Raises a `NoResultFound` exception if no results were matched
+## Raises a `NoResultFoundError` exception if no results were matched
 developer = await Developer.update_one({"age": 30}, {"name": "John"}, raise_on_empty=True)
 ```
 
@@ -387,7 +387,7 @@ print(count) ## 0
 By default, the `delete_one()` method will return `None` if no results were found. If you want to raise an exception instead, you can pass `raise_on_empty=True` to the method.
 
 ```python
-## Raises a `NoResultFound` exception if no results were matched
+## Raises a `NoResultFoundError` exception if no results were matched
 count = await Developer.delete_one({"name": "John"}, raise_on_empty=True)
 ```
 

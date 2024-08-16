@@ -46,8 +46,8 @@ def ensure_alive(func):
         func (Callable): The method to decorate.
 
     Raises:
-        InstanceDestroyed: If the instance is destroyed.
-        InstanceNotHydrated: If the instance is not hydrated.
+        InstanceDestroyedError: If the instance is destroyed.
+        InvalidRelationshipDirectionError: If the instance is not hydrated.
 
     Returns:
         Callable: The decorated method.
@@ -137,7 +137,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Updates the corresponding relationship in the database with the current instance values.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
         """
         deflated = self._deflate()
 
@@ -191,10 +191,10 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     async def delete(self) -> None:
         """
         Deletes the corresponding relationship in the database and marks this instance as destroyed. If another
-        method is called on this instance, an `InstanceDestroyed` will be raised.
+        method is called on this instance, an `InstanceDestroyedError` will be raised.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
         """
         logger.info("Deleting relationship %s", self)
         await self._client.cypher(
@@ -219,7 +219,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Refreshes the current instance with the values from the database.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
         """
         logger.info("Refreshing relationship %s with values from database", self)
         results, _ = await self._client.cypher(
@@ -246,7 +246,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns the start node the relationship belongs to.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
 
         Returns:
             Type[NodeModel]: A instance of the start node model.
@@ -276,7 +276,7 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
         Returns the end node the relationship belongs to.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
 
         Returns:
             Type[NodeModel]: A instance of the end node model.
@@ -316,11 +316,11 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             projections (Projection, optional): The properties to project from the relationship. The keys define
                 the new keys in the projection and the value defines the model property to be projected. A invalid
                 or empty projection will result in the whole model instance being returned. Defaults to `None`.
-            raise_on_empty (bool, optional): Whether to raise a `NoResultFound` if no match is found.
+            raise_on_empty (bool, optional): Whether to raise a `NoResultFoundError` if no match is found.
 
         Raises:
-            InvalidFilters: If no filters or invalid filters are provided.
-            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
+            InvalidFiltersError: If no filters or invalid filters are provided.
+            NoResultFoundError: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             T | Dict[str, Any] | None: A instance of the model or None if no match is found or a dictionary if a
@@ -462,12 +462,12 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
             filters (RelationshipFilters): Expressions applied to the query.
             new (bool, optional): Whether to return the updated relationship. By default, the old relationship is
                 returned. Defaults to `False`.
-            raise_on_empty (bool, optional): Whether to raise a `NoResultFound` if no match is found. Defaults to
+            raise_on_empty (bool, optional): Whether to raise a `NoResultFoundError` if no match is found. Defaults to
                 `False`.
 
         Raises:
-            InvalidFilters: If no filters or invalid filters are provided.
-            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
+            InvalidFiltersError: If no filters or invalid filters are provided.
+            NoResultFoundError: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             T | None: By default, the old relationship instance is returned. If `new` is set to `True`, the result
@@ -660,16 +660,16 @@ class RelationshipModel(ModelBase[RelationshipModelSettings]):
     async def delete_one(cls: Type[T], filters: RelationshipFilters, raise_on_empty: bool = False) -> int:
         """
         Finds the first relationship that matches `filters` and deletes it. If no match is found, a
-        `UnexpectedEmptyResult` is raised.
+        `UnexpectedEmptyResultError` is raised.
 
         Args:
             filters (RelationshipFilters): Expressions applied to the query. Defaults to `None`.
-            raise_on_empty (bool, optional): Whether to raise a `NoResultFound` if no match is found. Defaults to
+            raise_on_empty (bool, optional): Whether to raise a `NoResultFoundError` if no match is found. Defaults to
                 `False`.
 
         Raises:
-            UnexpectedEmptyResult: If the query should return a result but does not.
-            NoResultFound: If no match is found and `raise_on_empty` is set to `True`.
+            UnexpectedEmptyResultError: If the query should return a result but does not.
+            NoResultFoundError: If no match is found and `raise_on_empty` is set to `True`.
 
         Returns:
             int: The number of deleted relationships.

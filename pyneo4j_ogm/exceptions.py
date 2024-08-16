@@ -111,7 +111,7 @@ class UnregisteredModelError(Pyneo4jException):
         )
 
 
-class InvalidTargetNodeModel(Pyneo4jException):
+class InvalidTargetNodeModelError(Pyneo4jException):
     """
     Raised if a relationship-property method was called on a node model, but the target node was not of the
     expected model type.
@@ -196,7 +196,7 @@ class NoResultFoundError(Pyneo4jException):
         super().__init__(f"No matching results for filter {filters}.", *args)
 
 
-class InvalidBookmark(Pyneo4jException):
+class InvalidBookmarkError(Pyneo4jException):
     """
     Raised if a bookmark was used to start a transaction, but the bookmark was invalid.
     """

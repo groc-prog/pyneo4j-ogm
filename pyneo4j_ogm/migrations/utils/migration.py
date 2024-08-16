@@ -80,7 +80,7 @@ def get_migration_config(config_path: Optional[str]) -> MigrationConfig:
         config_path(str, optional): Path to the migration config file.
 
     Raises:
-        MigrationNotInitialized: If the migration directory has not been initialized.
+        MigrationNotInitializedError: If the migration directory has not been initialized.
 
     Returns:
         MigrationConfig: Migration configuration

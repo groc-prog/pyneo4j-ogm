@@ -1,5 +1,5 @@
 """
-Base Node/Relationship class module.
+Base class for node and relationship modules. Should include any shared logic for serialization, options, hooks, etc.
 """
 
 import asyncio
@@ -97,15 +97,13 @@ def hooks(func):
             settings: BaseModelSettings = getattr(self, "_settings")
 
             if func.__name__ in settings.pre_hooks:
-                logger.info(
+                logger.debug(
                     "Found %s pre-hook functions for method %s", len(settings.pre_hooks[func.__name__]), func.__name__
                 )
 
-                # Run each pre-hook function with the same arguments as the decorated method
                 for hook_function in settings.pre_hooks[func.__name__]:
                     logger.debug("Running pre-hook function %s", hook_function.__name__)
 
-                    # Check if the hook function is asynchronous, if so await it to prevent unawaited coroutine warnings
                     if iscoroutinefunction(hook_function):
                         await hook_function(self, *args, **kwargs)
                     else:
@@ -114,16 +112,13 @@ def hooks(func):
             result = await func(self, *args, **kwargs)
 
             if func.__name__ in settings.post_hooks:
-                logger.info(
+                logger.debug(
                     "Found %s post-hook functions for method %s", len(settings.post_hooks[func.__name__]), func.__name__
                 )
 
-                # Run any post-hook functions with the same arguments as the decorated method and the result
-                # as the second argument
                 for hook_function in settings.post_hooks[func.__name__]:
                     logger.debug("Running post-hook function %s", hook_function.__name__)
 
-                    # Check again if the hook function is asynchronous and await it if necessary
                     if iscoroutinefunction(hook_function):
                         await hook_function(self, result, *args, **kwargs)
                     else:
@@ -140,12 +135,10 @@ def hooks(func):
             settings: BaseModelSettings = getattr(self, "_settings")
 
             if func.__name__ in settings.pre_hooks:
-                # Run each pre-hook function with the same arguments as the decorated method
                 logger.debug(
                     "Found %s pre-hook functions for method %s", len(settings.pre_hooks[func.__name__]), func.__name__
                 )
 
-                # Check if the hook function is asynchronous, if so create a new task to run it
                 for hook_function in settings.pre_hooks[func.__name__]:
                     logger.debug("Running pre-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
@@ -156,12 +149,10 @@ def hooks(func):
             result = func(self, *args, **kwargs)
 
             if func.__name__ in settings.post_hooks:
-                # Run any post-hook functions with the same arguments as the decorated method and the result
                 logger.debug(
                     "Found %s post-hook functions for method %s", len(settings.post_hooks[func.__name__]), func.__name__
                 )
 
-                # Check again if the hook function is asynchronous and create a new task to run it if necessary
                 for hook_function in settings.post_hooks[func.__name__]:
                     logger.debug("Running post-hook function %s", hook_function.__name__)
                     if iscoroutinefunction(hook_function):
@@ -177,10 +168,6 @@ def hooks(func):
 if IS_PYDANTIC_V2:
 
     class CustomGenerateJsonSchema(GenerateJsonSchema):
-        """
-        Custom JSON schema generator which adds support for generating JSON schemas for `RelationshipProperty` fields
-        and adds index and uniqueness constraint information to the generated schema.
-        """
 
         def generate(self, *args, **kwargs):
             model_cls: Optional[Type[BaseModel]] = None
@@ -236,8 +223,8 @@ class ModelBase(BaseModel, Generic[V]):
     Base class for both `NodeModel` and `RelationshipModel`. This class handles shared logic between the two model types
     and defines common serializers/validators used for Pydantic models.
 
-    If you come across this class and want to use it in your own models then DON'T. This class is not meant to be used
-    directly and is only used as a base class for `NodeModel` and `RelationshipModel`.
+    If you come across this class and want to use it in your own models, only proceed if you know what you are doing. This class is
+    only meant to be used internally and can unexpectedly break things if modified.
     """
 
     _settings: Union[NodeModelSettings, RelationshipModelSettings] = PrivateAttr()
@@ -253,10 +240,6 @@ class ModelBase(BaseModel, Generic[V]):
 
         @model_serializer(mode="wrap")
         def _model_serializer(self, serializer: Any, info: SerializationInfo) -> Any:
-            """
-            Custom model serializer which adds support for serializing `RelationshipProperty` fields, `element_id` and
-            `id` fields and any additional fields defined on the model.
-            """
             if isinstance(self, RelationshipProperty):
                 return self.nodes
 
@@ -310,9 +293,6 @@ class ModelBase(BaseModel, Generic[V]):
 
         @model_validator(mode="before")  # type: ignore
         def _model_validator(cls, values: Any) -> Any:
-            """
-            Custom validation for validating the fetched nodes from a relationship property.
-            """
             relationship_properties = getattr(cls, "_relationship_properties", set())
 
             for field_name, field in get_model_fields(cls).items():
@@ -590,7 +570,6 @@ class ModelBase(BaseModel, Generic[V]):
     def __init_subclass__(cls, *args, **kwargs) -> None:
         setattr(cls, "_query_builder", QueryBuilder())
 
-        logger.debug("Merging settings for model %s", cls.__name__)
         if hasattr(cls, "Settings") and hasattr(cls, "_settings") and issubclass(cls._settings.__class__, BaseModel):
             # Validate settings and merge them with the parent class settings
             parsed_settings = get_model_dump(
