@@ -4,9 +4,9 @@
 {# UNRELEASED #}
 ## Unreleased
 {% for type_, commits in context.history.unreleased | dictsort %}
-{% if type_ in ["feature", "fix", "performance", "documentation", "refactor"] %}
+{% if type_ in ["feature", "fix", "performance", "documentation"] %}
 ### {{ type_ | capitalize }}
-{% for commit in commits %}{% if type_ in ["feature", "fix", "performance", "documentation", "refactor"] %}
+{% for commit in commits %}{% if type_ in ["feature", "fix", "performance", "documentation"] %}
 * {{ commit.commit.message.rstrip() }} ([`{{ commit.commit.hexsha[:7] }}`]({{ commit.commit.hexsha | commit_hash_url }}))
 {% endif %}{% endfor %}{% endif %}{% endfor %}
 
@@ -16,9 +16,9 @@
 {% for version, release in context.history.released.items() %}
 ## What's Changed in {{ version.as_tag() }} ({{ release.tagged_date.strftime("%Y-%m-%d") }})
 {% for type_, commits in release["elements"] | dictsort %}
-{% if type_ in ["feature", "fix", "performance", "documentation", "refactor"] %}
+{% if type_ in ["feature", "fix", "performance", "documentation"] %}
 ### {{ type_ | capitalize }}
 {% for commit in commits %}
-{% if type_ in ["feature", "fix", "performance", "documentation", "refactor"] %}
+{% if type_ in ["feature", "fix", "performance", "documentation"] %}
 * {{ commit.commit.message.rstrip() }} ([`{{ commit.commit.hexsha[:7] }}`]({{ commit.commit.hexsha | commit_hash_url }}))
 {% endif %}{% endfor %}{% endif %}{% endfor %}{% endfor %}
