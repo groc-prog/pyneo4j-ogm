@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   neo4j:
     hostname: neo4j
@@ -12,3 +10,23 @@ services:
       - .neo4j_data:/data
     environment:
       NEO4J_AUTH: neo4j/password
+  memgraph:
+    image: memgraph/memgraph-mage:latest
+    container_name: memgraph-mage
+    pull_policy: always
+    ports:
+      - "7688:7687"
+      - "7444:7444"
+    command: ["--log-level=TRACE"]
+
+  lab:
+    image: memgraph/lab:latest
+    container_name: memgraph-lab
+    pull_policy: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - memgraph
+    environment:
+      - QUICK_CONNECT_MG_HOST=memgraph
+      - QUICK_CONNECT_MG_PORT=7688

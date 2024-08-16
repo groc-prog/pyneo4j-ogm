@@ -298,7 +298,6 @@ In the following we are going to take a closer look at the different parts of `p
     - [Creating a database client](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-creating-a-database-client)
     - [Interacting with the database](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-interacting-with-the-database)
     - [Full example](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-full-example)
-  - [Running the test suite](https://github.com/groc-prog/pyneo4j-ogm/blob/develop?tab=readme-ov-file#-running-the-test-suite)
   - [📚 Documentation](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs)
     - [Basic concepts](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Concept.md)
       - [A note on Pydantic version support](https://github.com/groc-prog/pyneo4j-ogm/blob/develop/docs/Concept.md#a-note-on-pydantic-version-support)
@@ -368,7 +367,11 @@ In the following we are going to take a closer look at the different parts of `p
 
 ### Running the test suite
 
-To run the test suite, you have to install the development dependencies and run the tests using `pytest`. The tests are located in the `tests` directory. Some tests will require you to have a Neo4j instance running on `localhost:7687` with the credentials (`neo4j:password`). This can easily be done using the provided `docker-compose.yml` file.
+To run the test suite, you have to install the development dependencies and run the tests using `pytest`. The tests are located in the `tests` directory. Some tests will require you to have a database instance running. You can use docker to do so.
+
+When running Neo4j-related tests, you have to start the `neo4j service` defined in the `docker-compose.yml`. The credentials are defined as `neo4j/password`, the database listens on `port 7687` and a web UI can be used on `http://localhost:7474`.
+
+For Memgraph, you have to start the `memgraph (and lab for a web UI) service(s)`. The database listens on port `7688` and the web UI can be accessed on `http://localhost:3000`.
 
 ```bash
 poetry run pytest tests --asyncio-mode=auto -W ignore::DeprecationWarning
