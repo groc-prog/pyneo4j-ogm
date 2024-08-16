@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Report an issue with Pyneo4j
 title: ''
 labels: ''
 assignees: ''
@@ -16,19 +16,20 @@ Describe your issue here.
 * Version of pyneo4j-ogm
 * Version of pydantic
 * Version of python
+* Version of Neo4j/Memgraph
 
 ### Steps to reproduce
 
 Tell us how to reproduce this issue.
 
-```python
-Please add a code snippet here, that reproduces the problem completely.
+```text
+Please add a code snippet (or at the very least the stacktrace) here, that reproduces the problem completely.
 ```
 
-### Expected behaviour
+### Expected behavior
 
 Tell us what should happen
 
-### Actual behaviour
+### Actual behavior
 
 Tell us what happens instead
