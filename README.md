@@ -7,9 +7,33 @@
 
 [`pyneo4j-ogm`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop) is a asynchronous `Object-Graph-Mapper` for [`Neo4j 5+`](https://neo4j.com/docs/) and [`Python 3.10+`](https://www.python.org/). It is inspired by [`beanie`](https://github.com/roman-right/beanie) and build on top of proven technologies like [`Pydantic 1.10+ and 2+`](https://docs.pydantic.dev/latest/) and the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html). It saves you from writing ever-repeating boilerplate queries and allows you to focus on the `stuff that actually matters`. It is designed to be simple and easy to use, but also flexible and powerful.
 
-## Features to implement before hitting 1.0.0
+## 1.0.0 Roadmap
 
-- [] Integrate Memgraph support
+### Memgraph (<https://github.com/groc-prog/pyneo4j-ogm/issues/3>)
+
+- [] Update core client to support memgraph
+  - [] Indexing
+  - [] Constraints
+  - [] Version parsing (Maybe just test it with older versions and remove this completely)
+- [] Rewrite query API to support memgraph queries
+  - [] Check which operators have to be rewritten
+  - [] Remove the usage of ElementId
+- [] Add tests
+
+### Cardinality
+
+- [] Implement additional cardinalities (ZERO_OR_ONE, ZERO_OR_MANY, ONE, ONE_OR_MANY)
+- [] Implement method for creating a relationship with node so ONE and ONE_OR_MANY can be implemented
+  - [] check best implementation (something like `.relationship(Relationship, Node)`)
+
+### Rework WithOptions (<https://github.com/groc-prog/pyneo4j-ogm/issues/4>)
+
+- [] Check other viable implementations or fix typing for current one
+
+### API
+
+- [] Improve API simplicity
+- [] Improve docs
 
 ## 🎯 Features
 
