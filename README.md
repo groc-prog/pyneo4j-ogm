@@ -9,31 +9,31 @@
 
 ## 1.0.0 Roadmap
 
-### Memgraph (<https://github.com/groc-prog/pyneo4j-ogm/issues/3>)
+### Memgraph
 
-- [] Update core client to support memgraph
-  - [] Indexing
-  - [] Constraints
-  - [] Version parsing (Maybe just test it with older versions and remove this completely)
-- [] Rewrite query API to support memgraph queries
-  - [] Check which operators have to be rewritten
-  - [] Remove the usage of ElementId
-- [] Add tests
+- [ ] Update core client to support memgraph
+  - [ ] Indexing
+  - [ ] Constraints
+  - [ ] Version parsing (Maybe just test it with older versions and remove this completely)
+- [ ] Rewrite query API to support memgraph queries
+  - [ ] Check which operators have to be rewritten
+  - [ ] Remove the usage of ElementId
+- [ ] Add tests
 
 ### Cardinality
 
-- [] Implement additional cardinalities (ZERO_OR_ONE, ZERO_OR_MANY, ONE, ONE_OR_MANY)
-- [] Implement method for creating a relationship with node so ONE and ONE_OR_MANY can be implemented
-  - [] check best implementation (something like `.relationship(Relationship, Node)`)
+- [ ] Implement additional cardinalities (ZERO_OR_ONE, ZERO_OR_MANY, ONE, ONE_OR_MANY)
+- [ ] Implement method for creating a relationship with node so ONE and ONE_OR_MANY can be implemented
+  - [ ] check best implementation (something like `.relationship(Relationship, Node)`)
 
-### Rework WithOptions (<https://github.com/groc-prog/pyneo4j-ogm/issues/4>)
+### Rework WithOptions
 
-- [] Check other viable implementations or fix typing for current one
+- [ ] Check other viable implementations or fix typing for current one
 
 ### API
 
-- [] Improve API simplicity
-- [] Improve docs
+- [ ] Improve API simplicity
+- [ ] Improve docs
 
 ## 🎯 Features
 
