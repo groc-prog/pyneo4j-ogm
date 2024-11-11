@@ -24,5 +24,8 @@
     ".memgraph": true,
     ".coverage": true,
     ".venv": true
-  }
+  },
+  "cSpell.words": [
+    "memgraph"
+  ]
 }

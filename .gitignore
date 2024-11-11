@@ -160,4 +160,5 @@ cython_debug/
 #.idea/
 
 # Docker volumes
-.neo4j_data
+.neo4j
+.memgraph

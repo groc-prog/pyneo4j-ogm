@@ -1,15 +1,17 @@
 services:
   neo4j:
-    hostname: neo4j
     image: neo4j:latest
-    restart: always
+    container_name: neo4j
+    pull_policy: always
     ports:
       - 7687:7687
       - 7474:7474
     volumes:
-      - .neo4j_data:/data
+      - neo4j:/data
+      - neo4j:/logs
     environment:
       NEO4J_AUTH: neo4j/password
+
   memgraph:
     image: memgraph/memgraph-mage:latest
     container_name: memgraph-mage
@@ -17,7 +19,11 @@ services:
     ports:
       - "7688:7687"
       - "7444:7444"
-    command: ["--log-level=TRACE"]
+    volumes:
+      - memgraph:/var/lib
+      - memgraph:/var/log
+    environment:
+      - MEMGRAPH="--storage-properties-on-edges=true --log-level=TRACE"
 
   lab:
     image: memgraph/lab:latest
@@ -30,3 +36,18 @@ services:
     environment:
       - QUICK_CONNECT_MG_HOST=memgraph
       - QUICK_CONNECT_MG_PORT=7688
+
+volumes:
+  neo4j:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '.neo4j'
+  memgraph:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '.memgraph'
+
