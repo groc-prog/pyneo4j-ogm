@@ -1,12 +1,33 @@
 # CHANGELOG
 
-{# RELEASED #}
+{% set latest_version, latest_release = context.history.released.items() | list | first %}
+
 {% for version, release in context.history.released.items() %}
-## What's Changed in {{ version.as_tag() }} ({{ release.tagged_date.strftime("%Y-%m-%d") }})
+
+{% if version == latest_version %}
+## 🎉 [`{{ version.as_tag() }}`](https://github.com/groc-prog/pyneo4j-ogm/releases/tag/{{ version.as_tag() }}) has been released on {{ release.tagged_date.strftime("%Y-%m-%d") }}! Check out all new features and bugfixes
+{% else %}
+## What's Changed in [`{{ version.as_tag() }}`](https://github.com/groc-prog/pyneo4j-ogm/releases/tag/{{ version.as_tag() }})
+{% endif %}
+
 {% for type_, commits in release["elements"] | dictsort %}
-{% if type_ in ["feature", "fix", "performance", "documentation"] %}
-### {{ type_ | capitalize }}
+{% if type_ in ["features", "bug fixes", "performance improvements", "documentation"] %}
+
+{% if type_ == "bug fixes" %}
+### 🐛 {{ type_ | capitalize }}
+{% elif type_ == "features" %}
+### 🚀 {{ type_ | capitalize }}
+{% elif type_ == "performance improvements" %}
+### ⚡ {{ type_ | capitalize }}
+{% elif type_ == "documentation" %}
+### 📚 {{ type_ | capitalize }}
+{% endif %}
+
 {% for commit in commits %}
-{% if type_ in ["feature", "fix", "performance", "documentation"] %}
 * {{ commit.commit.message.rstrip() }} ([`{{ commit.commit.hexsha[:7] }}`]({{ commit.commit.hexsha | commit_hash_url }}))
-{% endif %}{% endfor %}{% endif %}{% endfor %}{% endfor %}
+{% endfor %}
+
+{% endif %}
+{% endfor %}
+
+{% endfor %}
