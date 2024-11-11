@@ -4,7 +4,6 @@ about: Report an issue with Pyneo4j
 title: ''
 labels: ''
 assignees: ''
-
 ---
 
 ### Subject of the issue

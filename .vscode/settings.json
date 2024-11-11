@@ -20,12 +20,9 @@
     "**/Thumbs.db": true,
     "dist": true,
     ".pytest_cache": true,
-    ".neo4j_data": true,
+    ".neo4j": true,
+    ".memgraph": true,
     ".coverage": true,
     ".venv": true
-  },
-  "cSpell.words": [
-    "Memgraph",
-    "pyneo"
-  ]
+  }
 }
