@@ -1,7 +1,3 @@
-"""
-Internal logging module. Can be controlled via ENV variables.
-"""
-
 import logging
 
 logger = logging.getLogger("pyneo4j-ogm")
