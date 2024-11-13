@@ -1,10 +1,8 @@
 {
   "python.testing.pytestArgs": [
     "tests",
-    "--asyncio-mode=auto",
     "-W ignore::DeprecationWarning",
   ],
-  "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "markdownlint.config": {
     "MD024": false,
@@ -26,6 +24,7 @@
     ".venv": true
   },
   "cSpell.words": [
-    "memgraph"
+    "memgraph",
+    "Pyneo"
   ]
 }
