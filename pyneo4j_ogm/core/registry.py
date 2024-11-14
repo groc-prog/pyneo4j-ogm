@@ -5,7 +5,7 @@ will be handled by this class.
 
 import threading
 from contextlib import contextmanager
-from typing import Any, Generator, List, Set, cast
+from typing import Iterator, List, Optional, Set, cast
 
 from pyneo4j_ogm.core.client import Pyneo4jClient
 from pyneo4j_ogm.exceptions import InvalidClientError
@@ -32,12 +32,12 @@ class Registry:
         return cast(Registry, getattr(cls._thread_ctx, "instance"))
 
     @property
-    def active_client(self) -> Pyneo4jClient | None:
+    def active_client(self) -> Optional[Pyneo4jClient]:
         """
         Gets the currently active client. Each thread has it's own active client and registry.
 
         Returns:
-            Pyneo4jClient | None: Either the currently active client or `None` if no clients are available.
+            Optional[Pyneo4jClient]: Either the currently active client or `None` if no clients are available.
         """
         return getattr(self._thread_ctx, "active_client", None)
 
@@ -95,12 +95,12 @@ class Registry:
                 logger.debug("No other registered clients found")
                 setattr(self._thread_ctx, "active_client", None)
 
-    def set_active_client(self, client: Pyneo4jClient | None) -> None:
+    def set_active_client(self, client: Optional[Pyneo4jClient]) -> None:
         """
         Updates the active client.
 
         Args:
-            client (Pyneo4jClient | None): The client to set as active or `None`.
+            client (Optional[Pyneo4jClient]): The client to set as active or `None`.
 
         Raises:
             InvalidClientError: If `client` is not an instance of `Pyneo4jClient` or not registered
@@ -116,7 +116,7 @@ class Registry:
 
 
 @contextmanager
-def with_client(client: Pyneo4jClient) -> Generator[Pyneo4jClient, Any, None]:
+def with_client(client: Pyneo4jClient) -> Iterator[Pyneo4jClient]:
     """
     Temporarily sets the specified client as the active client within a context.
 
