@@ -52,6 +52,8 @@ class Registry:
         logger.debug("Registering %s clients with registry", len(clients))
         registered_clients = cast(Set[Pyneo4jClient], getattr(self._thread_ctx, "clients", set()))
 
+        # Also track the available clients, so in case there are multiple we can set the first one
+        # as the active one automatically
         available_clients: List[Pyneo4jClient] = []
 
         for client in clients:
@@ -85,6 +87,8 @@ class Registry:
         logger.debug("De-registering client %s", client)
         registered_clients.remove(client)
 
+        # TODO: Maybe we want to raise an exception here instead so we don't get some **magic** behavior
+        # if someone de-registers the currently active client
         if self.active_client == client:
             logger.debug("Active client de-registered, switching active client")
 

@@ -25,3 +25,41 @@ class InvalidClientError(Pyneo4jError):
 
     def __init__(self, *args: object) -> None:
         super().__init__("Client must be a registered instance of `Pyneo4jClient`", *args)
+
+
+class ClientNotInitializedError(Pyneo4jError):
+    """
+    Raised if a client method is called without initializing the client first.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("Client not initialized", *args)
+
+
+class ModelResolveError(Pyneo4jError):
+    """
+    The client failed to resolve a node/relationship to the corresponding model.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(
+            "Model could not be resolved. This might mean that your data fails the validation of the model.", *args
+        )
+
+
+class TransactionInProgress(Pyneo4jError):
+    """
+    The client already has a open session/transaction in progress.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("There is already a session/transaction in progress.", *args)
+
+
+class NoTransactionInProgress(Pyneo4jError):
+    """
+    There is no session/transaction to commit or roll back.
+    """
+
+    def __init__(self, *args: object) -> None:
+        super().__init__("There is no active session/transaction to commit or roll back", *args)

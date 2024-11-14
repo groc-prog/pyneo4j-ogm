@@ -24,6 +24,7 @@
     ".venv": true
   },
   "cSpell.words": [
+    "cypher",
     "memgraph",
     "Pyneo"
   ]
