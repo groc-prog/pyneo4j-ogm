@@ -267,7 +267,7 @@ class TestRegistryMultiThreaded:
             }
 
         for i in range(3):
-            clients = [Pyneo4jClient(), Pyneo4jClient()]
+            clients = [MagicMock(spec=Pyneo4jClient), MagicMock(spec=Pyneo4jClient)]
             thread_name = f"Thread-{i}"
             thread = threading.Thread(target=deregister_active_client, args=(clients, results, thread_name))
             threads.append(thread)
