@@ -3,9 +3,13 @@ Clients module containing abstract base class for all clients and client impleme
 for both Neo4j and Memgraph.
 """
 
+import importlib.util
+import inspect
+import os
 from abc import ABC, abstractmethod
 from asyncio import iscoroutinefunction
 from functools import wraps
+from logging import Logger
 from typing import (
     Any,
     Callable,
@@ -15,8 +19,9 @@ from typing import (
     LiteralString,
     Optional,
     Self,
+    Set,
     Tuple,
-    TypeVar,
+    Type,
     Union,
     cast,
 )
@@ -34,7 +39,36 @@ from pyneo4j_ogm.exceptions import (
 )
 from pyneo4j_ogm.logger import logger
 
-T = TypeVar("T")
+
+def initialize_models_after(func: Callable) -> Callable:
+    """
+    Triggers model initialization for creating indexes/constraints and doing other setup work.
+
+    Args:
+        func (Callable): The function to be decorated, which can be either synchronous
+            or asynchronous.
+
+    Raises:
+        ClientNotInitializedError: The client is not initialized yet.
+
+    Returns:
+        Callable: A wrapped function that includes additional functionality for both
+            sync and async functions.
+    """
+
+    @wraps(func)
+    async def wrapper(self, *args, **kwargs) -> None:
+        if getattr(self, "_driver", None) is not None:
+            initialize = cast(Optional[Callable], getattr(self, "_initialize_models", None))
+
+            if initialize is None:
+                raise ValueError("Model initialization function not found")
+
+            await initialize()
+
+        return await func(self, *args, **kwargs)
+
+    return wrapper
 
 
 def ensure_initialized(func: Callable) -> Callable:
@@ -88,27 +122,25 @@ class Pyneo4jClient(ABC):
     _driver: Optional[AsyncDriver]
     _session: Optional[AsyncSession]
     _transaction: Optional[AsyncTransaction]
+    _models: Set[Union[Type[NodeModel], Type[RelationshipModel]]]
     _skip_constraint_creation: bool
     _skip_index_creation: bool
     _using_batches: bool
+    _logger: Logger
 
     def __init__(self) -> None:
         super().__init__()
 
+        self._logger = logger.getChild(str(self))
+        self._logger.debug("Initializing client")
+
         self._driver = None
         self._session = None
         self._transaction = None
+        self._models = set()
         self._skip_constraint_creation = False
         self._skip_index_creation = False
         self._using_batches = False
-
-    @abstractmethod
-    async def register_models(self, models: List[Union[NodeModel, RelationshipModel]]) -> Self:
-        pass
-
-    @abstractmethod
-    async def register_models_directory(self, path: str) -> Self:
-        pass
 
     @abstractmethod
     async def drop_nodes(self) -> Self:
@@ -141,15 +173,15 @@ class Pyneo4jClient(ABC):
             bool: `True` if the client is connected and ready, otherwise `False`.
         """
         try:
-            logger.info("Checking client connection and authentication")
+            self._logger.info("Checking client connection and authentication")
             if self._driver is None:
-                logger.debug("Client not initialized yet")
+                self._logger.debug("Client not initialized yet")
                 return False
 
-            logger.debug("Verifying connectivity to database")
+            self._logger.debug("Verifying connectivity to database")
             await self._driver.verify_connectivity()
 
-            logger.debug("Checking database authentication")
+            self._logger.debug("Checking database authentication")
             authenticated = await self._driver.verify_authentication()
 
             if not authenticated:
@@ -157,9 +189,10 @@ class Pyneo4jClient(ABC):
 
             return True
         except Exception as exc:
-            logger.error(exc)
+            self._logger.error(exc)
             return False
 
+    @initialize_models_after
     async def connect(
         self,
         uri: str,
@@ -185,36 +218,35 @@ class Pyneo4jClient(ABC):
         self._skip_constraint_creation = skip_constraints
         self._skip_index_creation = skip_indexes
 
-        logger.info("Connecting to database %s with %s", uri, self)
+        self._logger.info("Connecting to database %s with %s", uri, self)
         self._driver = AsyncGraphDatabase.driver(uri=uri, *args, **kwargs)
 
         try:
-            logger.debug("Checking connectivity and authentication")
+            self._logger.debug("Checking connectivity and authentication")
             await self._driver.verify_connectivity()
             authenticated = await self._driver.verify_authentication()
 
             if not authenticated:
                 raise AuthError()
         except Exception as exc:
-            logger.error(exc)
+            self._logger.error(exc)
             await self.close()
 
-        logger.debug("Checking for compatible database version")
+        self._logger.debug("Checking for compatible database version")
         await self._check_database_version()
 
-        logger.info("%s connected to database %s", uri, self)
+        self._logger.info("%s connected to database %s", uri, self)
         return self
 
-    @abstractmethod
     @ensure_initialized
     async def close(self) -> None:
         """
         Closes the connection to the database.
         """
-        logger.info("Closing database connection for %s", self)
+        self._logger.info("Closing database connection for %s", self)
         await cast(AsyncDriver, self._driver).close()
         self._driver = None
-        logger.info("Connection to database for %s closed", self)
+        self._logger.info("Connection to database for %s closed", self)
 
     @ensure_initialized
     async def cypher(
@@ -257,16 +289,16 @@ class Pyneo4jClient(ABC):
             await self._begin_transaction()
 
         try:
-            logger.info("%s with parameters %s", query, query_parameters)
+            self._logger.info("%s with parameters %s", query, query_parameters)
             query_result = await cast(AsyncTransaction, self._transaction).run(
                 cast(LiteralString, query), query_parameters
             )
 
-            logger.debug("Parsing query results")
+            self._logger.debug("Parsing query results")
             results = [list(result.values()) async for result in query_result]
             keys = list(query_result.keys())
         except Exception as exc:
-            logger.error("Query exception: %s", exc)
+            self._logger.error("Query exception: %s", exc)
 
             if not self._using_batches:
                 # Same as in the beginning, we don't want to roll back anything if we use batching
@@ -277,7 +309,7 @@ class Pyneo4jClient(ABC):
                 # TODO: Try to resolve models and raise an exception depending on the parameters provided
                 pass
             except Exception as exc:
-                logger.warning("Resolving models failed with %s", exc)
+                self._logger.warning("Resolving models failed with %s", exc)
                 if raise_on_resolve_exc:
                     raise ModelResolveError() from exc
 
@@ -286,6 +318,81 @@ class Pyneo4jClient(ABC):
             await self._commit_transaction()
 
         return results, keys
+
+    @initialize_models_after
+    async def register_models(self, models: List[Union[Type[NodeModel], Type[RelationshipModel]]]) -> Self:
+        """
+        Registers the provided models with the client. Can be omitted if automatic index/constraint creation
+        and resolving models in queries is not required.
+
+        Args:
+            models (List[Union[Type[NodeModel], Type[RelationshipModel]]]): The models to register. Invalid model
+                instances will be skipped during the registration.
+
+        Returns:
+            Self: The client instance, which allows for chained calls.
+        """
+        self._logger.debug("Registering models with client %s", self)
+        original_count = len(self._models)
+
+        for model in models:
+            if not issubclass(model, (NodeModel, RelationshipModel)):
+                continue
+
+            self._logger.debug("Registering model %s", model.__class__.__name__)
+            self._models.add(model)
+
+        current_count = len(self._models) - original_count
+        self._logger.info("Registered %s models", current_count)
+
+        return self
+
+    @initialize_models_after
+    async def register_models_directory(self, path: str) -> Self:
+        """
+        Recursively imports all discovered models from a given directory path and registers
+        them with the client.
+
+        Args:
+            path (str): The path to the directory.
+
+        Returns:
+            Self: The client instance, which allows for chained calls.
+        """
+        self._logger.debug("Registering models in directory %s", path)
+        original_count = len(self._models)
+
+        for root, _, files in os.walk(path):
+            self._logger.debug("Checking %s files for models", len(files))
+            for file in files:
+                if not file.endswith(".py"):
+                    continue
+
+                filepath = os.path.join(root, file)
+
+                self._logger.debug("Found file %s, importing", filepath)
+                module_name = os.path.splitext(os.path.basename(filepath))[0]
+                spec = importlib.util.spec_from_file_location(module_name, filepath)
+
+                if spec is None or spec.loader is None:
+                    raise ImportError(f"Could not import file {filepath}")
+
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+
+                for member in inspect.getmembers(
+                    module,
+                    lambda x: inspect.isclass(x)
+                    and issubclass(x, (NodeModel, RelationshipModel))
+                    and x is not NodeModel
+                    and x is not RelationshipModel,
+                ):
+                    self._models.add(member[1])
+
+        current_count = len(self._models) - original_count
+        self._logger.info("Registered %s models", current_count)
+
+        return self
 
     @ensure_initialized
     async def _begin_transaction(self) -> None:
@@ -298,13 +405,13 @@ class Pyneo4jClient(ABC):
         if self._session is not None or self._transaction is not None:
             raise TransactionInProgress()
 
-        logger.debug("Acquiring new session")
+        self._logger.debug("Acquiring new session")
         self._session = cast(AsyncDriver, self._driver).session()
-        logger.debug("Session %s acquired", self._session)
+        self._logger.debug("Session %s acquired", self._session)
 
-        logger.debug("Starting new transaction for session %s", self._session)
+        self._logger.debug("Starting new transaction for session %s", self._session)
         self._transaction = await self._session.begin_transaction()
-        logger.debug("Transaction %s for session %s acquired", self._transaction, self._session)
+        self._logger.debug("Transaction %s for session %s acquired", self._transaction, self._session)
 
     @ensure_initialized
     async def _commit_transaction(self) -> None:
@@ -317,14 +424,14 @@ class Pyneo4jClient(ABC):
         if self._session is None or self._transaction is None:
             raise NoTransactionInProgress()
 
-        logger.debug("Committing transaction %s and closing session %s", self._transaction, self._session)
+        self._logger.debug("Committing transaction %s and closing session %s", self._transaction, self._session)
         await self._transaction.commit()
         self._transaction = None
-        logger.debug("Transaction committed")
+        self._logger.debug("Transaction committed")
 
         await self._session.close()
         self._session = None
-        logger.debug("Session closed")
+        self._logger.debug("Session closed")
 
     @ensure_initialized
     async def _rollback_transaction(self) -> None:
@@ -337,19 +444,24 @@ class Pyneo4jClient(ABC):
         if self._session is None or self._transaction is None:
             raise NoTransactionInProgress()
 
-        logger.debug("Rolling back transaction %s and closing session %s", self._transaction, self._session)
+        self._logger.debug("Rolling back transaction %s and closing session %s", self._transaction, self._session)
         await self._transaction.rollback()
         self._transaction = None
-        logger.debug("Transaction rolled back")
+        self._logger.debug("Transaction rolled back")
 
         await self._session.close()
         self._session = None
-        logger.debug("Session closed")
+        self._logger.debug("Session closed")
+
+    async def _initialize_models(self) -> None:
+        pass
 
 
 class Neo4jClient(Pyneo4jClient):
-    pass
+    def __str__(self) -> str:
+        return f"(Neo4j){hex(id(self))}"
 
 
 class MemgraphClient(Pyneo4jClient):
-    pass
+    def __str__(self) -> str:
+        return f"(Memgraph){hex(id(self))}"
