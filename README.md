@@ -7,6 +7,16 @@
 
 [`pyneo4j-ogm`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop) is a asynchronous `Object-Graph-Mapper` for [`Neo4j 5+`](https://neo4j.com/docs/) and [`Python 3.10+`](https://www.python.org/). It is inspired by [`beanie`](https://github.com/roman-right/beanie) and build on top of proven technologies like [`Pydantic 1.10+ and 2+`](https://docs.pydantic.dev/latest/) and the [`Neo4j Python Driver`](https://neo4j.com/docs/api/python-driver/current/index.html). It saves you from writing ever-repeating boilerplate queries and allows you to focus on the `stuff that actually matters`. It is designed to be simple and easy to use, but also flexible and powerful.
 
+## 📣 Announcements
+
+Things to come in the future. Truly exiting stuff! If you have feature requests which you think might improve `pyneo4j-ogm`, feel free to open up a feature request.
+
+### 1.0.0 release is on it's way
+
+A new `major release` is currently under development. This aims to improve this package in the sense of usability, flexibility and known issues. You can view a full list of planned changes in the [`README`](https://github.com/groc-prog/pyneo4j-ogm/blob/feature/next/README.md) on the `feature/next` branch.
+
+If you have any ideas or suggestion, which you think would further enhance the `1.0.0` release, feel free to up a [`issue`](https://github.com/groc-prog/pyneo4j-ogm/issues).
+
 ## 🎯 Features
 
 [`pyneo4j-ogm`](https://github.com/groc-prog/pyneo4j-ogm/blob/develop) has a lot to offer, including:
@@ -18,12 +28,6 @@
 - [x] **Fully asynchronous**: Completely asynchronous code, thanks to the `Neo4j Python Driver`.
 - [x] **Supports Neo4j 5+**: pyneo4j-ogm supports `Neo4j 5+` and is tested against the latest version of Neo4j.
 - [x] **Multi-version Pydantic support**: Both `Pydantic 1.10+` and `2+` fully supported.
-
-## 📣 Announcements
-
-Things to come in the future. Truly exiting stuff! If you have feature requests which you think might improve `pyneo4j-ogm`, feel free to open up a feature request.
-
-- [ ] [MemGraph](https://memgraph.com/) support.
 
 ## 📦 Installation
 
